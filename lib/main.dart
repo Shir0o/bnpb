@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'screens/home_page.dart';
+import 'screens/add_contact_page.dart';
 
 void main() {
   runApp(const MyApp());
@@ -11,65 +13,61 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'BNPB - Demo', // Updated app title
+      title: 'BNPB',
       theme: ThemeData(
-        // Set up a theme with Material 3 and a seed color
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
         useMaterial3: true,
       ),
-      home: const MyHomePage(title: 'BNPB Demo Home Page'), // Updated home page
+      darkTheme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: Colors.blue,
+          brightness: Brightness.dark,
+        ),
+        useMaterial3: true,
+      ),
+      themeMode: ThemeMode.system, // Uses system light/dark mode
+      home: const MainPage(),
     );
   }
 }
 
-/// Home page widget, receives a title as input
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
-
-  final String title; // Title for the AppBar
+/// Main page with bottom navigation
+class MainPage extends StatefulWidget {
+  const MainPage({super.key});
 
   @override
-  State<MyHomePage> createState() => _MyHomePageState();
+  State<MainPage> createState() => _MainPageState();
 }
 
-/// State class for MyHomePage
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0; // Counter to track button presses
+class _MainPageState extends State<MainPage> {
+  int _currentIndex = 0;
 
-  /// Increment the counter and trigger a UI rebuild
-  void _incrementCounter() {
-    setState(() {
-      _counter++;
-    });
-  }
+  final List<Widget> _pages = [
+    HomePage(),
+    AddContactPage(),
+  ];
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        // The AppBar title is set dynamically based on the widget's title
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        title: Text(widget.title),
-      ),
-      body: Center(
-        // Center widget to align children in the middle of the screen
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center, // Vertically center content
-          children: <Widget>[
-            const Text(
-              'You have pressed the button this many times:',
-            ),
-            Text(
-              '$_counter', // Display the counter value
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
-          ],
-        ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter, // Increment counter when pressed
-        tooltip: 'Increment', // Tooltip for accessibility
-        child: const Icon(Icons.add),
+      body: _pages[_currentIndex],
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _currentIndex,
+        onTap: (index) {
+          setState(() {
+            _currentIndex = index;
+          });
+        },
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home),
+            label: 'Home',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person_add),
+            label: 'Add Contact',
+          ),
+        ],
       ),
     );
   }

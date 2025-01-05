@@ -1,23 +1,18 @@
 import 'package:flutter/material.dart';
-import '../models/contact.dart';
 
-/// Page for adding a new contact
-class AddContactPage extends StatefulWidget {
-  const AddContactPage({Key? key}) : super(key: key);
+/// Add Contact page with a form for all fields in the Contact class
+class AddContactPage extends StatelessWidget {
+  AddContactPage({super.key});
 
-  @override
-  State<AddContactPage> createState() => _AddContactPageState();
-}
-
-class _AddContactPageState extends State<AddContactPage> {
-  final _formKey = GlobalKey<FormState>(); // Form key for validation
-
-  // Form field controllers
+  final _formKey = GlobalKey<FormState>();
   final TextEditingController _firstNameController = TextEditingController();
   final TextEditingController _middleNameController = TextEditingController();
   final TextEditingController _lastNameController = TextEditingController();
   final TextEditingController _gradeController = TextEditingController();
   final TextEditingController _occupationController = TextEditingController();
+  final TextEditingController _historyController = TextEditingController();
+  final TextEditingController _relationshipKeyController = TextEditingController();
+  final TextEditingController _relationshipValueController = TextEditingController();
 
   @override
   Widget build(BuildContext context) {
@@ -31,49 +26,84 @@ class _AddContactPageState extends State<AddContactPage> {
           key: _formKey,
           child: ListView(
             children: [
-              // Input field for first name
-              TextFormField(
-                controller: _firstNameController,
-                decoration: const InputDecoration(labelText: 'First Name'),
-                validator: (value) => value == null || value.isEmpty ? 'Enter a first name' : null,
+              Row(
+                children: [
+                  Expanded(
+                    child: TextFormField(
+                      controller: _firstNameController,
+                      decoration: const InputDecoration(labelText: 'First Name'),
+                      validator: (value) => value == null || value.isEmpty ? 'Enter first name' : null,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: TextFormField(
+                      controller: _middleNameController,
+                      decoration: const InputDecoration(labelText: 'Middle Name (Optional)'),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: TextFormField(
+                      controller: _lastNameController,
+                      decoration: const InputDecoration(labelText: 'Last Name'),
+                      validator: (value) => value == null || value.isEmpty ? 'Enter last name' : null,
+                    ),
+                  ),
+                ],
               ),
-              // Input field for middle name
-              TextFormField(
-                controller: _middleNameController,
-                decoration: const InputDecoration(labelText: 'Middle Name (Optional)'),
-              ),
-              // Input field for last name
-              TextFormField(
-                controller: _lastNameController,
-                decoration: const InputDecoration(labelText: 'Last Name'),
-                validator: (value) => value == null || value.isEmpty ? 'Enter a last name' : null,
-              ),
-              // Input field for grade
+              const SizedBox(height: 16),
               TextFormField(
                 controller: _gradeController,
                 decoration: const InputDecoration(labelText: 'Grade (Optional)'),
               ),
-              // Input field for occupation
+              const SizedBox(height: 16),
               TextFormField(
                 controller: _occupationController,
                 decoration: const InputDecoration(labelText: 'Occupation (Optional)'),
               ),
-              const SizedBox(height: 20),
-              // Save button
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _historyController,
+                decoration: const InputDecoration(labelText: 'History Entry (Optional)'),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextFormField(
+                      controller: _relationshipKeyController,
+                      decoration: const InputDecoration(labelText: 'Related Contact ID'),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: TextFormField(
+                      controller: _relationshipValueController,
+                      decoration: const InputDecoration(labelText: 'Relationship Type'),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 32),
               ElevatedButton(
                 onPressed: () {
                   if (_formKey.currentState!.validate()) {
-                    final newContact = Contact(
-                      id: DateTime.now().toIso8601String(), // Generate unique ID
-                      firstName: _firstNameController.text,
-                      middleName: _middleNameController.text,
-                      lastName: _lastNameController.text,
-                      grade: _gradeController.text.isNotEmpty ? _gradeController.text : null,
-                      occupation: _occupationController.text.isNotEmpty ? _occupationController.text : null,
-                      history: [], // Default to empty history
-                      relationships: {}, // Default to empty relationships
+                    final newContact = {
+                      'firstName': _firstNameController.text,
+                      'middleName': _middleNameController.text,
+                      'lastName': _lastNameController.text,
+                      'grade': _gradeController.text,
+                      'occupation': _occupationController.text,
+                      'history': _historyController.text.isNotEmpty ? [_historyController.text] : [],
+                      'relationships': _relationshipKeyController.text.isNotEmpty &&
+                          _relationshipValueController.text.isNotEmpty
+                          ? {_relationshipKeyController.text: _relationshipValueController.text}
+                          : {},
+                    };
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Contact saved: ${newContact['firstName']} ${newContact['lastName']}')),
                     );
-                    Navigator.pop(context, newContact); // Return the new contact
                   }
                 },
                 child: const Text('Save Contact'),
