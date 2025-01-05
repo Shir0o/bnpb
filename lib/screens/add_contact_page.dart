@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
 
-/// Add Contact page with a form for all fields in the Contact class
+/// Add Contact page with a form
 class AddContactPage extends StatelessWidget {
   AddContactPage({super.key});
 
@@ -13,6 +15,35 @@ class AddContactPage extends StatelessWidget {
   final TextEditingController _historyController = TextEditingController();
   final TextEditingController _relationshipKeyController = TextEditingController();
   final TextEditingController _relationshipValueController = TextEditingController();
+
+  /// Save contact to shared preferences
+  Future<void> _saveContact(BuildContext context, Map<String, dynamic> contact) async {
+    final prefs = await SharedPreferences.getInstance();
+
+    // Get existing contacts
+    final String? storedContacts = prefs.getString('contacts');
+    List<Map<String, dynamic>> contacts = [];
+
+    if (storedContacts != null) {
+      contacts = List<Map<String, dynamic>>.from(json.decode(storedContacts));
+    }
+
+    // Add the new contact
+    contacts.add(contact);
+
+    // Save updated contacts
+    await prefs.setString('contacts', json.encode(contacts));
+
+    // Show success message
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'Contact saved successfully: ${contact['firstName']} ${contact['lastName']}',
+        ),
+        backgroundColor: Colors.green,
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -87,23 +118,36 @@ class AddContactPage extends StatelessWidget {
               ),
               const SizedBox(height: 32),
               ElevatedButton(
-                onPressed: () {
+                onPressed: () async {
                   if (_formKey.currentState!.validate()) {
+                    // Create a new contact
                     final newContact = {
+                      'id': DateTime.now().toIso8601String(), // Unique ID
                       'firstName': _firstNameController.text,
                       'middleName': _middleNameController.text,
                       'lastName': _lastNameController.text,
-                      'grade': _gradeController.text,
-                      'occupation': _occupationController.text,
+                      'grade': _gradeController.text.isNotEmpty ? _gradeController.text : null,
+                      'occupation': _occupationController.text.isNotEmpty ? _occupationController.text : null,
                       'history': _historyController.text.isNotEmpty ? [_historyController.text] : [],
                       'relationships': _relationshipKeyController.text.isNotEmpty &&
                           _relationshipValueController.text.isNotEmpty
                           ? {_relationshipKeyController.text: _relationshipValueController.text}
                           : {},
                     };
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Contact saved: ${newContact['firstName']} ${newContact['lastName']}')),
-                    );
+
+                    // Save the contact to storage
+                    await _saveContact(context, newContact);
+
+                    // Clear the form
+                    _formKey.currentState?.reset();
+                    _firstNameController.clear();
+                    _middleNameController.clear();
+                    _lastNameController.clear();
+                    _gradeController.clear();
+                    _occupationController.clear();
+                    _historyController.clear();
+                    _relationshipKeyController.clear();
+                    _relationshipValueController.clear();
                   }
                 },
                 child: const Text('Save Contact'),
