@@ -2,6 +2,25 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 
+// Define HistoryEntry structure
+class HistoryEntry {
+  final DateTime date;
+  final String detail;
+
+  HistoryEntry({required this.date, required this.detail});
+
+  Map<String, dynamic> toMap() {
+    return {'date': date.toIso8601String(), 'detail': detail};
+  }
+
+  static HistoryEntry fromMap(Map<String, dynamic> map) {
+    return HistoryEntry(
+      date: DateTime.parse(map['date']),
+      detail: map['detail'],
+    );
+  }
+}
+
 class AddContactPage extends StatefulWidget {
   const AddContactPage({super.key});
 
@@ -17,22 +36,23 @@ class _AddContactPageState extends State<AddContactPage> {
   final TextEditingController _middleNameController = TextEditingController();
   final TextEditingController _lastNameController = TextEditingController();
   final TextEditingController _occupationController = TextEditingController();
-  final TextEditingController _historyController = TextEditingController();
+  final TextEditingController _historyDetailController = TextEditingController();
   final TextEditingController _relationshipValueController = TextEditingController();
 
   // Data lists and selected values
   List<Map<String, dynamic>> _contacts = [];
+  List<HistoryEntry> _history = [];
   String? _selectedGrade;
   String? _selectedContactId;
 
-  /// Categorized grade options
-  final Map<String, List<String>> _categorizedGradeOptions = {
-    'Elementary': ['1', '2', '3', '4', '5', '6'],
-    'Junior High': ['7', '8'],
-    'High School': ['9', '10', '11', '12'],
-    'College': ['Freshman', 'Sophomore', 'Junior', 'Senior'],
-    'Beyond': ['Graduate School', 'PhD', 'Postdoctoral'],
-  };
+  // Flat list of grades
+  final List<String> _allGradeOptions = [
+    '1', '2', '3', '4', '5', '6',
+    '7', '8',
+    '9', '10', '11', '12',
+    'Freshman', 'Sophomore', 'Junior', 'Senior',
+    'Graduate School', 'PhD', 'Postdoctoral',
+  ];
 
   @override
   void initState() {
@@ -88,37 +108,94 @@ class _AddContactPageState extends State<AddContactPage> {
     ].join(' ');
   }
 
-  /// Builds dropdown items with category labels for the grade field
-  List<DropdownMenuItem<String>> _buildCategorizedDropdownItems() {
-    List<DropdownMenuItem<String>> items = [];
+  /// Builds dropdown items with real grade options
+  List<DropdownMenuItem<String>> _buildGradeDropdownItems() {
+    return _allGradeOptions.map((grade) {
+      return DropdownMenuItem<String>(
+        value: grade,
+        child: Text(grade),
+      );
+    }).toList();
+  }
 
-    _categorizedGradeOptions.forEach((category, grades) {
-      // Add category label (disabled item)
-      items.add(
-        DropdownMenuItem<String>(
-          enabled: false,
-          child: Text(
-            category,
-            style: const TextStyle(fontWeight: FontWeight.bold),
+  void _addHistoryEntry() {
+    DateTime? selectedDate;
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Add History Entry'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: _historyDetailController,
+                decoration: const InputDecoration(
+                  labelText: 'History Detail',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Select Date:'),
+                  TextButton(
+                    onPressed: () async {
+                      final pickedDate = await showDatePicker(
+                        context: context,
+                        initialDate: DateTime.now(),
+                        firstDate: DateTime(2000),
+                        lastDate: DateTime(2100),
+                      );
+                      if (pickedDate != null) {
+                        setState(() {
+                          selectedDate = pickedDate;
+                        });
+                      }
+                    },
+                    child: const Text('Choose Date'),
+                  ),
+                ],
+              ),
+              if (selectedDate != null)
+                Text(
+                  'Selected Date: ${selectedDate!.toLocal().toString().split(' ')[0]}',
+                ),
+            ],
           ),
-        ),
-      );
-
-      // Add grades under the category
-      items.addAll(
-        grades.map((grade) {
-          return DropdownMenuItem<String>(
-            value: grade,
-            child: Padding(
-              padding: const EdgeInsets.only(left: 16.0),
-              child: Text(grade),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context); // Cancel and close the dialog
+              },
+              child: const Text('Cancel'),
             ),
-          );
-        }).toList(),
-      );
-    });
-
-    return items;
+            ElevatedButton(
+              onPressed: () {
+                final detail = _historyDetailController.text.trim();
+                if (detail.isNotEmpty && selectedDate != null) {
+                  setState(() {
+                    _history.add(HistoryEntry(date: selectedDate!, detail: detail));
+                    _historyDetailController.clear();
+                  });
+                  Navigator.pop(context); // Close the dialog after adding
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Please provide both detail and date.'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              },
+              child: const Text('Add'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
@@ -151,7 +228,8 @@ class _AddContactPageState extends State<AddContactPage> {
                     child: TextFormField(
                       controller: _middleNameController,
                       textCapitalization: TextCapitalization.words,
-                      decoration: const InputDecoration(labelText: 'Middle Name (Optional)'),
+                      decoration:
+                      const InputDecoration(labelText: 'Middle Name (Optional)'),
                     ),
                   ),
                   const SizedBox(width: 16),
@@ -168,10 +246,11 @@ class _AddContactPageState extends State<AddContactPage> {
                 ],
               ),
               const SizedBox(height: 16),
-              // Grade dropdown with clear suffix icon
+
+              // Grade dropdown
               DropdownButtonFormField<String>(
                 value: _selectedGrade,
-                items: _buildCategorizedDropdownItems(),
+                items: _buildGradeDropdownItems(),
                 onChanged: (value) {
                   setState(() {
                     _selectedGrade = value;
@@ -179,7 +258,6 @@ class _AddContactPageState extends State<AddContactPage> {
                 },
                 decoration: InputDecoration(
                   labelText: 'Grade (Optional)',
-                  floatingLabelBehavior: FloatingLabelBehavior.auto,
                   suffixIcon: _selectedGrade != null
                       ? IconButton(
                     icon: const Icon(Icons.clear),
@@ -188,10 +266,12 @@ class _AddContactPageState extends State<AddContactPage> {
                         _selectedGrade = null;
                       });
                     },
-                  ) : null,
+                  )
+                      : null,
                 ),
               ),
               const SizedBox(height: 16),
+
               // Occupation field
               TextFormField(
                 controller: _occupationController,
@@ -199,13 +279,31 @@ class _AddContactPageState extends State<AddContactPage> {
                 decoration: const InputDecoration(labelText: 'Occupation (Optional)'),
               ),
               const SizedBox(height: 16),
-              // History field
-              TextFormField(
-                controller: _historyController,
-                decoration: const InputDecoration(labelText: 'History Entry (Optional)'),
+
+              // History section
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('History Entries', style: TextStyle(fontWeight: FontWeight.bold)),
+                  ..._history.map((entry) {
+                    return ListTile(
+                      title: Text(entry.detail),
+                      subtitle: Text(entry.date.toLocal().toString().split(' ')[0]),
+                    );
+                  }).toList(),
+                  TextField(
+                    controller: _historyDetailController,
+                    decoration: const InputDecoration(labelText: 'Add History Detail'),
+                  ),
+                  ElevatedButton(
+                    onPressed: _addHistoryEntry,
+                    child: const Text('Add History Entry'),
+                  ),
+                ],
               ),
               const SizedBox(height: 16),
-              // Related Contact dropdown with clear suffix icon
+
+              // Related Contact dropdown
               DropdownButtonFormField<String>(
                 value: _selectedContactId,
                 items: _contacts.map((contact) {
@@ -234,7 +332,8 @@ class _AddContactPageState extends State<AddContactPage> {
                         _selectedContactId = null;
                       });
                     },
-                  ) : null,
+                  )
+                      : null,
                 ),
               ),
               const SizedBox(height: 16),
@@ -261,9 +360,7 @@ class _AddContactPageState extends State<AddContactPage> {
                       'occupation': _occupationController.text.isNotEmpty
                           ? _occupationController.text.trim()
                           : null,
-                      'history': _historyController.text.isNotEmpty
-                          ? [_historyController.text.trim()]
-                          : [],
+                      'history': _history.map((entry) => entry.toMap()).toList(),
                       'relationships': _selectedContactId != null &&
                           _relationshipValueController.text.isNotEmpty
                           ? {
@@ -282,11 +379,12 @@ class _AddContactPageState extends State<AddContactPage> {
                     _middleNameController.clear();
                     _lastNameController.clear();
                     _occupationController.clear();
-                    _historyController.clear();
+                    _historyDetailController.clear();
                     _relationshipValueController.clear();
                     setState(() {
                       _selectedGrade = null;
                       _selectedContactId = null;
+                      _history.clear();
                     });
                   }
                 },

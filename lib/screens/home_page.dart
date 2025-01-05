@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 
+import 'contact_details_page.dart';
+
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
@@ -32,6 +34,12 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  /// Save updated contacts to shared preferences
+  Future<void> _saveContacts() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('contacts', json.encode(_contacts));
+  }
+
   /// Map relationship IDs to contact names
   String _getFullNameById(String id) {
     final contact = _contacts.firstWhere(
@@ -58,55 +66,25 @@ class _HomePageState extends State<HomePage> {
     ].join(' ');
   }
 
-  /// Show detailed information about a contact
-  void _showContactDetails(BuildContext context, Map<String, dynamic> contact) {
-    final fullName = _constructFullName(
-      contact['firstName'],
-      contact['middleName'],
-      contact['lastName'],
-    );
-
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: Text(fullName),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (contact['grade'] != null)
-                Text('Grade: ${contact['grade']}'),
-              if (contact['occupation'] != null)
-                Text('Occupation: ${contact['occupation']}'),
-              if (contact['history'] != null && contact['history'].isNotEmpty)
-                Text('History: ${contact['history'].join(', ')}'),
-              if (contact['relationships'] != null &&
-                  contact['relationships'].isNotEmpty)
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('Relationships:'),
-                    ...contact['relationships'].entries.map((entry) {
-                      final relatedContactName = _getFullNameById(entry.key);
-                      return Text(
-                        '${relatedContactName}: ${entry.value}',
-                        style: const TextStyle(fontSize: 14),
-                      );
-                    }).toList(),
-                  ],
-                ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Close'),
-            ),
-          ],
-        );
-      },
-    );
+  void _navigateToContactDetails(BuildContext context, Map<String, dynamic> contact) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ContactDetailsPage(
+          contact: contact,
+          getFullNameById: _getFullNameById,
+          onDelete: () async {
+            setState(() {
+              _contacts.remove(contact); // Remove the contact from the list
+            });
+            await _saveContacts(); // Save changes to shared preferences
+          },
+        ),
+      ),
+    ).then((_) async {
+      // Reload contacts after navigating back
+      await _loadContacts();
+    });
   }
 
   @override
@@ -135,14 +113,9 @@ class _HomePageState extends State<HomePage> {
             );
             return ListTile(
               title: Text(fullName),
-              subtitle: Text(contact['grade'] != null
-                  ? 'Grade: ${contact['grade']}'
-                  : contact['occupation'] != null
-                  ? 'Occupation: ${contact['occupation']}'
-                  : 'No additional details'),
               onTap: () {
                 // Display detailed info for the contact
-                _showContactDetails(context, contact);
+                _navigateToContactDetails(context, contact);
               },
             );
           },

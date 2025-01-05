@@ -1,3 +1,29 @@
+class HistoryEntry {
+  final DateTime date; // Date of the history entry
+  final String detail; // Detail of the history entry
+
+  HistoryEntry({
+    required this.date,
+    required this.detail,
+  });
+
+  // Converts a HistoryEntry object into a Map for storage or serialization
+  Map<String, dynamic> toMap() {
+    return {
+      'date': date.toIso8601String(),
+      'detail': detail,
+    };
+  }
+
+  // Creates a HistoryEntry object from a Map (e.g., reading from a database)
+  static HistoryEntry fromMap(Map<String, dynamic> map) {
+    return HistoryEntry(
+      date: DateTime.parse(map['date']),
+      detail: map['detail'],
+    );
+  }
+}
+
 class Contact {
   final String id; // Unique identifier for the contact
   final String firstName; // First name of the contact
@@ -5,7 +31,7 @@ class Contact {
   final String lastName; // Last name of the contact
   final String? grade; // Grade, if the contact is a student (optional)
   final String? occupation; // Occupation, if the contact is working (optional)
-  final List<String> history; // List of history entries for the contact
+  final List<HistoryEntry> history; // List of history entries for the contact
   final Map<String, String> relationships; // Relationships with other contacts
 
   Contact({
@@ -13,9 +39,9 @@ class Contact {
     required this.firstName,
     this.middleName = '', // Default middle name is empty
     required this.lastName,
-    this.grade = null, // Default grade is null
+    this.grade,
     this.occupation,
-    List<String>? history, // Default to an empty list if not provided
+    List<HistoryEntry>? history, // Default to an empty list if not provided
     Map<String, String>? relationships, // Default to an empty map if not provided
   })  : history = history ?? [],
         relationships = relationships ?? {};
@@ -29,7 +55,7 @@ class Contact {
       'lastName': lastName,
       'grade': grade,
       'occupation': occupation,
-      'history': history,
+      'history': history.map((entry) => entry.toMap()).toList(),
       'relationships': relationships,
     };
   }
@@ -43,7 +69,10 @@ class Contact {
       lastName: map['lastName'],
       grade: map['grade'],
       occupation: map['occupation'],
-      history: List<String>.from(map['history'] ?? []),
+      history: (map['history'] as List<dynamic>?)
+          ?.map((entry) => HistoryEntry.fromMap(entry))
+          .toList() ??
+          [],
       relationships: Map<String, String>.from(map['relationships'] ?? {}),
     );
   }
