@@ -13,7 +13,7 @@ class Contact {
     required this.firstName,
     this.middleName = '', // Default middle name is empty
     required this.lastName,
-    this.grade,
+    this.grade = null, // Default grade is null
     this.occupation,
     List<String>? history, // Default to an empty list if not provided
     Map<String, String>? relationships, // Default to an empty map if not provided

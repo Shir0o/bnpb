@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 
-/// Home page with a list of saved contacts and a refresh button
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
@@ -33,18 +32,88 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  /// Map relationship IDs to contact names
+  String _getFullNameById(String id) {
+    final contact = _contacts.firstWhere(
+          (c) => c['id'] == id,
+      orElse: () => {}, // Return an empty map instead of null
+    );
+
+    if (contact.isNotEmpty) {
+      return _constructFullName(
+        contact['firstName'],
+        contact['middleName'],
+        contact['lastName'],
+      );
+    }
+    return 'Unknown'; // Fallback if the contact is not found
+  }
+
+  /// Construct the full name without extra spaces
+  String _constructFullName(String firstName, String? middleName, String lastName) {
+    return [
+      firstName.trim(),
+      if (middleName != null && middleName.trim().isNotEmpty) middleName.trim(),
+      lastName.trim(),
+    ].join(' ');
+  }
+
+  /// Show detailed information about a contact
+  void _showContactDetails(BuildContext context, Map<String, dynamic> contact) {
+    final fullName = _constructFullName(
+      contact['firstName'],
+      contact['middleName'],
+      contact['lastName'],
+    );
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text(fullName),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (contact['grade'] != null)
+                Text('Grade: ${contact['grade']}'),
+              if (contact['occupation'] != null)
+                Text('Occupation: ${contact['occupation']}'),
+              if (contact['history'] != null && contact['history'].isNotEmpty)
+                Text('History: ${contact['history'].join(', ')}'),
+              if (contact['relationships'] != null &&
+                  contact['relationships'].isNotEmpty)
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Relationships:'),
+                    ...contact['relationships'].entries.map((entry) {
+                      final relatedContactName = _getFullNameById(entry.key);
+                      return Text(
+                        '${relatedContactName}: ${entry.value}',
+                        style: const TextStyle(fontSize: 14),
+                      );
+                    }).toList(),
+                  ],
+                ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Close'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Home Page'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            tooltip: 'Refresh Contacts',
-            onPressed: _refreshContacts, // Refresh contacts when pressed
-          ),
-        ],
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -59,12 +128,13 @@ class _HomePageState extends State<HomePage> {
           itemCount: _contacts.length,
           itemBuilder: (context, index) {
             final contact = _contacts[index];
+            final fullName = _constructFullName(
+              contact['firstName'],
+              contact['middleName'],
+              contact['lastName'],
+            );
             return ListTile(
-              title: Text(contact['firstName'] +
-                  ' ' +
-                  (contact['middleName'] ?? '') +
-                  ' ' +
-                  contact['lastName']),
+              title: Text(fullName),
               subtitle: Text(contact['grade'] != null
                   ? 'Grade: ${contact['grade']}'
                   : contact['occupation'] != null
@@ -78,51 +148,6 @@ class _HomePageState extends State<HomePage> {
           },
         ),
       ),
-    );
-  }
-
-  /// Refresh contacts
-  Future<void> _refreshContacts() async {
-    await _loadContacts(); // Reload contacts
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Contacts refreshed')),
-    );
-  }
-
-  /// Show detailed information about a contact
-  void _showContactDetails(
-      BuildContext context, Map<String, dynamic> contact) {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: Text(
-              '${contact['firstName']} ${contact['middleName'] ?? ''} ${contact['lastName']}'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (contact['grade'] != null)
-                Text('Grade: ${contact['grade']}'),
-              if (contact['occupation'] != null)
-                Text('Occupation: ${contact['occupation']}'),
-              if (contact['history'] != null && contact['history'].isNotEmpty)
-                Text('History: ${contact['history'].join(', ')}'),
-              if (contact['relationships'] != null &&
-                  contact['relationships'].isNotEmpty)
-                Text(
-                  'Relationships: ${contact['relationships'].entries.map((e) => '${e.key}: ${e.value}').join(', ')}',
-                ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Close'),
-            ),
-          ],
-        );
-      },
     );
   }
 }
