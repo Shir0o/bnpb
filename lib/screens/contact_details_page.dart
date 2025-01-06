@@ -72,6 +72,39 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
     );
   }
 
+  void _deleteHistoryEntry(int index) async {
+    setState(() {
+      // Remove the entry from the local history list
+      final removedEntry = history.removeAt(index);
+
+      // Update the widget.contact['history']
+      if (widget.contact['history'] != null) {
+        widget.contact['history'].removeWhere((entry) {
+          return entry['date'] == removedEntry.date.toIso8601String() &&
+              entry['detail'] == removedEntry.detail;
+        });
+      }
+    });
+
+    // Persist the updated contact data to SharedPreferences
+    final prefs = await SharedPreferences.getInstance();
+    final contactsJson = prefs.getString('contacts');
+    final List<Map<String, dynamic>> contacts = contactsJson != null
+        ? List<Map<String, dynamic>>.from(
+      jsonDecode(contactsJson) as List<dynamic>,
+    )
+        : [];
+
+    final updatedContacts = contacts.map((contact) {
+      if (contact['id'] == widget.contact['id']) {
+        return widget.contact; // Replace with updated contact
+      }
+      return contact;
+    }).toList();
+
+    await prefs.setString('contacts', jsonEncode(updatedContacts));
+  }
+
   void _addHistoryItem() {
     showDialog(
       context: context,
@@ -221,9 +254,25 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
               content: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: history.isNotEmpty
-                    ? history.map((entry) {
-                  return Text(
-                    '- ${entry.detail} (${DateFormat.yMMMd().format(entry.date)})',
+                    ? history.asMap().entries.map((entry) {
+                  final index = entry.key;
+                  final historyEntry = entry.value;
+                  return Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          '- ${historyEntry.detail} (${DateFormat.yMMMd().format(historyEntry.date)})',
+                          style: const TextStyle(fontSize: 14),
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.delete, color: Colors.red),
+                        onPressed: () {
+                          _deleteHistoryEntry(index);
+                        },
+                      ),
+                    ],
                   );
                 }).toList()
                     : [const Text('No history available.')],
