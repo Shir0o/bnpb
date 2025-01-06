@@ -72,6 +72,12 @@ class _AddContactPageState extends State<AddContactPage> {
     }
   }
 
+  void _deleteHistoryEntry(int index) {
+    setState(() {
+      _history.removeAt(index); // Remove the entry from the list
+    });
+  }
+
   /// Saves a new or updated contact to SharedPreferences
   Future<void> _saveContact(Map<String, dynamic> contact) async {
     final prefs = await SharedPreferences.getInstance();
@@ -131,6 +137,7 @@ class _AddContactPageState extends State<AddContactPage> {
             children: [
               TextField(
                 controller: _historyDetailController,
+                textCapitalization: TextCapitalization.words,
                 decoration: const InputDecoration(
                   labelText: 'History Detail',
                   border: OutlineInputBorder(),
@@ -284,21 +291,36 @@ class _AddContactPageState extends State<AddContactPage> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('History Entries', style: TextStyle(fontWeight: FontWeight.bold)),
-                  ..._history.map((entry) {
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'History Entries',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      ElevatedButton(
+                        onPressed: _addHistoryEntry,
+                        child: const Text('Add History Entry'),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  ..._history.asMap().entries.map((entry) {
+                    final index = entry.key;
+                    final historyEntry = entry.value;
                     return ListTile(
-                      title: Text(entry.detail),
-                      subtitle: Text(entry.date.toLocal().toString().split(' ')[0]),
+                      title: Text(historyEntry.detail),
+                      subtitle: Text(
+                        historyEntry.date.toLocal().toString().split(' ')[0],
+                      ),
+                      trailing: IconButton(
+                        icon: const Icon(Icons.delete, color: Colors.red),
+                        onPressed: () {
+                          _deleteHistoryEntry(index);
+                        },
+                      ),
                     );
                   }).toList(),
-                  TextField(
-                    controller: _historyDetailController,
-                    decoration: const InputDecoration(labelText: 'Add History Detail'),
-                  ),
-                  ElevatedButton(
-                    onPressed: _addHistoryEntry,
-                    child: const Text('Add History Entry'),
-                  ),
                 ],
               ),
               const SizedBox(height: 16),
