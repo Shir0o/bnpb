@@ -1,6 +1,8 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart'; // Add this for date formatting
-
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/contact.dart'; // Assuming you have the `HistoryEntry` and `Contact` models defined
 
 class ContactDetailsPage extends StatefulWidget {
@@ -29,7 +31,9 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
     super.initState();
     // Initialize the history list from the contact data
     history = widget.contact['history'] != null
-        ? List<HistoryEntry>.from(widget.contact['history'])
+        ? (widget.contact['history'] as List<dynamic>)
+        .map((entry) => HistoryEntry.fromMap(entry as Map<String, dynamic>))
+        .toList()
         : [];
   }
 
@@ -96,7 +100,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
                             ? DateFormat.yMMMd().format(_selectedDate!)
                             : 'No date selected',
                         style: TextStyle(
-                          color: _selectedDate != null ? Colors.white : Colors.grey,
+                          color: _selectedDate != null ? Colors.black : Colors.grey,
                         ),
                       ),
                       const SizedBox(width: 16),
@@ -126,24 +130,54 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
                   child: const Text('Cancel'),
                 ),
                 ElevatedButton(
-                  onPressed: () {
+                  onPressed: () async {
                     final detail = _historyDetailController.text.trim();
                     if (detail.isNotEmpty && _selectedDate != null) {
-                      setState(() {
-                        final newEntry = HistoryEntry(
-                          date: _selectedDate!,
-                          detail: detail,
+                      try {
+                        setState(() {
+                          final newEntry = HistoryEntry(
+                            date: _selectedDate!,
+                            detail: detail,
+                          );
+                          history.add(newEntry); // Update local list
+
+                          if (widget.contact['history'] != null) {
+                            widget.contact['history'].add(newEntry.toMap()); // Save as Map
+                          } else {
+                            widget.contact['history'] = [newEntry.toMap()];
+                          }
+                        });
+
+                        // Save updated contact list to SharedPreferences
+                        final prefs = await SharedPreferences.getInstance();
+                        final contactsJson = prefs.getString('contacts');
+                        final List<Map<String, dynamic>> contacts = contactsJson != null
+                            ? List<Map<String, dynamic>>.from(
+                            jsonDecode(contactsJson) as List<dynamic>)
+                            : [];
+
+                        final updatedContacts = contacts.map((contact) {
+                          if (contact['id'] == widget.contact['id']) {
+                            return widget.contact; // Replace with updated contact
+                          }
+                          return contact;
+                        }).toList();
+
+                        await prefs.setString('contacts', jsonEncode(updatedContacts));
+
+                        _historyDetailController.clear();
+                        _selectedDate = null;
+                        Navigator.pop(context); // Close the dialog
+                      } catch (error) {
+                        print("Error saving history: $error");
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Failed to save history.')),
                         );
-                        history.add(newEntry); // Update the local list
-                        if (widget.contact['history'] != null) {
-                          widget.contact['history'].add(newEntry);
-                        } else {
-                          widget.contact['history'] = [newEntry];
-                        }
-                      });
-                      _historyDetailController.clear();
-                      _selectedDate = null;
-                      Navigator.pop(context); // Close the dialog
+                      }
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Please enter a valid detail and date.')),
+                      );
                     }
                   },
                   child: const Text('Add'),
