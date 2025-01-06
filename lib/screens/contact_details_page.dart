@@ -1,9 +1,9 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart'; // Add this for date formatting
+import 'package:intl/intl.dart'; // For date formatting
 import 'package:shared_preferences/shared_preferences.dart';
-import '../models/contact.dart'; // Assuming you have the `HistoryEntry` and `Contact` models defined
+import '../models/contact.dart'; // Assuming you have `HistoryEntry` and `Contact` models defined
 
 class ContactDetailsPage extends StatefulWidget {
   final Map<String, dynamic> contact;
@@ -77,7 +77,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
       context: context,
       builder: (context) {
         return StatefulBuilder(
-          builder: (context, setState) {
+          builder: (context, setStateDialog) {
             return AlertDialog(
               title: const Text('Add History'),
               content: Column(
@@ -89,8 +89,6 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
                       hintText: 'Enter history detail',
                       border: OutlineInputBorder(),
                     ),
-                    keyboardType: TextInputType.text,
-                    textCapitalization: TextCapitalization.sentences,
                   ),
                   const SizedBox(height: 16),
                   Row(
@@ -100,7 +98,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
                             ? DateFormat.yMMMd().format(_selectedDate!)
                             : 'No date selected',
                         style: TextStyle(
-                          color: _selectedDate != null ? Colors.black : Colors.grey,
+                          color: _selectedDate != null ? Colors.white : Colors.grey,
                         ),
                       ),
                       const SizedBox(width: 16),
@@ -113,7 +111,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
                             lastDate: DateTime(2100),
                           );
                           if (pickedDate != null) {
-                            setState(() {
+                            setStateDialog(() {
                               _selectedDate = pickedDate;
                             });
                           }
@@ -126,57 +124,51 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
               ),
               actions: [
                 TextButton(
-                  onPressed: () => Navigator.pop(context), // Cancel addition
+                  onPressed: () => Navigator.pop(context),
                   child: const Text('Cancel'),
                 ),
                 ElevatedButton(
                   onPressed: () async {
                     final detail = _historyDetailController.text.trim();
                     if (detail.isNotEmpty && _selectedDate != null) {
-                      try {
-                        setState(() {
-                          final newEntry = HistoryEntry(
-                            date: _selectedDate!,
-                            detail: detail,
-                          );
-                          history.add(newEntry); // Update local list
-
-                          if (widget.contact['history'] != null) {
-                            widget.contact['history'].add(newEntry.toMap()); // Save as Map
-                          } else {
-                            widget.contact['history'] = [newEntry.toMap()];
-                          }
-                        });
-
-                        // Save updated contact list to SharedPreferences
-                        final prefs = await SharedPreferences.getInstance();
-                        final contactsJson = prefs.getString('contacts');
-                        final List<Map<String, dynamic>> contacts = contactsJson != null
-                            ? List<Map<String, dynamic>>.from(
-                            jsonDecode(contactsJson) as List<dynamic>)
-                            : [];
-
-                        final updatedContacts = contacts.map((contact) {
-                          if (contact['id'] == widget.contact['id']) {
-                            return widget.contact; // Replace with updated contact
-                          }
-                          return contact;
-                        }).toList();
-
-                        await prefs.setString('contacts', jsonEncode(updatedContacts));
-
-                        _historyDetailController.clear();
-                        _selectedDate = null;
-                        Navigator.pop(context); // Close the dialog
-                      } catch (error) {
-                        print("Error saving history: $error");
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Failed to save history.')),
+                      setState(() {
+                        final newEntry = HistoryEntry(
+                          date: _selectedDate!,
+                          detail: detail,
                         );
-                      }
+                        history.add(newEntry);
+
+                        if (widget.contact['history'] != null) {
+                          widget.contact['history'].add(newEntry.toMap());
+                        } else {
+                          widget.contact['history'] = [newEntry.toMap()];
+                        }
+                      });
+
+                      // Persist to SharedPreferences
+                      final prefs = await SharedPreferences.getInstance();
+                      final contactsJson = prefs.getString('contacts');
+                      final List<Map<String, dynamic>> contacts = contactsJson != null
+                          ? List<Map<String, dynamic>>.from(
+                        jsonDecode(contactsJson) as List<dynamic>,
+                      )
+                          : [];
+
+                      final updatedContacts = contacts.map((contact) {
+                        if (contact['id'] == widget.contact['id']) {
+                          return widget.contact;
+                        }
+                        return contact;
+                      }).toList();
+
+                      await prefs.setString('contacts', jsonEncode(updatedContacts));
+
+                      _historyDetailController.clear();
+                      _selectedDate = null;
+                      Navigator.pop(context);
                     } else {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Please enter a valid detail and date.')),
+                        const SnackBar(content: Text('Please fill in all fields.')),
                       );
                     }
                   },
@@ -263,7 +255,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
           ),
         ),
         content,
-        const Divider(), // Add a divider between sections
+        const Divider(),
       ],
     );
   }
