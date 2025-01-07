@@ -1,5 +1,4 @@
 import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart'; // For date formatting
 import 'package:shared_preferences/shared_preferences.dart';
@@ -24,7 +23,21 @@ class ContactDetailsPage extends StatefulWidget {
 class _ContactDetailsPageState extends State<ContactDetailsPage> {
   late List<HistoryEntry> history;
   final TextEditingController _historyDetailController = TextEditingController();
+  final TextEditingController _gradeController = TextEditingController();
+  final TextEditingController _occupationController = TextEditingController();
   DateTime? _selectedDate;
+
+  // Grade options
+  final List<String> _allGradeOptions = [
+    'None',
+    '1', '2', '3', '4', '5', '6',
+    '7', '8',
+    '9', '10', '11', '12',
+    'Freshman', 'Sophomore', 'Junior', 'Senior',
+    'Graduate School', 'PhD', 'Postdoctoral',
+  ];
+
+  String? _selectedGrade;
 
   @override
   void initState() {
@@ -35,12 +48,92 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
         .map((entry) => HistoryEntry.fromMap(entry as Map<String, dynamic>))
         .toList()
         : [];
+
+    // Initialize grade and occupation controllers
+    _selectedGrade = _allGradeOptions.contains(widget.contact['grade'])
+        ? widget.contact['grade']
+        : _allGradeOptions.first; // Default to the first grade option if null or invalid
+    _occupationController.text = widget.contact['occupation'] ?? '';
   }
 
   @override
   void dispose() {
     _historyDetailController.dispose();
+    _gradeController.dispose();
+    _occupationController.dispose();
     super.dispose();
+  }
+
+  String _capitalize(String input) {
+    if (input.isEmpty) return input;
+    return input[0].toUpperCase() + input.substring(1);
+  }
+
+  Future<void> _updateContact() async {
+    setState(() {
+      widget.contact['grade'] = _selectedGrade ?? _allGradeOptions.first; // Ensure non-null value
+      widget.contact['occupation'] = _capitalize(_occupationController.text.trim());
+    });
+
+    // Persist the changes to SharedPreferences
+    final prefs = await SharedPreferences.getInstance();
+    final contactsJson = prefs.getString('contacts');
+    final List<Map<String, dynamic>> contacts = contactsJson != null
+        ? List<Map<String, dynamic>>.from(
+      jsonDecode(contactsJson) as List<dynamic>,
+    )
+        : [];
+
+    final updatedContacts = contacts.map((contact) {
+      if (contact['id'] == widget.contact['id']) {
+        return widget.contact;
+      }
+      return contact;
+    }).toList();
+
+    await prefs.setString('contacts', jsonEncode(updatedContacts));
+
+    // Show success Snackbar
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Contact updated successfully!')),
+    );
+  }
+
+  Widget _buildGradeDropdown() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8.0),
+          child: Text(
+            'Grade',
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+        DropdownButtonFormField<String>(
+          value: _selectedGrade,
+          items: _allGradeOptions
+              .map((grade) => DropdownMenuItem(
+            value: grade,
+            child: Text(grade),
+          ))
+              .toList(),
+          onChanged: (value) {
+            setState(() {
+              _selectedGrade = value;
+            });
+          },
+          decoration: const InputDecoration(
+            border: OutlineInputBorder(),
+            contentPadding: EdgeInsets.symmetric(horizontal: 12),
+          ),
+        ),
+        const Divider(),
+      ],
+    );
   }
 
   void _confirmDelete() {
@@ -52,14 +145,14 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
           content: const Text('Are you sure you want to delete this contact?'),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(context), // Cancel deletion
+              onPressed: () => Navigator.pop(context),
               child: const Text('Cancel'),
             ),
             ElevatedButton(
               onPressed: () {
-                Navigator.pop(context); // Close the dialog
-                widget.onDelete(); // Trigger the delete callback
-                Navigator.pop(context); // Close the ContactDetailsPage
+                Navigator.pop(context);
+                widget.onDelete();
+                Navigator.pop(context);
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.red,
@@ -74,10 +167,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
 
   void _deleteHistoryEntry(int index) async {
     setState(() {
-      // Remove the entry from the local history list
       final removedEntry = history.removeAt(index);
-
-      // Update the widget.contact['history']
       if (widget.contact['history'] != null) {
         widget.contact['history'].removeWhere((entry) {
           return entry['date'] == removedEntry.date.toIso8601String() &&
@@ -86,7 +176,6 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
       }
     });
 
-    // Persist the updated contact data to SharedPreferences
     final prefs = await SharedPreferences.getInstance();
     final contactsJson = prefs.getString('contacts');
     final List<Map<String, dynamic>> contacts = contactsJson != null
@@ -97,7 +186,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
 
     final updatedContacts = contacts.map((contact) {
       if (contact['id'] == widget.contact['id']) {
-        return widget.contact; // Replace with updated contact
+        return widget.contact;
       }
       return contact;
     }).toList();
@@ -130,9 +219,6 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
                         _selectedDate != null
                             ? DateFormat.yMMMd().format(_selectedDate!)
                             : 'No date selected',
-                        style: TextStyle(
-                          color: _selectedDate != null ? Colors.white : Colors.grey,
-                        ),
                       ),
                       const SizedBox(width: 16),
                       ElevatedButton(
@@ -178,7 +264,6 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
                         }
                       });
 
-                      // Persist to SharedPreferences
                       final prefs = await SharedPreferences.getInstance();
                       final contactsJson = prefs.getString('contacts');
                       final List<Map<String, dynamic>> contacts = contactsJson != null
@@ -228,6 +313,10 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
         title: Text(fullName),
         actions: [
           IconButton(
+            icon: const Icon(Icons.save),
+            onPressed: _updateContact,
+          ),
+          IconButton(
             icon: const Icon(Icons.delete),
             onPressed: _confirmDelete,
           ),
@@ -237,17 +326,11 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
         padding: const EdgeInsets.all(16.0),
         child: ListView(
           children: [
-            _buildSection(
-              title: 'Grade',
-              content: widget.contact['grade'] != null
-                  ? Text('Grade: ${widget.contact['grade']}')
-                  : const Text('No grade available.'),
-            ),
-            _buildSection(
+            _buildGradeDropdown(), // Replaces _buildEditableSection for Grade
+            _buildEditableSection(
               title: 'Occupation',
-              content: widget.contact['occupation'] != null
-                  ? Text('Occupation: ${widget.contact['occupation']}')
-                  : const Text('No occupation available.'),
+              controller: _occupationController,
+              hintText: 'Enter occupation',
             ),
             _buildSection(
               title: 'History',
@@ -263,7 +346,6 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
                       Expanded(
                         child: Text(
                           '- ${historyEntry.detail} (${DateFormat.yMMMd().format(historyEntry.date)})',
-                          style: const TextStyle(fontSize: 14),
                         ),
                       ),
                       IconButton(
@@ -286,6 +368,37 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
         icon: const Icon(Icons.add),
         label: const Text('Add History'),
       ),
+    );
+  }
+
+  Widget _buildEditableSection({
+    required String title,
+    required TextEditingController controller,
+    required String hintText,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8.0),
+          child: Text(
+            title,
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+        TextField(
+          controller: controller,
+          textCapitalization: TextCapitalization.sentences,
+          decoration: InputDecoration(
+            hintText: hintText,
+            border: const OutlineInputBorder(),
+          ),
+        ),
+        const Divider(),
+      ],
     );
   }
 
