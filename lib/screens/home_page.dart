@@ -12,12 +12,44 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  List<Map<String, dynamic>> _contacts = []; // List to hold contact data
+  // List to hold all contact data
+  List<Map<String, dynamic>> _contacts = [];
+  // List to hold filtered (search) results
+  List<Map<String, dynamic>> _filteredContacts = [];
+
+  // Controller for the search bar
+  final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     _loadContacts(); // Load contacts when the page initializes
+
+    // Re-filter whenever the user types something
+    _searchController.addListener(_onSearchChanged);
+  }
+
+  @override
+  void dispose() {
+    _searchController.removeListener(_onSearchChanged);
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  /// Callback that runs every time the search text changes
+  void _onSearchChanged() {
+    final query = _searchController.text.toLowerCase().trim();
+    setState(() {
+      // Filter the master list of contacts
+      _filteredContacts = _contacts.where((contact) {
+        final fullName = _constructFullName(
+          contact['firstName'],
+          contact['middleName'],
+          contact['lastName'],
+        ).toLowerCase();
+        return fullName.contains(query);
+      }).toList();
+    });
   }
 
   /// Load contacts from shared preferences
@@ -28,8 +60,18 @@ class _HomePageState extends State<HomePage> {
     if (storedContacts != null) {
       final List<Map<String, dynamic>> contacts =
       List<Map<String, dynamic>>.from(json.decode(storedContacts));
+
       setState(() {
-        _contacts = contacts;
+        // Sort by full name
+        _contacts = contacts
+          ..sort((a, b) {
+            final nameA = _constructFullName(a['firstName'], a['middleName'], a['lastName']).toLowerCase();
+            final nameB = _constructFullName(b['firstName'], b['middleName'], b['lastName']).toLowerCase();
+            return nameA.compareTo(nameB);
+          });
+
+        // Initially, filteredContacts = all contacts
+        _filteredContacts = List.from(_contacts);
       });
     }
   }
@@ -78,12 +120,17 @@ class _HomePageState extends State<HomePage> {
               _contacts.remove(contact); // Remove the contact from the list
             });
             await _saveContacts(); // Save changes to shared preferences
+
+            // After deleting, also reapply the current search filter
+            _onSearchChanged();
           },
         ),
       ),
     ).then((_) async {
       // Reload contacts after navigating back
       await _loadContacts();
+      // Reapply the search filter with the updated contact list
+      _onSearchChanged();
     });
   }
 
@@ -92,10 +139,24 @@ class _HomePageState extends State<HomePage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Home Page'),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(kToolbarHeight),
+          child: Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: TextField(
+              controller: _searchController,
+              decoration: const InputDecoration(
+                hintText: 'Search contacts...',
+                prefixIcon: Icon(Icons.search),
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ),
+        ),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
-        child: _contacts.isEmpty
+        child: _filteredContacts.isEmpty
             ? const Center(
           child: Text(
             'No contacts available. Add some contacts!',
@@ -103,9 +164,9 @@ class _HomePageState extends State<HomePage> {
           ),
         )
             : ListView.builder(
-          itemCount: _contacts.length,
+          itemCount: _filteredContacts.length,
           itemBuilder: (context, index) {
-            final contact = _contacts[index];
+            final contact = _filteredContacts[index];
             final fullName = _constructFullName(
               contact['firstName'],
               contact['middleName'],
