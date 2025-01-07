@@ -25,6 +25,9 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
   final TextEditingController _historyDetailController = TextEditingController();
   final TextEditingController _gradeController = TextEditingController();
   final TextEditingController _occupationController = TextEditingController();
+  final TextEditingController _firstNameController = TextEditingController();
+  final TextEditingController _middleNameController = TextEditingController();
+  final TextEditingController _lastNameController = TextEditingController();
   DateTime? _selectedDate;
 
   // Grade options
@@ -54,6 +57,10 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
         ? widget.contact['grade']
         : _allGradeOptions.first; // Default to the first grade option if null or invalid
     _occupationController.text = widget.contact['occupation'] ?? '';
+
+    _firstNameController.text = widget.contact['firstName'] ?? '';
+    _middleNameController.text = widget.contact['middleName'] ?? '';
+    _lastNameController.text = widget.contact['lastName'] ?? '';
   }
 
   @override
@@ -61,6 +68,9 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
     _historyDetailController.dispose();
     _gradeController.dispose();
     _occupationController.dispose();
+    _firstNameController.dispose();
+    _middleNameController.dispose();
+    _lastNameController.dispose();
     super.dispose();
   }
 
@@ -71,11 +81,14 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
 
   Future<void> _updateContact() async {
     setState(() {
+      widget.contact['firstName'] = _capitalize(_firstNameController.text.trim());
+      widget.contact['middleName'] = _capitalize(_middleNameController.text.trim());
+      widget.contact['lastName'] = _capitalize(_lastNameController.text.trim());
       widget.contact['grade'] = _selectedGrade ?? _allGradeOptions.first; // Ensure non-null value
       widget.contact['occupation'] = _capitalize(_occupationController.text.trim());
     });
 
-    // Persist the changes to SharedPreferences
+    // Persist changes to SharedPreferences
     final prefs = await SharedPreferences.getInstance();
     final contactsJson = prefs.getString('contacts');
     final List<Map<String, dynamic>> contacts = contactsJson != null
@@ -326,7 +339,22 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
         padding: const EdgeInsets.all(16.0),
         child: ListView(
           children: [
-            _buildGradeDropdown(), // Replaces _buildEditableSection for Grade
+            _buildEditableSection(
+              title: 'First Name',
+              controller: _firstNameController,
+              hintText: 'Enter first name',
+            ),
+            _buildEditableSection(
+              title: 'Middle Name',
+              controller: _middleNameController,
+              hintText: 'Enter middle name (optional)',
+            ),
+            _buildEditableSection(
+              title: 'Last Name',
+              controller: _lastNameController,
+              hintText: 'Enter last name',
+            ),
+            _buildGradeDropdown(),
             _buildEditableSection(
               title: 'Occupation',
               controller: _occupationController,
