@@ -6,13 +6,11 @@ import '../models/contact.dart'; // Assuming you have `HistoryEntry` and `Contac
 
 class ContactDetailsPage extends StatefulWidget {
   final Map<String, dynamic> contact;
-  final String Function(String id) getFullNameById;
   final VoidCallback onDelete;
 
   const ContactDetailsPage({
     super.key,
     required this.contact,
-    required this.getFullNameById,
     required this.onDelete,
   });
 
@@ -92,9 +90,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
     final prefs = await SharedPreferences.getInstance();
     final contactsJson = prefs.getString('contacts');
     final List<Map<String, dynamic>> contacts = contactsJson != null
-        ? List<Map<String, dynamic>>.from(
-      jsonDecode(contactsJson) as List<dynamic>,
-    )
+        ? List<Map<String, dynamic>>.from(jsonDecode(contactsJson) as List<dynamic>)
         : [];
 
     final updatedContacts = contacts.map((contact) {
@@ -192,9 +188,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
     final prefs = await SharedPreferences.getInstance();
     final contactsJson = prefs.getString('contacts');
     final List<Map<String, dynamic>> contacts = contactsJson != null
-        ? List<Map<String, dynamic>>.from(
-      jsonDecode(contactsJson) as List<dynamic>,
-    )
+        ? List<Map<String, dynamic>>.from(jsonDecode(contactsJson) as List<dynamic>)
         : [];
 
     final updatedContacts = contacts.map((contact) {

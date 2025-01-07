@@ -85,23 +85,6 @@ class _HomePageState extends State<HomePage> {
     await prefs.setString('contacts', json.encode(_contacts));
   }
 
-  /// Map relationship IDs to contact names
-  String _getFullNameById(String id) {
-    final contact = _contacts.firstWhere(
-          (c) => c['id'] == id,
-      orElse: () => {}, // Return an empty map instead of null
-    );
-
-    if (contact.isNotEmpty) {
-      return _constructFullName(
-        contact['firstName'],
-        contact['middleName'],
-        contact['lastName'],
-      );
-    }
-    return 'Unknown'; // Fallback if not found
-  }
-
   /// Construct the full name without extra spaces
   String _constructFullName(String firstName, String? middleName, String lastName) {
     return [
@@ -117,7 +100,6 @@ class _HomePageState extends State<HomePage> {
       MaterialPageRoute(
         builder: (context) => ContactDetailsPage(
           contact: contact,
-          getFullNameById: _getFullNameById,
           onDelete: () async {
             setState(() {
               _contacts.remove(contact); // Remove the contact from the list

@@ -37,13 +37,11 @@ class _AddContactPageState extends State<AddContactPage> {
   final TextEditingController _lastNameController = TextEditingController();
   final TextEditingController _occupationController = TextEditingController();
   final TextEditingController _historyDetailController = TextEditingController();
-  final TextEditingController _relationshipValueController = TextEditingController();
 
   // Data lists and selected values
   List<Map<String, dynamic>> _contacts = [];
   final List<HistoryEntry> _history = [];
   String? _selectedGrade;
-  String? _selectedContactId;
 
   // Flat list of grades
   final List<String> _allGradeOptions = [
@@ -325,49 +323,6 @@ class _AddContactPageState extends State<AddContactPage> {
               ),
               const SizedBox(height: 16),
 
-              // Related Contact dropdown
-              DropdownButtonFormField<String>(
-                value: _selectedContactId,
-                items: _contacts.map((contact) {
-                  final fullName = _constructFullName(
-                    contact['firstName'],
-                    contact['middleName'],
-                    contact['lastName'],
-                  );
-                  return DropdownMenuItem<String>(
-                    value: contact['id'],
-                    child: Text(fullName),
-                  );
-                }).toList(),
-                onChanged: (value) {
-                  setState(() {
-                    _selectedContactId = value;
-                  });
-                },
-                decoration: InputDecoration(
-                  labelText: 'Related Contact',
-                  suffixIcon: _selectedContactId != null
-                      ? IconButton(
-                    icon: const Icon(Icons.clear),
-                    onPressed: () {
-                      setState(() {
-                        _selectedContactId = null;
-                      });
-                    },
-                  )
-                      : null,
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              // Relationship Type field
-              TextFormField(
-                controller: _relationshipValueController,
-                textCapitalization: TextCapitalization.words,
-                decoration: const InputDecoration(labelText: 'Relationship Type'),
-              ),
-              const SizedBox(height: 32),
-
               // Save Contact button
               ElevatedButton(
                 onPressed: () async {
@@ -383,13 +338,6 @@ class _AddContactPageState extends State<AddContactPage> {
                           ? _occupationController.text.trim()
                           : null,
                       'history': _history.map((entry) => entry.toMap()).toList(),
-                      'relationships': _selectedContactId != null &&
-                          _relationshipValueController.text.isNotEmpty
-                          ? {
-                        _selectedContactId!:
-                        _relationshipValueController.text.trim()
-                      }
-                          : {},
                     };
 
                     // Save the contact
@@ -402,10 +350,8 @@ class _AddContactPageState extends State<AddContactPage> {
                     _lastNameController.clear();
                     _occupationController.clear();
                     _historyDetailController.clear();
-                    _relationshipValueController.clear();
                     setState(() {
                       _selectedGrade = null;
-                      _selectedContactId = null;
                       _history.clear();
                     });
                   }

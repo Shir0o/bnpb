@@ -32,7 +32,6 @@ class Contact {
   final String? grade; // Grade, if the contact is a student (optional)
   final String? occupation; // Occupation, if the contact is working (optional)
   final List<HistoryEntry> history; // List of history entries for the contact
-  final Map<String, String> relationships; // Relationships with other contacts
 
   Contact({
     required this.id,
@@ -42,9 +41,7 @@ class Contact {
     this.grade,
     this.occupation,
     List<HistoryEntry>? history, // Default to an empty list if not provided
-    Map<String, String>? relationships, // Default to an empty map if not provided
-  })  : history = history ?? [],
-        relationships = relationships ?? {};
+  }) : history = history ?? [];
 
   // Converts a Contact object into a Map for storage or serialization
   Map<String, dynamic> toMap() {
@@ -56,7 +53,6 @@ class Contact {
       'grade': grade,
       'occupation': occupation,
       'history': history.map((entry) => entry.toMap()).toList(),
-      'relationships': relationships,
     };
   }
 
@@ -73,7 +69,6 @@ class Contact {
           ?.map((entry) => HistoryEntry.fromMap(entry))
           .toList() ??
           [],
-      relationships: Map<String, String>.from(map['relationships'] ?? {}),
     );
   }
 
