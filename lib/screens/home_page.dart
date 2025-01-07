@@ -70,7 +70,7 @@ class _HomePageState extends State<HomePage> {
             return nameA.compareTo(nameB);
           });
 
-        // Initially, filteredContacts = all contacts
+        // Initially, _filteredContacts = all contacts
         _filteredContacts = List.from(_contacts);
       });
     }
@@ -96,7 +96,7 @@ class _HomePageState extends State<HomePage> {
         contact['lastName'],
       );
     }
-    return 'Unknown'; // Fallback if the contact is not found
+    return 'Unknown'; // Fallback if not found
   }
 
   /// Construct the full name without extra spaces
@@ -119,7 +119,7 @@ class _HomePageState extends State<HomePage> {
             setState(() {
               _contacts.remove(contact); // Remove the contact from the list
             });
-            await _saveContacts(); // Save changes to shared preferences
+            await _saveContacts(); // Save changes
 
             // After deleting, also reapply the current search filter
             _onSearchChanged();
@@ -134,25 +134,45 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
+  void _showSearchSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true, // Allows the bottom sheet to resize when the keyboard is open
+      builder: (BuildContext context) {
+        return Padding(
+          padding: EdgeInsets.only(
+            left: 16.0,
+            right: 16.0,
+            top: 16.0,
+            bottom: MediaQuery.of(context).viewInsets.bottom + 16.0, // Adjust for the keyboard
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: _searchController,
+                  autofocus: true, // Automatically focus on the search field
+                  decoration: const InputDecoration(
+                    hintText: 'Search contacts...',
+                    prefixIcon: Icon(Icons.search),
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      // Simple title without the search bar
       appBar: AppBar(
         title: const Text('Home Page'),
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(kToolbarHeight),
-          child: Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: TextField(
-              controller: _searchController,
-              decoration: const InputDecoration(
-                hintText: 'Search contacts...',
-                prefixIcon: Icon(Icons.search),
-                border: OutlineInputBorder(),
-              ),
-            ),
-          ),
-        ),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -181,6 +201,10 @@ class _HomePageState extends State<HomePage> {
             );
           },
         ),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _showSearchSheet,
+        child: const Icon(Icons.search),
       ),
     );
   }
