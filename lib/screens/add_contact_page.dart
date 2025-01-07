@@ -41,7 +41,7 @@ class _AddContactPageState extends State<AddContactPage> {
 
   // Data lists and selected values
   List<Map<String, dynamic>> _contacts = [];
-  List<HistoryEntry> _history = [];
+  final List<HistoryEntry> _history = [];
   String? _selectedGrade;
   String? _selectedContactId;
 
@@ -320,7 +320,7 @@ class _AddContactPageState extends State<AddContactPage> {
                         },
                       ),
                     );
-                  }).toList(),
+                  }),
                 ],
               ),
               const SizedBox(height: 16),

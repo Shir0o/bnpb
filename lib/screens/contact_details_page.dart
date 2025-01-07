@@ -11,11 +11,11 @@ class ContactDetailsPage extends StatefulWidget {
   final VoidCallback onDelete;
 
   const ContactDetailsPage({
-    Key? key,
+    super.key,
     required this.contact,
     required this.getFullNameById,
     required this.onDelete,
-  }) : super(key: key);
+  });
 
   @override
   State<ContactDetailsPage> createState() => _ContactDetailsPageState();
