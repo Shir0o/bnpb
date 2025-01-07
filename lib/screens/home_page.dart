@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
+import 'dart:io';
+import 'package:share_plus/share_plus.dart'; // Corrected import
+import 'package:file_picker/file_picker.dart';
 
 import 'contact_details_page.dart';
 
@@ -167,12 +170,57 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  Future<void> _exportToJson() async {
+    try {
+      // Let the user pick a directory to save the file
+      String? selectedDirectory = await FilePicker.platform.getDirectoryPath();
+
+      if (selectedDirectory == null) {
+        // User canceled the picker
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Export canceled by user.')),
+        );
+        return;
+      }
+
+      // Create the file path in the selected directory
+      final filePath = '$selectedDirectory/contacts.json';
+      final file = File(filePath);
+
+      // Write JSON content to the file
+      await file.writeAsString(json.encode(_contacts));
+
+      // Share the file using share_plus version 10
+      await Share.shareXFiles(
+        [XFile(filePath)], // Use XFile for the file
+        text: 'Here are my exported contacts!',
+      );
+
+      // Show success message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Contacts exported and shared successfully!')),
+      );
+    } catch (e) {
+      // Show error message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to export contacts: $e')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       // Simple title without the search bar
       appBar: AppBar(
         title: const Text('Home Page'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.download),
+            onPressed: _exportToJson,
+            tooltip: 'Export to JSON',
+          ),
+        ],
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
