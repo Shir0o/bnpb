@@ -1,25 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:convert';
-
-// Define HistoryEntry structure
-class HistoryEntry {
-  final DateTime date;
-  final String detail;
-
-  HistoryEntry({required this.date, required this.detail});
-
-  Map<String, dynamic> toMap() {
-    return {'date': date.toIso8601String(), 'detail': detail};
-  }
-
-  static HistoryEntry fromMap(Map<String, dynamic> map) {
-    return HistoryEntry(
-      date: DateTime.parse(map['date']),
-      detail: map['detail'],
-    );
-  }
-}
+import '../db/db_helper.dart';
+import '../models/contact.dart';
 
 class AddContactPage extends StatefulWidget {
   const AddContactPage({super.key});
@@ -58,16 +39,13 @@ class _AddContactPageState extends State<AddContactPage> {
     _loadContacts();
   }
 
-  /// Loads existing contacts from SharedPreferences
   Future<void> _loadContacts() async {
-    final prefs = await SharedPreferences.getInstance();
-    final String? storedContacts = prefs.getString('contacts');
+    final dbHelper = DBHelper();
+    final contacts = await dbHelper.getContacts();
 
-    if (storedContacts != null) {
-      setState(() {
-        _contacts = List<Map<String, dynamic>>.from(json.decode(storedContacts));
-      });
-    }
+    setState(() {
+      _contacts = contacts.map((contact) => contact.toMap()).toList();
+    });
   }
 
   void _deleteHistoryEntry(int index) {
@@ -76,31 +54,42 @@ class _AddContactPageState extends State<AddContactPage> {
     });
   }
 
-  /// Saves a new or updated contact to SharedPreferences
-  Future<void> _saveContact(Map<String, dynamic> contact) async {
-    final prefs = await SharedPreferences.getInstance();
-    final String? storedContacts = prefs.getString('contacts');
-    List<Map<String, dynamic>> contacts = [];
+  Future<void> _saveContact() async {
+    if (_formKey.currentState!.validate()) {
+      final newContact = Contact(
+        id: DateTime.now().toIso8601String(),
+        firstName: _firstNameController.text.trim(),
+        middleName: _middleNameController.text.trim(),
+        lastName: _lastNameController.text.trim(),
+        grade: _selectedGrade,
+        occupation: _occupationController.text.trim().isEmpty
+            ? null
+            : _occupationController.text.trim(),
+        history: List<HistoryEntry>.from(_history),
+      );
 
-    if (storedContacts != null) {
-      contacts = List<Map<String, dynamic>>.from(json.decode(storedContacts));
-    }
+      final dbHelper = DBHelper();
+      await dbHelper.insertContact(newContact);
 
-    // Add the new contact
-    contacts.add(contact);
-
-    // Save updated list to SharedPreferences
-    await prefs.setString('contacts', json.encode(contacts));
-
-    // Show success message
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          'Contact saved successfully: ${contact['firstName']} ${contact['lastName']}',
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Contact saved: ${newContact.fullName}'),
+          backgroundColor: Colors.green,
         ),
-        backgroundColor: Colors.green,
-      ),
-    );
+      );
+
+      // Clear form
+      _formKey.currentState?.reset();
+      _firstNameController.clear();
+      _middleNameController.clear();
+      _lastNameController.clear();
+      _occupationController.clear();
+      _historyDetailController.clear();
+      setState(() {
+        _selectedGrade = null;
+        _history.clear();
+      });
+    }
   }
 
   /// Constructs the full name, omitting middle if empty
@@ -341,7 +330,7 @@ class _AddContactPageState extends State<AddContactPage> {
                     };
 
                     // Save the contact
-                    await _saveContact(newContact);
+                    await _saveContact();
 
                     // Clear form fields
                     _formKey.currentState?.reset();

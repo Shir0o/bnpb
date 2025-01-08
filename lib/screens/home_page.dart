@@ -1,240 +1,207 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:share_plus/share_plus.dart';
+import '../models/contact.dart';
+import '../db/db_helper.dart';
 import 'dart:convert';
 import 'dart:io';
-import 'package:share_plus/share_plus.dart'; // Corrected import
-import 'package:file_picker/file_picker.dart';
+import 'package:path_provider/path_provider.dart';
 
 import 'contact_details_page.dart';
 
 class HomePage extends StatefulWidget {
-  const HomePage({super.key});
+  const HomePage({Key? key}) : super(key: key);
 
   @override
-  State<HomePage> createState() => _HomePageState();
+  _HomePageState createState() => _HomePageState();
 }
 
 class _HomePageState extends State<HomePage> {
-  // List to hold all contact data
-  List<Map<String, dynamic>> _contacts = [];
-  // List to hold filtered (search) results
-  List<Map<String, dynamic>> _filteredContacts = [];
-
-  // Controller for the search bar
+  final DBHelper _dbHelper = DBHelper();
+  List<Contact> _contacts = [];
+  List<Contact> _filteredContacts = [];
   final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
-    _loadContacts(); // Load contacts when the page initializes
-
-    // Re-filter whenever the user types something
-    _searchController.addListener(_onSearchChanged);
+    _fetchContacts();
+    _searchController.addListener(_filterContacts);
   }
 
-  @override
-  void dispose() {
-    _searchController.removeListener(_onSearchChanged);
-    _searchController.dispose();
-    super.dispose();
-  }
-
-  /// Callback that runs every time the search text changes
-  void _onSearchChanged() {
-    final query = _searchController.text.toLowerCase().trim();
+  Future<void> _fetchContacts() async {
+    final contacts = await _dbHelper.getContacts();
     setState(() {
-      // Filter the master list of contacts
-      _filteredContacts = _contacts.where((contact) {
-        final fullName = _constructFullName(
-          contact['firstName'],
-          contact['middleName'],
-          contact['lastName'],
-        ).toLowerCase();
-        return fullName.contains(query);
-      }).toList();
+      _contacts = contacts;
+      _filteredContacts = contacts;
     });
   }
 
-  /// Load contacts from shared preferences
-  Future<void> _loadContacts() async {
-    final prefs = await SharedPreferences.getInstance();
-    final String? storedContacts = prefs.getString('contacts');
-
-    if (storedContacts != null) {
-      final List<Map<String, dynamic>> contacts =
-      List<Map<String, dynamic>>.from(json.decode(storedContacts));
-
-      setState(() {
-        // Sort by full name
-        _contacts = contacts
-          ..sort((a, b) {
-            final nameA = _constructFullName(a['firstName'], a['middleName'], a['lastName']).toLowerCase();
-            final nameB = _constructFullName(b['firstName'], b['middleName'], b['lastName']).toLowerCase();
-            return nameA.compareTo(nameB);
-          });
-
-        // Initially, _filteredContacts = all contacts
-        _filteredContacts = List.from(_contacts);
-      });
-    }
-  }
-
-  /// Save updated contacts to shared preferences
-  Future<void> _saveContacts() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('contacts', json.encode(_contacts));
-  }
-
-  /// Construct the full name without extra spaces
-  String _constructFullName(String firstName, String? middleName, String lastName) {
-    return [
-      firstName.trim(),
-      if (middleName != null && middleName.trim().isNotEmpty) middleName.trim(),
-      lastName.trim(),
-    ].join(' ');
-  }
-
-  void _navigateToContactDetails(BuildContext context, Map<String, dynamic> contact) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => ContactDetailsPage(
-          contact: contact,
-          onDelete: () async {
-            setState(() {
-              _contacts.remove(contact); // Remove the contact from the list
-            });
-            await _saveContacts(); // Save changes
-
-            // After deleting, also reapply the current search filter
-            _onSearchChanged();
-          },
-        ),
-      ),
-    ).then((_) async {
-      // Reload contacts after navigating back
-      await _loadContacts();
-      // Reapply the search filter with the updated contact list
-      _onSearchChanged();
+  void _filterContacts() {
+    final query = _searchController.text.toLowerCase();
+    setState(() {
+      _filteredContacts = _contacts
+          .where((contact) =>
+      contact.fullName.toLowerCase().contains(query) ||
+          (contact.occupation?.toLowerCase() ?? '').contains(query) ||
+          (contact.grade?.toLowerCase() ?? '').contains(query))
+          .toList();
     });
   }
 
-  void _showSearchSheet() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true, // Allows the bottom sheet to resize when the keyboard is open
-      builder: (BuildContext context) {
-        return Padding(
-          padding: EdgeInsets.only(
-            left: 16.0,
-            right: 16.0,
-            top: 16.0,
-            bottom: MediaQuery.of(context).viewInsets.bottom + 16.0, // Adjust for the keyboard
-          ),
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: _searchController,
-                  autofocus: true, // Automatically focus on the search field
-                  decoration: const InputDecoration(
-                    hintText: 'Search contacts...',
-                    prefixIcon: Icon(Icons.search),
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Future<void> _exportToJson() async {
+  Future<void> _exportContactsToFile() async {
     try {
-      // Let the user pick a directory to save the file
-      String? selectedDirectory = await FilePicker.platform.getDirectoryPath();
+      final directory = await getApplicationDocumentsDirectory();
+      final file = File('${directory.path}/contacts.json');
+      final data = _contacts.map((contact) => contact.toMap()).toList();
+      await file.writeAsString(jsonEncode(data));
 
-      if (selectedDirectory == null) {
-        // User canceled the picker
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Export canceled by user.')),
-        );
-        return;
-      }
-
-      // Create the file path in the selected directory
-      final filePath = '$selectedDirectory/contacts.json';
-      final file = File(filePath);
-
-      // Write JSON content to the file
-      await file.writeAsString(json.encode(_contacts));
-
-      // Share the file using share_plus version 10
+      // Use share_plus to share the file
       await Share.shareXFiles(
-        [XFile(filePath)], // Use XFile for the file
-        text: 'Here are my exported contacts!',
-      );
-
-      // Show success message
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Contacts exported and shared successfully!')),
+        [XFile(file.path)],
+        text: 'Here is the exported contacts file.',
       );
     } catch (e) {
-      // Show error message
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to export contacts: $e')),
       );
     }
   }
 
+  Future<void> _addContact(Contact contact) async {
+    await _dbHelper.insertContact(contact);
+    _fetchContacts();
+  }
+
+  Future<void> _deleteContact(String id) async {
+    await _dbHelper.deleteContact(id);
+    _fetchContacts();
+  }
+
+  Future<void> _updateContact(Contact contact) async {
+    await _dbHelper.updateContact(contact);
+    _fetchContacts();
+  }
+
+  void _navigateToContactDetails(Contact contact) {
+    // Navigate to a contact details page (to be implemented)
+    // Navigator.of(context).push(
+    //   MaterialPageRoute(
+    //     builder: (context) => ContactDetailsPage(contact: contact),
+    //   ),
+    // );
+  }
+
+  void _showAddContactDialog() {
+    final TextEditingController firstNameController = TextEditingController();
+    final TextEditingController lastNameController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Add Contact'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: firstNameController,
+                decoration: const InputDecoration(labelText: 'First Name'),
+              ),
+              TextField(
+                controller: lastNameController,
+                decoration: const InputDecoration(labelText: 'Last Name'),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () {
+                final newContact = Contact(
+                  id: DateTime.now().toString(),
+                  firstName: firstNameController.text,
+                  lastName: lastNameController.text,
+                  history: [],
+                );
+                _addContact(newContact);
+                Navigator.of(context).pop();
+              },
+              child: const Text('Add'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // Simple title without the search bar
       appBar: AppBar(
-        title: const Text('Home Page'),
+        title: const Text('Contacts'),
         actions: [
           IconButton(
+            icon: const Icon(Icons.search),
+            onPressed: () {
+              showDialog(
+                context: context,
+                builder: (context) => AlertDialog(
+                  title: const Text('Search Contacts'),
+                  content: TextField(
+                    controller: _searchController,
+                    decoration: const InputDecoration(
+                      hintText: 'Search by name, occupation, or grade',
+                    ),
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      child: const Text('Close'),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+          IconButton(
             icon: const Icon(Icons.download),
-            onPressed: _exportToJson,
-            tooltip: 'Export to JSON',
+            onPressed: _exportContactsToFile,
+          ),
+          IconButton(
+            icon: const Icon(Icons.add),
+            onPressed: _showAddContactDialog,
           ),
         ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: _filteredContacts.isEmpty
-            ? const Center(
-          child: Text(
-            'No contacts available. Add some contacts!',
-            style: TextStyle(fontSize: 18),
-          ),
-        )
-            : ListView.builder(
-          itemCount: _filteredContacts.length,
-          itemBuilder: (context, index) {
-            final contact = _filteredContacts[index];
-            final fullName = _constructFullName(
-              contact['firstName'],
-              contact['middleName'],
-              contact['lastName'],
-            );
-            return ListTile(
-              title: Text(fullName),
-              onTap: () {
-                // Display detailed info for the contact
-                _navigateToContactDetails(context, contact);
-              },
-            );
-          },
-        ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _showSearchSheet,
-        child: const Icon(Icons.search),
+      body: _filteredContacts.isEmpty
+          ? const Center(child: Text('No contacts available.'))
+          : ListView.builder(
+        itemCount: _filteredContacts.length,
+        itemBuilder: (context, index) {
+          final contact = _filteredContacts[index];
+          return ListTile(
+            title: Text(contact.fullName),
+            subtitle: Text(contact.history.isNotEmpty
+                ? 'Last interaction: ${contact.history.last.detail}'
+                : 'No history available'),
+            trailing: IconButton(
+              icon: const Icon(Icons.delete),
+              onPressed: () => _deleteContact(contact.id),
+            ),
+            onTap: () => _navigateToContactDetails(contact),
+          );
+        },
       ),
     );
   }

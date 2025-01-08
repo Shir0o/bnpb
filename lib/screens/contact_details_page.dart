@@ -1,11 +1,11 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart'; // For date formatting
-import 'package:shared_preferences/shared_preferences.dart';
 import '../models/contact.dart'; // Assuming you have `HistoryEntry` and `Contact` models defined
+import '../db/db_helper.dart'; // SQLite DBHelper
 
 class ContactDetailsPage extends StatefulWidget {
-  final Map<String, dynamic> contact;
+  final Contact contact;
   final VoidCallback onDelete;
 
   const ContactDetailsPage({
@@ -27,6 +27,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
   final TextEditingController _middleNameController = TextEditingController();
   final TextEditingController _lastNameController = TextEditingController();
   DateTime? _selectedDate;
+  String? _selectedGrade;
 
   // Grade options
   final List<String> _allGradeOptions = [
@@ -38,27 +39,17 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
     'Graduate School', 'PhD', 'Postdoctoral',
   ];
 
-  String? _selectedGrade;
-
   @override
   void initState() {
     super.initState();
-    // Initialize the history list from the contact data
-    history = widget.contact['history'] != null
-        ? (widget.contact['history'] as List<dynamic>)
-        .map((entry) => HistoryEntry.fromMap(entry as Map<String, dynamic>))
-        .toList()
-        : [];
-
-    // Initialize grade and occupation controllers
-    _selectedGrade = _allGradeOptions.contains(widget.contact['grade'])
-        ? widget.contact['grade']
-        : _allGradeOptions.first; // Default to the first grade option if null or invalid
-    _occupationController.text = widget.contact['occupation'] ?? '';
-
-    _firstNameController.text = widget.contact['firstName'] ?? '';
-    _middleNameController.text = widget.contact['middleName'] ?? '';
-    _lastNameController.text = widget.contact['lastName'] ?? '';
+    history = widget.contact.history ?? [];
+    _selectedGrade = _allGradeOptions.contains(widget.contact.grade)
+        ? widget.contact.grade
+        : _allGradeOptions.first; // Default to the first grade option
+    _occupationController.text = widget.contact.occupation ?? '';
+    _firstNameController.text = widget.contact.firstName ?? '';
+    _middleNameController.text = widget.contact.middleName ?? '';
+    _lastNameController.text = widget.contact.lastName ?? '';
   }
 
   @override
@@ -72,76 +63,19 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
     super.dispose();
   }
 
-  String _capitalize(String input) {
-    if (input.isEmpty) return input;
-    return input[0].toUpperCase() + input.substring(1);
-  }
-
   Future<void> _updateContact() async {
-    setState(() {
-      widget.contact['firstName'] = _capitalize(_firstNameController.text.trim());
-      widget.contact['middleName'] = _capitalize(_middleNameController.text.trim());
-      widget.contact['lastName'] = _capitalize(_lastNameController.text.trim());
-      widget.contact['grade'] = _selectedGrade ?? _allGradeOptions.first; // Ensure non-null value
-      widget.contact['occupation'] = _capitalize(_occupationController.text.trim());
-    });
+    final updatedContact = widget.contact.copyWith(
+      firstName: _firstNameController.text.trim(),
+      middleName: _middleNameController.text.trim(),
+      lastName: _lastNameController.text.trim(),
+      grade: _selectedGrade ?? _allGradeOptions.first,
+      occupation: _occupationController.text.trim(),
+    );
 
-    // Persist changes to SharedPreferences
-    final prefs = await SharedPreferences.getInstance();
-    final contactsJson = prefs.getString('contacts');
-    final List<Map<String, dynamic>> contacts = contactsJson != null
-        ? List<Map<String, dynamic>>.from(jsonDecode(contactsJson) as List<dynamic>)
-        : [];
+    await DBHelper().updateContact(updatedContact);
 
-    final updatedContacts = contacts.map((contact) {
-      if (contact['id'] == widget.contact['id']) {
-        return widget.contact;
-      }
-      return contact;
-    }).toList();
-
-    await prefs.setString('contacts', jsonEncode(updatedContacts));
-
-    // Show success Snackbar
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Contact updated successfully!')),
-    );
-  }
-
-  Widget _buildGradeDropdown() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8.0),
-          child: Text(
-            'Grade',
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ),
-        DropdownButtonFormField<String>(
-          value: _selectedGrade,
-          items: _allGradeOptions
-              .map((grade) => DropdownMenuItem(
-            value: grade,
-            child: Text(grade),
-          ))
-              .toList(),
-          onChanged: (value) {
-            setState(() {
-              _selectedGrade = value;
-            });
-          },
-          decoration: const InputDecoration(
-            border: OutlineInputBorder(),
-            contentPadding: EdgeInsets.symmetric(horizontal: 12),
-          ),
-        ),
-        const Divider(),
-      ],
     );
   }
 
@@ -158,9 +92,10 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
               child: const Text('Cancel'),
             ),
             ElevatedButton(
-              onPressed: () {
-                Navigator.pop(context);
+              onPressed: () async {
+                await DBHelper().deleteContact(widget.contact.id);
                 widget.onDelete();
+                Navigator.pop(context);
                 Navigator.pop(context);
               },
               style: ElevatedButton.styleFrom(
@@ -172,33 +107,6 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
         );
       },
     );
-  }
-
-  void _deleteHistoryEntry(int index) async {
-    setState(() {
-      final removedEntry = history.removeAt(index);
-      if (widget.contact['history'] != null) {
-        widget.contact['history'].removeWhere((entry) {
-          return entry['date'] == removedEntry.date.toIso8601String() &&
-              entry['detail'] == removedEntry.detail;
-        });
-      }
-    });
-
-    final prefs = await SharedPreferences.getInstance();
-    final contactsJson = prefs.getString('contacts');
-    final List<Map<String, dynamic>> contacts = contactsJson != null
-        ? List<Map<String, dynamic>>.from(jsonDecode(contactsJson) as List<dynamic>)
-        : [];
-
-    final updatedContacts = contacts.map((contact) {
-      if (contact['id'] == widget.contact['id']) {
-        return widget.contact;
-      }
-      return contact;
-    }).toList();
-
-    await prefs.setString('contacts', jsonEncode(updatedContacts));
   }
 
   void _addHistoryItem() {
@@ -257,37 +165,26 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
                   onPressed: () async {
                     final detail = _historyDetailController.text.trim();
                     if (detail.isNotEmpty && _selectedDate != null) {
-                      setState(() {
-                        final newEntry = HistoryEntry(
-                          date: _selectedDate!,
-                          detail: detail,
-                        );
-                        history.add(newEntry);
+                      final newEntry = HistoryEntry(
+                        date: _selectedDate!,
+                        detail: detail,
+                      );
 
-                        if (widget.contact['history'] != null) {
-                          widget.contact['history'].add(newEntry.toMap());
-                        } else {
-                          widget.contact['history'] = [newEntry.toMap()];
-                        }
+                      // Update the history list
+                      final updatedHistory = List<HistoryEntry>.from(history)..add(newEntry);
+
+                      // Create an updated contact
+                      final updatedContact = widget.contact.copyWith(history: updatedHistory);
+
+                      // Update the state
+                      setState(() {
+                        history = updatedHistory;
                       });
 
-                      final prefs = await SharedPreferences.getInstance();
-                      final contactsJson = prefs.getString('contacts');
-                      final List<Map<String, dynamic>> contacts = contactsJson != null
-                          ? List<Map<String, dynamic>>.from(
-                        jsonDecode(contactsJson) as List<dynamic>,
-                      )
-                          : [];
+                      // Update the database
+                      await DBHelper().updateContact(updatedContact);
 
-                      final updatedContacts = contacts.map((contact) {
-                        if (contact['id'] == widget.contact['id']) {
-                          return widget.contact;
-                        }
-                        return contact;
-                      }).toList();
-
-                      await prefs.setString('contacts', jsonEncode(updatedContacts));
-
+                      // Clear inputs and close dialog
                       _historyDetailController.clear();
                       _selectedDate = null;
                       Navigator.pop(context);
@@ -310,9 +207,9 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
   @override
   Widget build(BuildContext context) {
     final fullName = [
-      widget.contact['firstName'],
-      if (widget.contact['middleName'] != null) widget.contact['middleName'],
-      widget.contact['lastName'],
+      widget.contact.firstName,
+      widget.contact.middleName,
+      widget.contact.lastName,
     ].where((name) => name != null && name.trim().isNotEmpty).join(' ');
 
     return Scaffold(
@@ -353,34 +250,6 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
               title: 'Occupation',
               controller: _occupationController,
               hintText: 'Enter occupation',
-            ),
-            _buildSection(
-              title: 'History',
-              content: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: history.isNotEmpty
-                    ? history.asMap().entries.map((entry) {
-                  final index = entry.key;
-                  final historyEntry = entry.value;
-                  return Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          '- ${historyEntry.detail} (${DateFormat.yMMMd().format(historyEntry.date)})',
-                        ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.delete, color: Colors.red),
-                        onPressed: () {
-                          _deleteHistoryEntry(index);
-                        },
-                      ),
-                    ],
-                  );
-                }).toList()
-                    : [const Text('No history available.')],
-              ),
             ),
           ],
         ),
@@ -424,21 +293,35 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
     );
   }
 
-  Widget _buildSection({required String title, required Widget content}) {
+  Widget _buildGradeDropdown() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
           padding: const EdgeInsets.symmetric(vertical: 8.0),
-          child: Text(
-            title,
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
+          child: const Text(
+            'Grade',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
           ),
         ),
-        content,
+        DropdownButtonFormField<String>(
+          value: _selectedGrade,
+          items: _allGradeOptions
+              .map((grade) => DropdownMenuItem(
+            value: grade,
+            child: Text(grade),
+          ))
+              .toList(),
+          onChanged: (value) {
+            setState(() {
+              _selectedGrade = value;
+            });
+          },
+          decoration: const InputDecoration(
+            border: OutlineInputBorder(),
+            contentPadding: EdgeInsets.symmetric(horizontal: 12),
+          ),
+        ),
         const Divider(),
       ],
     );

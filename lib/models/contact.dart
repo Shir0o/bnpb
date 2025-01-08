@@ -43,6 +43,25 @@ class Contact {
     List<HistoryEntry>? history, // Default to an empty list if not provided
   }) : history = history ?? [];
 
+  Contact copyWith({
+    String? firstName,
+    String? middleName,
+    String? lastName,
+    String? grade,
+    String? occupation,
+    List<HistoryEntry>? history,
+  }) {
+    return Contact(
+      id: this.id,
+      firstName: firstName ?? this.firstName,
+      middleName: middleName ?? this.middleName,
+      lastName: lastName ?? this.lastName,
+      grade: grade ?? this.grade,
+      occupation: occupation ?? this.occupation,
+      history: history ?? this.history,
+    );
+  }
+
   // Converts a Contact object into a Map for storage or serialization
   Map<String, dynamic> toMap() {
     return {
