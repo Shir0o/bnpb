@@ -111,6 +111,20 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
     );
   }
 
+  void _deleteHistoryEntry(int index) async {
+    setState(() {
+      history.removeAt(index);
+    });
+
+    // Update the contact in the database
+    final updatedContact = widget.contact.copyWith(history: history);
+    await DBHelper().updateContact(updatedContact);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('History entry deleted')),
+    );
+  }
+
   void _addHistoryItem() {
     showDialog(
       context: context,
@@ -254,6 +268,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
               controller: _occupationController,
               hintText: 'Enter occupation',
             ),
+            _buildHistorySection(), // Add the history section here
           ],
         ),
       ),
@@ -261,6 +276,47 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
         onPressed: _addHistoryItem,
         icon: const Icon(Icons.add),
         label: const Text('Add History'),
+      ),
+    );
+  }
+
+  Widget _buildHistorySection() {
+    // Sort the history entries by date in descending order
+    final sortedHistory = List<HistoryEntry>.from(history)
+      ..sort((a, b) => b.date.compareTo(a.date)); // Compare dates in descending order
+
+    return _buildSection(
+      title: 'History',
+      content: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: sortedHistory.isNotEmpty
+            ? sortedHistory.asMap().entries.map((entry) {
+          final index = entry.key;
+          final historyEntry = entry.value;
+          return ListTile(
+            contentPadding: EdgeInsets.zero,
+            title: Text(
+              historyEntry.detail,
+              style: const TextStyle(fontSize: 14),
+            ),
+            subtitle: Text(
+              DateFormat.yMMMd().format(historyEntry.date),
+              style: const TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+            trailing: IconButton(
+              icon: const Icon(Icons.delete, color: Colors.red),
+              onPressed: () {
+                _deleteHistoryEntry(index);
+              },
+            ),
+          );
+        }).toList()
+            : [
+          const Text(
+            'No history available.',
+            style: TextStyle(fontSize: 14, color: Colors.grey),
+          ),
+        ],
       ),
     );
   }
@@ -291,6 +347,26 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
             border: const OutlineInputBorder(),
           ),
         ),
+        const Divider(),
+      ],
+    );
+  }
+
+  Widget _buildSection({
+    required String title,
+    required Widget content,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8.0),
+          child: Text(
+            title,
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
+        ),
+        content,
         const Divider(),
       ],
     );

@@ -1,7 +1,7 @@
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import '../models/contact.dart';
-import 'dart:convert'; // Required for JSON encoding and decoding
+import 'dart:convert';
 
 class DBHelper {
   static final DBHelper _instance = DBHelper._();
@@ -40,10 +40,16 @@ class DBHelper {
 
   Future<int> insertContact(Contact contact) async {
     final db = await database;
+
+    // Convert contact to a normal Map
+    final contactMap = contact.toMap();
+
+    // Encode the List<HistoryEntry> as JSON before inserting
+    contactMap['history'] = jsonEncode(contactMap['history']);
+
     return db.insert(
       'contacts',
-      contact.toMap()
-        ..['history'] = jsonEncode(contact.history.map((e) => e.toMap()).toList()), // Encode history as JSON
+      contactMap,
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
   }
@@ -52,27 +58,45 @@ class DBHelper {
     final db = await database;
     final maps = await db.query('contacts');
 
+    print(maps);
+
+    // Each map['history'] is still a JSON string, so decode it
     return maps.map((map) {
-      return Contact.fromMap({
-        ...map,
-        'history': (jsonDecode(map['history'] as String) as List<dynamic>)
-            .map((entry) => HistoryEntry.fromMap(entry))
-            .toList(),
-      });
+      // Make a copy so we can modify it safely
+      final contactMap = Map<String, dynamic>.from(map);
+
+      // Decode the JSON string back into a List of Maps
+      final historyJson = contactMap['history'] as String?;
+      if (historyJson != null && historyJson.isNotEmpty) {
+        contactMap['history'] = jsonDecode(historyJson);
+      } else {
+        contactMap['history'] = [];
+      }
+
+      // Now build a Contact
+      return Contact.fromMap(contactMap);
     }).toList();
   }
 
   Future<int> deleteContact(String id) async {
     final db = await database;
-    return db.delete('contacts', where: 'id = ?', whereArgs: [id]);
+    return db.delete(
+      'contacts',
+      where: 'id = ?',
+      whereArgs: [id],
+    );
   }
 
   Future<int> updateContact(Contact contact) async {
     final db = await database;
+
+    // Convert contact to Map and encode history as JSON
+    final contactMap = contact.toMap();
+    contactMap['history'] = jsonEncode(contactMap['history']);
+
     return db.update(
       'contacts',
-      contact.toMap()
-        ..['history'] = jsonEncode(contact.history.map((e) => e.toMap()).toList()), // Encode history as JSON
+      contactMap,
       where: 'id = ?',
       whereArgs: [contact.id],
     );

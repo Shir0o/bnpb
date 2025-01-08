@@ -15,7 +15,7 @@ class HistoryEntry {
     };
   }
 
-  // Creates a HistoryEntry object from a Map (e.g., reading from a database)
+  // Creates a HistoryEntry object from a Map
   static HistoryEntry fromMap(Map<String, dynamic> map) {
     return HistoryEntry(
       date: DateTime.parse(map['date']),
@@ -25,12 +25,12 @@ class HistoryEntry {
 }
 
 class Contact {
-  final String id; // Unique identifier for the contact
-  final String firstName; // First name of the contact
-  final String middleName; // Middle name of the contact (optional)
-  final String lastName; // Last name of the contact
-  final String? grade; // Grade, if the contact is a student (optional)
-  final String? occupation; // Occupation, if the contact is working (optional)
+  final String id;            // Unique identifier for the contact
+  final String firstName;     // First name of the contact
+  final String middleName;    // Middle name of the contact (optional)
+  final String lastName;      // Last name of the contact
+  final String? grade;        // Grade, if the contact is a student (optional)
+  final String? occupation;   // Occupation, if the contact is working (optional)
   final List<HistoryEntry> history; // List of history entries for the contact
 
   Contact({
@@ -40,7 +40,7 @@ class Contact {
     required this.lastName,
     this.grade,
     this.occupation,
-    List<HistoryEntry>? history, // Default to an empty list if not provided
+    List<HistoryEntry>? history,
   }) : history = history ?? [];
 
   Contact copyWith({
@@ -62,7 +62,8 @@ class Contact {
     );
   }
 
-  // Converts a Contact object into a Map for storage or serialization
+  // Converts a Contact object into a Map for storage or serialization.
+  // Notice: We keep `history` as a List of Maps here.
   Map<String, dynamic> toMap() {
     return {
       'id': id,
@@ -75,7 +76,7 @@ class Contact {
     };
   }
 
-  // Creates a Contact object from a Map (e.g., reading from a database)
+  // Creates a Contact object from a Map that already has `history` as a List of Maps.
   static Contact fromMap(Map<String, dynamic> map) {
     return Contact(
       id: map['id'],
@@ -93,6 +94,8 @@ class Contact {
 
   // Combines first, middle, and last names into a single full name
   String get fullName {
-    return [firstName, middleName, lastName].where((name) => name.isNotEmpty).join(' ');
+    return [firstName, middleName, lastName]
+        .where((name) => name.isNotEmpty)
+        .join(' ');
   }
 }
