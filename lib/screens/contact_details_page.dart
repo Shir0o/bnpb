@@ -76,6 +76,9 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Contact updated successfully!')),
     );
+
+    // Return `true` to indicate a change was made
+    Navigator.pop(context, true);
   }
 
   void _confirmDelete() {

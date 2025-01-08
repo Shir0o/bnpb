@@ -6,6 +6,8 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 
+import 'contact_details_page.dart';
+
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -81,13 +83,22 @@ class _HomePageState extends State<HomePage> {
     _fetchContacts();
   }
 
-  void _navigateToContactDetails(Contact contact) {
-    // Navigate to a contact details page (to be implemented)
-    // Navigator.of(context).push(
-    //   MaterialPageRoute(
-    //     builder: (context) => ContactDetailsPage(contact: contact),
-    //   ),
-    // );
+  void _navigateToContactDetails(Contact contact) async {
+    final result = await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => ContactDetailsPage(
+          contact: contact,
+          onDelete: () {
+            _deleteContact(contact.id);
+          },
+        ),
+      ),
+    );
+
+    // Refresh the contact list if changes were made
+    if (result == true) {
+      _fetchContacts();
+    }
   }
 
   void _showAddContactDialog() {
