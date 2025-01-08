@@ -124,6 +124,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
                 children: [
                   TextField(
                     controller: _historyDetailController,
+                    textCapitalization: TextCapitalization.sentences,
                     decoration: const InputDecoration(
                       hintText: 'Enter history detail',
                       border: OutlineInputBorder(),
