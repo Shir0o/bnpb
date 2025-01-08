@@ -52,7 +52,7 @@ class Contact {
     List<HistoryEntry>? history,
   }) {
     return Contact(
-      id: this.id,
+      id: id,
       firstName: firstName ?? this.firstName,
       middleName: middleName ?? this.middleName,
       lastName: lastName ?? this.lastName,

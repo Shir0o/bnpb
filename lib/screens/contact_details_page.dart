@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart'; // For date formatting
 import '../models/contact.dart'; // Assuming you have `HistoryEntry` and `Contact` models defined
@@ -210,7 +209,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
       widget.contact.firstName,
       widget.contact.middleName,
       widget.contact.lastName,
-    ].where((name) => name != null && name.trim().isNotEmpty).join(' ');
+    ].where((name) => name.trim().isNotEmpty).join(' ');
 
     return Scaffold(
       appBar: AppBar(
@@ -297,9 +296,9 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8.0),
-          child: const Text(
+        const Padding(
+          padding: EdgeInsets.symmetric(vertical: 8.0),
+          child: Text(
             'Grade',
             style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
           ),
