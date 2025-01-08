@@ -17,11 +17,7 @@ class _AddContactPageState extends State<AddContactPage> {
   final TextEditingController _middleNameController = TextEditingController();
   final TextEditingController _lastNameController = TextEditingController();
   final TextEditingController _occupationController = TextEditingController();
-  final TextEditingController _historyDetailController = TextEditingController();
 
-  // Data lists and selected values
-  List<Map<String, dynamic>> _contacts = [];
-  final List<HistoryEntry> _history = [];
   String? _selectedGrade;
 
   // Flat list of grades
@@ -36,26 +32,13 @@ class _AddContactPageState extends State<AddContactPage> {
   @override
   void initState() {
     super.initState();
-    _loadContacts();
-  }
-
-  Future<void> _loadContacts() async {
-    final dbHelper = DBHelper();
-    final contacts = await dbHelper.getContacts();
-
-    setState(() {
-      _contacts = contacts.map((contact) => contact.toMap()).toList();
-    });
-  }
-
-  void _deleteHistoryEntry(int index) {
-    setState(() {
-      _history.removeAt(index); // Remove the entry from the list
-    });
   }
 
   Future<void> _saveContact() async {
     if (_formKey.currentState!.validate()) {
+      // Unfocus the keyboard
+      FocusScope.of(context).unfocus();
+
       final newContact = Contact(
         id: DateTime.now().toIso8601String(),
         firstName: _firstNameController.text.trim(),
@@ -65,7 +48,7 @@ class _AddContactPageState extends State<AddContactPage> {
         occupation: _occupationController.text.trim().isEmpty
             ? null
             : _occupationController.text.trim(),
-        history: List<HistoryEntry>.from(_history),
+        history: [], // History field is empty since functionality is removed
       );
 
       final dbHelper = DBHelper();
@@ -84,21 +67,10 @@ class _AddContactPageState extends State<AddContactPage> {
       _middleNameController.clear();
       _lastNameController.clear();
       _occupationController.clear();
-      _historyDetailController.clear();
       setState(() {
         _selectedGrade = null;
-        _history.clear();
       });
     }
-  }
-
-  /// Constructs the full name, omitting middle if empty
-  String _constructFullName(String firstName, String? middleName, String lastName) {
-    return [
-      firstName.trim(),
-      if (middleName != null && middleName.trim().isNotEmpty) middleName.trim(),
-      lastName.trim(),
-    ].join(' ');
   }
 
   /// Builds dropdown items with real grade options
@@ -109,87 +81,6 @@ class _AddContactPageState extends State<AddContactPage> {
         child: Text(grade),
       );
     }).toList();
-  }
-
-  void _addHistoryEntry() {
-    DateTime? selectedDate;
-
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Add History Entry'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: _historyDetailController,
-                textCapitalization: TextCapitalization.words,
-                decoration: const InputDecoration(
-                  labelText: 'History Detail',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text('Select Date:'),
-                  TextButton(
-                    onPressed: () async {
-                      final pickedDate = await showDatePicker(
-                        context: context,
-                        initialDate: DateTime.now(),
-                        firstDate: DateTime(2000),
-                        lastDate: DateTime(2100),
-                      );
-                      if (pickedDate != null) {
-                        setState(() {
-                          selectedDate = pickedDate;
-                        });
-                      }
-                    },
-                    child: const Text('Choose Date'),
-                  ),
-                ],
-              ),
-              if (selectedDate != null)
-                Text(
-                  'Selected Date: ${selectedDate!.toLocal().toString().split(' ')[0]}',
-                ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context); // Cancel and close the dialog
-              },
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                final detail = _historyDetailController.text.trim();
-                if (detail.isNotEmpty && selectedDate != null) {
-                  setState(() {
-                    _history.add(HistoryEntry(date: selectedDate!, detail: detail));
-                    _historyDetailController.clear();
-                  });
-                  Navigator.pop(context); // Close the dialog after adding
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Please provide both detail and date.'),
-                      backgroundColor: Colors.red,
-                    ),
-                  );
-                }
-              },
-              child: const Text('Add'),
-            ),
-          ],
-        );
-      },
-    );
   }
 
   @override
@@ -274,76 +165,10 @@ class _AddContactPageState extends State<AddContactPage> {
               ),
               const SizedBox(height: 16),
 
-              // History section
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        'History Entries',
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      ElevatedButton(
-                        onPressed: _addHistoryEntry,
-                        child: const Text('Add History Entry'),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  ..._history.asMap().entries.map((entry) {
-                    final index = entry.key;
-                    final historyEntry = entry.value;
-                    return ListTile(
-                      title: Text(historyEntry.detail),
-                      subtitle: Text(
-                        historyEntry.date.toLocal().toString().split(' ')[0],
-                      ),
-                      trailing: IconButton(
-                        icon: const Icon(Icons.delete, color: Colors.red),
-                        onPressed: () {
-                          _deleteHistoryEntry(index);
-                        },
-                      ),
-                    );
-                  }),
-                ],
-              ),
-              const SizedBox(height: 16),
-
               // Save Contact button
               ElevatedButton(
                 onPressed: () async {
-                  if (_formKey.currentState!.validate()) {
-                    // Build contact map
-                    final newContact = {
-                      'id': DateTime.now().toIso8601String(),
-                      'firstName': _firstNameController.text.trim(),
-                      'middleName': _middleNameController.text.trim(),
-                      'lastName': _lastNameController.text.trim(),
-                      'grade': _selectedGrade,
-                      'occupation': _occupationController.text.isNotEmpty
-                          ? _occupationController.text.trim()
-                          : null,
-                      'history': _history.map((entry) => entry.toMap()).toList(),
-                    };
-
-                    // Save the contact
-                    await _saveContact();
-
-                    // Clear form fields
-                    _formKey.currentState?.reset();
-                    _firstNameController.clear();
-                    _middleNameController.clear();
-                    _lastNameController.clear();
-                    _occupationController.clear();
-                    _historyDetailController.clear();
-                    setState(() {
-                      _selectedGrade = null;
-                      _history.clear();
-                    });
-                  }
+                  await _saveContact();
                 },
                 child: const Text('Save Contact'),
               ),
