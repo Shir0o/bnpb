@@ -8,7 +8,6 @@ import 'package:path_provider/path_provider.dart';
 
 import 'contact_details_page.dart';
 
-
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
@@ -39,7 +38,6 @@ class _HomePageState extends State<HomePage> {
           if (lastNameComparison != 0) {
             return lastNameComparison;
           }
-          // If last names are the same, compare by first name
           return a.firstName.toLowerCase().compareTo(b.firstName.toLowerCase());
         });
       _filteredContacts = List.from(_contacts);
@@ -65,7 +63,6 @@ class _HomePageState extends State<HomePage> {
       final data = _contacts.map((contact) => contact.toMap()).toList();
       await file.writeAsString(jsonEncode(data));
 
-      // Use share_plus to share the file
       await Share.shareXFiles(
         [XFile(file.path)],
         text: 'Here is the exported contacts file.',
@@ -104,7 +101,6 @@ class _HomePageState extends State<HomePage> {
       ),
     );
 
-    // Refresh the contact list if changes were made
     if (result == true) {
       _fetchContacts();
     }
@@ -171,29 +167,6 @@ class _HomePageState extends State<HomePage> {
         title: const Text('Contacts'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.search),
-            onPressed: () {
-              showDialog(
-                context: context,
-                builder: (context) => AlertDialog(
-                  title: const Text('Search Contacts'),
-                  content: TextField(
-                    controller: _searchController,
-                    decoration: const InputDecoration(
-                      hintText: 'Search by name, occupation, or grade',
-                    ),
-                  ),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      child: const Text('Close'),
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
-          IconButton(
             icon: const Icon(Icons.download),
             onPressed: _exportContactsToFile,
           ),
@@ -203,17 +176,36 @@ class _HomePageState extends State<HomePage> {
           ),
         ],
       ),
-      body: _filteredContacts.isEmpty
-          ? const Center(child: Text('No contacts available.'))
-          : ListView.builder(
-        itemCount: _filteredContacts.length,
-        itemBuilder: (context, index) {
-          final contact = _filteredContacts[index];
-          return ListTile(
-            title: Text(contact.fullName),
-            onTap: () => _navigateToContactDetails(contact),
-          );
-        },
+      body: Column(
+        children: [
+          // Search bar at the bottom
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: TextField(
+              controller: _searchController,
+              decoration: InputDecoration(
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8.0),
+                ),
+                prefixIcon: const Icon(Icons.search),
+              ),
+            ),
+          ),
+          Expanded(
+            child: _filteredContacts.isEmpty
+                ? const Center(child: Text('No contacts available.'))
+                : ListView.builder(
+              itemCount: _filteredContacts.length,
+              itemBuilder: (context, index) {
+                final contact = _filteredContacts[index];
+                return ListTile(
+                  title: Text(contact.fullName),
+                  onTap: () => _navigateToContactDetails(contact),
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }
