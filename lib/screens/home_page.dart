@@ -32,8 +32,17 @@ class _HomePageState extends State<HomePage> {
   Future<void> _fetchContacts() async {
     final contacts = await _dbHelper.getContacts();
     setState(() {
-      _contacts = contacts;
-      _filteredContacts = contacts;
+      _contacts = contacts
+        ..sort((a, b) {
+          final lastNameComparison =
+          a.lastName.toLowerCase().compareTo(b.lastName.toLowerCase());
+          if (lastNameComparison != 0) {
+            return lastNameComparison;
+          }
+          // If last names are the same, compare by first name
+          return a.firstName.toLowerCase().compareTo(b.firstName.toLowerCase());
+        });
+      _filteredContacts = List.from(_contacts);
     });
   }
 
@@ -202,13 +211,6 @@ class _HomePageState extends State<HomePage> {
           final contact = _filteredContacts[index];
           return ListTile(
             title: Text(contact.fullName),
-            subtitle: Text(contact.history.isNotEmpty
-                ? 'Last interaction: ${contact.history.last.detail}'
-                : 'No history available'),
-            trailing: IconButton(
-              icon: const Icon(Icons.delete),
-              onPressed: () => _deleteContact(contact.id),
-            ),
             onTap: () => _navigateToContactDetails(contact),
           );
         },
