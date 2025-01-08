@@ -178,7 +178,6 @@ class _HomePageState extends State<HomePage> {
       ),
       body: Column(
         children: [
-          // Search bar at the bottom
           Padding(
             padding: const EdgeInsets.all(8.0),
             child: TextField(
@@ -189,6 +188,7 @@ class _HomePageState extends State<HomePage> {
                 ),
                 prefixIcon: const Icon(Icons.search),
               ),
+              autofocus: false, // Prevents auto-focusing when the page loads
             ),
           ),
           Expanded(
