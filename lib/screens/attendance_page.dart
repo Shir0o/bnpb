@@ -5,8 +5,40 @@ import '../models/attendance.dart';
 import 'add_attendance_page.dart';
 import 'attendance_details_page.dart';
 
-class AttendancePage extends StatelessWidget {
+class AttendancePage extends StatefulWidget {
   const AttendancePage({Key? key}) : super(key: key);
+
+  @override
+  _AttendancePageState createState() => _AttendancePageState();
+}
+
+class _AttendancePageState extends State<AttendancePage> {
+  final DBHelper _dbHelper = DBHelper();
+  late Future<List<Attendance>> _attendanceFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _refreshAttendance(); // Load attendance data
+  }
+
+  void _refreshAttendance() {
+    setState(() {
+      _attendanceFuture = _dbHelper.getAllAttendance(); // Fetch attendance from DBHelper
+    });
+  }
+
+  Future<void> _deleteAttendance(BuildContext context, String eventId) async {
+    await _dbHelper.deleteAttendance(eventId); // Use DBHelper to delete the record
+
+    // Show a confirmation message
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Attendance deleted successfully')),
+    );
+
+    // Refresh the data
+    _refreshAttendance();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -15,7 +47,7 @@ class AttendancePage extends StatelessWidget {
         title: const Text('Attendance'),
       ),
       body: FutureBuilder<List<Attendance>>(
-        future: _fetchAttendance(),
+        future: _attendanceFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
@@ -41,13 +73,13 @@ class AttendancePage extends StatelessWidget {
                     },
                   ),
                   onTap: () {
-                    // Navigate to AttendanceDetailsPage, passing the attendance data
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => AttendanceDetailsPage(attendance: attendance),
+                        builder: (context) =>
+                            AttendanceDetailsPage(attendance: attendance),
                       ),
-                    );
+                    ).then((_) => _refreshAttendance());
                   },
                 );
               },
@@ -60,31 +92,11 @@ class AttendancePage extends StatelessWidget {
           Navigator.push(
             context,
             MaterialPageRoute(builder: (context) => const AddAttendancePage()),
-          );
+          ).then((_) => _refreshAttendance());
         },
         child: const Icon(Icons.add),
         tooltip: 'Mark Attendance',
       ),
     );
-  }
-
-  Future<List<Attendance>> _fetchAttendance() async {
-    final dbHelper = DBHelper();
-    return await dbHelper.getAllAttendance();
-  }
-
-  Future<void> _deleteAttendance(BuildContext context, String eventId) async {
-    final dbHelper = DBHelper();
-
-    // Delete the attendance record
-    await dbHelper.deleteAttendance(eventId);
-
-    // Show a confirmation message
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Attendance deleted successfully')),
-    );
-
-    // Refresh the UI (rebuild the widget tree)
-    (context as Element).reassemble();
   }
 }
