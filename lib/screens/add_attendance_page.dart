@@ -5,14 +5,14 @@ import '../db/db_helper.dart';
 import '../models/attendance.dart';
 import '../models/contact.dart';
 
-class AttendanceListPage extends StatefulWidget {
-  const AttendanceListPage({Key? key}) : super(key: key);
+class AddAttendancePage extends StatefulWidget {
+  const AddAttendancePage({Key? key}) : super(key: key);
 
   @override
-  _AttendanceListPageState createState() => _AttendanceListPageState();
+  _AddAttendancePageState createState() => _AddAttendancePageState();
 }
 
-class _AttendanceListPageState extends State<AttendanceListPage> {
+class _AddAttendancePageState extends State<AddAttendancePage> {
   final DBHelper _dbHelper = DBHelper();
   List<Contact> _contacts = [];
   Map<String, bool> _attendance = {}; // Maps contact ID to attendance status

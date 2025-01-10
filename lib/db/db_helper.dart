@@ -104,6 +104,34 @@ class DBHelper {
     }).toList();
   }
 
+  Future<List<Attendance>> getAllAttendance() async {
+    final db = await database;
+    final maps = await db.query('attendance');
+
+    return maps.map((map) {
+      final contactsJson = map['contacts'] as String;
+      final decodedContacts = jsonDecode(contactsJson) as Map<String, dynamic>;
+
+      return Attendance(
+        eventId: map['eventId'] as String,
+        eventTitle: map['eventTitle'] as String,
+        eventDate: DateTime.parse(map['eventDate'] as String),
+        contacts: decodedContacts.map(
+              (key, value) => MapEntry(key, value == 1),
+        ),
+      );
+    }).toList();
+  }
+
+  Future<int> deleteAttendance(String eventId) async {
+    final db = await database;
+    return await db.delete(
+      'attendance',
+      where: 'eventId = ?',
+      whereArgs: [eventId],
+    );
+  }
+
   // -------------------------------------------------------------
   // CONTACTS METHODS
   // -------------------------------------------------------------

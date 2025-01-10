@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart'; // For date formatting
-import '../models/contact.dart'; // Assuming you have `HistoryEntry` and `Contact` models defined
+
 import '../db/db_helper.dart'; // SQLite DBHelper
+import '../models/contact.dart'; // Assuming you have `HistoryEntry` and `Contact` models defined
 
 class ContactDetailsPage extends StatefulWidget {
   final Contact contact;

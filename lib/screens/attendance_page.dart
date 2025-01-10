@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 
-import 'attendance_list_page.dart';
+import '../db/db_helper.dart';
+import '../models/attendance.dart';
+import 'add_attendance_page.dart';
+import 'attendance_details_page.dart';
 
 class AttendancePage extends StatelessWidget {
   const AttendancePage({Key? key}) : super(key: key);
@@ -11,17 +14,52 @@ class AttendancePage extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Attendance'),
       ),
-      body: const Center(
-        child: Text(
-          'Attendance Page Content',
-          style: TextStyle(fontSize: 18),
-        ),
+      body: FutureBuilder<List<Attendance>>(
+        future: _fetchAttendance(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          } else if (snapshot.hasError) {
+            return Center(child: Text('Error: ${snapshot.error}'));
+          } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+            return const Center(child: Text('No attendance records found.'));
+          } else {
+            final attendanceList = snapshot.data!;
+            return ListView.builder(
+              itemCount: attendanceList.length,
+              itemBuilder: (context, index) {
+                final attendance = attendanceList[index];
+                return ListTile(
+                  title: Text(attendance.eventTitle),
+                  subtitle: Text(
+                      'Date: ${attendance.eventDate.toLocal()} \nContacts: ${attendance.contacts.length}'),
+                  isThreeLine: true,
+                  trailing: IconButton(
+                    icon: const Icon(Icons.delete, color: Colors.red),
+                    onPressed: () {
+                      _deleteAttendance(context, attendance.eventId);
+                    },
+                  ),
+                  onTap: () {
+                    // Navigate to AttendanceDetailsPage, passing the attendance data
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => AttendanceDetailsPage(attendance: attendance),
+                      ),
+                    );
+                  },
+                );
+              },
+            );
+          }
+        },
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (context) => const AttendanceListPage()),
+            MaterialPageRoute(builder: (context) => const AddAttendancePage()),
           );
         },
         child: const Icon(Icons.add),
@@ -30,55 +68,23 @@ class AttendancePage extends StatelessWidget {
     );
   }
 
-  void _showAddAttendanceDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        DateTime selectedDate = DateTime.now();
-        return AlertDialog(
-          title: const Text('Add Attendance'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text('Select the date for attendance:'),
-              ElevatedButton(
-                onPressed: () async {
-                  final DateTime? pickedDate = await showDatePicker(
-                    context: context,
-                    initialDate: selectedDate,
-                    firstDate: DateTime(2000),
-                    lastDate: DateTime(2100),
-                  );
-                  if (pickedDate != null && pickedDate != selectedDate) {
-                    selectedDate = pickedDate;
-                  }
-                },
-                child: const Text('Pick Date'),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                // Add logic to handle attendance submission here
-                Navigator.of(context).pop();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Attendance added for $selectedDate'),
-                  ),
-                );
-              },
-              child: const Text('Add'),
-            ),
-          ],
-        );
-      },
+  Future<List<Attendance>> _fetchAttendance() async {
+    final dbHelper = DBHelper();
+    return await dbHelper.getAllAttendance();
+  }
+
+  Future<void> _deleteAttendance(BuildContext context, String eventId) async {
+    final dbHelper = DBHelper();
+
+    // Delete the attendance record
+    await dbHelper.deleteAttendance(eventId);
+
+    // Show a confirmation message
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Attendance deleted successfully')),
     );
+
+    // Refresh the UI (rebuild the widget tree)
+    (context as Element).reassemble();
   }
 }
