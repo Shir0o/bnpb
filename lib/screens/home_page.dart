@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
-import '../models/contact.dart';
-import '../db/db_helper.dart';
+import 'package:path_provider/path_provider.dart';
 import 'dart:convert';
 import 'dart:io';
-import 'package:path_provider/path_provider.dart';
 
+import '../models/contact.dart';
+import '../db/db_helper.dart';
+
+import 'attendance_page.dart';
 import 'contact_details_page.dart';
 
 class HomePage extends StatefulWidget {
@@ -125,6 +127,45 @@ class _HomePageState extends State<HomePage> {
           ),
         ],
       ),
+      drawer: Drawer(
+        child: ListView(
+          padding: EdgeInsets.zero,
+          children: [
+            DrawerHeader(
+              margin: EdgeInsets.zero,
+              padding: EdgeInsets.all(16),
+              decoration: const BoxDecoration(
+                color: Colors.blue,
+              ),
+              child: const Text(
+                'Menu',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 24,
+                ),
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.contacts),
+              title: const Text('Contacts'),
+              onTap: () {
+                Navigator.of(context).pop(); // Close the drawer
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.event_note),
+              title: const Text('Attendance'),
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => const AttendancePage(),
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
       body: Column(
         children: [
           Padding(
@@ -137,7 +178,7 @@ class _HomePageState extends State<HomePage> {
                 ),
                 prefixIcon: const Icon(Icons.search),
               ),
-              autofocus: false, // Prevents auto-focusing when the page loads
+              autofocus: false,
             ),
           ),
           Expanded(
