@@ -6,7 +6,7 @@ import '../models/attendance.dart';
 import '../models/contact.dart';
 
 class AddAttendancePage extends StatefulWidget {
-  const AddAttendancePage({Key? key}) : super(key: key);
+  const AddAttendancePage({super.key});
 
   @override
   _AddAttendancePageState createState() => _AddAttendancePageState();
@@ -17,7 +17,7 @@ class _AddAttendancePageState extends State<AddAttendancePage> {
   List<Contact> _contacts = [];
   Map<String, bool> _attendance = {}; // Maps contact ID to attendance status
   DateTime _selectedDate = DateTime.now(); // Default to today's date
-  String _eventTitle = 'Event Title'; // Default title for the event
+  final String _eventTitle = 'Event Title'; // Default title for the event
   final TextEditingController _titleController = TextEditingController();
 
   @override

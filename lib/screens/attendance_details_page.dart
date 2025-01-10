@@ -9,10 +9,10 @@ class AttendanceDetailsPage extends StatelessWidget {
   final Map<String, Contact> contactLookup;
 
   const AttendanceDetailsPage({
-    Key? key,
+    super.key,
     required this.attendance,
     required this.contactLookup,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

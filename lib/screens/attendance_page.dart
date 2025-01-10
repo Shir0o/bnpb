@@ -7,7 +7,7 @@ import 'add_attendance_page.dart';
 import 'attendance_details_page.dart';
 
 class AttendancePage extends StatefulWidget {
-  const AttendancePage({Key? key}) : super(key: key);
+  const AttendancePage({super.key});
 
   @override
   _AttendancePageState createState() => _AttendancePageState();
@@ -124,8 +124,8 @@ class _AttendancePageState extends State<AttendancePage> {
             MaterialPageRoute(builder: (context) => const AddAttendancePage()),
           ).then((_) => _refreshAttendance());
         },
-        child: const Icon(Icons.add),
         tooltip: 'Mark Attendance',
+        child: const Icon(Icons.add),
       ),
     );
   }
