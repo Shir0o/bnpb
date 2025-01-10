@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../db/db_helper.dart';
 import '../models/attendance.dart';
+import '../models/contact.dart';
 import 'add_attendance_page.dart';
 import 'attendance_details_page.dart';
 
@@ -15,11 +16,13 @@ class AttendancePage extends StatefulWidget {
 class _AttendancePageState extends State<AttendancePage> {
   final DBHelper _dbHelper = DBHelper();
   late Future<List<Attendance>> _attendanceFuture;
+  late Future<Map<String, Contact>> _contactMapFuture;
 
   @override
   void initState() {
     super.initState();
     _refreshAttendance(); // Load attendance data
+    _refreshContacts(); // Load contact data
   }
 
   void _refreshAttendance() {
@@ -28,15 +31,24 @@ class _AttendancePageState extends State<AttendancePage> {
     });
   }
 
-  Future<void> _deleteAttendance(BuildContext context, String eventId) async {
-    await _dbHelper.deleteAttendance(eventId); // Use DBHelper to delete the record
+  void _refreshContacts() {
+    setState(() {
+      _contactMapFuture = _fetchContactMap(); // Fetch contacts and build a map
+    });
+  }
 
-    // Show a confirmation message
+  Future<Map<String, Contact>> _fetchContactMap() async {
+    final contacts = await _dbHelper.getContacts();
+    return {for (var contact in contacts) contact.id: contact};
+  }
+
+  Future<void> _deleteAttendance(BuildContext context, String eventId) async {
+    await _dbHelper.deleteAttendance(eventId);
+
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Attendance deleted successfully')),
     );
 
-    // Refresh the data
     _refreshAttendance();
   }
 
@@ -57,31 +69,49 @@ class _AttendancePageState extends State<AttendancePage> {
             return const Center(child: Text('No attendance records found.'));
           } else {
             final attendanceList = snapshot.data!;
-            return ListView.builder(
-              itemCount: attendanceList.length,
-              itemBuilder: (context, index) {
-                final attendance = attendanceList[index];
-                return ListTile(
-                  title: Text(attendance.eventTitle),
-                  subtitle: Text(
-                      'Date: ${attendance.eventDate.toLocal()} \nContacts: ${attendance.contacts.length}'),
-                  isThreeLine: true,
-                  trailing: IconButton(
-                    icon: const Icon(Icons.delete, color: Colors.red),
-                    onPressed: () {
-                      _deleteAttendance(context, attendance.eventId);
+            return FutureBuilder<Map<String, Contact>>(
+              future: _contactMapFuture,
+              builder: (context, contactSnapshot) {
+                if (contactSnapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                } else if (contactSnapshot.hasError) {
+                  return Center(child: Text('Error: ${contactSnapshot.error}'));
+                } else if (!contactSnapshot.hasData || contactSnapshot.data!.isEmpty) {
+                  return const Center(child: Text('No contacts found.'));
+                } else {
+                  final contactMap = contactSnapshot.data!;
+                  return ListView.builder(
+                    itemCount: attendanceList.length,
+                    itemBuilder: (context, index) {
+                      final attendance = attendanceList[index];
+                      return ListTile(
+                        title: Text(attendance.eventTitle),
+                        subtitle: Text('Date: ${attendance.eventDate.toLocal()}'),
+                        isThreeLine: true,
+                        trailing: IconButton(
+                          icon: const Icon(Icons.delete, color: Colors.red),
+                          onPressed: () {
+                            _deleteAttendance(context, attendance.eventId);
+                          },
+                        ),
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => AttendanceDetailsPage(
+                                attendance: attendance,
+                                contactLookup: contactMap,
+                              ),
+                            ),
+                          ).then((_) {
+                            _refreshAttendance();
+                            _refreshContacts();
+                          });
+                        },
+                      );
                     },
-                  ),
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) =>
-                            AttendanceDetailsPage(attendance: attendance),
-                      ),
-                    ).then((_) => _refreshAttendance());
-                  },
-                );
+                  );
+                }
               },
             );
           }
