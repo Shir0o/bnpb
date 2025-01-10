@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'screens/home_page.dart';
 import 'screens/add_contact_page.dart';
 
@@ -15,10 +16,12 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'BNPB',
       theme: ThemeData(
+        textTheme: GoogleFonts.ibmPlexSansTextTheme(),
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
         useMaterial3: true,
       ),
       darkTheme: ThemeData(
+        textTheme: GoogleFonts.ibmPlexSansTextTheme(),
         colorScheme: ColorScheme.fromSeed(
           seedColor: Colors.blue,
           brightness: Brightness.dark,
