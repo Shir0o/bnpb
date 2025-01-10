@@ -1,12 +1,13 @@
-import 'package:flutter/material.dart';
-import 'package:share_plus/share_plus.dart';
-import 'package:path_provider/path_provider.dart';
 import 'dart:convert';
 import 'dart:io';
 
-import '../models/contact.dart';
-import '../db/db_helper.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:flutter/material.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 
+import '../db/db_helper.dart';
+import '../models/contact.dart';
 import 'attendance_page.dart';
 import 'contact_details_page.dart';
 
@@ -76,9 +77,59 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  Future<void> _addContact(Contact contact) async {
-    await _dbHelper.insertContact(contact);
-    _fetchContacts();
+  Future<void> _restoreContactsFromFile() async {
+    try {
+      // Open the file picker for JSON files
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['json'],
+      );
+
+      // If no file is picked, return early
+      if (result == null || result.files.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No file selected.')),
+        );
+        return;
+      }
+
+      // Get the file path
+      final filePath = result.files.single.path;
+      if (filePath == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Invalid file.')),
+        );
+        return;
+      }
+
+      // Read and decode the file contents
+      final file = File(filePath);
+      final fileContent = await file.readAsString();
+      final List<dynamic> jsonData = jsonDecode(fileContent);
+
+      // Convert the JSON data back into a list of contacts
+      final restoredContacts = jsonData
+          .map((contactMap) => Contact.fromMap(contactMap as Map<String, dynamic>))
+          .toList();
+
+      // Insert contacts into the database
+      for (final contact in restoredContacts) {
+        await _dbHelper.insertContact(contact);
+      }
+
+      // Refresh the contact list
+      await _fetchContacts();
+
+      // Show success message
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Contacts restored successfully!')),
+      );
+    } catch (e) {
+      // Handle any errors
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to restore contacts: $e')),
+      );
+    }
   }
 
   Future<void> _deleteContact(String id) async {
@@ -124,6 +175,10 @@ class _HomePageState extends State<HomePage> {
           IconButton(
             icon: const Icon(Icons.download),
             onPressed: _exportContactsToFile,
+          ),
+          IconButton(
+            icon: const Icon(Icons.restore),
+            onPressed: _restoreContactsFromFile,
           ),
         ],
       ),
