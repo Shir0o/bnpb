@@ -111,8 +111,16 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
   }
 
   void _deleteHistoryEntry(int index) async {
+    // Sort the history list by date in descending order
+    final sortedHistory = List<HistoryEntry>.from(history)
+      ..sort((a, b) => b.date.compareTo(a.date));
+
+    // Get the actual entry to delete from the sorted list
+    final historyToDelete = sortedHistory[index];
+
+    // Remove the entry from the original history list
     setState(() {
-      history.removeAt(index);
+      history.removeWhere((entry) => entry == historyToDelete);
     });
 
     // Update the contact in the database
