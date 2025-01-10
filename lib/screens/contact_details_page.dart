@@ -77,8 +77,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
       const SnackBar(content: Text('Contact updated successfully!')),
     );
 
-    // Return `true` to indicate a change was made
-    Navigator.pop(context, true);
+    Navigator.pop(context);
   }
 
   void _confirmDelete() {

@@ -89,8 +89,9 @@ class _HomePageState extends State<HomePage> {
     _fetchContacts();
   }
 
-  void _navigateToContactDetails(Contact contact) async {
-    final result = await Navigator.of(context).push(
+  void _navigateToContactDetails(Contact contact) {
+    Navigator.of(context)
+        .push(
       MaterialPageRoute(
         builder: (context) => ContactDetailsPage(
           contact: contact,
@@ -99,59 +100,11 @@ class _HomePageState extends State<HomePage> {
           },
         ),
       ),
-    );
-
-    if (result == true) {
+    )
+        .then((_) {
+      // Refresh contacts when returning to the page
       _fetchContacts();
-    }
-  }
-
-  void _showAddContactDialog() {
-    final TextEditingController firstNameController = TextEditingController();
-    final TextEditingController lastNameController = TextEditingController();
-
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Add Contact'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: firstNameController,
-                decoration: const InputDecoration(labelText: 'First Name'),
-              ),
-              TextField(
-                controller: lastNameController,
-                decoration: const InputDecoration(labelText: 'Last Name'),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () {
-                final newContact = Contact(
-                  id: DateTime.now().toString(),
-                  firstName: firstNameController.text,
-                  lastName: lastNameController.text,
-                  history: [],
-                );
-                _addContact(newContact);
-                Navigator.of(context).pop();
-              },
-              child: const Text('Add'),
-            ),
-          ],
-        );
-      },
-    );
+    });
   }
 
   @override
@@ -169,10 +122,6 @@ class _HomePageState extends State<HomePage> {
           IconButton(
             icon: const Icon(Icons.download),
             onPressed: _exportContactsToFile,
-          ),
-          IconButton(
-            icon: const Icon(Icons.add),
-            onPressed: _showAddContactDialog,
           ),
         ],
       ),
