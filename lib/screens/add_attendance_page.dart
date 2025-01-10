@@ -57,7 +57,6 @@ class _AddAttendancePageState extends State<AddAttendancePage> {
   }
 
   Future<void> _saveEvent() async {
-    // Create an Attendance object with the current data
     final attendance = Attendance(
       eventId: 'event_${_selectedDate.toIso8601String()}', // Generate a unique ID for the event
       eventTitle: _titleController.text, // Use the edited title
@@ -65,12 +64,9 @@ class _AddAttendancePageState extends State<AddAttendancePage> {
       contacts: _attendance, // Pass the contact attendance map
     );
 
-    // Save the attendance to the database
     await _dbHelper.insertAttendance(attendance);
-
     await _submitAttendance();
 
-    // Feedback to the user
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('Event saved: ${_titleController.text}')),
     );
@@ -81,23 +77,19 @@ class _AddAttendancePageState extends State<AddAttendancePage> {
       final bool isPresent = _attendance[contact.id] ?? false;
 
       if (isPresent) {
-        // Create a new history entry for the present contact
         final newHistory = HistoryEntry(
-          date: _selectedDate, // Use the selected date
-          detail: _titleController.text, // Use the event title as the detail
+          date: _selectedDate,
+          detail: _titleController.text,
         );
 
-        // Update the contact's history
         final updatedContact = contact.copyWith(
           history: [...contact.history, newHistory],
         );
 
-        // Save the updated contact to the database
         await _dbHelper.updateContact(updatedContact);
       }
     }
 
-    // Provide feedback to the user and navigate back
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('Attendance submitted for ${_titleController.text}')),
     );
@@ -120,58 +112,83 @@ class _AddAttendancePageState extends State<AddAttendancePage> {
           IconButton(
             onPressed: _saveEvent,
             icon: const Icon(Icons.save),
-            tooltip: 'Save Event Title',
-          ),
-          IconButton(
-            onPressed: () => _pickDate(context),
-            icon: const Icon(Icons.calendar_today),
-            tooltip: 'Pick Date',
+            tooltip: 'Save Event',
           ),
         ],
       ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Text(
-              'Selected Date: ${DateFormat('yyyy-MM-dd').format(_selectedDate)}',
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Selected Date Section
+            Card(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              elevation: 2,
+              child: ListTile(
+                title: const Text(
+                  'Selected Date',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                subtitle: Text(
+                  DateFormat('yyyy-MM-dd').format(_selectedDate),
+                  style: const TextStyle(fontSize: 16),
+                ),
+                trailing: IconButton(
+                  icon: const Icon(Icons.calendar_today),
+                  tooltip: 'Pick Date',
+                  onPressed: () => _pickDate(context),
+                ),
+              ),
             ),
-          ),
-          Expanded(
-            child: _contacts.isEmpty
-                ? const Center(child: CircularProgressIndicator())
-                : ListView.builder(
-              itemCount: _contacts.length,
-              itemBuilder: (context, index) {
-                final contact = _contacts[index];
-                final isPresent = _attendance[contact.id] ?? false;
-                return ListTile(
-                  title: Text(contact.fullName),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                        icon: Icon(
-                          Icons.check,
-                          color: isPresent ? Colors.green : Colors.grey,
-                        ),
-                        onPressed: () => _toggleAttendance(contact.id),
+            const SizedBox(height: 16),
+            // Attendance List
+            Expanded(
+              child: _contacts.isEmpty
+                  ? const Center(child: CircularProgressIndicator())
+                  : ListView.builder(
+                itemCount: _contacts.length,
+                itemBuilder: (context, index) {
+                  final contact = _contacts[index];
+                  final isPresent = _attendance[contact.id] ?? false;
+                  return Card(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    elevation: 2,
+                    margin: const EdgeInsets.symmetric(vertical: 8),
+                    child: ListTile(
+                      title: Text(contact.fullName),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            icon: Icon(
+                              Icons.check,
+                              color: isPresent ? Colors.green : Colors.grey,
+                            ),
+                            tooltip: 'Mark Present',
+                            onPressed: () => _toggleAttendance(contact.id),
+                          ),
+                          IconButton(
+                            icon: Icon(
+                              Icons.clear,
+                              color: !isPresent ? Colors.red : Colors.grey,
+                            ),
+                            tooltip: 'Mark Absent',
+                            onPressed: () => _toggleAttendance(contact.id),
+                          ),
+                        ],
                       ),
-                      IconButton(
-                        icon: Icon(
-                          Icons.clear,
-                          color: !isPresent ? Colors.red : Colors.grey,
-                        ),
-                        onPressed: () => _toggleAttendance(contact.id),
-                      ),
-                    ],
-                  ),
-                );
-              },
+                    ),
+                  );
+                },
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

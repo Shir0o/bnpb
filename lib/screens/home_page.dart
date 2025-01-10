@@ -79,13 +79,11 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _restoreContactsFromFile() async {
     try {
-      // Open the file picker for JSON files
       final result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['json'],
       );
 
-      // If no file is picked, return early
       if (result == null || result.files.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('No file selected.')),
@@ -93,7 +91,6 @@ class _HomePageState extends State<HomePage> {
         return;
       }
 
-      // Get the file path
       final filePath = result.files.single.path;
       if (filePath == null) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -102,30 +99,24 @@ class _HomePageState extends State<HomePage> {
         return;
       }
 
-      // Read and decode the file contents
       final file = File(filePath);
       final fileContent = await file.readAsString();
       final List<dynamic> jsonData = jsonDecode(fileContent);
 
-      // Convert the JSON data back into a list of contacts
       final restoredContacts = jsonData
           .map((contactMap) => Contact.fromMap(contactMap as Map<String, dynamic>))
           .toList();
 
-      // Insert contacts into the database
       for (final contact in restoredContacts) {
         await _dbHelper.insertContact(contact);
       }
 
-      // Refresh the contact list
       await _fetchContacts();
 
-      // Show success message
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Contacts restored successfully!')),
       );
     } catch (e) {
-      // Handle any errors
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to restore contacts: $e')),
       );
@@ -155,7 +146,6 @@ class _HomePageState extends State<HomePage> {
       ),
     )
         .then((_) {
-      // Refresh contacts when returning to the page
       _fetchContacts();
     });
   }
@@ -186,13 +176,17 @@ class _HomePageState extends State<HomePage> {
         child: ListView(
           padding: EdgeInsets.zero,
           children: [
-            DrawerHeader(
+            const DrawerHeader(
               margin: EdgeInsets.zero,
               padding: EdgeInsets.all(16),
-              decoration: const BoxDecoration(
-                color: Colors.blue,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Colors.blue, Colors.lightBlueAccent],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
               ),
-              child: const Text(
+              child: Text(
                 'Menu',
                 style: TextStyle(
                   color: Colors.white,
@@ -204,7 +198,7 @@ class _HomePageState extends State<HomePage> {
               leading: const Icon(Icons.contacts),
               title: const Text('Contacts'),
               onTap: () {
-                Navigator.of(context).pop(); // Close the drawer
+                Navigator.of(context).pop();
               },
             ),
             ListTile(
@@ -224,16 +218,16 @@ class _HomePageState extends State<HomePage> {
       body: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.all(8.0),
+            padding: const EdgeInsets.all(16.0),
             child: TextField(
               controller: _searchController,
               decoration: InputDecoration(
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8.0),
+                  borderRadius: BorderRadius.circular(16.0),
                 ),
                 prefixIcon: const Icon(Icons.search),
+                hintText: 'Search contacts...',
               ),
-              autofocus: false,
             ),
           ),
           Expanded(
@@ -244,6 +238,9 @@ class _HomePageState extends State<HomePage> {
               itemBuilder: (context, index) {
                 final contact = _filteredContacts[index];
                 return ListTile(
+                  leading: CircleAvatar(
+                    child: Text(contact.fullName[0]),
+                  ),
                   title: Text(contact.fullName),
                   onTap: () => _navigateToContactDetails(contact),
                 );

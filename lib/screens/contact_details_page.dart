@@ -144,12 +144,18 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
               content: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  // Material-styled TextField for history detail
                   TextField(
                     controller: _historyDetailController,
                     textCapitalization: TextCapitalization.sentences,
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       hintText: 'Enter history detail',
-                      border: OutlineInputBorder(),
+                      border: const OutlineInputBorder(),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide:
+                        const BorderSide(color: Colors.blue, width: 2),
+                      ),
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -196,10 +202,12 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
                       );
 
                       // Update the history list
-                      final updatedHistory = List<HistoryEntry>.from(history)..add(newEntry);
+                      final updatedHistory = List<HistoryEntry>.from(history)
+                        ..add(newEntry);
 
                       // Create an updated contact
-                      final updatedContact = widget.contact.copyWith(history: updatedHistory);
+                      final updatedContact =
+                      widget.contact.copyWith(history: updatedHistory);
 
                       // Update the state
                       setState(() {
@@ -215,7 +223,8 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
                       Navigator.pop(context);
                     } else {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Please fill in all fields.')),
+                        const SnackBar(
+                            content: Text('Please fill in all fields.')),
                       );
                     }
                   },
@@ -251,32 +260,113 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
           ),
         ],
       ),
+      // Use a Container or directly Padding for consistent Material spacing
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: ListView(
           children: [
-            _buildEditableSection(
-              title: 'First Name',
-              controller: _firstNameController,
-              hintText: 'Enter first name',
+            // Wrap each editable section in a Card for a more Material look
+            Card(
+              margin: const EdgeInsets.only(bottom: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              elevation: 2,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  vertical: 12,
+                  horizontal: 16,
+                ),
+                child: _buildEditableSection(
+                  title: 'First Name',
+                  controller: _firstNameController,
+                  hintText: 'Enter first name',
+                ),
+              ),
             ),
-            _buildEditableSection(
-              title: 'Middle Name',
-              controller: _middleNameController,
-              hintText: 'Enter middle name (optional)',
+            Card(
+              margin: const EdgeInsets.only(bottom: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              elevation: 2,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  vertical: 12,
+                  horizontal: 16,
+                ),
+                child: _buildEditableSection(
+                  title: 'Middle Name',
+                  controller: _middleNameController,
+                  hintText: 'Enter middle name (optional)',
+                ),
+              ),
             ),
-            _buildEditableSection(
-              title: 'Last Name',
-              controller: _lastNameController,
-              hintText: 'Enter last name',
+            Card(
+              margin: const EdgeInsets.only(bottom: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              elevation: 2,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  vertical: 12,
+                  horizontal: 16,
+                ),
+                child: _buildEditableSection(
+                  title: 'Last Name',
+                  controller: _lastNameController,
+                  hintText: 'Enter last name',
+                ),
+              ),
             ),
-            _buildGradeDropdown(),
-            _buildEditableSection(
-              title: 'Occupation',
-              controller: _occupationController,
-              hintText: 'Enter occupation',
+            Card(
+              margin: const EdgeInsets.only(bottom: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              elevation: 2,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  vertical: 12,
+                  horizontal: 16,
+                ),
+                child: _buildGradeDropdown(),
+              ),
             ),
-            _buildHistorySection(), // Add the history section here
+            Card(
+              margin: const EdgeInsets.only(bottom: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              elevation: 2,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  vertical: 12,
+                  horizontal: 16,
+                ),
+                child: _buildEditableSection(
+                  title: 'Occupation',
+                  controller: _occupationController,
+                  hintText: 'Enter occupation',
+                ),
+              ),
+            ),
+            // History section card
+            Card(
+              margin: const EdgeInsets.only(bottom: 80), // Extra space for FAB
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              elevation: 2,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  vertical: 12,
+                  horizontal: 16,
+                ),
+                child: _buildHistorySection(),
+              ),
+            ),
           ],
         ),
       ),
@@ -288,6 +378,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
     );
   }
 
+  /// Displays a list of history items in descending order
   Widget _buildHistorySection() {
     // Sort the history entries by date in descending order
     final sortedHistory = List<HistoryEntry>.from(history)
@@ -329,6 +420,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
     );
   }
 
+  /// Reusable method to build an editable section with a title and TextField
   Widget _buildEditableSection({
     required String title,
     required TextEditingController controller,
@@ -337,8 +429,9 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // Title
         Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8.0),
+          padding: const EdgeInsets.only(bottom: 8.0),
           child: Text(
             title,
             style: const TextStyle(
@@ -347,19 +440,26 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
             ),
           ),
         ),
+        // Material-styled TextField
         TextField(
           controller: controller,
           textCapitalization: TextCapitalization.sentences,
           decoration: InputDecoration(
             hintText: hintText,
             border: const OutlineInputBorder(),
+            // Add a more visible focus border for Material emphasis
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide:
+              const BorderSide(color: Colors.blue, width: 2),
+            ),
           ),
         ),
-        const Divider(),
       ],
     );
   }
 
+  /// Reusable section wrapper with title at the top and a divider below
   Widget _buildSection({
     required String title,
     required Widget content,
@@ -367,25 +467,27 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // Section Title
         Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8.0),
+          padding: const EdgeInsets.only(bottom: 8.0),
           child: Text(
             title,
             style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
           ),
         ),
+        // Actual content (history list, etc.)
         content,
-        const Divider(),
       ],
     );
   }
 
+  /// A dropdown wrapped in a column to edit the "Grade" field
   Widget _buildGradeDropdown() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Padding(
-          padding: EdgeInsets.symmetric(vertical: 8.0),
+          padding: EdgeInsets.only(bottom: 8.0),
           child: Text(
             'Grade',
             style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
@@ -404,12 +506,16 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
               _selectedGrade = value;
             });
           },
-          decoration: const InputDecoration(
-            border: OutlineInputBorder(),
-            contentPadding: EdgeInsets.symmetric(horizontal: 12),
+          decoration: InputDecoration(
+            border: const OutlineInputBorder(),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide:
+              const BorderSide(color: Colors.blue, width: 2),
+            ),
           ),
         ),
-        const Divider(),
       ],
     );
   }

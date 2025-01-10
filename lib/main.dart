@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'screens/home_page.dart';
+
 import 'screens/add_contact_page.dart';
+import 'screens/home_page.dart';
 
 void main() {
   runApp(const MyApp());
@@ -16,12 +17,17 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'BNPB',
       theme: ThemeData(
-        textTheme: GoogleFonts.ibmPlexSansTextTheme(),
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
         useMaterial3: true,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: Colors.blue, // Can be adjusted to dynamic colors later.
+          brightness: Brightness.light,
+        ),
       ),
       darkTheme: ThemeData(
-        textTheme: GoogleFonts.ibmPlexSansTextTheme(),
+        textTheme: GoogleFonts.ibmPlexSansTextTheme().apply(
+          bodyColor: Colors.white, // Ensure body text is white
+          displayColor: Colors.white, // Ensure display text is white
+        ),
         colorScheme: ColorScheme.fromSeed(
           seedColor: Colors.blue,
           brightness: Brightness.dark,
@@ -54,20 +60,22 @@ class _MainPageState extends State<MainPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: _pages[_currentIndex],
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: (index) {
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _currentIndex,
+        onDestinationSelected: (index) {
           setState(() {
             _currentIndex = index;
           });
         },
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home),
+        destinations: const [
+          NavigationDestination(
+            icon: Icon(Icons.home_outlined),
+            selectedIcon: Icon(Icons.home),
             label: 'Home',
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person_add),
+          NavigationDestination(
+            icon: Icon(Icons.person_add_outlined),
+            selectedIcon: Icon(Icons.person_add),
             label: 'Add Contact',
           ),
         ],

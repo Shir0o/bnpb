@@ -89,81 +89,112 @@ class _AddContactPageState extends State<AddContactPage> {
       appBar: AppBar(
         title: const Text('Add Contact'),
       ),
-      body: Padding(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Form(
           key: _formKey,
-          child: ListView(
+          child: Column(
             children: [
-              // Row for First, Middle, Last name
-              Row(
-                children: [
-                  Expanded(
-                    child: TextFormField(
-                      controller: _firstNameController,
-                      textCapitalization: TextCapitalization.words,
-                      decoration: const InputDecoration(labelText: 'First Name'),
-                      validator: (value) => value == null || value.isEmpty
-                          ? 'Enter first name'
-                          : null,
-                    ),
+              // First Name field (wrapped in a Card)
+              Card(
+                elevation: 2,
+                margin: const EdgeInsets.only(bottom: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Padding(
+                  padding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                  child: TextFormField(
+                    controller: _firstNameController,
+                    textCapitalization: TextCapitalization.words,
+                    decoration: _buildInputDecoration('First Name'),
+                    validator: (value) => value == null || value.isEmpty
+                        ? 'Enter first name'
+                        : null,
                   ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: TextFormField(
-                      controller: _middleNameController,
-                      textCapitalization: TextCapitalization.words,
-                      decoration:
-                      const InputDecoration(labelText: 'Middle Name (Optional)'),
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: TextFormField(
-                      controller: _lastNameController,
-                      textCapitalization: TextCapitalization.words,
-                      decoration: const InputDecoration(labelText: 'Last Name'),
-                      validator: (value) => value == null || value.isEmpty
-                          ? 'Enter last name'
-                          : null,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-
-              // Grade dropdown
-              DropdownButtonFormField<String>(
-                value: _selectedGrade,
-                items: _buildGradeDropdownItems(),
-                onChanged: (value) {
-                  setState(() {
-                    _selectedGrade = value;
-                  });
-                },
-                decoration: InputDecoration(
-                  labelText: 'Grade (Optional)',
-                  suffixIcon: _selectedGrade != null
-                      ? IconButton(
-                    icon: const Icon(Icons.clear),
-                    onPressed: () {
-                      setState(() {
-                        _selectedGrade = null;
-                      });
-                    },
-                  )
-                      : null,
                 ),
               ),
-              const SizedBox(height: 16),
 
-              // Occupation field
-              TextFormField(
-                controller: _occupationController,
-                textCapitalization: TextCapitalization.words,
-                decoration: const InputDecoration(labelText: 'Occupation (Optional)'),
+              // Middle Name field (wrapped in a Card)
+              Card(
+                elevation: 2,
+                margin: const EdgeInsets.only(bottom: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Padding(
+                  padding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                  child: TextFormField(
+                    controller: _middleNameController,
+                    textCapitalization: TextCapitalization.words,
+                    decoration: _buildInputDecoration('Middle Name (Optional)'),
+                  ),
+                ),
               ),
-              const SizedBox(height: 16),
+
+              // Last Name field (wrapped in a Card)
+              Card(
+                elevation: 2,
+                margin: const EdgeInsets.only(bottom: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Padding(
+                  padding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                  child: TextFormField(
+                    controller: _lastNameController,
+                    textCapitalization: TextCapitalization.words,
+                    decoration: _buildInputDecoration('Last Name'),
+                    validator: (value) => value == null || value.isEmpty
+                        ? 'Enter last name'
+                        : null,
+                  ),
+                ),
+              ),
+
+              // Grade dropdown (wrapped in a Card)
+              Card(
+                elevation: 2,
+                margin: const EdgeInsets.only(bottom: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Padding(
+                  padding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                  child: DropdownButtonFormField<String>(
+                    value: _selectedGrade,
+                    items: _buildGradeDropdownItems(),
+                    onChanged: (value) {
+                      setState(() {
+                        _selectedGrade = value;
+                      });
+                    },
+                    decoration: _buildInputDecoration('Grade (Optional)'),
+                  ),
+                ),
+              ),
+
+              // Occupation field (wrapped in a Card)
+              Card(
+                elevation: 2,
+                margin: const EdgeInsets.only(bottom: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Padding(
+                  padding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                  child: TextFormField(
+                    controller: _occupationController,
+                    textCapitalization: TextCapitalization.words,
+                    decoration: _buildInputDecoration('Occupation (Optional)'),
+                  ),
+                ),
+              ),
 
               // Save Contact button
               ElevatedButton(
@@ -175,6 +206,18 @@ class _AddContactPageState extends State<AddContactPage> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  /// Helper function to apply a consistent OutlineInputBorder style
+  InputDecoration _buildInputDecoration(String label) {
+    return InputDecoration(
+      labelText: label,
+      border: const OutlineInputBorder(),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8),
+        borderSide: const BorderSide(color: Colors.blue, width: 2),
       ),
     );
   }

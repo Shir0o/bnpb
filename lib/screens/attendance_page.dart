@@ -84,30 +84,47 @@ class _AttendancePageState extends State<AttendancePage> {
                     itemCount: attendanceList.length,
                     itemBuilder: (context, index) {
                       final attendance = attendanceList[index];
-                      return ListTile(
-                        title: Text(attendance.eventTitle),
-                        subtitle: Text('Date: ${attendance.eventDate.toLocal()}'),
-                        isThreeLine: true,
-                        trailing: IconButton(
-                          icon: const Icon(Icons.delete, color: Colors.red),
-                          onPressed: () {
-                            _deleteAttendance(context, attendance.eventId);
+                      return Card(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8.0),
+                        ),
+                        elevation: 3,
+                        margin: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 8),
+                        child: ListTile(
+                          title: Text(
+                            attendance.eventTitle,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                          subtitle: Text(
+                            'Date: ${attendance.eventDate.toLocal()}',
+                            style: const TextStyle(fontSize: 14),
+                          ),
+                          isThreeLine: true,
+                          trailing: IconButton(
+                            icon: const Icon(Icons.delete, color: Colors.red),
+                            onPressed: () {
+                              _deleteAttendance(context, attendance.eventId);
+                            },
+                          ),
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => AttendanceDetailsPage(
+                                  attendance: attendance,
+                                  contactLookup: contactMap,
+                                ),
+                              ),
+                            ).then((_) {
+                              _refreshAttendance();
+                              _refreshContacts();
+                            });
                           },
                         ),
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => AttendanceDetailsPage(
-                                attendance: attendance,
-                                contactLookup: contactMap,
-                              ),
-                            ),
-                          ).then((_) {
-                            _refreshAttendance();
-                            _refreshContacts();
-                          });
-                        },
                       );
                     },
                   );
@@ -117,7 +134,7 @@ class _AttendancePageState extends State<AttendancePage> {
           }
         },
       ),
-      floatingActionButton: FloatingActionButton(
+      floatingActionButton: FloatingActionButton.extended(
         onPressed: () {
           Navigator.push(
             context,
@@ -125,7 +142,8 @@ class _AttendancePageState extends State<AttendancePage> {
           ).then((_) => _refreshAttendance());
         },
         tooltip: 'Mark Attendance',
-        child: const Icon(Icons.add),
+        label: const Text('Mark Attendance'),
+        icon: const Icon(Icons.add),
       ),
     );
   }
