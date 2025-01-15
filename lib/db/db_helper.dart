@@ -1,5 +1,4 @@
 import 'dart:convert';
-
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 
@@ -24,6 +23,7 @@ class DBHelper {
     final dbPath = await getDatabasesPath();
     return openDatabase(
       join(dbPath, 'contacts.db'),
+      version: 1,
       onCreate: (db, version) async {
         // Create contacts table
         await db.execute('''
@@ -34,6 +34,7 @@ class DBHelper {
             lastName TEXT,
             grade TEXT,
             occupation TEXT,
+            location TEXT,
             history TEXT
           )
         ''');
@@ -49,7 +50,6 @@ class DBHelper {
           )
         ''');
       },
-      version: 1,
     );
   }
 
@@ -65,7 +65,7 @@ class DBHelper {
     // Convert Attendance to Map
     final attendanceMap = attendance.toMap();
 
-    // Convert `contacts` from Map<String, int> to JSON (Sqflite only supports basic types)
+    // Convert `contacts` from Map<String, int> to JSON
     final jsonContacts = jsonEncode(attendanceMap['contacts']);
     attendanceMap['contacts'] = jsonContacts;
 
@@ -91,12 +91,10 @@ class DBHelper {
       final contactsJson = map['contacts'] as String;
       final decodedContacts = jsonDecode(contactsJson) as Map<String, dynamic>;
 
-      // The rest of the fields are already basic strings
       return Attendance(
         eventId: map['eventId'] as String,
         eventTitle: map['eventTitle'] as String,
         eventDate: DateTime.parse(map['eventDate'] as String),
-        // Convert 1/0 to bool
         contacts: decodedContacts.map(
               (key, value) => MapEntry(key, value == 1),
         ),
@@ -136,6 +134,8 @@ class DBHelper {
   // CONTACTS METHODS
   // -------------------------------------------------------------
 
+  /// Insert or replace a [Contact] in the database.
+  /// The `history` list is converted to JSON before insertion.
   Future<int> insertContact(Contact contact) async {
     final db = await database;
 
@@ -152,15 +152,13 @@ class DBHelper {
     );
   }
 
+  /// Retrieve all contacts and decode the `history` JSON back into a List of Maps.
   Future<List<Contact>> getContacts() async {
     final db = await database;
     final maps = await db.query('contacts');
 
-    print(maps);
-
     // Each map['history'] is still a JSON string, so decode it
     return maps.map((map) {
-      // Make a copy so we can modify it safely
       final contactMap = Map<String, dynamic>.from(map);
 
       // Decode the JSON string back into a List of Maps
@@ -171,11 +169,12 @@ class DBHelper {
         contactMap['history'] = [];
       }
 
-      // Now build a Contact
+      // Build a Contact using fromMap
       return Contact.fromMap(contactMap);
     }).toList();
   }
 
+  /// Delete a contact by [id].
   Future<int> deleteContact(String id) async {
     final db = await database;
     return db.delete(
@@ -185,6 +184,7 @@ class DBHelper {
     );
   }
 
+  /// Update a [Contact] by [id].
   Future<int> updateContact(Contact contact) async {
     final db = await database;
 

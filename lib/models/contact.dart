@@ -31,6 +31,7 @@ class Contact {
   final String lastName;      // Last name of the contact
   final String? grade;        // Grade, if the contact is a student (optional)
   final String? occupation;   // Occupation, if the contact is working (optional)
+  final String? location;     // Location of the contact (optional)
   final List<HistoryEntry> history; // List of history entries for the contact
 
   Contact({
@@ -40,6 +41,7 @@ class Contact {
     required this.lastName,
     this.grade,
     this.occupation,
+    this.location, // Location field added
     List<HistoryEntry>? history,
   }) : history = history ?? [];
 
@@ -49,6 +51,7 @@ class Contact {
     String? lastName,
     String? grade,
     String? occupation,
+    String? location, // Add location to copyWith
     List<HistoryEntry>? history,
   }) {
     return Contact(
@@ -58,6 +61,7 @@ class Contact {
       lastName: lastName ?? this.lastName,
       grade: grade ?? this.grade,
       occupation: occupation ?? this.occupation,
+      location: location ?? this.location, // Update location
       history: history ?? this.history,
     );
   }
@@ -72,6 +76,7 @@ class Contact {
       'lastName': lastName,
       'grade': grade,
       'occupation': occupation,
+      'location': location, // Add location to toMap
       'history': history.map((entry) => entry.toMap()).toList(),
     };
   }
@@ -85,6 +90,7 @@ class Contact {
       lastName: map['lastName'],
       grade: map['grade'],
       occupation: map['occupation'],
+      location: map['location'], // Retrieve location from map
       history: (map['history'] as List<dynamic>?)
           ?.map((entry) => HistoryEntry.fromMap(entry))
           .toList() ??
