@@ -2,30 +2,33 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart'; // For date formatting
 
 import '../db/db_helper.dart'; // SQLite DBHelper
-import '../models/contact.dart'; // Assuming you have `HistoryEntry` and `Contact` models defined
+import '../models/contact.dart'; // Using the updated Contact model with location
 
 class ContactDetailsPage extends StatefulWidget {
   final Contact contact;
   final VoidCallback onDelete;
 
   const ContactDetailsPage({
-    super.key,
+    Key? key,
     required this.contact,
     required this.onDelete,
-  });
+  }) : super(key: key);
 
   @override
   State<ContactDetailsPage> createState() => _ContactDetailsPageState();
 }
 
 class _ContactDetailsPageState extends State<ContactDetailsPage> {
-  late List<HistoryEntry> history;
+  // Controllers
   final TextEditingController _historyDetailController = TextEditingController();
   final TextEditingController _gradeController = TextEditingController();
   final TextEditingController _occupationController = TextEditingController();
+  final TextEditingController _locationController = TextEditingController();
   final TextEditingController _firstNameController = TextEditingController();
   final TextEditingController _middleNameController = TextEditingController();
   final TextEditingController _lastNameController = TextEditingController();
+
+  late List<HistoryEntry> history;
   DateTime? _selectedDate;
   String? _selectedGrade;
 
@@ -42,14 +45,18 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
   @override
   void initState() {
     super.initState();
-    history = widget.contact.history ?? [];
+
+    history = widget.contact.history;
     _selectedGrade = _allGradeOptions.contains(widget.contact.grade)
         ? widget.contact.grade
         : _allGradeOptions.first; // Default to the first grade option
+
+    // Initialize text field controllers
     _occupationController.text = widget.contact.occupation ?? '';
-    _firstNameController.text = widget.contact.firstName ?? '';
-    _middleNameController.text = widget.contact.middleName ?? '';
-    _lastNameController.text = widget.contact.lastName ?? '';
+    _locationController.text = widget.contact.location ?? '';
+    _firstNameController.text = widget.contact.firstName;
+    _middleNameController.text = widget.contact.middleName;
+    _lastNameController.text = widget.contact.lastName;
   }
 
   @override
@@ -57,6 +64,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
     _historyDetailController.dispose();
     _gradeController.dispose();
     _occupationController.dispose();
+    _locationController.dispose();
     _firstNameController.dispose();
     _middleNameController.dispose();
     _lastNameController.dispose();
@@ -70,6 +78,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
       lastName: _lastNameController.text.trim(),
       grade: _selectedGrade ?? _allGradeOptions.first,
       occupation: _occupationController.text.trim(),
+      location: _locationController.text.trim(),
     );
 
     await DBHelper().updateContact(updatedContact);
@@ -97,8 +106,8 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
               onPressed: () async {
                 await DBHelper().deleteContact(widget.contact.id);
                 widget.onDelete();
-                Navigator.pop(context);
-                Navigator.pop(context);
+                Navigator.pop(context); // Close the dialog
+                Navigator.pop(context); // Pop back to the previous screen
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.red,
@@ -224,7 +233,8 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
                     } else {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
-                            content: Text('Please fill in all fields.')),
+                          content: Text('Please fill in all fields.'),
+                        ),
                       );
                     }
                   },
@@ -240,11 +250,8 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
 
   @override
   Widget build(BuildContext context) {
-    final fullName = [
-      widget.contact.firstName,
-      widget.contact.middleName,
-      widget.contact.lastName,
-    ].where((name) => name.trim().isNotEmpty).join(' ');
+    // Generate a full name for the AppBar title
+    final fullName = widget.contact.fullName;
 
     return Scaffold(
       appBar: AppBar(
@@ -260,12 +267,11 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
           ),
         ],
       ),
-      // Use a Container or directly Padding for consistent Material spacing
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: ListView(
           children: [
-            // Wrap each editable section in a Card for a more Material look
+            // First Name
             Card(
               margin: const EdgeInsets.only(bottom: 16),
               shape: RoundedRectangleBorder(
@@ -273,10 +279,8 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
               ),
               elevation: 2,
               child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  vertical: 12,
-                  horizontal: 16,
-                ),
+                padding:
+                const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
                 child: _buildEditableSection(
                   title: 'First Name',
                   controller: _firstNameController,
@@ -284,6 +288,8 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
                 ),
               ),
             ),
+
+            // Middle Name
             Card(
               margin: const EdgeInsets.only(bottom: 16),
               shape: RoundedRectangleBorder(
@@ -291,10 +297,8 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
               ),
               elevation: 2,
               child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  vertical: 12,
-                  horizontal: 16,
-                ),
+                padding:
+                const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
                 child: _buildEditableSection(
                   title: 'Middle Name',
                   controller: _middleNameController,
@@ -302,6 +306,8 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
                 ),
               ),
             ),
+
+            // Last Name
             Card(
               margin: const EdgeInsets.only(bottom: 16),
               shape: RoundedRectangleBorder(
@@ -309,10 +315,8 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
               ),
               elevation: 2,
               child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  vertical: 12,
-                  horizontal: 16,
-                ),
+                padding:
+                const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
                 child: _buildEditableSection(
                   title: 'Last Name',
                   controller: _lastNameController,
@@ -320,6 +324,8 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
                 ),
               ),
             ),
+
+            // Grade
             Card(
               margin: const EdgeInsets.only(bottom: 16),
               shape: RoundedRectangleBorder(
@@ -327,13 +333,13 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
               ),
               elevation: 2,
               child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  vertical: 12,
-                  horizontal: 16,
-                ),
+                padding:
+                const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
                 child: _buildGradeDropdown(),
               ),
             ),
+
+            // Occupation
             Card(
               margin: const EdgeInsets.only(bottom: 16),
               shape: RoundedRectangleBorder(
@@ -341,10 +347,8 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
               ),
               elevation: 2,
               child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  vertical: 12,
-                  horizontal: 16,
-                ),
+                padding:
+                const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
                 child: _buildEditableSection(
                   title: 'Occupation',
                   controller: _occupationController,
@@ -352,7 +356,26 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
                 ),
               ),
             ),
-            // History section card
+
+            // Location (New Section)
+            Card(
+              margin: const EdgeInsets.only(bottom: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              elevation: 2,
+              child: Padding(
+                padding:
+                const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                child: _buildEditableSection(
+                  title: 'Location',
+                  controller: _locationController,
+                  hintText: 'Enter location',
+                ),
+              ),
+            ),
+
+            // History Section
             Card(
               margin: const EdgeInsets.only(bottom: 80), // Extra space for FAB
               shape: RoundedRectangleBorder(
@@ -360,10 +383,8 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
               ),
               elevation: 2,
               child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  vertical: 12,
-                  horizontal: 16,
-                ),
+                padding:
+                const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
                 child: _buildHistorySection(),
               ),
             ),
@@ -380,9 +401,8 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
 
   /// Displays a list of history items in descending order
   Widget _buildHistorySection() {
-    // Sort the history entries by date in descending order
     final sortedHistory = List<HistoryEntry>.from(history)
-      ..sort((a, b) => b.date.compareTo(a.date)); // Compare dates in descending order
+      ..sort((a, b) => b.date.compareTo(a.date));
 
     return _buildSection(
       title: 'History',
@@ -404,9 +424,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
             ),
             trailing: IconButton(
               icon: const Icon(Icons.delete, color: Colors.red),
-              onPressed: () {
-                _deleteHistoryEntry(index);
-              },
+              onPressed: () => _deleteHistoryEntry(index),
             ),
           );
         }).toList()
@@ -417,6 +435,28 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
           ),
         ],
       ),
+    );
+  }
+
+  /// A reusable method to build a section with a title
+  Widget _buildSection({
+    required String title,
+    required Widget content,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Section Title
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8.0),
+          child: Text(
+            title,
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
+        ),
+        // Actual content
+        content,
+      ],
     );
   }
 
@@ -459,29 +499,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
     );
   }
 
-  /// Reusable section wrapper with title at the top and a divider below
-  Widget _buildSection({
-    required String title,
-    required Widget content,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Section Title
-        Padding(
-          padding: const EdgeInsets.only(bottom: 8.0),
-          child: Text(
-            title,
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-          ),
-        ),
-        // Actual content (history list, etc.)
-        content,
-      ],
-    );
-  }
-
-  /// A dropdown wrapped in a column to edit the "Grade" field
+  /// A dropdown for selecting/editing the "Grade" field
   Widget _buildGradeDropdown() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
