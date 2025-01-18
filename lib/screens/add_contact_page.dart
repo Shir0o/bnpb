@@ -17,6 +17,7 @@ class _AddContactPageState extends State<AddContactPage> {
   final TextEditingController _middleNameController = TextEditingController();
   final TextEditingController _lastNameController = TextEditingController();
   final TextEditingController _occupationController = TextEditingController();
+  final TextEditingController _locationController = TextEditingController();
 
   String? _selectedGrade;
 
@@ -48,7 +49,10 @@ class _AddContactPageState extends State<AddContactPage> {
         occupation: _occupationController.text.trim().isEmpty
             ? null
             : _occupationController.text.trim(),
-        history: [], // History field is empty since functionality is removed
+        location: _locationController.text.trim().isEmpty
+            ? null
+            : _locationController.text.trim(),
+        history: [],
       );
 
       final dbHelper = DBHelper();
@@ -67,6 +71,7 @@ class _AddContactPageState extends State<AddContactPage> {
       _middleNameController.clear();
       _lastNameController.clear();
       _occupationController.clear();
+      _locationController.clear();
       setState(() {
         _selectedGrade = null;
       });
@@ -192,6 +197,23 @@ class _AddContactPageState extends State<AddContactPage> {
                     controller: _occupationController,
                     textCapitalization: TextCapitalization.words,
                     decoration: _buildInputDecoration('Occupation (Optional)'),
+                  ),
+                ),
+              ),
+
+              // Location field (wrapped in a Card)
+              Card(
+                elevation: 2,
+                margin: const EdgeInsets.only(bottom: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                  child: TextFormField(
+                    controller: _locationController,
+                    textCapitalization: TextCapitalization.words,
+                    decoration: _buildInputDecoration('Location (Optional)'), // Updated label
                   ),
                 ),
               ),
