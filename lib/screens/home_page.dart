@@ -47,6 +47,54 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
+  /// Groups the given list of contacts by their location.
+  /// If a contact’s location is empty or null, assign "Unknown" as the location.
+  Map<String, List<Contact>> _groupContactsByLocation(List<Contact> contacts) {
+    final grouped = <String, List<Contact>>{};
+
+    for (var contact in contacts) {
+      final location =
+      (contact.location != null && contact.location!.isNotEmpty)
+          ? contact.location!
+          : 'Unknown';
+      if (!grouped.containsKey(location)) {
+        grouped[location] = [];
+      }
+      grouped[location]!.add(contact);
+    }
+
+    return grouped;
+  }
+
+  Widget _buildGroupedContactsList() {
+    // Group the filtered contacts by location
+    final groupedContacts = _groupContactsByLocation(_filteredContacts);
+
+    // Build an ExpansionTile for each location
+    return ListView(
+      children: groupedContacts.entries.map((entry) {
+        final location = entry.key;
+        final contactsInLocation = entry.value;
+
+        return ExpansionTile(
+          title: Text(location),
+          initiallyExpanded: true,
+          children: contactsInLocation.map((contact) {
+            return ListTile(
+              leading: CircleAvatar(
+                child: Text(contact.fullName.isNotEmpty
+                    ? contact.fullName[0]
+                    : '?'),
+              ),
+              title: Text(contact.fullName),
+              onTap: () => _navigateToContactDetails(contact),
+            );
+          }).toList(),
+        );
+      }).toList(),
+    );
+  }
+
   void _filterContacts() {
     final query = _searchController.text.toLowerCase();
     setState(() {
@@ -233,19 +281,7 @@ class _HomePageState extends State<HomePage> {
           Expanded(
             child: _filteredContacts.isEmpty
                 ? const Center(child: Text('No contacts available.'))
-                : ListView.builder(
-              itemCount: _filteredContacts.length,
-              itemBuilder: (context, index) {
-                final contact = _filteredContacts[index];
-                return ListTile(
-                  leading: CircleAvatar(
-                    child: Text(contact.fullName[0]),
-                  ),
-                  title: Text(contact.fullName),
-                  onTap: () => _navigateToContactDetails(contact),
-                );
-              },
-            ),
+                : _buildGroupedContactsList(),
           ),
         ],
       ),
