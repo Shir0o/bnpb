@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart'; // For date formatting
+import 'dart:io';
+import 'package:path_provider/path_provider.dart';
 
 import '../db/db_helper.dart'; // SQLite DBHelper
 import '../models/contact.dart'; // Using the updated Contact model with location
@@ -30,9 +32,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
   late List<HistoryEntry> history;
   DateTime? _selectedDate;
 
-
   // Grade options
-
 
   @override
   void initState() {
@@ -70,11 +70,43 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
 
     await DBHelper().updateContact(updatedContact);
 
+    // Create a backup
+    await _exportBackup();
+
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Contact updated successfully!')),
     );
 
     Navigator.pop(context);
+  }
+
+  Future<void> _exportBackup() async {
+    final directory = await getApplicationDocumentsDirectory();
+    final backupDir = Directory('${directory.path}/backups');
+
+    if (!backupDir.existsSync()) {
+      backupDir.createSync(recursive: true);
+    }
+
+    final dbFile = File('${directory.path}/contacts.db');
+    if (!dbFile.existsSync()) return;
+
+    final timestamp = DateFormat('yyyy-MM-dd_HH-mm-ss').format(DateTime.now());
+    final backupFile = File('${backupDir.path}/backup_$timestamp.db');
+
+    await dbFile.copy(backupFile.path);
+
+    // Retain only the latest 5 backups
+    final backups = backupDir
+        .listSync()
+        .whereType<File>()
+        .where((file) => file.path.contains('backup_'))
+        .toList()
+      ..sort((a, b) => b.statSync().modified.compareTo(a.statSync().modified));
+
+    while (backups.length > 5) {
+      backups.removeLast().deleteSync();
+    }
   }
 
   void _confirmDelete() {
@@ -312,7 +344,6 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
               ),
             ),
 
-
             // Removed Grade and Occupation sections
 
             // Location (New Section)
@@ -456,6 +487,4 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
       ],
     );
   }
-
-
 }

@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import '../db/db_helper.dart';
 import '../models/contact.dart';
+import 'dart:io';
+import 'package:path_provider/path_provider.dart';
+import 'package:intl/intl.dart';
 
 class AddContactPage extends StatefulWidget {
   const AddContactPage({super.key});
@@ -40,6 +43,9 @@ class _AddContactPageState extends State<AddContactPage> {
 
       final dbHelper = DBHelper();
       await dbHelper.insertContact(newContact);
+
+      // Create a backup
+      await _exportBackup();
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -169,4 +175,33 @@ class _AddContactPageState extends State<AddContactPage> {
       ),
     );
   }
-}
+  }
+
+  Future<void> _exportBackup() async {
+    final directory = await getApplicationDocumentsDirectory();
+    final backupDir = Directory('${directory.path}/backups');
+
+    if (!backupDir.existsSync()) {
+      backupDir.createSync(recursive: true);
+    }
+
+    final dbFile = File('${directory.path}/contacts.db');
+    if (!dbFile.existsSync()) return;
+
+    final timestamp = DateFormat('yyyy-MM-dd_HH-mm-ss').format(DateTime.now());
+    final backupFile = File('${backupDir.path}/backup_$timestamp.db');
+
+    await dbFile.copy(backupFile.path);
+
+    // Retain only the latest 5 backups
+    final backups = backupDir
+        .listSync()
+        .whereType<File>()
+        .where((file) => file.path.contains('backup_'))
+        .toList()
+      ..sort((a, b) => b.statSync().modified.compareTo(a.statSync().modified));
+
+    while (backups.length > 5) {
+      backups.removeLast().deleteSync();
+    }
+  }
