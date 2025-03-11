@@ -78,7 +78,7 @@ class _HomePageState extends State<HomePage> {
 
         return ExpansionTile(
           title: Text(location),
-          initiallyExpanded: true,
+          initiallyExpanded: false,
           children: contactsInLocation.map((contact) {
             return ListTile(
               leading: CircleAvatar(
