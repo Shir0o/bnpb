@@ -9,10 +9,10 @@ class ContactDetailsPage extends StatefulWidget {
   final VoidCallback onDelete;
 
   const ContactDetailsPage({
-    Key? key,
+    super.key,
     required this.contact,
     required this.onDelete,
-  }) : super(key: key);
+  });
 
   @override
   State<ContactDetailsPage> createState() => _ContactDetailsPageState();
@@ -21,8 +21,7 @@ class ContactDetailsPage extends StatefulWidget {
 class _ContactDetailsPageState extends State<ContactDetailsPage> {
   // Controllers
   final TextEditingController _historyDetailController = TextEditingController();
-  final TextEditingController _gradeController = TextEditingController();
-  final TextEditingController _occupationController = TextEditingController();
+
   final TextEditingController _locationController = TextEditingController();
   final TextEditingController _firstNameController = TextEditingController();
   final TextEditingController _middleNameController = TextEditingController();
@@ -30,40 +29,29 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
 
   late List<HistoryEntry> history;
   DateTime? _selectedDate;
-  String? _selectedGrade;
+
 
   // Grade options
-  final List<String> _allGradeOptions = [
-    'None',
-    '1', '2', '3', '4', '5', '6',
-    '7', '8',
-    '9', '10', '11', '12',
-    'Freshman', 'Sophomore', 'Junior', 'Senior',
-    'Graduate School', 'PhD', 'Postdoctoral',
-  ];
+
 
   @override
   void initState() {
     super.initState();
 
     history = widget.contact.history;
-    _selectedGrade = _allGradeOptions.contains(widget.contact.grade)
-        ? widget.contact.grade
-        : _allGradeOptions.first; // Default to the first grade option
 
     // Initialize text field controllers
-    _occupationController.text = widget.contact.occupation ?? '';
+
     _locationController.text = widget.contact.location ?? '';
     _firstNameController.text = widget.contact.firstName;
     _middleNameController.text = widget.contact.middleName;
-    _lastNameController.text = widget.contact.lastName;
+    _lastNameController.text = widget.contact.lastName ?? '';
   }
 
   @override
   void dispose() {
     _historyDetailController.dispose();
-    _gradeController.dispose();
-    _occupationController.dispose();
+
     _locationController.dispose();
     _firstNameController.dispose();
     _middleNameController.dispose();
@@ -72,12 +60,11 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
   }
 
   Future<void> _updateContact() async {
+    final lastNameText = _lastNameController.text.trim();
     final updatedContact = widget.contact.copyWith(
       firstName: _firstNameController.text.trim(),
       middleName: _middleNameController.text.trim(),
-      lastName: _lastNameController.text.trim(),
-      grade: _selectedGrade ?? _allGradeOptions.first,
-      occupation: _occupationController.text.trim(),
+      lastName: lastNameText.isEmpty ? null : lastNameText,
       location: _locationController.text.trim(),
     );
 
@@ -325,37 +312,8 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
               ),
             ),
 
-            // Grade
-            Card(
-              margin: const EdgeInsets.only(bottom: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-              elevation: 2,
-              child: Padding(
-                padding:
-                const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                child: _buildGradeDropdown(),
-              ),
-            ),
 
-            // Occupation
-            Card(
-              margin: const EdgeInsets.only(bottom: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-              elevation: 2,
-              child: Padding(
-                padding:
-                const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                child: _buildEditableSection(
-                  title: 'Occupation',
-                  controller: _occupationController,
-                  hintText: 'Enter occupation',
-                ),
-              ),
-            ),
+            // Removed Grade and Occupation sections
 
             // Location (New Section)
             Card(
@@ -499,42 +457,5 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
     );
   }
 
-  /// A dropdown for selecting/editing the "Grade" field
-  Widget _buildGradeDropdown() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Padding(
-          padding: EdgeInsets.only(bottom: 8.0),
-          child: Text(
-            'Grade',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-          ),
-        ),
-        DropdownButtonFormField<String>(
-          value: _selectedGrade,
-          items: _allGradeOptions
-              .map((grade) => DropdownMenuItem(
-            value: grade,
-            child: Text(grade),
-          ))
-              .toList(),
-          onChanged: (value) {
-            setState(() {
-              _selectedGrade = value;
-            });
-          },
-          decoration: InputDecoration(
-            border: const OutlineInputBorder(),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 12),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide:
-              const BorderSide(color: Colors.blue, width: 2),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
+
 }

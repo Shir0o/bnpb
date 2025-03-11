@@ -8,7 +8,6 @@ import 'package:share_plus/share_plus.dart';
 
 import '../db/db_helper.dart';
 import '../models/contact.dart';
-import 'attendance_page.dart';
 import 'contact_details_page.dart';
 
 class HomePage extends StatefulWidget {
@@ -36,8 +35,9 @@ class _HomePageState extends State<HomePage> {
     setState(() {
       _contacts = contacts
         ..sort((a, b) {
-          final lastNameComparison =
-          a.lastName.toLowerCase().compareTo(b.lastName.toLowerCase());
+          final lastNameA = a.lastName?.toLowerCase() ?? '';
+          final lastNameB = b.lastName?.toLowerCase() ?? '';
+          final lastNameComparison = lastNameA.compareTo(lastNameB);
           if (lastNameComparison != 0) {
             return lastNameComparison;
           }
@@ -100,9 +100,7 @@ class _HomePageState extends State<HomePage> {
     setState(() {
       _filteredContacts = _contacts
           .where((contact) =>
-      contact.fullName.toLowerCase().contains(query) ||
-          (contact.occupation?.toLowerCase() ?? '').contains(query) ||
-          (contact.grade?.toLowerCase() ?? '').contains(query))
+              contact.fullName.toLowerCase().contains(query))
           .toList();
     });
   }
@@ -219,49 +217,6 @@ class _HomePageState extends State<HomePage> {
             onPressed: _restoreContactsFromFile,
           ),
         ],
-      ),
-      drawer: Drawer(
-        child: ListView(
-          padding: EdgeInsets.zero,
-          children: [
-            const DrawerHeader(
-              margin: EdgeInsets.zero,
-              padding: EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Colors.blue, Colors.lightBlueAccent],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-              ),
-              child: Text(
-                'Menu',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 24,
-                ),
-              ),
-            ),
-            ListTile(
-              leading: const Icon(Icons.contacts),
-              title: const Text('Contacts'),
-              onTap: () {
-                Navigator.of(context).pop();
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.event_note),
-              title: const Text('Attendance'),
-              onTap: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (context) => const AttendancePage(),
-                  ),
-                );
-              },
-            ),
-          ],
-        ),
       ),
       body: Column(
         children: [

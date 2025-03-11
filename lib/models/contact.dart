@@ -28,9 +28,7 @@ class Contact {
   final String id;            // Unique identifier for the contact
   final String firstName;     // First name of the contact
   final String middleName;    // Middle name of the contact (optional)
-  final String lastName;      // Last name of the contact
-  final String? grade;        // Grade, if the contact is a student (optional)
-  final String? occupation;   // Occupation, if the contact is working (optional)
+  final String? lastName;     // Last name of the contact (optional)
   final String? location;     // Location of the contact (optional)
   final List<HistoryEntry> history; // List of history entries for the contact
 
@@ -38,9 +36,7 @@ class Contact {
     required this.id,
     required this.firstName,
     this.middleName = '', // Default middle name is empty
-    required this.lastName,
-    this.grade,
-    this.occupation,
+    this.lastName,        // Last name is now optional
     this.location, // Location field added
     List<HistoryEntry>? history,
   }) : history = history ?? [];
@@ -49,8 +45,6 @@ class Contact {
     String? firstName,
     String? middleName,
     String? lastName,
-    String? grade,
-    String? occupation,
     String? location, // Add location to copyWith
     List<HistoryEntry>? history,
   }) {
@@ -58,9 +52,7 @@ class Contact {
       id: id,
       firstName: firstName ?? this.firstName,
       middleName: middleName ?? this.middleName,
-      lastName: lastName ?? this.lastName,
-      grade: grade ?? this.grade,
-      occupation: occupation ?? this.occupation,
+      lastName: lastName ?? this.lastName, // Handle optional lastName
       location: location ?? this.location, // Update location
       history: history ?? this.history,
     );
@@ -73,9 +65,7 @@ class Contact {
       'id': id,
       'firstName': firstName,
       'middleName': middleName,
-      'lastName': lastName,
-      'grade': grade,
-      'occupation': occupation,
+      'lastName': lastName, // Handle optional lastName
       'location': location, // Add location to toMap
       'history': history.map((entry) => entry.toMap()).toList(),
     };
@@ -87,9 +77,7 @@ class Contact {
       id: map['id'],
       firstName: map['firstName'],
       middleName: map['middleName'] ?? '',
-      lastName: map['lastName'],
-      grade: map['grade'],
-      occupation: map['occupation'],
+      lastName: map['lastName'], // Retrieve optional lastName
       location: map['location'], // Retrieve location from map
       history: (map['history'] as List<dynamic>?)
           ?.map((entry) => HistoryEntry.fromMap(entry))
@@ -100,7 +88,7 @@ class Contact {
 
   // Combines first, middle, and last names into a single full name
   String get fullName {
-    return [firstName, middleName, lastName]
+    return [firstName, middleName, if (lastName != null) lastName!]
         .where((name) => name.isNotEmpty)
         .join(' ');
   }

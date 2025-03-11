@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 
-import '../models/attendance.dart';
 import '../models/contact.dart';
 
 class DBHelper {
@@ -31,102 +30,12 @@ class DBHelper {
             id TEXT PRIMARY KEY,
             firstName TEXT,
             middleName TEXT,
-            lastName TEXT,
-            grade TEXT,
-            occupation TEXT,
+            lastName TEXT NULL,  -- Make lastName optional
             location TEXT,
             history TEXT
           )
         ''');
-
-        // Create attendance table
-        await db.execute('''
-          CREATE TABLE attendance (
-            eventId TEXT,
-            eventTitle TEXT,
-            eventDate TEXT,
-            contacts TEXT,
-            PRIMARY KEY (eventId)
-          )
-        ''');
       },
-    );
-  }
-
-  // -------------------------------------------------------------
-  // ATTENDANCE METHODS
-  // -------------------------------------------------------------
-
-  /// Insert or replace an [Attendance] entry in the database.
-  /// The `contacts` map is converted to JSON before insertion.
-  Future<int> insertAttendance(Attendance attendance) async {
-    final db = await database;
-
-    // Convert Attendance to Map
-    final attendanceMap = attendance.toMap();
-
-    // Convert `contacts` from Map<String, int> to JSON
-    final jsonContacts = jsonEncode(attendanceMap['contacts']);
-    attendanceMap['contacts'] = jsonContacts;
-
-    return db.insert(
-      'attendance',
-      attendanceMap,
-      conflictAlgorithm: ConflictAlgorithm.replace,
-    );
-  }
-
-  /// Retrieve a list of [Attendance] objects for a given eventId
-  /// and decode the `contacts` JSON back into a Map<String, bool>.
-  Future<List<Attendance>> getAttendanceByEvent(String eventId) async {
-    final db = await database;
-    final maps = await db.query(
-      'attendance',
-      where: 'eventId = ?',
-      whereArgs: [eventId],
-    );
-
-    return maps.map((map) {
-      // Decode the JSON string back into a Map
-      final contactsJson = map['contacts'] as String;
-      final decodedContacts = jsonDecode(contactsJson) as Map<String, dynamic>;
-
-      return Attendance(
-        eventId: map['eventId'] as String,
-        eventTitle: map['eventTitle'] as String,
-        eventDate: DateTime.parse(map['eventDate'] as String),
-        contacts: decodedContacts.map(
-              (key, value) => MapEntry(key, value == 1),
-        ),
-      );
-    }).toList();
-  }
-
-  Future<List<Attendance>> getAllAttendance() async {
-    final db = await database;
-    final maps = await db.query('attendance');
-
-    return maps.map((map) {
-      final contactsJson = map['contacts'] as String;
-      final decodedContacts = jsonDecode(contactsJson) as Map<String, dynamic>;
-
-      return Attendance(
-        eventId: map['eventId'] as String,
-        eventTitle: map['eventTitle'] as String,
-        eventDate: DateTime.parse(map['eventDate'] as String),
-        contacts: decodedContacts.map(
-              (key, value) => MapEntry(key, value == 1),
-        ),
-      );
-    }).toList();
-  }
-
-  Future<int> deleteAttendance(String eventId) async {
-    final db = await database;
-    return await db.delete(
-      'attendance',
-      where: 'eventId = ?',
-      whereArgs: [eventId],
     );
   }
 

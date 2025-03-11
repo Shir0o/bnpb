@@ -16,19 +16,7 @@ class _AddContactPageState extends State<AddContactPage> {
   final TextEditingController _firstNameController = TextEditingController();
   final TextEditingController _middleNameController = TextEditingController();
   final TextEditingController _lastNameController = TextEditingController();
-  final TextEditingController _occupationController = TextEditingController();
   final TextEditingController _locationController = TextEditingController();
-
-  String? _selectedGrade;
-
-  // Flat list of grades
-  final List<String> _allGradeOptions = [
-    '1', '2', '3', '4', '5', '6',
-    '7', '8',
-    '9', '10', '11', '12',
-    'Freshman', 'Sophomore', 'Junior', 'Senior',
-    'Graduate School', 'PhD', 'Postdoctoral',
-  ];
 
   @override
   void initState() {
@@ -44,14 +32,9 @@ class _AddContactPageState extends State<AddContactPage> {
         id: DateTime.now().toIso8601String(),
         firstName: _firstNameController.text.trim(),
         middleName: _middleNameController.text.trim(),
-        lastName: _lastNameController.text.trim(),
-        grade: _selectedGrade,
-        occupation: _occupationController.text.trim().isEmpty
+        lastName: _lastNameController.text.trim().isEmpty
             ? null
-            : _occupationController.text.trim(),
-        location: _locationController.text.trim().isEmpty
-            ? null
-            : _locationController.text.trim(),
+            : _lastNameController.text.trim(),
         history: [],
       );
 
@@ -70,22 +53,8 @@ class _AddContactPageState extends State<AddContactPage> {
       _firstNameController.clear();
       _middleNameController.clear();
       _lastNameController.clear();
-      _occupationController.clear();
       _locationController.clear();
-      setState(() {
-        _selectedGrade = null;
-      });
     }
-  }
-
-  /// Builds dropdown items with real grade options
-  List<DropdownMenuItem<String>> _buildGradeDropdownItems() {
-    return _allGradeOptions.map((grade) {
-      return DropdownMenuItem<String>(
-        value: grade,
-        child: Text(grade),
-      );
-    }).toList();
   }
 
   @override
@@ -152,51 +121,8 @@ class _AddContactPageState extends State<AddContactPage> {
                   child: TextFormField(
                     controller: _lastNameController,
                     textCapitalization: TextCapitalization.words,
-                    decoration: _buildInputDecoration('Last Name'),
-                    validator: (value) => value == null || value.isEmpty
-                        ? 'Enter last name'
-                        : null,
-                  ),
-                ),
-              ),
-
-              // Grade dropdown (wrapped in a Card)
-              Card(
-                elevation: 2,
-                margin: const EdgeInsets.only(bottom: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Padding(
-                  padding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                  child: DropdownButtonFormField<String>(
-                    value: _selectedGrade,
-                    items: _buildGradeDropdownItems(),
-                    onChanged: (value) {
-                      setState(() {
-                        _selectedGrade = value;
-                      });
-                    },
-                    decoration: _buildInputDecoration('Grade (Optional)'),
-                  ),
-                ),
-              ),
-
-              // Occupation field (wrapped in a Card)
-              Card(
-                elevation: 2,
-                margin: const EdgeInsets.only(bottom: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Padding(
-                  padding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                  child: TextFormField(
-                    controller: _occupationController,
-                    textCapitalization: TextCapitalization.words,
-                    decoration: _buildInputDecoration('Occupation (Optional)'),
+                    decoration: _buildInputDecoration('Last Name (Optional)'),
+                    validator: (value) => null,
                   ),
                 ),
               ),
