@@ -3,11 +3,12 @@ import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 
 import '../models/contact.dart';
+import '../models/interaction.dart';
 import '../models/relationship.dart';
 
 class DBHelper {
   static const _dbName = 'contacts.db';
-  static const _dbVersion = 3;
+  static const _dbVersion = 4;
 
   static final DBHelper _instance = DBHelper._();
   static Database? _database;
@@ -47,8 +48,7 @@ class DBHelper {
         middleName TEXT,
         lastName TEXT NULL,
         nickname TEXT,
-        location TEXT,
-        history TEXT
+        location TEXT
       )
     ''');
 
@@ -79,6 +79,21 @@ class DBHelper {
         firstMeetingNotes TEXT,
         FOREIGN KEY(contactId) REFERENCES contacts(id) ON DELETE CASCADE,
         FOREIGN KEY(metThroughId) REFERENCES contacts(id) ON DELETE SET NULL
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE interactions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        contactId TEXT NOT NULL,
+        occurredAt TEXT NOT NULL,
+        summary TEXT NOT NULL,
+        medium TEXT NOT NULL,
+        location TEXT,
+        attachments TEXT,
+        markForPrayer INTEGER NOT NULL DEFAULT 0,
+        followUpAt TEXT,
+        FOREIGN KEY(contactId) REFERENCES contacts(id) ON DELETE CASCADE
       )
     ''');
 
@@ -144,6 +159,53 @@ class DBHelper {
         )
       ''');
     }
+
+    if (oldVersion < 4) {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS interactions (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          contactId TEXT NOT NULL,
+          occurredAt TEXT NOT NULL,
+          summary TEXT NOT NULL,
+          medium TEXT NOT NULL,
+          location TEXT,
+          attachments TEXT,
+          markForPrayer INTEGER NOT NULL DEFAULT 0,
+          followUpAt TEXT,
+          FOREIGN KEY(contactId) REFERENCES contacts(id) ON DELETE CASCADE
+        )
+      ''');
+
+      final legacyRows = await db.query('contacts', columns: ['id', 'history']);
+      for (final row in legacyRows) {
+        final contactId = row['id'] as String;
+        final historyJson = row['history'] as String?;
+        if (historyJson == null || historyJson.isEmpty) {
+          continue;
+        }
+
+        final decoded = jsonDecode(historyJson) as List<dynamic>;
+        for (final entry in decoded) {
+          final entryMap = Map<String, dynamic>.from(
+            entry as Map<String, dynamic>,
+          );
+          final summary = (entryMap['detail'] ?? '').toString();
+          if (summary.isEmpty) continue;
+          final occurredAt = entryMap['date'] as String? ??
+              DateTime.now().toIso8601String();
+
+          await db.insert('interactions', {
+            'contactId': contactId,
+            'occurredAt': occurredAt,
+            'summary': summary,
+            'medium': 'unspecified',
+            'attachments': jsonEncode([]),
+          });
+        }
+      }
+
+      await db.execute('UPDATE contacts SET history = NULL');
+    }
   }
 
   // -------------------------------------------------------------
@@ -151,7 +213,6 @@ class DBHelper {
   // -------------------------------------------------------------
 
   /// Insert or replace a [Contact] in the database.
-  /// The `history` list is converted to JSON before insertion.
   Future<void> insertContact(Contact contact) async {
     final db = await database;
 
@@ -165,9 +226,6 @@ class DBHelper {
     Contact contact, {
     required bool isUpdate,
   }) async {
-    final contactMap = contact.toMap();
-    final historyJson = jsonEncode(contactMap['history']);
-
     final baseMap = <String, dynamic>{
       'id': contact.id,
       'firstName': contact.firstName,
@@ -175,7 +233,6 @@ class DBHelper {
       'lastName': contact.lastName,
       'nickname': contact.nickname,
       'location': contact.location,
-      'history': historyJson,
     };
 
     if (isUpdate) {
@@ -267,7 +324,7 @@ class DBHelper {
     }
   }
 
-  /// Retrieve all contacts and decode the `history` JSON back into a List of Maps.
+  /// Retrieve all contacts alongside their related metadata from companion tables.
   Future<List<Contact>> getContacts() async {
     final db = await database;
     final maps = await db.query('contacts');
@@ -302,14 +359,27 @@ class DBHelper {
       contextsByContact[contactId] = Map<String, dynamic>.from(row);
     }
 
+    final interactionRows = await db.query(
+      'interactions',
+      orderBy: 'occurredAt DESC',
+    );
+
+    final interactionsByContact = <String, List<Interaction>>{};
+    for (final row in interactionRows) {
+      final contactId = row['contactId'] as String;
+      interactionsByContact.putIfAbsent(contactId, () => []);
+      interactionsByContact[contactId]!.add(
+        Interaction.fromMap(Map<String, dynamic>.from(row)),
+      );
+    }
+
     return maps.map((map) {
       final contactMap = Map<String, dynamic>.from(map);
-      final historyJson = contactMap['history'] as String?;
-      if (historyJson != null && historyJson.isNotEmpty) {
-        contactMap['history'] = jsonDecode(historyJson);
-      } else {
-        contactMap['history'] = [];
-      }
+
+      contactMap['interactions'] = interactionsByContact[contactMap['id']]?.map(
+                (interaction) => interaction.toMap(),
+              ).toList() ??
+          [];
 
       contactMap['contactMethods'] = methodsByContact[contactMap['id']]?.map(
                 (method) => method.toMap(),
@@ -322,6 +392,48 @@ class DBHelper {
 
       return Contact.fromMap(contactMap);
     }).toList();
+  }
+
+  Future<Interaction> insertInteraction(Interaction interaction) async {
+    final db = await database;
+    final id = await db.insert(
+      'interactions',
+      interaction.toMap(includeId: false),
+    );
+    return interaction.copyWith(id: id);
+  }
+
+  Future<void> updateInteraction(Interaction interaction) async {
+    final db = await database;
+    await db.update(
+      'interactions',
+      interaction.toMap(includeId: false),
+      where: 'id = ?',
+      whereArgs: [interaction.id],
+    );
+  }
+
+  Future<void> deleteInteraction(int id) async {
+    final db = await database;
+    await db.delete(
+      'interactions',
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
+  Future<List<Interaction>> getInteractionsForContact(String contactId) async {
+    final db = await database;
+    final rows = await db.query(
+      'interactions',
+      where: 'contactId = ?',
+      whereArgs: [contactId],
+      orderBy: 'occurredAt DESC',
+    );
+
+    return rows
+        .map((row) => Interaction.fromMap(Map<String, dynamic>.from(row)))
+        .toList();
   }
 
   /// Delete a contact by [id].
