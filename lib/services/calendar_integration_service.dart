@@ -3,6 +3,7 @@ import 'package:googleapis/calendar/v3.dart' as gcal;
 import '../db/db_helper.dart';
 import '../models/contact.dart';
 import '../models/interaction.dart';
+import 'reminder_coordinator.dart';
 
 /// Service that imports interactions from external calendar providers.
 class CalendarIntegrationService {
@@ -90,6 +91,7 @@ class CalendarIntegrationService {
       );
 
       final saved = await _dbHelper.insertInteraction(interaction);
+      await ReminderCoordinator().syncInteractionReminder(contact, saved);
       imported.add(saved);
     }
 

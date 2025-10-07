@@ -11,6 +11,7 @@ import '../db/db_helper.dart';
 import '../models/contact.dart';
 import '../models/prayer_request.dart';
 import '../services/contact_search_service.dart';
+import '../services/reminder_coordinator.dart';
 import '../widgets/people_card.dart';
 import 'contact_details_page.dart';
 import 'met_at_lookup_page.dart';
@@ -452,6 +453,7 @@ class _HomePageState extends State<HomePage> {
 
       for (final contact in restoredContacts) {
         await _dbHelper.insertContact(contact);
+        await ReminderCoordinator().syncSignificantDates(contact);
       }
 
       await _fetchContacts();
@@ -468,11 +470,13 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _deleteContact(String id) async {
     await _dbHelper.deleteContact(id);
+    await ReminderCoordinator().cancelAllForContact(id);
     _fetchContacts();
   }
 
   Future<void> _updateContact(Contact contact) async {
     await _dbHelper.updateContact(contact);
+    await ReminderCoordinator().refreshContact(contact.id);
     _fetchContacts();
   }
 
