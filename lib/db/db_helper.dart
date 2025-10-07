@@ -4,12 +4,13 @@ import 'package:sqflite/sqflite.dart';
 
 import '../models/contact.dart';
 import '../models/interaction.dart';
+import '../models/notification_preference.dart';
 import '../models/prayer_request.dart';
 import '../models/relationship.dart';
 
 class DBHelper {
   static const _dbName = 'contacts.db';
-  static const _dbVersion = 7;
+  static const _dbVersion = 8;
 
   static final DBHelper _instance = DBHelper._();
   static Database? _database;
@@ -129,6 +130,22 @@ class DBHelper {
         FOREIGN KEY(contactId) REFERENCES contacts(id) ON DELETE CASCADE,
         FOREIGN KEY(interactionId) REFERENCES interactions(id) ON DELETE SET NULL
       )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE notification_preferences (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        scopeType TEXT NOT NULL,
+        scopeId TEXT NOT NULL,
+        channel TEXT NOT NULL,
+        enabled INTEGER NOT NULL,
+        leadTimeMinutes INTEGER NOT NULL DEFAULT 0
+      )
+    ''');
+
+    await db.execute('''
+      CREATE UNIQUE INDEX idx_notification_preferences_scope
+      ON notification_preferences(scopeType, scopeId, channel)
     ''');
   }
 
@@ -266,6 +283,23 @@ class DBHelper {
       await db.execute(
         "ALTER TABLE contacts ADD COLUMN reminderCues TEXT DEFAULT '[]'",
       );
+    }
+
+    if (oldVersion < 8) {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS notification_preferences (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          scopeType TEXT NOT NULL,
+          scopeId TEXT NOT NULL,
+          channel TEXT NOT NULL,
+          enabled INTEGER NOT NULL,
+          leadTimeMinutes INTEGER NOT NULL DEFAULT 0
+        )
+      ''');
+      await db.execute('''
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_notification_preferences_scope
+        ON notification_preferences(scopeType, scopeId, channel)
+      ''');
     }
   }
 
@@ -413,13 +447,29 @@ class DBHelper {
   }
 
   /// Retrieve all contacts alongside their related metadata from companion tables.
-  Future<List<Contact>> getContacts() async {
+  Future<List<Contact>> getContacts({String? contactId}) async {
     final db = await database;
-    final maps = await db.query('contacts');
+    final maps = await db.query(
+      'contacts',
+      where: contactId != null ? 'id = ?' : null,
+      whereArgs: contactId != null ? [contactId] : null,
+    );
 
-    final methodRows = await db.query('contact_methods');
-    final tagRows = await db.query('contact_tags');
-    final contextRows = await db.query('meet_contexts');
+    final methodRows = await db.query(
+      'contact_methods',
+      where: contactId != null ? 'contactId = ?' : null,
+      whereArgs: contactId != null ? [contactId] : null,
+    );
+    final tagRows = await db.query(
+      'contact_tags',
+      where: contactId != null ? 'contactId = ?' : null,
+      whereArgs: contactId != null ? [contactId] : null,
+    );
+    final contextRows = await db.query(
+      'meet_contexts',
+      where: contactId != null ? 'contactId = ?' : null,
+      whereArgs: contactId != null ? [contactId] : null,
+    );
 
     final methodsByContact = <String, List<ContactMethod>>{};
     for (final row in methodRows) {
@@ -450,6 +500,8 @@ class DBHelper {
     final interactionRows = await db.query(
       'interactions',
       orderBy: 'occurredAt DESC',
+      where: contactId != null ? 'contactId = ?' : null,
+      whereArgs: contactId != null ? [contactId] : null,
     );
 
     final interactionsByContact = <String, List<Interaction>>{};
@@ -464,6 +516,8 @@ class DBHelper {
     final prayerRows = await db.query(
       'prayer_requests',
       orderBy: 'requestedAt DESC',
+      where: contactId != null ? 'contactId = ?' : null,
+      whereArgs: contactId != null ? [contactId] : null,
     );
 
     final prayersByContact = <String, List<PrayerRequest>>{};
@@ -508,6 +562,15 @@ class DBHelper {
 
       return Contact.fromMap(contactMap);
     }).toList();
+  }
+
+  /// Fetches a single contact with all associated metadata.
+  Future<Contact?> getContactById(String id) async {
+    final contacts = await getContacts(contactId: id);
+    if (contacts.isEmpty) {
+      return null;
+    }
+    return contacts.first;
   }
 
   List<String> _decodeStringList(dynamic value) {
@@ -806,5 +869,94 @@ class DBHelper {
     }
 
     return counts;
+  }
+
+  Future<List<String>> getInteractionCategories() async {
+    final db = await database;
+    final rows = await db.rawQuery('''
+      SELECT DISTINCT TRIM(category) as category
+      FROM interactions
+      WHERE category IS NOT NULL AND TRIM(category) != ''
+      ORDER BY LOWER(category)
+    ''');
+    return rows
+        .map((row) => row['category'] as String)
+        .where((category) => category.trim().isNotEmpty)
+        .toList();
+  }
+
+  Future<List<String>> getPrayerCategories() async {
+    final db = await database;
+    final rows = await db.rawQuery('''
+      SELECT DISTINCT TRIM(category) as category
+      FROM prayer_requests
+      WHERE category IS NOT NULL AND TRIM(category) != ''
+      ORDER BY LOWER(category)
+    ''');
+    return rows
+        .map((row) => row['category'] as String)
+        .where((category) => category.trim().isNotEmpty)
+        .toList();
+  }
+
+  Future<NotificationPreference?> getNotificationPreference({
+    required NotificationScopeType scopeType,
+    required String scopeId,
+    required ReminderChannel channel,
+  }) async {
+    final db = await database;
+    final rows = await db.query(
+      'notification_preferences',
+      where: 'scopeType = ? AND scopeId = ? AND channel = ?',
+      whereArgs: [scopeType.name, scopeId, channel.name],
+      limit: 1,
+    );
+    if (rows.isEmpty) {
+      return null;
+    }
+    return NotificationPreference.fromMap(
+      Map<String, dynamic>.from(rows.first),
+    );
+  }
+
+  Future<List<NotificationPreference>> getNotificationPreferences({
+    NotificationScopeType? scopeType,
+  }) async {
+    final db = await database;
+    final rows = await db.query(
+      'notification_preferences',
+      where: scopeType != null ? 'scopeType = ?' : null,
+      whereArgs: scopeType != null ? [scopeType.name] : null,
+    );
+    return rows
+        .map((row) => NotificationPreference.fromMap(
+              Map<String, dynamic>.from(row),
+            ))
+        .toList();
+  }
+
+  Future<NotificationPreference> upsertNotificationPreference(
+    NotificationPreference preference,
+  ) async {
+    final db = await database;
+    final id = await db.insert(
+      'notification_preferences',
+      preference.toMap(includeId: false),
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+    return preference.copyWith(id: id);
+  }
+
+  Future<void> deleteNotificationPreference({
+    required NotificationScopeType scopeType,
+    required String scopeId,
+    required ReminderChannel channel,
+  }) async {
+    final db = await database;
+    await db.delete(
+      'notification_preferences',
+      where: 'scopeType = ? AND scopeId = ? AND channel = ?',
+      whereArgs: [scopeType.name, scopeId, channel.name],
+    );
   }
 }
