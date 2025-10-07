@@ -6,6 +6,7 @@ import 'package:path_provider/path_provider.dart';
 
 import '../db/db_helper.dart';
 import '../models/contact.dart';
+import '../models/relationship.dart';
 
 class ContactDetailsPage extends StatefulWidget {
   final Contact contact;
@@ -42,6 +43,8 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
   List<String> _availableTags = [];
   String? _selectedMetThroughId;
   bool _isLoadingReferenceData = false;
+  List<Relationship> _relationships = [];
+  bool _isLoadingRelationships = false;
 
   @override
   void initState() {
@@ -93,11 +96,14 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
   Future<void> _loadReferenceData() async {
     setState(() {
       _isLoadingReferenceData = true;
+      _isLoadingRelationships = true;
     });
 
     final dbHelper = DBHelper();
     final contacts = await dbHelper.getContacts();
     final tags = await dbHelper.getAllTags();
+    final relationships =
+        await dbHelper.getRelationshipsForContact(widget.contact.id);
 
     setState(() {
       _contactLookup = {for (final contact in contacts) contact.id: contact};
@@ -113,6 +119,8 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
       _availableTags = mergedTags.toList()
         ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
       _isLoadingReferenceData = false;
+      _relationships = relationships;
+      _isLoadingRelationships = false;
     });
   }
 
@@ -394,6 +402,320 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
     );
   }
 
+  Future<void> _refreshRelationships() async {
+    setState(() {
+      _isLoadingRelationships = true;
+    });
+    final relationships =
+        await DBHelper().getRelationshipsForContact(widget.contact.id);
+    setState(() {
+      _relationships = relationships;
+      _isLoadingRelationships = false;
+    });
+  }
+
+  void _showRelationshipDialog({Relationship? relationship}) {
+    final isEditing = relationship != null;
+    if (isEditing && relationship!.sourceContactId != widget.contact.id) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Edit this connection from the contact who created it.',
+          ),
+        ),
+      );
+      return;
+    }
+
+    if (_availableContacts.isEmpty && !isEditing) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Add another contact first to create a relationship.'),
+        ),
+      );
+      return;
+    }
+
+    String? selectedContactId;
+    final dropdownContacts = List<Contact>.from(_availableContacts);
+    if (isEditing) {
+      selectedContactId = relationship!.targetContactId;
+      final fallback = _contactLookup[selectedContactId];
+      if (fallback != null &&
+          dropdownContacts.every((contact) => contact.id != fallback.id)) {
+        dropdownContacts.add(fallback);
+      }
+    } else {
+      selectedContactId =
+          dropdownContacts.isNotEmpty ? dropdownContacts.first.id : null;
+    }
+
+    final typeController =
+        TextEditingController(text: relationship?.type ?? '');
+    final notesController =
+        TextEditingController(text: relationship?.notes ?? '');
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text(isEditing ? 'Edit Relationship' : 'Add Relationship'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              DropdownButtonFormField<String>(
+                value: selectedContactId,
+                decoration: const InputDecoration(
+                  labelText: 'Connected contact',
+                  border: OutlineInputBorder(),
+                ),
+                items: dropdownContacts
+                    .map(
+                      (contact) => DropdownMenuItem<String>(
+                        value: contact.id,
+                        child: Text(
+                          contact.fullName.isNotEmpty
+                              ? contact.fullName
+                              : (contact.nickname ?? 'Unnamed Contact'),
+                        ),
+                      ),
+                    )
+                    .toList(),
+                onChanged: (value) {
+                  selectedContactId = value;
+                },
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: typeController,
+                decoration: const InputDecoration(
+                  labelText: 'Relationship type',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: notesController,
+                maxLines: 3,
+                decoration: const InputDecoration(
+                  labelText: 'Notes (optional)',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+              },
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                final typeText = typeController.text.trim();
+                final targetId = selectedContactId;
+
+                if (typeText.isEmpty || targetId == null) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Please select a contact and type.'),
+                    ),
+                  );
+                  return;
+                }
+
+                final relationshipToSave = Relationship(
+                  id: relationship?.id,
+                  sourceContactId: widget.contact.id,
+                  targetContactId: targetId,
+                  type: typeText,
+                  notes: notesController.text.trim().isEmpty
+                      ? null
+                      : notesController.text.trim(),
+                );
+
+                await DBHelper().upsertRelationship(relationshipToSave);
+                await _refreshRelationships();
+
+                if (!mounted) return;
+                Navigator.pop(context);
+              },
+              child: Text(isEditing ? 'Save' : 'Add'),
+            ),
+          ],
+        );
+      },
+    ).whenComplete(() {
+      typeController.dispose();
+      notesController.dispose();
+    });
+  }
+
+  void _confirmDeleteRelationship(Relationship relationship) {
+    if (relationship.id == null) {
+      return;
+    }
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Remove Relationship'),
+          content: Text(
+            'Remove the "${relationship.type}" connection with ${_displayNameForContactId(relationship.targetContactId)}?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                await DBHelper().deleteRelationship(relationship.id!);
+                await _refreshRelationships();
+                if (!mounted) return;
+                Navigator.pop(context);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+              ),
+              child: const Text('Delete'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  String _displayNameForContactId(String contactId) {
+    final contact = _contactLookup[contactId];
+    if (contact == null) {
+      return 'Unknown contact';
+    }
+    final fullName = contact.fullName;
+    if (fullName.isNotEmpty) {
+      return fullName;
+    }
+    final nickname = contact.nickname ?? '';
+    return nickname.isNotEmpty ? nickname : 'Unknown contact';
+  }
+
+  Widget _buildRelationshipCard() {
+    final outgoing = _relationships
+        .where((relationship) =>
+            relationship.sourceContactId == widget.contact.id)
+        .toList();
+    final incoming = _relationships
+        .where((relationship) =>
+            relationship.targetContactId == widget.contact.id)
+        .toList();
+
+    return _buildCard(
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Relationships',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            TextButton.icon(
+              onPressed: _showRelationshipDialog,
+              icon: const Icon(Icons.add),
+              label: const Text('Add'),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        if (_isLoadingRelationships)
+          const Center(child: CircularProgressIndicator())
+        else if (outgoing.isEmpty && incoming.isEmpty)
+          const Text('No relationships recorded yet.')
+        else ...[
+          if (outgoing.isNotEmpty) ...[
+            Text(
+              'Connections from this contact',
+              style: Theme.of(context).textTheme.labelLarge,
+            ),
+            const SizedBox(height: 8),
+            ...outgoing.map((relationship) =>
+                _buildRelationshipTile(relationship, isOutgoing: true)),
+          ],
+          if (incoming.isNotEmpty) ...[
+            if (outgoing.isNotEmpty) const Divider(height: 24),
+            Text(
+              'Connections to this contact',
+              style: Theme.of(context).textTheme.labelLarge,
+            ),
+            const SizedBox(height: 8),
+            ...incoming.map((relationship) =>
+                _buildRelationshipTile(relationship, isOutgoing: false)),
+          ],
+        ],
+      ],
+    );
+  }
+
+  Widget _buildRelationshipTile(Relationship relationship,
+      {required bool isOutgoing}) {
+    final otherContactId = isOutgoing
+        ? relationship.targetContactId
+        : relationship.sourceContactId;
+    final otherName = _displayNameForContactId(otherContactId);
+    final notes = relationship.notes;
+    final subtitleChildren = <Widget>[
+      Text('Type: ${relationship.type}'),
+      if (notes != null && notes.isNotEmpty)
+        Padding(
+          padding: const EdgeInsets.only(top: 4),
+          child: Text(notes),
+        ),
+      if (!isOutgoing)
+        Padding(
+          padding: const EdgeInsets.only(top: 4),
+          child: Text(
+            'Managed from $otherName',
+            style: const TextStyle(fontStyle: FontStyle.italic),
+          ),
+        ),
+    ];
+
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      leading: CircleAvatar(
+        child: Text(
+          otherName.isNotEmpty ? otherName[0].toUpperCase() : '?',
+        ),
+      ),
+      title: Text(otherName),
+      subtitle: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: subtitleChildren,
+      ),
+      trailing: isOutgoing
+          ? Wrap(
+              spacing: 4,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.edit_outlined),
+                  tooltip: 'Edit relationship',
+                  onPressed: () =>
+                      _showRelationshipDialog(relationship: relationship),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.delete_outline),
+                  tooltip: 'Remove relationship',
+                  onPressed: () =>
+                      _confirmDeleteRelationship(relationship),
+                ),
+              ],
+            )
+          : null,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final displayName = _buildContactFromState().fullName;
@@ -578,6 +900,8 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
                   ),
               ],
             ),
+            const SizedBox(height: 16),
+            _buildRelationshipCard(),
             const SizedBox(height: 16),
             _buildCard(
               children: [
