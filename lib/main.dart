@@ -5,7 +5,7 @@ import 'screens/add_contact_page.dart';
 import 'screens/analytics_page.dart';
 import 'screens/home_page.dart';
 import 'screens/notification_settings_page.dart';
-import 'services/notification_preferences_repository.dart';
+import 'repositories/notification_preferences_repository.dart';
 import 'services/onboarding_service.dart';
 import 'services/reminder_coordinator.dart';
 import 'services/reminder_service.dart';

@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../db/db_helper.dart';
 import '../models/contact.dart';
 import '../models/notification_preference.dart';
-import '../services/notification_preferences_repository.dart';
+import '../repositories/notification_preferences_repository.dart';
 import '../services/reminder_coordinator.dart';
 import '../services/reminder_service.dart';
 import '../services/security_service.dart';

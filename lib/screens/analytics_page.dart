@@ -4,7 +4,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
-import '../services/analytics_repository.dart';
+import '../repositories/analytics_repository.dart';
 
 /// Predefined ranges supported by the analytics dashboard.
 enum AnalyticsRange { last30Days, last90Days, last365Days, allTime }
