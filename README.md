@@ -1,20 +1,33 @@
-# bnpb
+# BNPB
 
-A new Flutter project.
+BNPB is a personal relationship manager built with Flutter. It keeps contact
+context, reminders, prayer requests, and interaction history completely offline
+while offering analytics and export tooling.
 
-## Getting Started
+## Security & privacy
 
-This project is a starting point for a Flutter application.
-
-A few resources to get you started if this is your first Flutter project:
-
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+- Contact data is stored in an encrypted SQLCipher database. The encryption key
+  is generated on-device and saved via the platform key store.
+- Optional passcode and biometric gating prevents casual access to the app. The
+  lock screen appears on launch whenever a passcode is configured.
+- CSV, PDF, and encrypted archive exports allow selective field inclusion. AES
+  encrypted archives require a user-supplied passphrase.
+- A “Securely purge all data” action overwrites and deletes the encrypted
+  database, clears backups, removes credentials, and cancels notifications.
+- See the [Privacy Policy & Personal Usage Guidelines](docs/privacy_policy.md)
+  for a detailed breakdown of how the app handles sensitive information.
 
 ## Documentation
 
+- [Privacy Policy & Personal Usage Guidelines](docs/privacy_policy.md)
 - [Optional facial recognition pipeline research](docs/facial_recognition_pipeline.md)
+
+## Development
+
+Run the usual Flutter commands during development:
+
+```bash
+flutter pub get
+flutter analyze
+flutter test
+```

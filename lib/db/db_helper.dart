@@ -1,15 +1,16 @@
 import 'dart:convert';
 import 'package:path/path.dart';
-import 'package:sqflite/sqflite.dart';
+import 'package:sqflite_sqlcipher/sqflite.dart';
 
 import '../models/contact.dart';
 import '../models/interaction.dart';
 import '../models/notification_preference.dart';
 import '../models/prayer_request.dart';
 import '../models/relationship.dart';
+import '../services/security_service.dart';
+import '../constants/storage.dart';
 
 class DBHelper {
-  static const _dbName = 'contacts.db';
   static const _dbVersion = 8;
 
   static final DBHelper _instance = DBHelper._();
@@ -27,9 +28,11 @@ class DBHelper {
 
   Future<Database> _initDatabase() async {
     final dbPath = await getDatabasesPath();
+    final encryptionKey = await SecurityService().obtainDatabaseKey();
     return openDatabase(
-      join(dbPath, _dbName),
+      join(dbPath, StorageConstants.databaseFileName),
       version: _dbVersion,
+      password: encryptionKey,
       onConfigure: (db) async {
         await db.execute('PRAGMA foreign_keys = ON');
       },
