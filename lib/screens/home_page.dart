@@ -10,7 +10,10 @@ import 'package:share_plus/share_plus.dart';
 import '../db/db_helper.dart';
 import '../models/contact.dart';
 import '../models/prayer_request.dart';
+import '../services/contact_search_service.dart';
+import '../widgets/people_card.dart';
 import 'contact_details_page.dart';
+import 'met_at_lookup_page.dart';
 import 'relationship_explorer_page.dart';
 
 class HomePage extends StatefulWidget {
@@ -26,6 +29,7 @@ class _HomePageState extends State<HomePage> {
   List<Contact> _filteredContacts = [];
   final TextEditingController _searchController = TextEditingController();
   final Map<String, Contact> _contactLookup = {};
+  final ContactSearchService _searchService = ContactSearchService();
   List<String> _availableTags = [];
   List<String> _availableMetThroughIds = [];
   String? _selectedTagFilter;
@@ -38,6 +42,7 @@ class _HomePageState extends State<HomePage> {
   List<PrayerRequest> _recentAnsweredPrayers = [];
   PrayerRequestStatus? _selectedPrayerStatusFilter;
   bool _isLoadingPrayerInsights = false;
+  Map<String, ContactMatch> _activeMatches = {};
 
   static const String _noIntroducerFilter = '__no_introducer__';
 
@@ -102,6 +107,7 @@ class _HomePageState extends State<HomePage> {
       _availableTags = tags;
       _availableMetThroughIds = metThroughIds;
       _hasUnintroducedContacts = hasUnintroduced;
+      _searchService.index(sortedContacts);
       _filteredContacts = _applyFilters(sortedContacts);
     });
 
@@ -137,16 +143,23 @@ class _HomePageState extends State<HomePage> {
   }
 
   List<Contact> _applyFilters(List<Contact> source) {
-    final query = _searchController.text.toLowerCase();
+    final query = _searchController.text.trim();
 
-    return source.where((contact) {
-      final matchesQuery = query.isEmpty ||
-          contact.fullName.toLowerCase().contains(query) ||
-          (contact.nickname?.toLowerCase().contains(query) ?? false) ||
-          contact.tags.any((tag) => tag.toLowerCase().contains(query));
+    List<Contact> baseList;
+    if (query.isEmpty) {
+      _activeMatches = {};
+      baseList = source;
+    } else {
+      final matches = _searchService.search(query);
+      _activeMatches = {
+        for (final match in matches) match.contact.id: match,
+      };
+      baseList = matches.map((match) => match.contact).toList();
+    }
 
-      final matchesTag =
-          _selectedTagFilter == null || contact.tags.contains(_selectedTagFilter);
+    return baseList.where((contact) {
+      final matchesTag = _selectedTagFilter == null ||
+          contact.tags.contains(_selectedTagFilter);
 
       final matchesMetThrough = () {
         if (_selectedMetThroughFilterId == null) {
@@ -166,10 +179,7 @@ class _HomePageState extends State<HomePage> {
             .any((request) => request.status == _selectedPrayerStatusFilter);
       }();
 
-      return matchesQuery &&
-          matchesTag &&
-          matchesMetThrough &&
-          matchesPrayerStatus;
+      return matchesTag && matchesMetThrough && matchesPrayerStatus;
     }).toList();
   }
 
@@ -363,78 +373,32 @@ class _HomePageState extends State<HomePage> {
     final groupedContacts = _groupContactsByLocation(_filteredContacts);
 
     return ListView(
+      padding: const EdgeInsets.only(bottom: 24),
       children: groupedContacts.entries.map((entry) {
         final location = entry.key;
         final contactsInLocation = entry.value;
 
-        return ExpansionTile(
-          title: Text(location),
-          children: contactsInLocation.map((contact) {
-            final displayName = contact.fullName.isNotEmpty
-                ? contact.fullName
-                : (contact.nickname ?? 'Unnamed Contact');
-            final subtitle = _buildContactSubtitle(contact);
-
-            return ListTile(
-              leading: CircleAvatar(
-                child: Text(
-                  displayName.isNotEmpty
-                      ? displayName[0].toUpperCase()
-                      : '?',
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: ExpansionTile(
+            title: Text(location),
+            childrenPadding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            children: contactsInLocation.map((contact) {
+              final match = _activeMatches[contact.id];
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: PeopleCard(
+                  contact: contact,
+                  onTap: () => _navigateToContactDetails(contact),
+                  highlightLabel: match?.matchDescription,
+                  highlightText: match?.snippet,
                 ),
-              ),
-              title: Text(displayName),
-              subtitle: subtitle,
-              onTap: () => _navigateToContactDetails(contact),
-            );
-          }).toList(),
+              );
+            }).toList(),
+          ),
         );
       }).toList(),
-    );
-  }
-
-  Widget? _buildContactSubtitle(Contact contact) {
-    final subtitleWidgets = <Widget>[];
-
-    if ((contact.nickname ?? '').isNotEmpty &&
-        contact.fullName.toLowerCase() != contact.nickname!.toLowerCase()) {
-      subtitleWidgets.add(Text('Nickname: ${contact.nickname}'));
-    }
-
-    final metThroughName = contact.metThroughId != null
-        ? _displayNameForContactId(_contactLookup, contact.metThroughId!)
-        : null;
-    if (metThroughName != null && metThroughName.isNotEmpty) {
-      subtitleWidgets.add(Text('Met through: $metThroughName'));
-    }
-
-    if (contact.tags.isNotEmpty) {
-      subtitleWidgets.add(
-        Wrap(
-          spacing: 6,
-          runSpacing: 6,
-          children: contact.tags
-              .map((tag) => Chip(
-                    label: Text(tag),
-                    visualDensity: VisualDensity.compact,
-                  ))
-              .toList(),
-        ),
-      );
-    }
-
-    if (subtitleWidgets.isEmpty) {
-      return null;
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: subtitleWidgets
-          .map((widget) => Padding(
-                padding: const EdgeInsets.only(top: 4.0),
-                child: widget,
-              ))
-          .toList(),
     );
   }
 
@@ -541,6 +505,25 @@ class _HomePageState extends State<HomePage> {
       appBar: AppBar(
         title: const Text('Contacts'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.travel_explore_outlined),
+            tooltip: 'Reverse lookup (met at...)',
+            onPressed: () {
+              Navigator.of(context)
+                  .push(
+                MaterialPageRoute(
+                  builder: (context) => MetAtLookupPage(
+                    contacts: _contacts,
+                  ),
+                ),
+              )
+                  .then((result) {
+                if (result is Contact) {
+                  _navigateToContactDetails(result);
+                }
+              });
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.account_tree_outlined),
             tooltip: 'Relationship explorer',

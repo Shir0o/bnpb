@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
@@ -26,9 +27,15 @@ class _AddContactPageState extends State<AddContactPage> {
   final TextEditingController _firstMeetingNotesController =
       TextEditingController();
   final TextEditingController _tagController = TextEditingController();
+  final TextEditingController _keywordController = TextEditingController();
+  final TextEditingController _reminderController = TextEditingController();
+  final TextEditingController _photoCueController = TextEditingController();
 
   final List<_MethodFormEntry> _methodEntries = [];
   final List<String> _selectedTags = [];
+  final List<String> _keywords = [];
+  final List<String> _reminderCues = [];
+  final List<String> _photoCues = [];
 
   List<Contact> _availableContacts = [];
   List<String> _availableTags = [];
@@ -51,6 +58,9 @@ class _AddContactPageState extends State<AddContactPage> {
     _locationController.dispose();
     _firstMeetingNotesController.dispose();
     _tagController.dispose();
+    _keywordController.dispose();
+    _reminderController.dispose();
+    _photoCueController.dispose();
     for (final entry in _methodEntries) {
       entry.dispose();
     }
@@ -99,6 +109,16 @@ class _AddContactPageState extends State<AddContactPage> {
 
     FocusScope.of(context).unfocus();
 
+    if (_keywordController.text.trim().isNotEmpty) {
+      _addKeyword();
+    }
+    if (_reminderController.text.trim().isNotEmpty) {
+      _addReminder();
+    }
+    if (_photoCueController.text.trim().isNotEmpty) {
+      _addPhotoCueFromInput();
+    }
+
     final methods = _methodEntries
         .map(
           (entry) => ContactMethod(
@@ -131,7 +151,9 @@ class _AddContactPageState extends State<AddContactPage> {
           : _firstMeetingNotesController.text.trim(),
       contactMethods: methods,
       tags: List<String>.from(_selectedTags),
-      history: const [],
+      recognitionKeywords: List<String>.from(_keywords),
+      recognitionPhotoUris: List<String>.from(_photoCues),
+      recognitionReminders: List<String>.from(_reminderCues),
     );
 
     final dbHelper = DBHelper();
@@ -159,8 +181,14 @@ class _AddContactPageState extends State<AddContactPage> {
     _locationController.clear();
     _firstMeetingNotesController.clear();
     _tagController.clear();
+    _keywordController.clear();
+    _reminderController.clear();
+    _photoCueController.clear();
     _selectedMetThroughId = null;
     _selectedTags.clear();
+    _keywords.clear();
+    _reminderCues.clear();
+    _photoCues.clear();
 
     for (final entry in _methodEntries) {
       entry.dispose();
@@ -196,6 +224,144 @@ class _AddContactPageState extends State<AddContactPage> {
     setState(() {
       _selectedTags.remove(tag);
     });
+  }
+
+  void _addKeyword() {
+    final text = _keywordController.text.trim();
+    if (text.isEmpty) return;
+    setState(() {
+      if (!_keywords.contains(text)) {
+        _keywords.add(text);
+      }
+      _keywordController.clear();
+    });
+  }
+
+  void _removeKeyword(String keyword) {
+    setState(() {
+      _keywords.remove(keyword);
+    });
+  }
+
+  void _addReminder() {
+    final text = _reminderController.text.trim();
+    if (text.isEmpty) return;
+    setState(() {
+      if (!_reminderCues.contains(text)) {
+        _reminderCues.add(text);
+      }
+      _reminderController.clear();
+    });
+  }
+
+  void _removeReminder(String reminder) {
+    setState(() {
+      _reminderCues.remove(reminder);
+    });
+  }
+
+  void _addPhotoCue(String value) {
+    final trimmed = value.trim();
+    if (trimmed.isEmpty) return;
+    setState(() {
+      if (!_photoCues.contains(trimmed)) {
+        _photoCues.add(trimmed);
+      }
+    });
+  }
+
+  void _addPhotoCueFromInput() {
+    final text = _photoCueController.text.trim();
+    if (text.isEmpty) return;
+    _addPhotoCue(text);
+    _photoCueController.clear();
+  }
+
+  Future<void> _pickPhotoCue() async {
+    final result = await FilePicker.platform.pickFiles(type: FileType.image);
+    if (result == null || result.files.isEmpty) {
+      return;
+    }
+    final path = result.files.single.path;
+    if (path != null) {
+      _addPhotoCue(path);
+    }
+  }
+
+  void _removePhotoCue(String cue) {
+    setState(() {
+      _photoCues.remove(cue);
+    });
+  }
+
+  Widget _buildCueInput({
+    required String label,
+    required TextEditingController controller,
+    required VoidCallback onAdd,
+    required List<String> entries,
+    required IconData leadingIcon,
+    required void Function(String value) onRemove,
+    ValueChanged<String>? onSubmitted,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: Theme.of(context).textTheme.titleSmall,
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(
+              child: TextField(
+                controller: controller,
+                decoration: _buildInputDecoration('Add $label').copyWith(
+                  suffixIcon: IconButton(
+                    icon: const Icon(Icons.add),
+                    onPressed: onAdd,
+                  ),
+                ),
+                onSubmitted: (value) {
+                  if (onSubmitted != null) {
+                    onSubmitted(value);
+                  } else {
+                    onAdd();
+                  }
+                },
+              ),
+            ),
+          ],
+        ),
+        if (entries.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: entries
+                .map(
+                  (entry) => InputChip(
+                    avatar: Icon(leadingIcon, size: 18),
+                    label: Text(entry),
+                    onDeleted: () => onRemove(entry),
+                  ),
+                )
+                .toList(),
+          ),
+        ],
+      ],
+    );
+  }
+
+  ImageProvider<Object>? _buildImageProviderForCue(String cue) {
+    final uri = Uri.tryParse(cue);
+    if (uri != null && uri.hasAbsolutePath) {
+      final scheme = uri.scheme.toLowerCase();
+      if (scheme == 'http' || scheme == 'https' || scheme == 'data') {
+        return NetworkImage(cue);
+      }
+    }
+    return null;
   }
 
   @override
@@ -306,6 +472,93 @@ class _AddContactPageState extends State<AddContactPage> {
                     controller: _firstMeetingNotesController,
                     label: 'First Meeting Notes (Optional)',
                     maxLines: 3,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              _buildCard(
+                children: [
+                  Text(
+                    'Recognition cues',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: 12),
+                  _buildCueInput(
+                    label: 'Keywords',
+                    controller: _keywordController,
+                    onSubmitted: (_) => _addKeyword(),
+                    onAdd: _addKeyword,
+                    entries: _keywords,
+                    leadingIcon: Icons.style_outlined,
+                    onRemove: _removeKeyword,
+                  ),
+                  const SizedBox(height: 12),
+                  _buildCueInput(
+                    label: 'Reminders',
+                    controller: _reminderController,
+                    onSubmitted: (_) => _addReminder(),
+                    onAdd: _addReminder,
+                    entries: _reminderCues,
+                    leadingIcon: Icons.alarm_add_outlined,
+                    onRemove: _removeReminder,
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Photo cues',
+                    style: Theme.of(context).textTheme.titleSmall,
+                  ),
+                  const SizedBox(height: 8),
+                  if (_photoCues.isNotEmpty)
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: _photoCues
+                          .map(
+                            (cue) => InputChip(
+                              label: Text(
+                                cue.length > 28
+                                    ? '${cue.substring(0, 25)}...'
+                                    : cue,
+                              ),
+                              avatar: CircleAvatar(
+                                backgroundImage:
+                                    _buildImageProviderForCue(cue),
+                                child: _buildImageProviderForCue(cue) == null
+                                    ? const Icon(Icons.photo_outlined)
+                                    : null,
+                              ),
+                              onDeleted: () => _removePhotoCue(cue),
+                            ),
+                          )
+                          .toList(),
+                    ),
+                  if (_photoCues.isNotEmpty) const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _photoCueController,
+                          decoration: _buildInputDecoration(
+                            'Link or path to a helpful photo',
+                          ).copyWith(
+                            suffixIcon: IconButton(
+                              icon: const Icon(Icons.add),
+                              onPressed: _addPhotoCueFromInput,
+                            ),
+                          ),
+                          onSubmitted: (_) => _addPhotoCueFromInput(),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: OutlinedButton.icon(
+                      onPressed: _pickPhotoCue,
+                      icon: const Icon(Icons.image_outlined),
+                      label: const Text('Pick image from device'),
+                    ),
                   ),
                 ],
               ),
