@@ -8,6 +8,7 @@ import 'screens/notification_settings_page.dart';
 import 'services/notification_preferences_repository.dart';
 import 'services/reminder_coordinator.dart';
 import 'services/reminder_service.dart';
+import 'widgets/security_gate.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -45,7 +46,9 @@ class MyApp extends StatelessWidget {
         useMaterial3: true,
       ),
       themeMode: ThemeMode.system, // Uses system light/dark mode
-      home: const MainPage(),
+      home: const SecurityGate(
+        child: MainPage(),
+      ),
     );
   }
 }

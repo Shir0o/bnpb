@@ -184,6 +184,12 @@ class ReminderService {
     }
   }
 
+  /// Cancels every scheduled reminder regardless of contact.
+  Future<void> cancelAll() async {
+    await initialize();
+    await _plugin.cancelAll();
+  }
+
   int _notificationId(ReminderChannel channel, String key) {
     final seed = '${channel.name}::$key';
     final hash = seed.hashCode;

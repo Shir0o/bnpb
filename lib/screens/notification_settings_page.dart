@@ -5,6 +5,10 @@ import '../models/contact.dart';
 import '../models/notification_preference.dart';
 import '../services/notification_preferences_repository.dart';
 import '../services/reminder_coordinator.dart';
+import '../services/reminder_service.dart';
+import '../services/security_service.dart';
+import '../widgets/export_options_sheet.dart';
+import 'privacy_policy_page.dart';
 
 class NotificationSettingsPage extends StatefulWidget {
   const NotificationSettingsPage({super.key});
@@ -19,9 +23,11 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
   final NotificationPreferencesRepository _preferencesRepository =
       NotificationPreferencesRepository();
   final ReminderCoordinator _reminderCoordinator = ReminderCoordinator();
+  final SecurityService _securityService = SecurityService();
 
   bool _isLoading = true;
   bool _isUpdating = false;
+  bool _isPurging = false;
 
   List<Contact> _contacts = const <Contact>[];
   Map<String, Set<ReminderChannel>> _categoryChannels =
@@ -30,6 +36,9 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
       const <_PreferenceKey, NotificationPreference>{};
   Map<ReminderChannel, NotificationPreference> _globalDefaults =
       const <ReminderChannel, NotificationPreference>{};
+  bool _hasPasscode = false;
+  bool _biometricEnabled = false;
+  bool _biometricAvailable = false;
 
   @override
   void initState() {
@@ -78,6 +87,10 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
       }
     }
 
+    final hasPasscode = await _securityService.hasPasscode();
+    final biometricEnabled = await _securityService.isBiometricEnabled();
+    final biometricAvailable = await _securityService.canUseBiometrics();
+
     if (!mounted) {
       return;
     }
@@ -87,6 +100,9 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
       _preferences = preferenceMap;
       _globalDefaults = globalDefaults;
       _isLoading = false;
+      _hasPasscode = hasPasscode;
+      _biometricAvailable = biometricAvailable;
+      _biometricEnabled = biometricEnabled && biometricAvailable;
     });
   }
 
@@ -107,7 +123,8 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
         child: ListView(
           padding: const EdgeInsets.only(bottom: 24),
           children: [
-            if (_isUpdating) const LinearProgressIndicator(minHeight: 2),
+            if (_isUpdating || _isPurging)
+              const LinearProgressIndicator(minHeight: 2),
             Padding(
               padding: const EdgeInsets.all(16),
               child: Text(
@@ -121,6 +138,12 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
             _buildContactSection(context),
             const SizedBox(height: 16),
             _buildCategorySection(context),
+            const SizedBox(height: 16),
+            _buildSecuritySection(context),
+            const SizedBox(height: 16),
+            _buildDataSection(context),
+            const SizedBox(height: 16),
+            _buildAboutSection(context),
           ],
         ),
       ),
@@ -184,6 +207,417 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildSecuritySection(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Card(
+        clipBehavior: Clip.antiAlias,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Security & access',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Protect your address book with a local passcode and optionally '
+                'require biometrics when reopening the app.',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+              const SizedBox(height: 16),
+              FilledButton.icon(
+                onPressed: _isPurging ? null : _promptForPasscode,
+                icon: Icon(_hasPasscode ? Icons.password : Icons.enhanced_encryption),
+                label: Text(_hasPasscode ? 'Update passcode' : 'Create passcode'),
+              ),
+              if (_hasPasscode)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: OutlinedButton.icon(
+                    onPressed: _isPurging ? null : _removePasscode,
+                    icon: const Icon(Icons.no_encryption_gmailerrorred_outlined),
+                    label: const Text('Remove passcode'),
+                  ),
+                ),
+              const SizedBox(height: 8),
+              SwitchListTile(
+                value: _biometricEnabled,
+                onChanged: !_biometricAvailable || _isPurging
+                    ? null
+                    : (value) => _toggleBiometrics(value),
+                title: const Text('Require biometrics'),
+                subtitle: Text(
+                  _biometricAvailable
+                      ? 'Use Face ID/Touch ID or the system biometric prompt when unlocking.'
+                      : 'Biometric unlock is unavailable on this device.',
+                ),
+              ),
+              const Divider(height: 24),
+              Text(
+                'Secure deletion removes the encrypted database, backups, and keys '
+                'after overwriting the files, then clears scheduled reminders.',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+              const SizedBox(height: 12),
+              FilledButton.icon(
+                onPressed: _isPurging ? null : _confirmSecurePurge,
+                icon: const Icon(Icons.delete_forever_outlined),
+                style: FilledButton.styleFrom(
+                  backgroundColor:
+                      Theme.of(context).colorScheme.errorContainer,
+                  foregroundColor:
+                      Theme.of(context).colorScheme.onErrorContainer,
+                ),
+                label: const Text('Securely purge all data'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDataSection(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Card(
+        clipBehavior: Clip.antiAlias,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Exports & backups',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Generate CSV, PDF, or encrypted archives with selected fields. '
+                'Encrypted SQLCipher backups continue to live in the app documents '
+                'folder and rotate automatically when contacts change.',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                onPressed: _isPurging ? null : _openExportOptions,
+                icon: const Icon(Icons.ios_share_outlined),
+                label: const Text('Open export options'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAboutSection(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Card(
+        clipBehavior: Clip.antiAlias,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Privacy & usage',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Review the privacy policy, personal usage guidelines, and '
+                'supporting documentation for the project.',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const PrivacyPolicyPage(),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.privacy_tip_outlined),
+                label: const Text('View privacy policy'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _promptForPasscode() async {
+    final passcodeController = TextEditingController();
+    final confirmController = TextEditingController();
+    String? error;
+    String? passcode;
+
+    final result = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: Text(_hasPasscode ? 'Update passcode' : 'Create passcode'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: passcodeController,
+                    obscureText: true,
+                    decoration: const InputDecoration(labelText: 'New passcode'),
+                  ),
+                  TextField(
+                    controller: confirmController,
+                    obscureText: true,
+                    decoration: const InputDecoration(labelText: 'Confirm passcode'),
+                  ),
+                  if (error != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: Text(
+                        error!,
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.error,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(false),
+                  child: const Text('Cancel'),
+                ),
+                FilledButton(
+                  onPressed: () {
+                    final candidate = passcodeController.text.trim();
+                    final confirmation = confirmController.text.trim();
+                    if (candidate.length < 4) {
+                      setState(() {
+                        error = 'Use at least 4 characters for your passcode.';
+                      });
+                      return;
+                    }
+                    if (candidate != confirmation) {
+                      setState(() {
+                        error = 'Passcodes do not match.';
+                      });
+                      return;
+                    }
+                    passcode = candidate;
+                    Navigator.of(context).pop(true);
+                  },
+                  child: const Text('Save passcode'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    if (result == true && passcode != null) {
+      final hadExistingLock = _hasPasscode;
+      await _securityService.setPasscode(passcode);
+      await _refreshSecurityState();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              hadExistingLock
+                  ? 'Passcode updated. Biometrics stay enabled if supported.'
+                  : 'Passcode created. Enable biometrics for quicker unlocks.',
+            ),
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _removePasscode() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Remove passcode'),
+          content: const Text(
+            'Removing the passcode disables biometric unlock and leaves the app '
+            'accessible without authentication. Continue?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Remove'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed == true) {
+      await _securityService.setPasscode(null);
+      await _refreshSecurityState();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Passcode removed.')), 
+        );
+      }
+    }
+  }
+
+  Future<void> _toggleBiometrics(bool value) async {
+    if (!_hasPasscode && value) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Add a passcode before enabling biometrics.'),
+        ),
+      );
+      return;
+    }
+
+    final success = await _securityService.setBiometricEnabled(value);
+    if (!success) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Biometric authentication is unavailable on this device.'),
+          ),
+        );
+      }
+      await _refreshSecurityState();
+      return;
+    }
+
+    await _refreshSecurityState();
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            value
+                ? 'Biometric unlock enabled.'
+                : 'Biometric unlock disabled.',
+          ),
+        ),
+      );
+    }
+  }
+
+  Future<void> _refreshSecurityState() async {
+    final hasPasscode = await _securityService.hasPasscode();
+    final biometricEnabled = await _securityService.isBiometricEnabled();
+    final biometricAvailable = await _securityService.canUseBiometrics();
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _hasPasscode = hasPasscode;
+      _biometricAvailable = biometricAvailable;
+      _biometricEnabled = biometricEnabled && biometricAvailable;
+    });
+  }
+
+  Future<void> _confirmSecurePurge() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Securely purge all data'),
+          content: const Text(
+            'This action overwrites and deletes the encrypted database, removes '
+            'rolling backups, resets your encryption keys, and cancels all '
+            'scheduled reminders. This cannot be undone. Continue?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Purge data'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed != true) {
+      return;
+    }
+
+    setState(() {
+      _isPurging = true;
+    });
+
+    try {
+      await ReminderService().cancelAll();
+      final removed = await _securityService.secureDeleteAllData();
+      await _load();
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            removed
+                ? 'All saved data was securely deleted.'
+                : 'No stored data was found to delete.',
+          ),
+        ),
+      );
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to purge data: $error')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isPurging = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _openExportOptions() async {
+    if (_contacts.isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Add contacts before exporting.')),
+      );
+      return;
+    }
+
+    final message = await showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => ExportOptionsSheet(contacts: _contacts),
+    );
+
+    if (!mounted || message == null) {
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
     );
   }
 

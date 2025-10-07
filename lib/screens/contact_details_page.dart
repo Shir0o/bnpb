@@ -18,6 +18,7 @@ import '../models/relationship.dart';
 import '../services/calendar_integration_service.dart';
 import '../services/reminder_coordinator.dart';
 import '../widgets/people_card.dart';
+import '../constants/storage.dart';
 
 class ContactDetailsPage extends StatefulWidget {
   final Contact contact;
@@ -987,7 +988,8 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
       backupDir.createSync(recursive: true);
     }
 
-    final dbFile = File('${directory.path}/contacts.db');
+    final dbFile = File(
+        '${directory.path}/${StorageConstants.databaseFileName}');
     if (!dbFile.existsSync()) return;
 
     final timestamp = DateFormat('yyyy-MM-dd_HH-mm-ss').format(DateTime.now());

@@ -5,13 +5,13 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:share_plus/share_plus.dart';
 
 import '../db/db_helper.dart';
 import '../models/contact.dart';
 import '../models/prayer_request.dart';
 import '../services/contact_search_service.dart';
 import '../services/reminder_coordinator.dart';
+import '../widgets/export_options_sheet.dart';
 import '../widgets/people_card.dart';
 import 'contact_details_page.dart';
 import 'met_at_lookup_page.dart';
@@ -403,22 +403,27 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Future<void> _exportContactsToFile() async {
-    try {
-      final directory = await getApplicationDocumentsDirectory();
-      final file = File('${directory.path}/contacts.json');
-      final data = _contacts.map((contact) => contact.toMap()).toList();
-      await file.writeAsString(jsonEncode(data));
-
-      await Share.shareXFiles(
-        [XFile(file.path)],
-        text: 'Here is the exported contacts file.',
-      );
-    } catch (e) {
+  Future<void> _openExportSheet() async {
+    if (_contacts.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to export contacts: $e')),
+        const SnackBar(content: Text('Add contacts before exporting.')),
       );
+      return;
     }
+
+    final message = await showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => ExportOptionsSheet(contacts: _contacts),
+    );
+
+    if (!mounted || message == null) {
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
   }
 
   Future<void> _restoreContactsFromFile() async {
@@ -541,7 +546,7 @@ class _HomePageState extends State<HomePage> {
           ),
           IconButton(
             icon: const Icon(Icons.download),
-            onPressed: _exportContactsToFile,
+            onPressed: _openExportSheet,
           ),
           IconButton(
             icon: const Icon(Icons.restore),
