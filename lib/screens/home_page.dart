@@ -9,6 +9,7 @@ import 'package:share_plus/share_plus.dart';
 import '../db/db_helper.dart';
 import '../models/contact.dart';
 import 'contact_details_page.dart';
+import 'relationship_explorer_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -349,6 +350,17 @@ class _HomePageState extends State<HomePage> {
       appBar: AppBar(
         title: const Text('Contacts'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.account_tree_outlined),
+            tooltip: 'Relationship explorer',
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => const RelationshipExplorerPage(),
+                ),
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.download),
             onPressed: _exportContactsToFile,

@@ -3,10 +3,11 @@ import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 
 import '../models/contact.dart';
+import '../models/relationship.dart';
 
 class DBHelper {
   static const _dbName = 'contacts.db';
-  static const _dbVersion = 2;
+  static const _dbVersion = 3;
 
   static final DBHelper _instance = DBHelper._();
   static Database? _database;
@@ -80,6 +81,18 @@ class DBHelper {
         FOREIGN KEY(metThroughId) REFERENCES contacts(id) ON DELETE SET NULL
       )
     ''');
+
+    await db.execute('''
+      CREATE TABLE relationships (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        sourceContactId TEXT NOT NULL,
+        targetContactId TEXT NOT NULL,
+        type TEXT NOT NULL,
+        notes TEXT,
+        FOREIGN KEY(sourceContactId) REFERENCES contacts(id) ON DELETE CASCADE,
+        FOREIGN KEY(targetContactId) REFERENCES contacts(id) ON DELETE CASCADE
+      )
+    ''');
   }
 
   Future<void> _migrate(
@@ -114,6 +127,20 @@ class DBHelper {
           firstMeetingNotes TEXT,
           FOREIGN KEY(contactId) REFERENCES contacts(id) ON DELETE CASCADE,
           FOREIGN KEY(metThroughId) REFERENCES contacts(id) ON DELETE SET NULL
+        )
+      ''');
+    }
+
+    if (oldVersion < 3) {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS relationships (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          sourceContactId TEXT NOT NULL,
+          targetContactId TEXT NOT NULL,
+          type TEXT NOT NULL,
+          notes TEXT,
+          FOREIGN KEY(sourceContactId) REFERENCES contacts(id) ON DELETE CASCADE,
+          FOREIGN KEY(targetContactId) REFERENCES contacts(id) ON DELETE CASCADE
         )
       ''');
     }
@@ -324,5 +351,55 @@ class DBHelper {
         .where((tag) => tag.isNotEmpty)
         .toList()
       ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+  }
+
+  Future<Relationship> upsertRelationship(Relationship relationship) async {
+    final db = await database;
+
+    if (relationship.id == null) {
+      final id = await db.insert(
+        'relationships',
+        relationship.toMap(includeId: false),
+      );
+      return relationship.copyWith(id: id);
+    } else {
+      await db.update(
+        'relationships',
+        relationship.toMap(includeId: false),
+        where: 'id = ?',
+        whereArgs: [relationship.id],
+      );
+      return relationship;
+    }
+  }
+
+  Future<void> deleteRelationship(int id) async {
+    final db = await database;
+    await db.delete(
+      'relationships',
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
+  Future<List<Relationship>> getRelationshipsForContact(String contactId) async {
+    final db = await database;
+    final rows = await db.query(
+      'relationships',
+      where: 'sourceContactId = ? OR targetContactId = ?',
+      whereArgs: [contactId, contactId],
+    );
+
+    return rows
+        .map((row) => Relationship.fromMap(Map<String, dynamic>.from(row)))
+        .toList();
+  }
+
+  Future<List<Relationship>> getAllRelationships() async {
+    final db = await database;
+    final rows = await db.query('relationships');
+    return rows
+        .map((row) => Relationship.fromMap(Map<String, dynamic>.from(row)))
+        .toList();
   }
 }
