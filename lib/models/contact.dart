@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'interaction.dart';
 import 'prayer_request.dart';
 
@@ -41,6 +43,12 @@ class Contact {
   final String? firstMeetingNotes; // Notes from the first meeting
   final List<ContactMethod> contactMethods; // Reachable methods (phone/email)
   final List<String> tags; // Relationship tags
+  /// Lightweight descriptors that help recognize the contact quickly.
+  final List<String> recognitionKeywords;
+  /// URIs (web links or storage references) that visually identify the contact.
+  final List<String> recognitionPhotoUris;
+  /// Gentle reminders tied to this contact (birthdays, follow-ups, etc.).
+  final List<String> recognitionReminders;
   /// Recorded interactions for the contact (e.g., meetings, calls).
   final List<Interaction> interactions;
   /// Prayer requests tracked for this contact.
@@ -57,10 +65,16 @@ class Contact {
     this.firstMeetingNotes,
     List<ContactMethod>? contactMethods,
     List<String>? tags,
+    List<String>? recognitionKeywords,
+    List<String>? recognitionPhotoUris,
+    List<String>? recognitionReminders,
     List<Interaction>? interactions,
     List<PrayerRequest>? prayerRequests,
   })  : contactMethods = contactMethods ?? const [],
         tags = tags ?? const [],
+        recognitionKeywords = recognitionKeywords ?? const [],
+        recognitionPhotoUris = recognitionPhotoUris ?? const [],
+        recognitionReminders = recognitionReminders ?? const [],
         interactions = interactions ?? const [],
         prayerRequests = prayerRequests ?? const [];
 
@@ -75,6 +89,9 @@ class Contact {
     String? firstMeetingNotes,
     List<ContactMethod>? contactMethods,
     List<String>? tags,
+    List<String>? recognitionKeywords,
+    List<String>? recognitionPhotoUris,
+    List<String>? recognitionReminders,
     List<Interaction>? interactions,
     List<PrayerRequest>? prayerRequests,
   }) {
@@ -91,6 +108,12 @@ class Contact {
       firstMeetingNotes: firstMeetingNotes ?? this.firstMeetingNotes,
       contactMethods: contactMethods ?? this.contactMethods,
       tags: tags ?? this.tags,
+      recognitionKeywords:
+          recognitionKeywords ?? this.recognitionKeywords,
+      recognitionPhotoUris:
+          recognitionPhotoUris ?? this.recognitionPhotoUris,
+      recognitionReminders:
+          recognitionReminders ?? this.recognitionReminders,
       interactions: interactions ?? this.interactions,
       prayerRequests: prayerRequests ?? this.prayerRequests,
     );
@@ -110,6 +133,9 @@ class Contact {
       'firstMeetingNotes': firstMeetingNotes,
       'contactMethods': contactMethods.map((entry) => entry.toMap()).toList(),
       'tags': tags,
+      'recognitionKeywords': recognitionKeywords,
+      'recognitionPhotoUris': recognitionPhotoUris,
+      'recognitionReminders': recognitionReminders,
       'interactions': interactions.map((entry) => entry.toMap()).toList(),
       'prayerRequests':
           prayerRequests.map((entry) => entry.toMap()).toList(),
@@ -136,6 +162,9 @@ class Contact {
               ?.map((tag) => tag as String)
               .toList() ??
           const [],
+      recognitionKeywords: _parseStringList(map['recognitionKeywords']),
+      recognitionPhotoUris: _parseStringList(map['recognitionPhotoUris']),
+      recognitionReminders: _parseStringList(map['recognitionReminders']),
       interactions: (map['interactions'] as List<dynamic>?)
               ?.map((entry) =>
                   Interaction.fromMap(Map<String, dynamic>.from(entry)))
@@ -155,5 +184,26 @@ class Contact {
         .where((name) => name.isNotEmpty)
         .toList();
     return parts.isNotEmpty ? parts.join(' ') : (nickname ?? '');
+  }
+
+  static List<String> _parseStringList(dynamic value) {
+    if (value is List) {
+      return value.map((entry) => entry.toString()).toList();
+    }
+    if (value is String && value.isNotEmpty) {
+      try {
+        final decoded = jsonDecode(value);
+        if (decoded is List) {
+          return decoded.map((entry) => entry.toString()).toList();
+        }
+      } catch (_) {
+        return value
+            .split(',')
+            .map((entry) => entry.trim())
+            .where((entry) => entry.isNotEmpty)
+            .toList();
+      }
+    }
+    return const [];
   }
 }

@@ -9,7 +9,7 @@ import '../models/relationship.dart';
 
 class DBHelper {
   static const _dbName = 'contacts.db';
-  static const _dbVersion = 6;
+  static const _dbVersion = 7;
 
   static final DBHelper _instance = DBHelper._();
   static Database? _database;
@@ -49,7 +49,10 @@ class DBHelper {
         middleName TEXT,
         lastName TEXT NULL,
         nickname TEXT,
-        location TEXT
+        location TEXT,
+        keywords TEXT,
+        photoCues TEXT,
+        reminderCues TEXT
       )
     ''');
 
@@ -252,6 +255,18 @@ class DBHelper {
         'ALTER TABLE interactions ADD COLUMN category TEXT',
       );
     }
+
+    if (oldVersion < 7) {
+      await db.execute(
+        "ALTER TABLE contacts ADD COLUMN keywords TEXT DEFAULT '[]'",
+      );
+      await db.execute(
+        "ALTER TABLE contacts ADD COLUMN photoCues TEXT DEFAULT '[]'",
+      );
+      await db.execute(
+        "ALTER TABLE contacts ADD COLUMN reminderCues TEXT DEFAULT '[]'",
+      );
+    }
   }
 
   // -------------------------------------------------------------
@@ -279,6 +294,9 @@ class DBHelper {
       'lastName': contact.lastName,
       'nickname': contact.nickname,
       'location': contact.location,
+      'keywords': jsonEncode(contact.recognitionKeywords),
+      'photoCues': jsonEncode(contact.recognitionPhotoUris),
+      'reminderCues': jsonEncode(contact.recognitionReminders),
     };
 
     if (isUpdate) {
@@ -460,6 +478,16 @@ class DBHelper {
     return maps.map((map) {
       final contactMap = Map<String, dynamic>.from(map);
 
+      contactMap['recognitionKeywords'] =
+          _decodeStringList(contactMap['keywords']);
+      contactMap['recognitionPhotoUris'] =
+          _decodeStringList(contactMap['photoCues']);
+      contactMap['recognitionReminders'] =
+          _decodeStringList(contactMap['reminderCues']);
+      contactMap.remove('keywords');
+      contactMap.remove('photoCues');
+      contactMap.remove('reminderCues');
+
       contactMap['interactions'] = interactionsByContact[contactMap['id']]?.map(
                 (interaction) => interaction.toMap(),
               ).toList() ??
@@ -480,6 +508,34 @@ class DBHelper {
 
       return Contact.fromMap(contactMap);
     }).toList();
+  }
+
+  List<String> _decodeStringList(dynamic value) {
+    if (value == null) {
+      return const [];
+    }
+    if (value is String) {
+      if (value.isEmpty) {
+        return const [];
+      }
+      try {
+        final decoded = jsonDecode(value);
+        if (decoded is List) {
+          return decoded.map((entry) => entry.toString()).toList();
+        }
+      } catch (_) {
+        return value
+            .split(',')
+            .map((entry) => entry.trim())
+            .where((entry) => entry.isNotEmpty)
+            .toList();
+      }
+      return const [];
+    }
+    if (value is List) {
+      return value.map((entry) => entry.toString()).toList();
+    }
+    return const [];
   }
 
   Future<Interaction> insertInteraction(Interaction interaction) async {
