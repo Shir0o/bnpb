@@ -81,11 +81,12 @@ class ReminderService {
   /// Schedules a reminder for the specified [channel] and [key].
   Future<void> scheduleReminder({
     required ReminderChannel channel,
-    required String contactId,
+    String? contactId,
     required String key,
     required DateTime scheduledAt,
     required String title,
     required String body,
+    Map<String, dynamic>? additionalPayload,
   }) async {
     await initialize();
 
@@ -109,11 +110,17 @@ class ReminderService {
       categoryIdentifier: 'reminder',
     );
 
-    final payload = jsonEncode({
+    final payloadMap = <String, dynamic>{
       'channel': channel.name,
-      'contactId': contactId,
       'key': key,
-    });
+    };
+    if (contactId != null) {
+      payloadMap['contactId'] = contactId;
+    }
+    if (additionalPayload != null) {
+      payloadMap.addAll(additionalPayload);
+    }
+    final payload = jsonEncode(payloadMap);
 
     await _plugin.zonedSchedule(
       id,
@@ -130,6 +137,27 @@ class ReminderService {
           UILocalNotificationDateInterpretation.absoluteTime,
       payload: payload,
     );
+  }
+
+  /// Cancels every notification scheduled for the supplied [channel]
+  /// regardless of contact.
+  Future<void> cancelChannel(ReminderChannel channel) async {
+    await initialize();
+    final pending = await _plugin.pendingNotificationRequests();
+    for (final request in pending) {
+      final payload = request.payload;
+      if (payload == null) {
+        continue;
+      }
+      try {
+        final decoded = jsonDecode(payload) as Map<String, dynamic>;
+        if (decoded['channel'] == channel.name) {
+          await _plugin.cancel(request.id);
+        }
+      } catch (_) {
+        continue;
+      }
+    }
   }
 
   /// Cancels a previously scheduled reminder using the [key] used during

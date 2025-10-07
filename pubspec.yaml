@@ -35,6 +35,8 @@ dependencies:
   pdf: ^3.10.7
   archive: ^3.4.9
   encrypt: ^5.0.1
+  shared_preferences: ^2.2.3
+  speech_to_text: ^6.6.0
 
 dev_dependencies:
   flutter_test:
