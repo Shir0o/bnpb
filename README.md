@@ -21,6 +21,8 @@ while offering analytics and export tooling.
 
 - [Privacy Policy & Personal Usage Guidelines](docs/privacy_policy.md)
 - [Optional facial recognition pipeline research](docs/facial_recognition_pipeline.md)
+- [ADR 0001 – Platform Selection](docs/adr/0001-platform.md)
+- [MVP Scope & Milestones](docs/mvp.md)
 
 ## Development
 
@@ -31,3 +33,21 @@ flutter pub get
 flutter analyze
 flutter test
 ```
+
+### Architecture Overview
+
+The Flutter app follows a layered structure so that UI, orchestration, and data
+concerns remain isolated:
+
+- `lib/repositories/` – Aggregates data from the local database and exposes
+  higher-level analytics or preference APIs.
+- `lib/services/` – Coordinates platform integrations such as exports, calendar
+  sync, and reminder scheduling.
+- `lib/db/` – Sqflite helper used by repositories to persist contacts and
+  related records.
+- `lib/models/` – Domain entities shared across layers.
+- `lib/screens/` & `lib/widgets/` – Presentation layer widgets and composition
+  roots.
+
+This structure keeps business rules testable while allowing the presentation
+layer to stay declarative.

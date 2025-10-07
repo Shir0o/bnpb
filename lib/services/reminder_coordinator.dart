@@ -7,7 +7,7 @@ import '../models/contact.dart';
 import '../models/interaction.dart';
 import '../models/notification_preference.dart';
 import '../models/prayer_request.dart';
-import 'notification_preferences_repository.dart';
+import '../repositories/notification_preferences_repository.dart';
 import 'reminder_service.dart';
 
 /// Centralises the logic required to keep reminder notifications in sync with
