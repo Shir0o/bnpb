@@ -9,7 +9,7 @@ import '../models/relationship.dart';
 
 class DBHelper {
   static const _dbName = 'contacts.db';
-  static const _dbVersion = 5;
+  static const _dbVersion = 6;
 
   static final DBHelper _instance = DBHelper._();
   static Database? _database;
@@ -94,6 +94,8 @@ class DBHelper {
         attachments TEXT,
         markForPrayer INTEGER NOT NULL DEFAULT 0,
         followUpAt TEXT,
+        durationMinutes INTEGER,
+        category TEXT,
         FOREIGN KEY(contactId) REFERENCES contacts(id) ON DELETE CASCADE
       )
     ''');
@@ -240,6 +242,15 @@ class DBHelper {
           FOREIGN KEY(interactionId) REFERENCES interactions(id) ON DELETE SET NULL
         )
       ''');
+    }
+
+    if (oldVersion < 6) {
+      await db.execute(
+        'ALTER TABLE interactions ADD COLUMN durationMinutes INTEGER',
+      );
+      await db.execute(
+        'ALTER TABLE interactions ADD COLUMN category TEXT',
+      );
     }
   }
 
@@ -511,6 +522,63 @@ class DBHelper {
     return rows
         .map((row) => Interaction.fromMap(Map<String, dynamic>.from(row)))
         .toList();
+  }
+
+  Future<List<Interaction>> getInteractions({
+    DateTime? start,
+    DateTime? end,
+    String? contactId,
+  }) async {
+    final db = await database;
+    final where = <String>[];
+    final whereArgs = <Object?>[];
+
+    if (contactId != null) {
+      where.add('contactId = ?');
+      whereArgs.add(contactId);
+    }
+
+    if (start != null) {
+      where.add('occurredAt >= ?');
+      whereArgs.add(start.toIso8601String());
+    }
+
+    if (end != null) {
+      where.add('occurredAt <= ?');
+      whereArgs.add(end.toIso8601String());
+    }
+
+    final rows = await db.query(
+      'interactions',
+      where: where.isEmpty ? null : where.join(' AND '),
+      whereArgs: where.isEmpty ? null : whereArgs,
+      orderBy: 'occurredAt DESC',
+    );
+
+    return rows
+        .map((row) => Interaction.fromMap(Map<String, dynamic>.from(row)))
+        .toList();
+  }
+
+  Future<bool> interactionExists({
+    required String contactId,
+    required DateTime occurredAt,
+    required String summary,
+  }) async {
+    final db = await database;
+    final rows = await db.query(
+      'interactions',
+      columns: ['id'],
+      where: 'contactId = ? AND occurredAt = ? AND summary = ?',
+      whereArgs: [
+        contactId,
+        occurredAt.toIso8601String(),
+        summary,
+      ],
+      limit: 1,
+    );
+
+    return rows.isNotEmpty;
   }
 
   /// Delete a contact by [id].

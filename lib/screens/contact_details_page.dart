@@ -3,6 +3,9 @@ import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:googleapis/calendar/v3.dart' as gcal;
+import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:timeline_tile/timeline_tile.dart';
@@ -12,6 +15,7 @@ import '../models/contact.dart';
 import '../models/interaction.dart';
 import '../models/prayer_request.dart';
 import '../models/relationship.dart';
+import '../services/calendar_integration_service.dart';
 
 class ContactDetailsPage extends StatefulWidget {
   final Contact contact;
@@ -38,6 +42,10 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
   final TextEditingController _tagController = TextEditingController();
   final TextEditingController _interactionSearchController =
       TextEditingController();
+  final CalendarIntegrationService _calendarIntegrationService =
+      CalendarIntegrationService();
+
+  bool _isImportingCalendar = false;
 
   List<Interaction> _interactions = [];
   bool _isLoadingInteractions = false;
@@ -188,6 +196,91 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
       };
       _isLoadingInteractions = false;
     });
+  }
+
+  Future<void> _importFromCalendar() async {
+    final now = DateTime.now();
+    final initialRange = DateTimeRange(
+      start: now.subtract(const Duration(days: 30)),
+      end: now,
+    );
+
+    final selectedRange = await showDateRangePicker(
+      context: context,
+      initialDateRange: initialRange,
+      firstDate: DateTime(now.year - 5),
+      lastDate: DateTime(now.year + 2),
+    );
+
+    if (selectedRange == null) {
+      return;
+    }
+
+    if (!mounted) return;
+
+    setState(() {
+      _isImportingCalendar = true;
+    });
+
+    try {
+      final googleSignIn = GoogleSignIn(
+        scopes: const [gcal.CalendarApi.calendarReadonlyScope],
+      );
+      GoogleSignInAccount? account;
+      try {
+        account = await googleSignIn.signInSilently();
+      } catch (_) {
+        account = null;
+      }
+      account ??= await googleSignIn.signIn();
+
+      if (account == null) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Google sign-in cancelled.')),
+        );
+        return;
+      }
+
+      final authHeaders = await account.authHeaders;
+      final client = _GoogleAuthClient(authHeaders);
+      try {
+        final calendarApi = gcal.CalendarApi(client);
+        final importedInteractions =
+            await _calendarIntegrationService.importForContact(
+          contact: _buildContactFromState(),
+          calendarApi: calendarApi,
+          start: selectedRange.start,
+          end: selectedRange.end.add(const Duration(days: 1)),
+        );
+
+        await _refreshInteractions();
+
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              importedInteractions.isEmpty
+                  ? 'No matching calendar events found.'
+                  : 'Imported ${importedInteractions.length} calendar event${importedInteractions.length == 1 ? '' : 's'}.',
+            ),
+          ),
+        );
+      } finally {
+        client.close();
+      }
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Calendar import failed: $error')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isImportingCalendar = false;
+        });
+      }
+    }
   }
 
   Future<void> _refreshPrayerRequests() async {
@@ -811,6 +904,8 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
       builder: (context) {
         final summaryController = TextEditingController();
         final locationController = TextEditingController();
+        final durationController = TextEditingController();
+        final categoryController = TextEditingController();
         DateTime occurredAt = DateTime.now();
         DateTime? followUpAt;
         String medium = 'in_person';
@@ -970,6 +1065,30 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
                 return;
               }
 
+              final durationText = durationController.text.trim();
+              final durationMinutes = durationText.isEmpty
+                  ? null
+                  : int.tryParse(durationText);
+              if (durationText.isNotEmpty && durationMinutes == null) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Duration must be a number of minutes.'),
+                  ),
+                );
+                return;
+              }
+              if (durationMinutes != null && durationMinutes < 0) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Duration cannot be negative.'),
+                  ),
+                );
+                return;
+              }
+
+              final categoryText = categoryController.text.trim();
+              final category = categoryText.isEmpty ? null : categoryText;
+
               final interaction = Interaction(
                 contactId: widget.contact.id,
                 occurredAt: occurredAt,
@@ -982,6 +1101,8 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
                 attachments: attachments,
                 markForPrayer: markForPrayer,
                 followUpAt: followUpAt,
+                durationMinutes: durationMinutes,
+                category: category,
               );
 
               final savedInteraction =
@@ -1066,6 +1187,23 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
                       controller: locationController,
                       decoration: const InputDecoration(
                         labelText: 'Location (optional)',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: durationController,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: 'Duration (minutes, optional)',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: categoryController,
+                      decoration: const InputDecoration(
+                        labelText: 'Category (optional)',
                         border: OutlineInputBorder(),
                       ),
                     ),
@@ -1722,9 +1860,30 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
             const SizedBox(height: 16),
             _buildCard(
               children: [
-                Text(
-                  'Interactions',
-                  style: Theme.of(context).textTheme.titleMedium,
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'Interactions',
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                    ),
+                    if (_isImportingCalendar)
+                      const Padding(
+                        padding: EdgeInsets.only(right: 12),
+                        child: SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      ),
+                    FilledButton.tonalIcon(
+                      onPressed:
+                          _isImportingCalendar ? null : _importFromCalendar,
+                      icon: const Icon(Icons.calendar_month_outlined),
+                      label: const Text('Import'),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 12),
                 _buildInteractionSection(),
@@ -2220,10 +2379,20 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
                 avatar: Icon(mediumIcon, size: 18),
                 label: Text(mediumLabel),
               ),
+              if (interaction.durationMinutes != null)
+                Chip(
+                  avatar: const Icon(Icons.timer_outlined, size: 18),
+                  label: Text('${interaction.durationMinutes} min'),
+                ),
               if (interaction.location != null && interaction.location!.isNotEmpty)
                 Chip(
                   avatar: const Icon(Icons.place_outlined, size: 18),
                   label: Text(interaction.location!),
+                ),
+              if (interaction.category != null && interaction.category!.isNotEmpty)
+                Chip(
+                  avatar: const Icon(Icons.label_outline, size: 18),
+                  label: Text(interaction.category!),
                 ),
               if (interaction.markForPrayer)
                 Chip(
@@ -2265,6 +2434,25 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
         ],
       ),
     );
+  }
+}
+
+class _GoogleAuthClient extends http.BaseClient {
+  _GoogleAuthClient(this._headers);
+
+  final Map<String, String> _headers;
+  final http.Client _client = http.Client();
+
+  @override
+  Future<http.StreamedResponse> send(http.BaseRequest request) {
+    request.headers.addAll(_headers);
+    return _client.send(request);
+  }
+
+  @override
+  void close() {
+    _client.close();
+    super.close();
   }
 }
 
