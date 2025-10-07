@@ -4,8 +4,17 @@ import 'package:google_fonts/google_fonts.dart';
 import 'screens/add_contact_page.dart';
 import 'screens/analytics_page.dart';
 import 'screens/home_page.dart';
+import 'screens/notification_settings_page.dart';
+import 'services/notification_preferences_repository.dart';
+import 'services/reminder_coordinator.dart';
+import 'services/reminder_service.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await ReminderService().initialize();
+  final preferencesRepository = NotificationPreferencesRepository();
+  await preferencesRepository.ensureDefaults();
+  await ReminderCoordinator().refreshAllContacts();
   runApp(const MyApp());
 }
 
@@ -56,6 +65,7 @@ class _MainPageState extends State<MainPage> {
     const HomePage(),
     const AnalyticsPage(),
     const AddContactPage(),
+    const NotificationSettingsPage(),
   ];
 
   @override
@@ -84,6 +94,11 @@ class _MainPageState extends State<MainPage> {
             icon: Icon(Icons.person_add_outlined),
             selectedIcon: Icon(Icons.person_add),
             label: 'Add Contact',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.settings_outlined),
+            selectedIcon: Icon(Icons.settings),
+            label: 'Settings',
           ),
         ],
       ),
