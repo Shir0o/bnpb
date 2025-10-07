@@ -1,10 +1,11 @@
-import 'package:flutter/material.dart';
-import 'package:intl/intl.dart'; // For date formatting
 import 'dart:io';
+
+import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
 
-import '../db/db_helper.dart'; // SQLite DBHelper
-import '../models/contact.dart'; // Using the updated Contact model with location
+import '../db/db_helper.dart';
+import '../models/contact.dart';
 
 class ContactDetailsPage extends StatefulWidget {
   final Contact contact;
@@ -21,58 +22,187 @@ class ContactDetailsPage extends StatefulWidget {
 }
 
 class _ContactDetailsPageState extends State<ContactDetailsPage> {
-  // Controllers
   final TextEditingController _historyDetailController = TextEditingController();
-
-  final TextEditingController _locationController = TextEditingController();
   final TextEditingController _firstNameController = TextEditingController();
   final TextEditingController _middleNameController = TextEditingController();
   final TextEditingController _lastNameController = TextEditingController();
+  final TextEditingController _nicknameController = TextEditingController();
+  final TextEditingController _locationController = TextEditingController();
+  final TextEditingController _firstMeetingNotesController =
+      TextEditingController();
+  final TextEditingController _tagController = TextEditingController();
 
-  late List<HistoryEntry> history;
+  List<HistoryEntry> history = [];
   DateTime? _selectedDate;
 
-  // Grade options
+  List<_MethodFormEntry> _methodEntries = [];
+  List<String> _selectedTags = [];
+  List<Contact> _availableContacts = [];
+  Map<String, Contact> _contactLookup = {};
+  List<String> _availableTags = [];
+  String? _selectedMetThroughId;
+  bool _isLoadingReferenceData = false;
 
   @override
   void initState() {
     super.initState();
+    final contact = widget.contact;
+    history = List<HistoryEntry>.from(contact.history);
+    _firstNameController.text = contact.firstName;
+    _middleNameController.text = contact.middleName;
+    _lastNameController.text = contact.lastName ?? '';
+    _nicknameController.text = contact.nickname ?? '';
+    _locationController.text = contact.location ?? '';
+    _firstMeetingNotesController.text = contact.firstMeetingNotes ?? '';
+    _selectedMetThroughId = contact.metThroughId;
+    _selectedTags = List<String>.from(contact.tags);
+    _methodEntries = contact.contactMethods
+        .map(
+          (method) => _MethodFormEntry(
+            type: method.type,
+            value: method.value,
+            label: method.label ?? '',
+          ),
+        )
+        .toList();
+    if (_methodEntries.isEmpty) {
+      _methodEntries.add(
+        _MethodFormEntry(type: 'phone', value: '', label: ''),
+      );
+    }
 
-    history = widget.contact.history;
-
-    // Initialize text field controllers
-
-    _locationController.text = widget.contact.location ?? '';
-    _firstNameController.text = widget.contact.firstName;
-    _middleNameController.text = widget.contact.middleName;
-    _lastNameController.text = widget.contact.lastName ?? '';
+    _loadReferenceData();
   }
 
   @override
   void dispose() {
     _historyDetailController.dispose();
-
-    _locationController.dispose();
     _firstNameController.dispose();
     _middleNameController.dispose();
     _lastNameController.dispose();
+    _nicknameController.dispose();
+    _locationController.dispose();
+    _firstMeetingNotesController.dispose();
+    _tagController.dispose();
+    for (final entry in _methodEntries) {
+      entry.dispose();
+    }
     super.dispose();
   }
 
-  Future<void> _updateContact() async {
+  Future<void> _loadReferenceData() async {
+    setState(() {
+      _isLoadingReferenceData = true;
+    });
+
+    final dbHelper = DBHelper();
+    final contacts = await dbHelper.getContacts();
+    final tags = await dbHelper.getAllTags();
+
+    setState(() {
+      _contactLookup = {for (final contact in contacts) contact.id: contact};
+      _availableContacts = contacts
+          .where((contact) => contact.id != widget.contact.id)
+          .toList()
+        ..sort(
+          (a, b) => a.fullName.toLowerCase().compareTo(
+                b.fullName.toLowerCase(),
+              ),
+        );
+      final mergedTags = {...tags, ..._selectedTags};
+      _availableTags = mergedTags.toList()
+        ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+      _isLoadingReferenceData = false;
+    });
+  }
+
+  void _addMethodEntry({ContactMethod? method}) {
+    setState(() {
+      _methodEntries.add(
+        _MethodFormEntry(
+          type: method?.type ?? 'phone',
+          value: method?.value ?? '',
+          label: method?.label ?? '',
+        ),
+      );
+    });
+  }
+
+  void _removeMethodEntry(_MethodFormEntry entry) {
+    setState(() {
+      _methodEntries.remove(entry);
+      entry.dispose();
+    });
+  }
+
+  void _addTagFromInput() {
+    final text = _tagController.text.trim();
+    if (text.isEmpty) return;
+    setState(() {
+      if (!_selectedTags.contains(text)) {
+        _selectedTags.add(text);
+      }
+      _tagController.clear();
+    });
+  }
+
+  void _toggleSuggestedTag(String tag) {
+    setState(() {
+      if (_selectedTags.contains(tag)) {
+        _selectedTags.remove(tag);
+      } else {
+        _selectedTags.add(tag);
+      }
+    });
+  }
+
+  void _removeTag(String tag) {
+    setState(() {
+      _selectedTags.remove(tag);
+    });
+  }
+
+  Contact _buildContactFromState({List<HistoryEntry>? historyOverride}) {
+    final methods = _methodEntries
+        .map(
+          (entry) => ContactMethod(
+            type: entry.type,
+            value: entry.valueController.text.trim(),
+            label: entry.labelController.text.trim().isEmpty
+                ? null
+                : entry.labelController.text.trim(),
+          ),
+        )
+        .where((method) => method.value.isNotEmpty)
+        .toList();
+
     final lastNameText = _lastNameController.text.trim();
-    final updatedContact = widget.contact.copyWith(
+    final nicknameText = _nicknameController.text.trim();
+    final locationText = _locationController.text.trim();
+    final firstMeetingNotesText = _firstMeetingNotesController.text.trim();
+
+    return Contact(
+      id: widget.contact.id,
       firstName: _firstNameController.text.trim(),
       middleName: _middleNameController.text.trim(),
       lastName: lastNameText.isEmpty ? null : lastNameText,
-      location: _locationController.text.trim(),
+      nickname: nicknameText.isEmpty ? null : nicknameText,
+      location: locationText.isEmpty ? null : locationText,
+      metThroughId: _selectedMetThroughId,
+      firstMeetingNotes:
+          firstMeetingNotesText.isEmpty ? null : firstMeetingNotesText,
+      contactMethods: methods,
+      tags: List<String>.from(_selectedTags),
+      history: List<HistoryEntry>.from(historyOverride ?? history),
     );
+  }
 
+  Future<void> _updateContact() async {
+    final updatedContact = _buildContactFromState();
     await DBHelper().updateContact(updatedContact);
-
-    // Create a backup
     await _exportBackup();
 
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Contact updated successfully!')),
     );
@@ -96,7 +226,6 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
 
     await dbFile.copy(backupFile.path);
 
-    // Retain only the latest 5 backups
     final backups = backupDir
         .listSync()
         .whereType<File>()
@@ -125,8 +254,10 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
               onPressed: () async {
                 await DBHelper().deleteContact(widget.contact.id);
                 widget.onDelete();
-                Navigator.pop(context); // Close the dialog
-                Navigator.pop(context); // Pop back to the previous screen
+                if (mounted) {
+                  Navigator.pop(context);
+                  Navigator.pop(context);
+                }
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.red,
@@ -140,22 +271,18 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
   }
 
   void _deleteHistoryEntry(int index) async {
-    // Sort the history list by date in descending order
     final sortedHistory = List<HistoryEntry>.from(history)
       ..sort((a, b) => b.date.compareTo(a.date));
+    final entryToDelete = sortedHistory[index];
 
-    // Get the actual entry to delete from the sorted list
-    final historyToDelete = sortedHistory[index];
-
-    // Remove the entry from the original history list
     setState(() {
-      history.removeWhere((entry) => entry == historyToDelete);
+      history.remove(entryToDelete);
     });
 
-    // Update the contact in the database
-    final updatedContact = widget.contact.copyWith(history: history);
+    final updatedContact = _buildContactFromState();
     await DBHelper().updateContact(updatedContact);
 
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('History entry deleted')),
     );
@@ -172,7 +299,6 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
               content: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Material-styled TextField for history detail
                   TextField(
                     controller: _historyDetailController,
                     textCapitalization: TextCapitalization.sentences,
@@ -182,7 +308,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
                         borderSide:
-                        const BorderSide(color: Colors.blue, width: 2),
+                            const BorderSide(color: Colors.blue, width: 2),
                       ),
                     ),
                   ),
@@ -217,7 +343,11 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
               ),
               actions: [
                 TextButton(
-                  onPressed: () => Navigator.pop(context),
+                  onPressed: () {
+                    _historyDetailController.clear();
+                    _selectedDate = null;
+                    Navigator.pop(context);
+                  },
                   child: const Text('Cancel'),
                 ),
                 ElevatedButton(
@@ -229,26 +359,23 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
                         detail: detail,
                       );
 
-                      // Update the history list
                       final updatedHistory = List<HistoryEntry>.from(history)
                         ..add(newEntry);
 
-                      // Create an updated contact
-                      final updatedContact =
-                      widget.contact.copyWith(history: updatedHistory);
-
-                      // Update the state
                       setState(() {
                         history = updatedHistory;
                       });
 
-                      // Update the database
+                      final updatedContact = _buildContactFromState(
+                        historyOverride: updatedHistory,
+                      );
                       await DBHelper().updateContact(updatedContact);
 
-                      // Clear inputs and close dialog
-                      _historyDetailController.clear();
-                      _selectedDate = null;
-                      Navigator.pop(context);
+                      if (mounted) {
+                        _historyDetailController.clear();
+                        _selectedDate = null;
+                        Navigator.pop(context);
+                      }
                     } else {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
@@ -269,16 +396,47 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
 
   @override
   Widget build(BuildContext context) {
-    // Generate a full name for the AppBar title
-    final fullName = widget.contact.fullName;
+    final displayName = _buildContactFromState().fullName;
+
+    final metThroughItems = <DropdownMenuItem<String?>>[
+      const DropdownMenuItem<String?>(
+        value: null,
+        child: Text('None'),
+      ),
+      ..._availableContacts.map(
+        (contact) => DropdownMenuItem<String?>(
+          value: contact.id,
+          child: Text(
+            contact.fullName.isNotEmpty
+                ? contact.fullName
+                : contact.nickname ?? 'Unnamed Contact',
+          ),
+        ),
+      ),
+    ];
+
+    if (_selectedMetThroughId != null &&
+        metThroughItems.every((item) => item.value != _selectedMetThroughId)) {
+      final fallbackContact = _contactLookup[_selectedMetThroughId!];
+      metThroughItems.add(
+        DropdownMenuItem<String?>(
+          value: _selectedMetThroughId,
+          child: Text(
+            fallbackContact?.fullName.isNotEmpty == true
+                ? fallbackContact!.fullName
+                : (fallbackContact?.nickname ?? 'Unknown contact'),
+          ),
+        ),
+      );
+    }
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(fullName),
+        title: Text(displayName.isEmpty ? 'Contact Details' : displayName),
         actions: [
           IconButton(
             icon: const Icon(Icons.save),
-            onPressed: _updateContact,
+            onPressed: _isLoadingReferenceData ? null : _updateContact,
           ),
           IconButton(
             icon: const Icon(Icons.delete),
@@ -290,93 +448,148 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
         padding: const EdgeInsets.all(16.0),
         child: ListView(
           children: [
-            // First Name
-            Card(
-              margin: const EdgeInsets.only(bottom: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-              elevation: 2,
-              child: Padding(
-                padding:
-                const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                child: _buildEditableSection(
-                  title: 'First Name',
+            _buildCard(
+              children: [
+                _buildTextField(
                   controller: _firstNameController,
-                  hintText: 'Enter first name',
+                  label: 'First Name',
                 ),
-              ),
-            ),
-
-            // Middle Name
-            Card(
-              margin: const EdgeInsets.only(bottom: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-              elevation: 2,
-              child: Padding(
-                padding:
-                const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                child: _buildEditableSection(
-                  title: 'Middle Name',
+                const SizedBox(height: 16),
+                _buildTextField(
                   controller: _middleNameController,
-                  hintText: 'Enter middle name (optional)',
+                  label: 'Middle Name (Optional)',
                 ),
-              ),
-            ),
-
-            // Last Name
-            Card(
-              margin: const EdgeInsets.only(bottom: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-              elevation: 2,
-              child: Padding(
-                padding:
-                const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                child: _buildEditableSection(
-                  title: 'Last Name',
+                const SizedBox(height: 16),
+                _buildTextField(
                   controller: _lastNameController,
-                  hintText: 'Enter last name',
+                  label: 'Last Name (Optional)',
                 ),
-              ),
-            ),
-
-            // Removed Grade and Occupation sections
-
-            // Location (New Section)
-            Card(
-              margin: const EdgeInsets.only(bottom: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-              elevation: 2,
-              child: Padding(
-                padding:
-                const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                child: _buildEditableSection(
-                  title: 'Location',
+                const SizedBox(height: 16),
+                _buildTextField(
+                  controller: _nicknameController,
+                  label: 'Nickname (Optional)',
+                ),
+                const SizedBox(height: 16),
+                _buildTextField(
                   controller: _locationController,
-                  hintText: 'Enter location',
+                  label: 'Location (Optional)',
                 ),
-              ),
+              ],
             ),
-
-            // History Section
-            Card(
-              margin: const EdgeInsets.only(bottom: 80), // Extra space for FAB
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-              elevation: 2,
-              child: Padding(
-                padding:
-                const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                child: _buildHistorySection(),
-              ),
+            const SizedBox(height: 16),
+            _buildCard(
+              children: [
+                Text(
+                  'Contact Methods',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                const SizedBox(height: 12),
+                Column(
+                  children: _methodEntries
+                      .map(
+                        (entry) => Padding(
+                          padding: const EdgeInsets.only(bottom: 12.0),
+                          child: _ContactMethodRow(
+                            entry: entry,
+                            onRemove: _methodEntries.length > 1
+                                ? () => _removeMethodEntry(entry)
+                                : null,
+                          ),
+                        ),
+                      )
+                      .toList(),
+                ),
+                OutlinedButton.icon(
+                  onPressed: _addMethodEntry,
+                  icon: const Icon(Icons.add),
+                  label: const Text('Add Contact Method'),
+                ),
+              ],
             ),
+            const SizedBox(height: 16),
+            _buildCard(
+              children: [
+                DropdownButtonFormField<String?>(
+                  value: _selectedMetThroughId,
+                  decoration: _buildInputDecoration('Met Through (Optional)'),
+                  items: metThroughItems,
+                  onChanged: (value) {
+                    setState(() {
+                      _selectedMetThroughId = value;
+                    });
+                  },
+                ),
+                const SizedBox(height: 16),
+                _buildTextField(
+                  controller: _firstMeetingNotesController,
+                  label: 'First Meeting Notes (Optional)',
+                  maxLines: 3,
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            _buildCard(
+              children: [
+                Text(
+                  'Tags',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _tagController,
+                  decoration: _buildInputDecoration('Add a tag').copyWith(
+                    suffixIcon: IconButton(
+                      icon: const Icon(Icons.add),
+                      onPressed: _addTagFromInput,
+                    ),
+                  ),
+                  onSubmitted: (_) => _addTagFromInput(),
+                ),
+                const SizedBox(height: 12),
+                if (_selectedTags.isNotEmpty)
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: _selectedTags
+                        .map(
+                          (tag) => InputChip(
+                            label: Text(tag),
+                            onDeleted: () => _removeTag(tag),
+                          ),
+                        )
+                        .toList(),
+                  ),
+                if (_availableTags.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 12),
+                    child: Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: _availableTags
+                          .map(
+                            (tag) => FilterChip(
+                              label: Text(tag),
+                              selected: _selectedTags.contains(tag),
+                              onSelected: (_) => _toggleSuggestedTag(tag),
+                            ),
+                          )
+                          .toList(),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            _buildCard(
+              children: [
+                Text(
+                  'History',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                const SizedBox(height: 12),
+                _buildHistorySection(),
+              ],
+            ),
+            const SizedBox(height: 80),
           ],
         ),
       ),
@@ -388,102 +601,172 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
     );
   }
 
-  /// Displays a list of history items in descending order
-  Widget _buildHistorySection() {
-    final sortedHistory = List<HistoryEntry>.from(history)
-      ..sort((a, b) => b.date.compareTo(a.date));
-
-    return _buildSection(
-      title: 'History',
-      content: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: sortedHistory.isNotEmpty
-            ? sortedHistory.asMap().entries.map((entry) {
-          final index = entry.key;
-          final historyEntry = entry.value;
-          return ListTile(
-            contentPadding: EdgeInsets.zero,
-            title: Text(
-              historyEntry.detail,
-              style: const TextStyle(fontSize: 14),
-            ),
-            subtitle: Text(
-              DateFormat.yMMMd().format(historyEntry.date),
-              style: const TextStyle(fontSize: 12, color: Colors.grey),
-            ),
-            trailing: IconButton(
-              icon: const Icon(Icons.delete, color: Colors.red),
-              onPressed: () => _deleteHistoryEntry(index),
-            ),
-          );
-        }).toList()
-            : [
-          const Text(
-            'No history available.',
-            style: TextStyle(fontSize: 14, color: Colors.grey),
-          ),
-        ],
+  Card _buildCard({required List<Widget> children}) {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: children,
+        ),
       ),
     );
   }
 
-  /// A reusable method to build a section with a title
-  Widget _buildSection({
-    required String title,
-    required Widget content,
+  TextField _buildTextField({
+    required TextEditingController controller,
+    required String label,
+    int maxLines = 1,
   }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Section Title
-        Padding(
-          padding: const EdgeInsets.only(bottom: 8.0),
-          child: Text(
-            title,
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-          ),
-        ),
-        // Actual content
-        content,
-      ],
+    return TextField(
+      controller: controller,
+      maxLines: maxLines,
+      textCapitalization: maxLines == 1
+          ? TextCapitalization.words
+          : TextCapitalization.sentences,
+      decoration: _buildInputDecoration(label),
     );
   }
 
-  /// Reusable method to build an editable section with a title and TextField
-  Widget _buildEditableSection({
-    required String title,
-    required TextEditingController controller,
-    required String hintText,
-  }) {
+  InputDecoration _buildInputDecoration(String label) {
+    return InputDecoration(
+      labelText: label,
+      border: const OutlineInputBorder(),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8),
+        borderSide: const BorderSide(color: Colors.blue, width: 2),
+      ),
+    );
+  }
+
+  Widget _buildHistorySection() {
+    final sortedHistory = List<HistoryEntry>.from(history)
+      ..sort((a, b) => b.date.compareTo(a.date));
+
+    if (sortedHistory.isEmpty) {
+      return const Text(
+        'No history available.',
+        style: TextStyle(fontSize: 14, color: Colors.grey),
+      );
+    }
+
     return Column(
+      children: sortedHistory.asMap().entries.map((entry) {
+        final index = entry.key;
+        final historyEntry = entry.value;
+        return ListTile(
+          contentPadding: EdgeInsets.zero,
+          title: Text(
+            historyEntry.detail,
+            style: const TextStyle(fontSize: 14),
+          ),
+          subtitle: Text(
+            DateFormat.yMMMd().format(historyEntry.date),
+            style: const TextStyle(fontSize: 12, color: Colors.grey),
+          ),
+          trailing: IconButton(
+            icon: const Icon(Icons.delete, color: Colors.red),
+            onPressed: () => _deleteHistoryEntry(index),
+          ),
+        );
+      }).toList(),
+    );
+  }
+}
+
+class _MethodFormEntry {
+  _MethodFormEntry({
+    required String type,
+    required String value,
+    required String label,
+  })  : type = type,
+        valueController = TextEditingController(text: value),
+        labelController = TextEditingController(text: label);
+
+  String type;
+  final TextEditingController valueController;
+  final TextEditingController labelController;
+
+  void dispose() {
+    valueController.dispose();
+    labelController.dispose();
+  }
+}
+
+class _ContactMethodRow extends StatefulWidget {
+  const _ContactMethodRow({
+    required this.entry,
+    this.onRemove,
+  });
+
+  final _MethodFormEntry entry;
+  final VoidCallback? onRemove;
+
+  @override
+  State<_ContactMethodRow> createState() => _ContactMethodRowState();
+}
+
+class _ContactMethodRowState extends State<_ContactMethodRow> {
+  @override
+  Widget build(BuildContext context) {
+    return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Title
-        Padding(
-          padding: const EdgeInsets.only(bottom: 8.0),
-          child: Text(
-            title,
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
+        Expanded(
+          flex: 2,
+          child: DropdownButtonFormField<String>(
+            value: widget.entry.type,
+            decoration: const InputDecoration(
+              labelText: 'Type',
+              border: OutlineInputBorder(),
+            ),
+            items: const [
+              DropdownMenuItem(value: 'phone', child: Text('Phone')),
+              DropdownMenuItem(value: 'email', child: Text('Email')),
+              DropdownMenuItem(value: 'other', child: Text('Other')),
+            ],
+            onChanged: (value) {
+              if (value == null) return;
+              setState(() {
+                widget.entry.type = value;
+              });
+            },
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          flex: 4,
+          child: TextField(
+            controller: widget.entry.valueController,
+            decoration: const InputDecoration(
+              labelText: 'Handle',
+              border: OutlineInputBorder(),
             ),
           ),
         ),
-        // Material-styled TextField
-        TextField(
-          controller: controller,
-          textCapitalization: TextCapitalization.sentences,
-          decoration: InputDecoration(
-            hintText: hintText,
-            border: const OutlineInputBorder(),
-            // Add a more visible focus border for Material emphasis
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide:
-              const BorderSide(color: Colors.blue, width: 2),
+        const SizedBox(width: 12),
+        Expanded(
+          flex: 3,
+          child: TextField(
+            controller: widget.entry.labelController,
+            decoration: const InputDecoration(
+              labelText: 'Label (Optional)',
+              border: OutlineInputBorder(),
             ),
           ),
         ),
+        if (widget.onRemove != null) ...[
+          const SizedBox(width: 12),
+          IconButton(
+            icon: const Icon(Icons.delete_outline),
+            tooltip: 'Remove method',
+            onPressed: widget.onRemove,
+          ),
+        ],
       ],
     );
   }

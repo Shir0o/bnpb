@@ -22,6 +22,14 @@ class _HomePageState extends State<HomePage> {
   List<Contact> _contacts = [];
   List<Contact> _filteredContacts = [];
   final TextEditingController _searchController = TextEditingController();
+  final Map<String, Contact> _contactLookup = {};
+  List<String> _availableTags = [];
+  List<String> _availableMetThroughIds = [];
+  String? _selectedTagFilter;
+  String? _selectedMetThroughFilterId;
+  bool _hasUnintroducedContacts = false;
+
+  static const String _noIntroducerFilter = '__no_introducer__';
 
   @override
   void initState() {
@@ -32,18 +40,113 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _fetchContacts() async {
     final contacts = await _dbHelper.getContacts();
+    final sortedContacts = List<Contact>.from(contacts)
+      ..sort((a, b) {
+        final lastNameA = a.lastName?.toLowerCase() ?? '';
+        final lastNameB = b.lastName?.toLowerCase() ?? '';
+        final lastNameComparison = lastNameA.compareTo(lastNameB);
+        if (lastNameComparison != 0) {
+          return lastNameComparison;
+        }
+        final firstA = a.firstName.toLowerCase();
+        final firstB = b.firstName.toLowerCase();
+        if (firstA != firstB) {
+          return firstA.compareTo(firstB);
+        }
+        final nicknameA = a.nickname?.toLowerCase() ?? '';
+        final nicknameB = b.nickname?.toLowerCase() ?? '';
+        return nicknameA.compareTo(nicknameB);
+      });
+
+    final lookup = {for (final contact in sortedContacts) contact.id: contact};
+    final tags = sortedContacts
+        .expand((contact) => contact.tags)
+        .toSet()
+        .toList()
+      ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+    final metThroughIds = sortedContacts
+        .map((contact) => contact.metThroughId)
+        .whereType<String>()
+        .toSet()
+        .toList();
+    metThroughIds.sort((a, b) =>
+        _displayNameForContactId(lookup, a).toLowerCase().compareTo(
+              _displayNameForContactId(lookup, b).toLowerCase(),
+            ));
+    final hasUnintroduced =
+        sortedContacts.any((contact) => contact.metThroughId == null);
+
     setState(() {
-      _contacts = contacts
-        ..sort((a, b) {
-          final lastNameA = a.lastName?.toLowerCase() ?? '';
-          final lastNameB = b.lastName?.toLowerCase() ?? '';
-          final lastNameComparison = lastNameA.compareTo(lastNameB);
-          if (lastNameComparison != 0) {
-            return lastNameComparison;
-          }
-          return a.firstName.toLowerCase().compareTo(b.firstName.toLowerCase());
-        });
-      _filteredContacts = List.from(_contacts);
+      _contacts = sortedContacts;
+      _contactLookup
+        ..clear()
+        ..addAll(lookup);
+      if (_selectedTagFilter != null && !tags.contains(_selectedTagFilter)) {
+        _selectedTagFilter = null;
+      }
+      if (_selectedMetThroughFilterId != null &&
+          _selectedMetThroughFilterId != _noIntroducerFilter &&
+          !metThroughIds.contains(_selectedMetThroughFilterId)) {
+        _selectedMetThroughFilterId = null;
+      }
+      _availableTags = tags;
+      _availableMetThroughIds = metThroughIds;
+      _hasUnintroducedContacts = hasUnintroduced;
+      _filteredContacts = _applyFilters(sortedContacts);
+    });
+  }
+
+  List<Contact> _applyFilters(List<Contact> source) {
+    final query = _searchController.text.toLowerCase();
+
+    return source.where((contact) {
+      final matchesQuery = query.isEmpty ||
+          contact.fullName.toLowerCase().contains(query) ||
+          (contact.nickname?.toLowerCase().contains(query) ?? false) ||
+          contact.tags.any((tag) => tag.toLowerCase().contains(query));
+
+      final matchesTag =
+          _selectedTagFilter == null || contact.tags.contains(_selectedTagFilter);
+
+      final matchesMetThrough = () {
+        if (_selectedMetThroughFilterId == null) {
+          return true;
+        }
+        if (_selectedMetThroughFilterId == _noIntroducerFilter) {
+          return contact.metThroughId == null;
+        }
+        return contact.metThroughId == _selectedMetThroughFilterId;
+      }();
+
+      return matchesQuery && matchesTag && matchesMetThrough;
+    }).toList();
+  }
+
+  void _filterContacts() {
+    setState(() {
+      _filteredContacts = _applyFilters(_contacts);
+    });
+  }
+
+  void _toggleTagFilter(String tag) {
+    setState(() {
+      if (_selectedTagFilter == tag) {
+        _selectedTagFilter = null;
+      } else {
+        _selectedTagFilter = tag;
+      }
+      _filteredContacts = _applyFilters(_contacts);
+    });
+  }
+
+  void _toggleMetThroughFilter(String key) {
+    setState(() {
+      if (_selectedMetThroughFilterId == key) {
+        _selectedMetThroughFilterId = null;
+      } else {
+        _selectedMetThroughFilterId = key;
+      }
+      _filteredContacts = _applyFilters(_contacts);
     });
   }
 
@@ -54,12 +157,10 @@ class _HomePageState extends State<HomePage> {
 
     for (var contact in contacts) {
       final location =
-      (contact.location != null && contact.location!.isNotEmpty)
-          ? contact.location!
-          : 'Unknown';
-      if (!grouped.containsKey(location)) {
-        grouped[location] = [];
-      }
+          (contact.location != null && contact.location!.isNotEmpty)
+              ? contact.location!
+              : 'Unknown';
+      grouped.putIfAbsent(location, () => []);
       grouped[location]!.add(contact);
     }
 
@@ -67,10 +168,8 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildGroupedContactsList() {
-    // Group the filtered contacts by location
     final groupedContacts = _groupContactsByLocation(_filteredContacts);
 
-    // Build an ExpansionTile for each location
     return ListView(
       children: groupedContacts.entries.map((entry) {
         final location = entry.key;
@@ -78,15 +177,22 @@ class _HomePageState extends State<HomePage> {
 
         return ExpansionTile(
           title: Text(location),
-          initiallyExpanded: false,
           children: contactsInLocation.map((contact) {
+            final displayName = contact.fullName.isNotEmpty
+                ? contact.fullName
+                : (contact.nickname ?? 'Unnamed Contact');
+            final subtitle = _buildContactSubtitle(contact);
+
             return ListTile(
               leading: CircleAvatar(
-                child: Text(contact.fullName.isNotEmpty
-                    ? contact.fullName[0]
-                    : '?'),
+                child: Text(
+                  displayName.isNotEmpty
+                      ? displayName[0].toUpperCase()
+                      : '?',
+                ),
               ),
-              title: Text(contact.fullName),
+              title: Text(displayName),
+              subtitle: subtitle,
               onTap: () => _navigateToContactDetails(contact),
             );
           }).toList(),
@@ -95,14 +201,49 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  void _filterContacts() {
-    final query = _searchController.text.toLowerCase();
-    setState(() {
-      _filteredContacts = _contacts
-          .where((contact) =>
-              contact.fullName.toLowerCase().contains(query))
-          .toList();
-    });
+  Widget? _buildContactSubtitle(Contact contact) {
+    final subtitleWidgets = <Widget>[];
+
+    if ((contact.nickname ?? '').isNotEmpty &&
+        contact.fullName.toLowerCase() != contact.nickname!.toLowerCase()) {
+      subtitleWidgets.add(Text('Nickname: ${contact.nickname}'));
+    }
+
+    final metThroughName = contact.metThroughId != null
+        ? _displayNameForContactId(_contactLookup, contact.metThroughId!)
+        : null;
+    if (metThroughName != null && metThroughName.isNotEmpty) {
+      subtitleWidgets.add(Text('Met through: $metThroughName'));
+    }
+
+    if (contact.tags.isNotEmpty) {
+      subtitleWidgets.add(
+        Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          children: contact.tags
+              .map((tag) => Chip(
+                    label: Text(tag),
+                    visualDensity: VisualDensity.compact,
+                  ))
+              .toList(),
+        ),
+      );
+    }
+
+    if (subtitleWidgets.isEmpty) {
+      return null;
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: subtitleWidgets
+          .map((widget) => Padding(
+                padding: const EdgeInsets.only(top: 4.0),
+                child: widget,
+              ))
+          .toList(),
+    );
   }
 
   Future<void> _exportContactsToFile() async {
@@ -233,6 +374,13 @@ class _HomePageState extends State<HomePage> {
               ),
             ),
           ),
+          if (_availableTags.isNotEmpty ||
+              _availableMetThroughIds.isNotEmpty ||
+              _hasUnintroducedContacts)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              child: _buildFilterSection(),
+            ),
           Expanded(
             child: _filteredContacts.isEmpty
                 ? const Center(child: Text('No contacts available.'))
@@ -241,5 +389,74 @@ class _HomePageState extends State<HomePage> {
         ],
       ),
     );
+  }
+
+  Widget _buildFilterSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (_availableTags.isNotEmpty) ...[
+          const Text(
+            'Filter by tags',
+            style: TextStyle(fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 4),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: _availableTags
+                .map(
+                  (tag) => FilterChip(
+                    label: Text(tag),
+                    selected: _selectedTagFilter == tag,
+                    onSelected: (_) => _toggleTagFilter(tag),
+                  ),
+                )
+                .toList(),
+          ),
+        ],
+        if (_availableMetThroughIds.isNotEmpty || _hasUnintroducedContacts) ...[
+          if (_availableTags.isNotEmpty) const SizedBox(height: 12),
+          const Text(
+            'Filter by introducer',
+            style: TextStyle(fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 4),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              if (_hasUnintroducedContacts)
+                FilterChip(
+                  label: const Text('No introducer'),
+                  selected: _selectedMetThroughFilterId == _noIntroducerFilter,
+                  onSelected: (_) => _toggleMetThroughFilter(_noIntroducerFilter),
+                ),
+              ..._availableMetThroughIds.map(
+                (id) => FilterChip(
+                  label: Text(_displayNameForContactId(_contactLookup, id)),
+                  selected: _selectedMetThroughFilterId == id,
+                  onSelected: (_) => _toggleMetThroughFilter(id),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ],
+    );
+  }
+
+  String _displayNameForContactId(
+      Map<String, Contact> lookup, String contactId) {
+    final contact = lookup[contactId];
+    if (contact == null) {
+      return 'Unknown contact';
+    }
+    final fullName = contact.fullName;
+    if (fullName.isNotEmpty) {
+      return fullName;
+    }
+    final nickname = contact.nickname ?? '';
+    return nickname.isNotEmpty ? nickname : 'Unknown contact';
   }
 }
