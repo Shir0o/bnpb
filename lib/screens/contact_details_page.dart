@@ -1,11 +1,15 @@
+import 'dart:convert';
 import 'dart:io';
 
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:timeline_tile/timeline_tile.dart';
 
 import '../db/db_helper.dart';
 import '../models/contact.dart';
+import '../models/interaction.dart';
 import '../models/relationship.dart';
 
 class ContactDetailsPage extends StatefulWidget {
@@ -23,7 +27,6 @@ class ContactDetailsPage extends StatefulWidget {
 }
 
 class _ContactDetailsPageState extends State<ContactDetailsPage> {
-  final TextEditingController _historyDetailController = TextEditingController();
   final TextEditingController _firstNameController = TextEditingController();
   final TextEditingController _middleNameController = TextEditingController();
   final TextEditingController _lastNameController = TextEditingController();
@@ -32,9 +35,28 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
   final TextEditingController _firstMeetingNotesController =
       TextEditingController();
   final TextEditingController _tagController = TextEditingController();
+  final TextEditingController _interactionSearchController =
+      TextEditingController();
 
-  List<HistoryEntry> history = [];
-  DateTime? _selectedDate;
+  List<Interaction> _interactions = [];
+  bool _isLoadingInteractions = false;
+  String _interactionQuery = '';
+
+  static const Map<String, String> _mediumLabels = {
+    'in_person': 'In-person',
+    'call': 'Call',
+    'message': 'Message',
+    'online': 'Online Meeting',
+    'other': 'Other',
+  };
+
+  static const Map<String, IconData> _mediumIcons = {
+    'in_person': Icons.people_outline,
+    'call': Icons.phone_outlined,
+    'message': Icons.chat_bubble_outline,
+    'online': Icons.videocam_outlined,
+    'other': Icons.more_horiz,
+  };
 
   List<_MethodFormEntry> _methodEntries = [];
   List<String> _selectedTags = [];
@@ -50,7 +72,8 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
   void initState() {
     super.initState();
     final contact = widget.contact;
-    history = List<HistoryEntry>.from(contact.history);
+    _interactions = List<Interaction>.from(contact.interactions)
+      ..sort((a, b) => b.occurredAt.compareTo(a.occurredAt));
     _firstNameController.text = contact.firstName;
     _middleNameController.text = contact.middleName;
     _lastNameController.text = contact.lastName ?? '';
@@ -74,12 +97,19 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
       );
     }
 
+    _interactionSearchController.addListener(() {
+      setState(() {
+        _interactionQuery = _interactionSearchController.text.trim();
+      });
+    });
+
     _loadReferenceData();
+    _refreshInteractions();
   }
 
   @override
   void dispose() {
-    _historyDetailController.dispose();
+    _interactionSearchController.dispose();
     _firstNameController.dispose();
     _middleNameController.dispose();
     _lastNameController.dispose();
@@ -121,6 +151,22 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
       _isLoadingReferenceData = false;
       _relationships = relationships;
       _isLoadingRelationships = false;
+    });
+  }
+
+  Future<void> _refreshInteractions() async {
+    setState(() {
+      _isLoadingInteractions = true;
+    });
+
+    final interactions =
+        await DBHelper().getInteractionsForContact(widget.contact.id);
+
+    if (!mounted) return;
+    setState(() {
+      _interactions = interactions
+        ..sort((a, b) => b.occurredAt.compareTo(a.occurredAt));
+      _isLoadingInteractions = false;
     });
   }
 
@@ -170,7 +216,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
     });
   }
 
-  Contact _buildContactFromState({List<HistoryEntry>? historyOverride}) {
+  Contact _buildContactFromState({List<Interaction>? interactionsOverride}) {
     final methods = _methodEntries
         .map(
           (entry) => ContactMethod(
@@ -201,7 +247,8 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
           firstMeetingNotesText.isEmpty ? null : firstMeetingNotesText,
       contactMethods: methods,
       tags: List<String>.from(_selectedTags),
-      history: List<HistoryEntry>.from(historyOverride ?? history),
+      interactions:
+          List<Interaction>.from(interactionsOverride ?? _interactions),
     );
   }
 
@@ -278,128 +325,407 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
     );
   }
 
-  void _deleteHistoryEntry(int index) async {
-    final sortedHistory = List<HistoryEntry>.from(history)
-      ..sort((a, b) => b.date.compareTo(a.date));
-    final entryToDelete = sortedHistory[index];
+  Future<void> _deleteInteraction(Interaction interaction) async {
+    if (interaction.id == null) return;
 
+    await DBHelper().deleteInteraction(interaction.id!);
     setState(() {
-      history.remove(entryToDelete);
+      _interactions.removeWhere((item) => item.id == interaction.id);
     });
-
-    final updatedContact = _buildContactFromState();
-    await DBHelper().updateContact(updatedContact);
 
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('History entry deleted')),
+      const SnackBar(content: Text('Interaction removed')),
     );
   }
 
-  void _addHistoryItem() {
-    showDialog(
+  void _showQuickAddInteractionSheet() {
+    showModalBottomSheet<Interaction>(
       context: context,
+      isScrollControlled: true,
       builder: (context) {
+        final summaryController = TextEditingController();
+        final locationController = TextEditingController();
+        DateTime occurredAt = DateTime.now();
+        DateTime? followUpAt;
+        String medium = 'in_person';
+        bool markForPrayer = false;
+        List<AttachmentReference> attachments = [];
+
         return StatefulBuilder(
-          builder: (context, setStateDialog) {
-            return AlertDialog(
-              title: const Text('Add History'),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextField(
-                    controller: _historyDetailController,
-                    textCapitalization: TextCapitalization.sentences,
-                    decoration: InputDecoration(
-                      hintText: 'Enter history detail',
-                      border: const OutlineInputBorder(),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide:
-                            const BorderSide(color: Colors.blue, width: 2),
-                      ),
+          builder: (context, setStateSheet) {
+            Future<void> pickDateTime() async {
+              final date = await showDatePicker(
+                context: context,
+                initialDate: occurredAt,
+                firstDate: DateTime(2000),
+                lastDate: DateTime(2100),
+              );
+              if (date == null) return;
+              final time = await showTimePicker(
+                context: context,
+                initialTime: TimeOfDay.fromDateTime(occurredAt),
+              );
+              if (time == null) return;
+              setStateSheet(() {
+                occurredAt = DateTime(
+                  date.year,
+                  date.month,
+                  date.day,
+                  time.hour,
+                  time.minute,
+                );
+              });
+            }
+
+            Future<void> pickFollowUp() async {
+              final date = await showDatePicker(
+                context: context,
+                initialDate: followUpAt ?? DateTime.now(),
+                firstDate: DateTime.now().subtract(const Duration(days: 1)),
+                lastDate: DateTime(2100),
+              );
+              if (date == null) return;
+              final time = await showTimePicker(
+                context: context,
+                initialTime: TimeOfDay.fromDateTime(followUpAt ?? DateTime.now()),
+              );
+              if (time == null) return;
+              setStateSheet(() {
+                followUpAt = DateTime(
+                  date.year,
+                  date.month,
+                  date.day,
+                  time.hour,
+                  time.minute,
+                );
+              });
+            }
+
+            Future<void> addFileAttachment() async {
+              final result = await FilePicker.platform.pickFiles();
+              final file = result?.files.single;
+              final path = file?.path;
+              if (path == null) return;
+              setStateSheet(() {
+                attachments = List<AttachmentReference>.from(attachments)
+                  ..add(
+                    AttachmentReference(
+                      uri: path,
+                      source: AttachmentSource.local,
+                      label: file?.name,
                     ),
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Text(
-                        _selectedDate != null
-                            ? DateFormat.yMMMd().format(_selectedDate!)
-                            : 'No date selected',
+                  );
+              });
+            }
+
+            Future<void> addLinkAttachment() async {
+              final linkController = TextEditingController();
+              final labelController = TextEditingController();
+              final link = await showDialog<String>(
+                context: context,
+                builder: (context) {
+                  return AlertDialog(
+                    title: const Text('Add Link'),
+                    content: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        TextField(
+                          controller: linkController,
+                          decoration: const InputDecoration(
+                            labelText: 'URL',
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: labelController,
+                          decoration: const InputDecoration(
+                            labelText: 'Label (optional)',
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                      ],
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text('Cancel'),
                       ),
-                      const SizedBox(width: 16),
                       ElevatedButton(
-                        onPressed: () async {
-                          final pickedDate = await showDatePicker(
-                            context: context,
-                            initialDate: DateTime.now(),
-                            firstDate: DateTime(2000),
-                            lastDate: DateTime(2100),
-                          );
-                          if (pickedDate != null) {
-                            setStateDialog(() {
-                              _selectedDate = pickedDate;
-                            });
+                        onPressed: () {
+                          final link = linkController.text.trim();
+                          if (link.isEmpty) {
+                            Navigator.pop(context);
+                            return;
                           }
+                          final label = labelController.text.trim();
+                          Navigator.pop(
+                            context,
+                            jsonEncode({
+                              'uri': link,
+                              'label': label.isEmpty ? null : label,
+                            }),
+                          );
                         },
-                        child: const Text('Pick Date'),
+                        child: const Text('Add'),
                       ),
                     ],
-                  ),
-                ],
+                  );
+                },
+              );
+
+              if (link == null) return;
+              final decoded = jsonDecode(link) as Map<String, dynamic>;
+              setStateSheet(() {
+                attachments = List<AttachmentReference>.from(attachments)
+                  ..add(
+                    AttachmentReference(
+                      uri: decoded['uri'] as String,
+                      source: AttachmentSource.cloud,
+                      label: decoded['label'] as String?,
+                    ),
+                  );
+              });
+            }
+
+            void removeAttachment(AttachmentReference attachment) {
+              setStateSheet(() {
+                attachments = List<AttachmentReference>.from(attachments)
+                  ..removeWhere((item) => item.uri == attachment.uri);
+              });
+            }
+
+            Future<void> saveInteraction() async {
+              final summary = summaryController.text.trim();
+              if (summary.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Add a short summary first.')),
+                );
+                return;
+              }
+
+              final interaction = Interaction(
+                contactId: widget.contact.id,
+                occurredAt: occurredAt,
+                summary: summary,
+                medium: medium,
+                location:
+                    locationController.text.trim().isEmpty
+                        ? null
+                        : locationController.text.trim(),
+                attachments: attachments,
+                markForPrayer: markForPrayer,
+                followUpAt: followUpAt,
+              );
+
+              final savedInteraction =
+                  await DBHelper().insertInteraction(interaction);
+
+              if (!mounted) return;
+              Navigator.pop(context, savedInteraction);
+            }
+
+            return Padding(
+              padding: EdgeInsets.only(
+                left: 16,
+                right: 16,
+                bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+                top: 24,
               ),
-              actions: [
-                TextButton(
-                  onPressed: () {
-                    _historyDetailController.clear();
-                    _selectedDate = null;
-                    Navigator.pop(context);
-                  },
-                  child: const Text('Cancel'),
-                ),
-                ElevatedButton(
-                  onPressed: () async {
-                    final detail = _historyDetailController.text.trim();
-                    if (detail.isNotEmpty && _selectedDate != null) {
-                      final newEntry = HistoryEntry(
-                        date: _selectedDate!,
-                        detail: detail,
-                      );
-
-                      final updatedHistory = List<HistoryEntry>.from(history)
-                        ..add(newEntry);
-
-                      setState(() {
-                        history = updatedHistory;
-                      });
-
-                      final updatedContact = _buildContactFromState(
-                        historyOverride: updatedHistory,
-                      );
-                      await DBHelper().updateContact(updatedContact);
-
-                      if (mounted) {
-                        _historyDetailController.clear();
-                        _selectedDate = null;
-                        Navigator.pop(context);
-                      }
-                    } else {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Please fill in all fields.'),
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Log interaction',
+                          style: Theme.of(context).textTheme.titleMedium,
                         ),
-                      );
-                    }
-                  },
-                  child: const Text('Add'),
+                        IconButton(
+                          icon: const Icon(Icons.close),
+                          onPressed: () => Navigator.pop(context),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: summaryController,
+                      decoration: const InputDecoration(
+                        labelText: 'Summary',
+                        border: OutlineInputBorder(),
+                      ),
+                      textCapitalization: TextCapitalization.sentences,
+                      maxLines: 2,
+                    ),
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<String>(
+                      value: medium,
+                      decoration: const InputDecoration(
+                        labelText: 'Medium',
+                        border: OutlineInputBorder(),
+                      ),
+                      items: const [
+                        DropdownMenuItem(
+                          value: 'in_person',
+                          child: Text('In-person'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'call',
+                          child: Text('Call'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'message',
+                          child: Text('Message'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'online',
+                          child: Text('Online Meeting'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'other',
+                          child: Text('Other'),
+                        ),
+                      ],
+                      onChanged: (value) {
+                        if (value == null) return;
+                        setStateSheet(() {
+                          medium = value;
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: locationController,
+                      decoration: const InputDecoration(
+                        labelText: 'Location (optional)',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('Occurred at'),
+                      subtitle: Text(
+                        DateFormat.yMMMd().add_jm().format(occurredAt),
+                      ),
+                      trailing: const Icon(Icons.edit_outlined),
+                      onTap: pickDateTime,
+                    ),
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('Mark for prayer'),
+                      value: markForPrayer,
+                      onChanged: (value) {
+                        setStateSheet(() {
+                          markForPrayer = value;
+                        });
+                      },
+                    ),
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('Follow-up reminder'),
+                      subtitle: Text(
+                        followUpAt != null
+                            ? DateFormat.yMMMd().add_jm().format(followUpAt!)
+                            : 'None',
+                      ),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (followUpAt != null)
+                            IconButton(
+                              icon: const Icon(Icons.close),
+                              onPressed: () {
+                                setStateSheet(() {
+                                  followUpAt = null;
+                                });
+                              },
+                            ),
+                          IconButton(
+                            icon: const Icon(Icons.calendar_month_outlined),
+                            onPressed: pickFollowUp,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Attachments',
+                      style: Theme.of(context).textTheme.titleSmall,
+                    ),
+                    const SizedBox(height: 8),
+                    if (attachments.isEmpty)
+                      const Text(
+                        'Add quick notes, files, or shared links.',
+                        style: TextStyle(color: Colors.grey),
+                      )
+                    else
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: attachments
+                            .map(
+                              (attachment) => InputChip(
+                                label: Text(
+                                  attachment.label ??
+                                      attachment.uri.split('/').last,
+                                ),
+                                avatar: Icon(
+                                  attachment.source == AttachmentSource.local
+                                      ? Icons.insert_drive_file_outlined
+                                      : Icons.cloud_outlined,
+                                ),
+                                onDeleted: () => removeAttachment(attachment),
+                              ),
+                            )
+                            .toList(),
+                      ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        OutlinedButton.icon(
+                          onPressed: addFileAttachment,
+                          icon: const Icon(Icons.attach_file),
+                          label: const Text('Device file'),
+                        ),
+                        const SizedBox(width: 12),
+                        OutlinedButton.icon(
+                          onPressed: addLinkAttachment,
+                          icon: const Icon(Icons.link),
+                          label: const Text('Add link'),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: saveInteraction,
+                        icon: const Icon(Icons.check),
+                        label: const Text('Save'),
+                      ),
+                    ),
+                  ],
                 ),
-              ],
+              ),
             );
           },
         );
       },
-    );
+    ).then((interaction) {
+      if (interaction == null) return;
+      setState(() {
+        _interactions = List<Interaction>.from(_interactions)
+          ..add(interaction)
+          ..sort((a, b) => b.occurredAt.compareTo(a.occurredAt));
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Interaction logged')), 
+      );
+    });
   }
 
   Future<void> _refreshRelationships() async {
@@ -906,11 +1232,11 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
             _buildCard(
               children: [
                 Text(
-                  'History',
+                  'Interactions',
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
                 const SizedBox(height: 12),
-                _buildHistorySection(),
+                _buildInteractionSection(),
               ],
             ),
             const SizedBox(height: 80),
@@ -918,9 +1244,9 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
         ),
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: _addHistoryItem,
+        onPressed: _showQuickAddInteractionSheet,
         icon: const Icon(Icons.add),
-        label: const Text('Add History'),
+        label: const Text('Log Interaction'),
       ),
     );
   }
@@ -967,37 +1293,253 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
     );
   }
 
-  Widget _buildHistorySection() {
-    final sortedHistory = List<HistoryEntry>.from(history)
-      ..sort((a, b) => b.date.compareTo(a.date));
+  List<Interaction> get _filteredInteractions {
+    final query = _interactionQuery.toLowerCase();
+    final sorted = List<Interaction>.from(_interactions)
+      ..sort((a, b) => b.occurredAt.compareTo(a.occurredAt));
 
-    if (sortedHistory.isEmpty) {
-      return const Text(
-        'No history available.',
-        style: TextStyle(fontSize: 14, color: Colors.grey),
-      );
+    if (query.isEmpty) {
+      return sorted;
     }
 
+    return sorted.where((interaction) {
+      final mediumLabel = _mediumLabels[interaction.medium] ?? interaction.medium;
+      final matchesSummary = interaction.summary.toLowerCase().contains(query);
+      final matchesLocation =
+          (interaction.location ?? '').toLowerCase().contains(query);
+      final matchesMedium = mediumLabel.toLowerCase().contains(query);
+      final matchesAttachments = interaction.attachments.any((attachment) {
+        final value = (attachment.label ?? attachment.uri).toLowerCase();
+        return value.contains(query);
+      });
+
+      return matchesSummary ||
+          matchesLocation ||
+          matchesMedium ||
+          matchesAttachments;
+    }).toList();
+  }
+
+  Widget _buildInteractionSection() {
+    final filtered = _filteredInteractions;
+
     return Column(
-      children: sortedHistory.asMap().entries.map((entry) {
-        final index = entry.key;
-        final historyEntry = entry.value;
-        return ListTile(
-          contentPadding: EdgeInsets.zero,
-          title: Text(
-            historyEntry.detail,
-            style: const TextStyle(fontSize: 14),
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        TextField(
+          controller: _interactionSearchController,
+          decoration: InputDecoration(
+            hintText: 'Search by summary, medium, location, or attachment',
+            prefixIcon: const Icon(Icons.search),
+            suffixIcon: _interactionQuery.isNotEmpty
+                ? IconButton(
+                    icon: const Icon(Icons.clear),
+                    onPressed: () => _interactionSearchController.clear(),
+                  )
+                : null,
+            border: const OutlineInputBorder(),
           ),
-          subtitle: Text(
-            DateFormat.yMMMd().format(historyEntry.date),
-            style: const TextStyle(fontSize: 12, color: Colors.grey),
+        ),
+        const SizedBox(height: 12),
+        if (_isLoadingInteractions)
+          const Center(child: Padding(
+            padding: EdgeInsets.symmetric(vertical: 24),
+            child: CircularProgressIndicator(),
+          ))
+        else if (filtered.isEmpty)
+          const Text(
+            'No interactions logged yet. Use the button below to record one.',
+            style: TextStyle(fontSize: 14, color: Colors.grey),
+          )
+        else
+          Column(
+            children: filtered.asMap().entries.map((entry) {
+              final index = entry.key;
+              final interaction = entry.value;
+              return _buildTimelineTile(
+                interaction: interaction,
+                isFirst: index == 0,
+                isLast: index == filtered.length - 1,
+              );
+            }).toList(),
           ),
-          trailing: IconButton(
-            icon: const Icon(Icons.delete, color: Colors.red),
-            onPressed: () => _deleteHistoryEntry(index),
+      ],
+    );
+  }
+
+  TimelineTile _buildTimelineTile({
+    required Interaction interaction,
+    required bool isFirst,
+    required bool isLast,
+  }) {
+    final theme = Theme.of(context);
+    final indicatorColor = interaction.markForPrayer
+        ? theme.colorScheme.secondary
+        : theme.colorScheme.primary;
+
+    return TimelineTile(
+      alignment: TimelineAlign.manual,
+      lineXY: 0.15,
+      isFirst: isFirst,
+      isLast: isLast,
+      beforeLineStyle: LineStyle(
+        color: theme.colorScheme.outlineVariant,
+        thickness: 2,
+      ),
+      afterLineStyle: LineStyle(
+        color: theme.colorScheme.outlineVariant,
+        thickness: 2,
+      ),
+      indicatorStyle: IndicatorStyle(
+        width: 32,
+        height: 32,
+        indicator: Container(
+          decoration: BoxDecoration(
+            color: indicatorColor,
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: indicatorColor.withOpacity(0.3),
+                blurRadius: 6,
+                offset: const Offset(0, 3),
+              ),
+            ],
           ),
-        );
-      }).toList(),
+          child: Icon(
+            interaction.markForPrayer
+                ? Icons.volunteer_activism
+                : Icons.event,
+            size: 18,
+            color: theme.colorScheme.onPrimary,
+          ),
+        ),
+      ),
+      startChild: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Text(
+              DateFormat.MMMd().format(interaction.occurredAt),
+              style: theme.textTheme.bodySmall,
+            ),
+            Text(
+              DateFormat.jm().format(interaction.occurredAt),
+              style: theme.textTheme.labelSmall,
+            ),
+            if (interaction.followUpAt != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    const Icon(Icons.alarm_outlined, size: 14),
+                    const SizedBox(width: 4),
+                    Flexible(
+                      child: Text(
+                        DateFormat.MMMd().add_jm().format(interaction.followUpAt!),
+                        style: theme.textTheme.labelSmall,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        ),
+      ),
+      endChild: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        child: _buildInteractionCard(interaction),
+      ),
+    );
+  }
+
+  Widget _buildInteractionCard(Interaction interaction) {
+    final theme = Theme.of(context);
+    final mediumLabel = _mediumLabels[interaction.medium] ?? interaction.medium;
+    final mediumIcon = _mediumIcons[interaction.medium] ?? Icons.forum_outlined;
+
+    return Container(
+      margin: const EdgeInsets.only(left: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceVariant.withOpacity(0.4),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: theme.colorScheme.outlineVariant),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Text(
+                  interaction.summary,
+                  style: theme.textTheme.titleSmall,
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.delete_outline),
+                tooltip: 'Delete interaction',
+                onPressed: () => _deleteInteraction(interaction),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              Chip(
+                avatar: Icon(mediumIcon, size: 18),
+                label: Text(mediumLabel),
+              ),
+              if (interaction.location != null && interaction.location!.isNotEmpty)
+                Chip(
+                  avatar: const Icon(Icons.place_outlined, size: 18),
+                  label: Text(interaction.location!),
+                ),
+              if (interaction.markForPrayer)
+                Chip(
+                  avatar: const Icon(Icons.self_improvement, size: 18),
+                  label: const Text('Prayer focus'),
+                ),
+            ],
+          ),
+          if (interaction.attachments.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: interaction.attachments
+                  .map(
+                    (attachment) => InputChip(
+                      label: Text(
+                        attachment.label ??
+                            attachment.uri.split('/').last,
+                      ),
+                      avatar: Icon(
+                        attachment.source == AttachmentSource.local
+                            ? Icons.insert_drive_file_outlined
+                            : Icons.cloud_outlined,
+                        size: 18,
+                      ),
+                      onPressed: () {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(attachment.uri),
+                          ),
+                        );
+                      },
+                    ),
+                  )
+                  .toList(),
+            ),
+          ],
+        ],
+      ),
     );
   }
 }

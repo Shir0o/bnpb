@@ -1,28 +1,4 @@
-class HistoryEntry {
-  final DateTime date; // Date of the history entry
-  final String detail; // Detail of the history entry
-
-  HistoryEntry({
-    required this.date,
-    required this.detail,
-  });
-
-  // Converts a HistoryEntry object into a Map for storage or serialization
-  Map<String, dynamic> toMap() {
-    return {
-      'date': date.toIso8601String(),
-      'detail': detail,
-    };
-  }
-
-  // Creates a HistoryEntry object from a Map
-  static HistoryEntry fromMap(Map<String, dynamic> map) {
-    return HistoryEntry(
-      date: DateTime.parse(map['date']),
-      detail: map['detail'],
-    );
-  }
-}
+import 'interaction.dart';
 
 /// A single way to reach a contact, such as an email address or phone number.
 class ContactMethod {
@@ -64,7 +40,8 @@ class Contact {
   final String? firstMeetingNotes; // Notes from the first meeting
   final List<ContactMethod> contactMethods; // Reachable methods (phone/email)
   final List<String> tags; // Relationship tags
-  final List<HistoryEntry> history; // List of history entries for the contact
+  /// Recorded interactions for the contact (e.g., meetings, calls).
+  final List<Interaction> interactions;
 
   Contact({
     required this.id,
@@ -77,10 +54,10 @@ class Contact {
     this.firstMeetingNotes,
     List<ContactMethod>? contactMethods,
     List<String>? tags,
-    List<HistoryEntry>? history,
+    List<Interaction>? interactions,
   })  : contactMethods = contactMethods ?? const [],
         tags = tags ?? const [],
-        history = history ?? [];
+        interactions = interactions ?? const [];
 
   Contact copyWith({
     String? firstName,
@@ -93,7 +70,7 @@ class Contact {
     String? firstMeetingNotes,
     List<ContactMethod>? contactMethods,
     List<String>? tags,
-    List<HistoryEntry>? history,
+    List<Interaction>? interactions,
   }) {
     return Contact(
       id: id,
@@ -108,12 +85,12 @@ class Contact {
       firstMeetingNotes: firstMeetingNotes ?? this.firstMeetingNotes,
       contactMethods: contactMethods ?? this.contactMethods,
       tags: tags ?? this.tags,
-      history: history ?? this.history,
+      interactions: interactions ?? this.interactions,
     );
   }
 
   // Converts a Contact object into a Map for storage or serialization.
-  // Notice: We keep `history` as a List of Maps here.
+  // Notice: We keep `interactions` as a List of Maps here.
   Map<String, dynamic> toMap() {
     return {
       'id': id,
@@ -126,11 +103,11 @@ class Contact {
       'firstMeetingNotes': firstMeetingNotes,
       'contactMethods': contactMethods.map((entry) => entry.toMap()).toList(),
       'tags': tags,
-      'history': history.map((entry) => entry.toMap()).toList(),
+      'interactions': interactions.map((entry) => entry.toMap()).toList(),
     };
   }
 
-  // Creates a Contact object from a Map that already has `history` as a List of Maps.
+  // Creates a Contact object from a Map that already has `interactions` as a List of Maps.
   static Contact fromMap(Map<String, dynamic> map) {
     return Contact(
       id: map['id'] as String,
@@ -150,11 +127,11 @@ class Contact {
               ?.map((tag) => tag as String)
               .toList() ??
           const [],
-      history: (map['history'] as List<dynamic>?)
+      interactions: (map['interactions'] as List<dynamic>?)
               ?.map((entry) =>
-                  HistoryEntry.fromMap(Map<String, dynamic>.from(entry)))
+                  Interaction.fromMap(Map<String, dynamic>.from(entry)))
               .toList() ??
-          [],
+          const [],
     );
   }
 
