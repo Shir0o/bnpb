@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import 'screens/add_contact_page.dart';
+import 'screens/analytics_page.dart';
 import 'screens/home_page.dart';
 
 void main() {
@@ -53,6 +54,7 @@ class _MainPageState extends State<MainPage> {
 
   final List<Widget> _pages = [
     const HomePage(),
+    const AnalyticsPage(),
     const AddContactPage(),
   ];
 
@@ -72,6 +74,11 @@ class _MainPageState extends State<MainPage> {
             icon: Icon(Icons.home_outlined),
             selectedIcon: Icon(Icons.home),
             label: 'Home',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.insights_outlined),
+            selectedIcon: Icon(Icons.insights),
+            label: 'Analytics',
           ),
           NavigationDestination(
             icon: Icon(Icons.person_add_outlined),

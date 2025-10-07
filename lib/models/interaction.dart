@@ -68,6 +68,8 @@ class Interaction {
     this.attachments = const [],
     this.markForPrayer = false,
     this.followUpAt,
+    this.durationMinutes,
+    this.category,
   });
 
   final int? id;
@@ -79,6 +81,8 @@ class Interaction {
   final List<AttachmentReference> attachments;
   final bool markForPrayer;
   final DateTime? followUpAt;
+  final int? durationMinutes;
+  final String? category;
 
   Interaction copyWith({
     int? id,
@@ -90,6 +94,8 @@ class Interaction {
     List<AttachmentReference>? attachments,
     bool? markForPrayer,
     DateTime? followUpAt,
+    int? durationMinutes,
+    String? category,
   }) {
     return Interaction(
       id: id ?? this.id,
@@ -101,6 +107,8 @@ class Interaction {
       attachments: attachments ?? this.attachments,
       markForPrayer: markForPrayer ?? this.markForPrayer,
       followUpAt: followUpAt ?? this.followUpAt,
+      durationMinutes: durationMinutes ?? this.durationMinutes,
+      category: category ?? this.category,
     );
   }
 
@@ -116,6 +124,8 @@ class Interaction {
       ),
       'markForPrayer': markForPrayer ? 1 : 0,
       'followUpAt': followUpAt?.toIso8601String(),
+      'durationMinutes': durationMinutes,
+      'category': category,
     };
     if (includeId && id != null) {
       map['id'] = id;
@@ -153,6 +163,35 @@ class Interaction {
       followUpAt: map['followUpAt'] != null
           ? DateTime.tryParse(map['followUpAt'] as String)
           : null,
+      durationMinutes: _parseOptionalInt(map['durationMinutes']),
+      category: _parseOptionalCategory(map['category']),
     );
+  }
+
+  static int? _parseOptionalInt(dynamic value) {
+    if (value == null) {
+      return null;
+    }
+    if (value is int) {
+      return value;
+    }
+    if (value is double) {
+      return value.round();
+    }
+    if (value is String) {
+      return int.tryParse(value);
+    }
+    return null;
+  }
+
+  static String? _parseOptionalCategory(dynamic value) {
+    if (value is! String) {
+      return null;
+    }
+    final trimmed = value.trim();
+    if (trimmed.isEmpty) {
+      return null;
+    }
+    return trimmed;
   }
 }
