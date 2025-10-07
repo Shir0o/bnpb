@@ -3,11 +3,13 @@ import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../db/db_helper.dart';
 import '../models/contact.dart';
+import '../models/prayer_request.dart';
 import 'contact_details_page.dart';
 import 'relationship_explorer_page.dart';
 
@@ -29,6 +31,13 @@ class _HomePageState extends State<HomePage> {
   String? _selectedTagFilter;
   String? _selectedMetThroughFilterId;
   bool _hasUnintroducedContacts = false;
+  Map<PrayerRequestStatus, int> _prayerCounts = {
+    for (final status in PrayerRequestStatus.values) status: 0,
+  };
+  List<PrayerRequest> _pendingPrayerReminders = [];
+  List<PrayerRequest> _recentAnsweredPrayers = [];
+  PrayerRequestStatus? _selectedPrayerStatusFilter;
+  bool _isLoadingPrayerInsights = false;
 
   static const String _noIntroducerFilter = '__no_introducer__';
 
@@ -95,6 +104,36 @@ class _HomePageState extends State<HomePage> {
       _hasUnintroducedContacts = hasUnintroduced;
       _filteredContacts = _applyFilters(sortedContacts);
     });
+
+    await _loadPrayerInsights();
+  }
+
+  Future<void> _loadPrayerInsights() async {
+    setState(() {
+      _isLoadingPrayerInsights = true;
+    });
+
+    final counts = await _dbHelper.getPrayerRequestCounts();
+    final pending = await _dbHelper.getPrayerRequests(
+      status: PrayerRequestStatus.pending,
+      limit: 3,
+    );
+    final answered = await _dbHelper.getPrayerRequests(
+      status: PrayerRequestStatus.answered,
+      limit: 3,
+      latestAnsweredFirst: true,
+    );
+
+    if (!mounted) return;
+    setState(() {
+      _prayerCounts = {
+        for (final status in PrayerRequestStatus.values)
+          status: counts[status] ?? 0,
+      };
+      _pendingPrayerReminders = pending;
+      _recentAnsweredPrayers = answered;
+      _isLoadingPrayerInsights = false;
+    });
   }
 
   List<Contact> _applyFilters(List<Contact> source) {
@@ -119,7 +158,18 @@ class _HomePageState extends State<HomePage> {
         return contact.metThroughId == _selectedMetThroughFilterId;
       }();
 
-      return matchesQuery && matchesTag && matchesMetThrough;
+      final matchesPrayerStatus = () {
+        if (_selectedPrayerStatusFilter == null) {
+          return true;
+        }
+        return contact.prayerRequests
+            .any((request) => request.status == _selectedPrayerStatusFilter);
+      }();
+
+      return matchesQuery &&
+          matchesTag &&
+          matchesMetThrough &&
+          matchesPrayerStatus;
     }).toList();
   }
 
@@ -149,6 +199,147 @@ class _HomePageState extends State<HomePage> {
       }
       _filteredContacts = _applyFilters(_contacts);
     });
+  }
+
+  void _togglePrayerStatusFilter(PrayerRequestStatus status) {
+    setState(() {
+      if (_selectedPrayerStatusFilter == status) {
+        _selectedPrayerStatusFilter = null;
+      } else {
+        _selectedPrayerStatusFilter = status;
+      }
+      _filteredContacts = _applyFilters(_contacts);
+    });
+  }
+
+  Widget _buildPrayerInsightsCard() {
+    final theme = Theme.of(context);
+    final hasAnyPrayer =
+        _prayerCounts.values.any((count) => count != 0);
+
+    final statusChips = PrayerRequestStatus.values.map((status) {
+      final count = _prayerCounts[status] ?? 0;
+      return FilterChip(
+        label: Text('${status.label} ($count)'),
+        selected: _selectedPrayerStatusFilter == status,
+        onSelected: (_) => _togglePrayerStatusFilter(status),
+      );
+    }).toList();
+
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Prayer insights',
+                    style: theme.textTheme.titleMedium,
+                  ),
+                ),
+                if (_isLoadingPrayerInsights)
+                  const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: statusChips,
+            ),
+            if (!hasAnyPrayer && !_isLoadingPrayerInsights) ...[
+              const SizedBox(height: 12),
+              Text(
+                'Log prayer requests from a contact to receive reminders and celebrate answered prayers here.',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.outline,
+                ),
+              ),
+            ],
+            if (_pendingPrayerReminders.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Text('Needs prayer', style: theme.textTheme.titleSmall),
+              const SizedBox(height: 8),
+              ..._pendingPrayerReminders.map((request) {
+                final contactName =
+                    _displayNameForContactId(_contactLookup, request.contactId);
+                return ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  dense: true,
+                  leading: const Icon(Icons.hourglass_top_outlined),
+                  title: Text(request.description),
+                  subtitle: Text(
+                    '${_formatDate(request.requestedAt)} • $contactName',
+                  ),
+                  onTap: () {
+                    final contact = _contactLookup[request.contactId];
+                    if (contact != null) {
+                      _navigateToContactDetails(contact);
+                    }
+                  },
+                );
+              }),
+            ],
+            if (_recentAnsweredPrayers.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Text('Answered recently', style: theme.textTheme.titleSmall),
+              const SizedBox(height: 8),
+              ..._recentAnsweredPrayers.map((request) {
+                final contactName =
+                    _displayNameForContactId(_contactLookup, request.contactId);
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.secondaryContainer,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: ListTile(
+                    dense: true,
+                    leading: Icon(
+                      Icons.celebration_outlined,
+                      color: theme.colorScheme.onSecondaryContainer,
+                    ),
+                    title: Text(
+                      request.description,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.onSecondaryContainer,
+                      ),
+                    ),
+                    subtitle: Text(
+                      '${_formatDate(request.answeredAt ?? request.requestedAt)} • $contactName',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSecondaryContainer,
+                      ),
+                    ),
+                    onTap: () {
+                      final contact = _contactLookup[request.contactId];
+                      if (contact != null) {
+                        _navigateToContactDetails(contact);
+                      }
+                    },
+                  ),
+                );
+              }),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _formatDate(DateTime date) {
+    return DateFormat.yMMMd().format(date);
   }
 
   /// Groups the given list of contacts by their location.
@@ -386,6 +577,11 @@ class _HomePageState extends State<HomePage> {
               ),
             ),
           ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            child: _buildPrayerInsightsCard(),
+          ),
+          const SizedBox(height: 16),
           if (_availableTags.isNotEmpty ||
               _availableMetThroughIds.isNotEmpty ||
               _hasUnintroducedContacts)
@@ -407,6 +603,32 @@ class _HomePageState extends State<HomePage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        if (_prayerCounts.values.any((count) => count > 0)) ...[
+          const Text(
+            'Filter by prayer status',
+            style: TextStyle(fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 4),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: PrayerRequestStatus.values
+                .map(
+                  (status) => FilterChip(
+                    label: Text(
+                      '${status.label} (${_prayerCounts[status] ?? 0})',
+                    ),
+                    selected: _selectedPrayerStatusFilter == status,
+                    onSelected: (_) => _togglePrayerStatusFilter(status),
+                  ),
+                )
+                .toList(),
+          ),
+          if (_availableTags.isNotEmpty ||
+              _availableMetThroughIds.isNotEmpty ||
+              _hasUnintroducedContacts)
+            const SizedBox(height: 12),
+        ],
         if (_availableTags.isNotEmpty) ...[
           const Text(
             'Filter by tags',

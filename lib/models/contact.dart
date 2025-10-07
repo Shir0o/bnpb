@@ -1,4 +1,5 @@
 import 'interaction.dart';
+import 'prayer_request.dart';
 
 /// A single way to reach a contact, such as an email address or phone number.
 class ContactMethod {
@@ -42,6 +43,8 @@ class Contact {
   final List<String> tags; // Relationship tags
   /// Recorded interactions for the contact (e.g., meetings, calls).
   final List<Interaction> interactions;
+  /// Prayer requests tracked for this contact.
+  final List<PrayerRequest> prayerRequests;
 
   Contact({
     required this.id,
@@ -55,9 +58,11 @@ class Contact {
     List<ContactMethod>? contactMethods,
     List<String>? tags,
     List<Interaction>? interactions,
+    List<PrayerRequest>? prayerRequests,
   })  : contactMethods = contactMethods ?? const [],
         tags = tags ?? const [],
-        interactions = interactions ?? const [];
+        interactions = interactions ?? const [],
+        prayerRequests = prayerRequests ?? const [];
 
   Contact copyWith({
     String? firstName,
@@ -71,6 +76,7 @@ class Contact {
     List<ContactMethod>? contactMethods,
     List<String>? tags,
     List<Interaction>? interactions,
+    List<PrayerRequest>? prayerRequests,
   }) {
     return Contact(
       id: id,
@@ -86,6 +92,7 @@ class Contact {
       contactMethods: contactMethods ?? this.contactMethods,
       tags: tags ?? this.tags,
       interactions: interactions ?? this.interactions,
+      prayerRequests: prayerRequests ?? this.prayerRequests,
     );
   }
 
@@ -104,6 +111,8 @@ class Contact {
       'contactMethods': contactMethods.map((entry) => entry.toMap()).toList(),
       'tags': tags,
       'interactions': interactions.map((entry) => entry.toMap()).toList(),
+      'prayerRequests':
+          prayerRequests.map((entry) => entry.toMap()).toList(),
     };
   }
 
@@ -130,6 +139,11 @@ class Contact {
       interactions: (map['interactions'] as List<dynamic>?)
               ?.map((entry) =>
                   Interaction.fromMap(Map<String, dynamic>.from(entry)))
+              .toList() ??
+          const [],
+      prayerRequests: (map['prayerRequests'] as List<dynamic>?)
+              ?.map((entry) =>
+                  PrayerRequest.fromMap(Map<String, dynamic>.from(entry)))
               .toList() ??
           const [],
     );
