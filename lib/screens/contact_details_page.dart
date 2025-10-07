@@ -9,6 +9,8 @@ import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:timeline_tile/timeline_tile.dart';
+import 'package:speech_to_text/speech_recognition_result.dart';
+import 'package:speech_to_text/speech_to_text.dart';
 
 import '../db/db_helper.dart';
 import '../models/contact.dart';
@@ -1072,6 +1074,12 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
         String medium = 'in_person';
         bool markForPrayer = false;
         List<AttachmentReference> attachments = [];
+        final speechToText = SpeechToText();
+        bool speechInitialized = false;
+        bool hasSpeechCapability = false;
+        bool isListening = false;
+        String speechBaseText = '';
+        bool sheetActive = true;
 
         return StatefulBuilder(
           builder: (context, setStateSheet) {
@@ -1217,6 +1225,148 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
               });
             }
 
+            Future<void> stopListening() async {
+              if (!isListening) {
+                return;
+              }
+              await speechToText.stop();
+              speechBaseText = summaryController.text.trim();
+              if (!sheetActive) {
+                isListening = false;
+                return;
+              }
+              setStateSheet(() {
+                isListening = false;
+              });
+            }
+
+            Future<void> toggleVoiceInput() async {
+              if (isListening) {
+                await stopListening();
+                return;
+              }
+
+              if (!speechInitialized) {
+                try {
+                  final available = await speechToText.initialize(
+                    onError: (error) {
+                      if (!sheetActive) {
+                        return;
+                      }
+                      setStateSheet(() {
+                        isListening = false;
+                      });
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Voice capture error: ${error.errorMsg}'),
+                        ),
+                      );
+                    },
+                    onStatus: (status) {
+                      if (!sheetActive) {
+                        return;
+                      }
+                      final normalized = status.toLowerCase();
+                      if (normalized == 'done' || normalized == 'notlistening') {
+                        setStateSheet(() {
+                          isListening = false;
+                        });
+                        speechBaseText = summaryController.text.trim();
+                      }
+                    },
+                  );
+                  speechInitialized = true;
+                  hasSpeechCapability = available;
+                  if (!available) {
+                    if (sheetActive) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            'Speech recognition is unavailable on this device.',
+                          ),
+                        ),
+                      );
+                    }
+                    return;
+                  }
+                } catch (error) {
+                  if (sheetActive) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Speech recognition failed: $error'),
+                      ),
+                    );
+                  }
+                  return;
+                }
+              } else if (!hasSpeechCapability) {
+                if (sheetActive) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Speech recognition permission is not granted.'),
+                    ),
+                  );
+                }
+                return;
+              }
+
+              FocusScope.of(context).unfocus();
+              speechBaseText = summaryController.text.trim();
+
+              try {
+                final started = await speechToText.listen(
+                  listenMode: ListenMode.dictation,
+                  onResult: (SpeechRecognitionResult result) {
+                    if (!sheetActive) {
+                      return;
+                    }
+                    final recognized = result.recognizedWords.trim();
+                    setStateSheet(() {
+                      final base = speechBaseText.trim();
+                      final pieces = <String>[];
+                      if (base.isNotEmpty) {
+                        pieces.add(base);
+                      }
+                      if (recognized.isNotEmpty) {
+                        pieces.add(recognized);
+                      }
+                      final combined =
+                          pieces.join(pieces.length > 1 ? ' ' : '').trim();
+                      summaryController.value = TextEditingValue(
+                        text: combined,
+                        selection: TextSelection.collapsed(
+                          offset: combined.length,
+                        ),
+                      );
+                    });
+                  },
+                );
+                if (!started) {
+                  if (sheetActive) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Unable to start voice capture.'),
+                      ),
+                    );
+                  }
+                  return;
+                }
+                if (!sheetActive) {
+                  await speechToText.stop();
+                  return;
+                }
+                setStateSheet(() {
+                  isListening = true;
+                });
+              } catch (error) {
+                if (sheetActive) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Voice capture error: $error')),
+                  );
+                }
+              }
+            }
+
             Future<void> saveInteraction() async {
               final summary = summaryController.text.trim();
               if (summary.isEmpty) {
@@ -1277,20 +1427,28 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
                   .syncInteractionReminder(contactSnapshot, savedInteraction);
 
               if (!mounted) return;
+              await stopListening();
+              sheetActive = false;
               Navigator.pop(context, savedInteraction);
             }
 
-            return Padding(
-              padding: EdgeInsets.only(
-                left: 16,
-                right: 16,
-                bottom: MediaQuery.of(context).viewInsets.bottom + 24,
-                top: 24,
-              ),
-              child: SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
+            return WillPopScope(
+              onWillPop: () async {
+                sheetActive = false;
+                await stopListening();
+                return true;
+              },
+              child: Padding(
+                padding: EdgeInsets.only(
+                  left: 16,
+                  right: 16,
+                  bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+                  top: 24,
+                ),
+                child: SingleChildScrollView(
+                  child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -1300,16 +1458,33 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
                         ),
                         IconButton(
                           icon: const Icon(Icons.close),
-                          onPressed: () => Navigator.pop(context),
+                          onPressed: () async {
+                            sheetActive = false;
+                            await stopListening();
+                            Navigator.pop(context);
+                          },
                         ),
                       ],
                     ),
                     const SizedBox(height: 16),
                     TextField(
                       controller: summaryController,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: 'Summary',
-                        border: OutlineInputBorder(),
+                        border: const OutlineInputBorder(),
+                        helperText: isListening ? 'Listening…' : null,
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            isListening ? Icons.mic : Icons.mic_none,
+                            color: isListening
+                                ? Theme.of(context).colorScheme.primary
+                                : null,
+                          ),
+                          onPressed: toggleVoiceInput,
+                          tooltip: isListening
+                              ? 'Stop voice capture'
+                              : 'Use voice to text',
+                        ),
                       ),
                       textCapitalization: TextCapitalization.sentences,
                       maxLines: 2,
@@ -1480,6 +1655,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
                       ),
                     ),
                   ],
+                ),
                 ),
               ),
             );

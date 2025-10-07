@@ -969,6 +969,28 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
           Duration(days: 30),
         ];
         break;
+      case ReminderChannel.weeklyReview:
+        options = const [
+          Duration(minutes: 0),
+          Duration(hours: 3),
+          Duration(hours: 6),
+          Duration(hours: 12),
+          Duration(days: 1),
+          Duration(days: 2),
+          Duration(days: 3),
+        ];
+        break;
+      case ReminderChannel.monthlyReview:
+        options = const [
+          Duration(minutes: 0),
+          Duration(hours: 6),
+          Duration(hours: 12),
+          Duration(days: 1),
+          Duration(days: 2),
+          Duration(days: 3),
+          Duration(days: 7),
+        ];
+        break;
     }
     if (!options.contains(current)) {
       options = [...options, current];
@@ -1088,10 +1110,17 @@ String _formatLeadTime(ReminderChannel channel, Duration duration) {
         return 'Immediately';
       case ReminderChannel.significantDate:
         return 'Same day';
+      case ReminderChannel.weeklyReview:
+        return 'Monday morning';
+      case ReminderChannel.monthlyReview:
+        return 'First of the month';
     }
   }
 
-  final qualifier = channel == ReminderChannel.prayerUpdate ? 'after' : 'before';
+  final isAfter = channel == ReminderChannel.prayerUpdate ||
+      channel == ReminderChannel.weeklyReview ||
+      channel == ReminderChannel.monthlyReview;
+  final qualifier = isAfter ? 'after' : 'before';
 
   if (minutes % 1440 == 0) {
     final days = duration.inDays;

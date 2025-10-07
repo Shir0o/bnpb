@@ -6,9 +6,11 @@ import 'screens/analytics_page.dart';
 import 'screens/home_page.dart';
 import 'screens/notification_settings_page.dart';
 import 'services/notification_preferences_repository.dart';
+import 'services/onboarding_service.dart';
 import 'services/reminder_coordinator.dart';
 import 'services/reminder_service.dart';
 import 'widgets/security_gate.dart';
+import 'widgets/onboarding_wizard.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -63,6 +65,8 @@ class MainPage extends StatefulWidget {
 
 class _MainPageState extends State<MainPage> {
   int _currentIndex = 0;
+  final OnboardingService _onboardingService = OnboardingService();
+  bool _onboardingEvaluated = false;
 
   final List<Widget> _pages = [
     const HomePage(),
@@ -70,6 +74,82 @@ class _MainPageState extends State<MainPage> {
     const AddContactPage(),
     const NotificationSettingsPage(),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _maybeShowOnboarding();
+    });
+  }
+
+  Future<void> _maybeShowOnboarding() async {
+    if (_onboardingEvaluated) {
+      return;
+    }
+    _onboardingEvaluated = true;
+
+    final shouldShow = await _onboardingService.shouldShowOnboarding();
+    if (!mounted || !shouldShow) {
+      return;
+    }
+
+    final result = await showDialog<OnboardingResult>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const OnboardingWizard(),
+    );
+
+    if (!mounted || result == null) {
+      return;
+    }
+
+    if (result.completed) {
+      await _onboardingService.markComplete();
+    }
+
+    final followUp = result.followUp;
+    if (followUp != null) {
+      _handleOnboardingFollowUp(followUp);
+    }
+  }
+
+  void _handleOnboardingFollowUp(OnboardingFollowUp followUp) {
+    late final String message;
+    late final int targetIndex;
+    switch (followUp) {
+      case OnboardingFollowUp.importContacts:
+        targetIndex = 0;
+        message =
+            'Tap the restore icon on the Contacts tab to import people from a backup file.';
+        break;
+      case OnboardingFollowUp.manageTags:
+        targetIndex = 2;
+        message =
+            'Use the tags section while adding a contact to build and reuse your tag library.';
+        break;
+      case OnboardingFollowUp.notificationSettings:
+        targetIndex = 3;
+        message =
+            'Adjust follow-ups, prayer nudges, and review prompts from the settings tab.';
+        break;
+    }
+
+    setState(() {
+      _currentIndex = targetIndex;
+    });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+      final messenger = ScaffoldMessenger.of(context);
+      messenger.clearSnackBars();
+      messenger.showSnackBar(
+        SnackBar(content: Text(message)),
+      );
+    });
+  }
 
   @override
   Widget build(BuildContext context) {

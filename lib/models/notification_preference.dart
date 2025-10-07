@@ -11,6 +11,12 @@ enum ReminderChannel {
 
   /// Significant-date reminders surfaced directly on a contact profile.
   significantDate,
+
+  /// Weekly digest that highlights outstanding prayer requests to revisit.
+  weeklyReview,
+
+  /// Monthly digest that surfaces contacts without recent interactions.
+  monthlyReview,
 }
 
 /// Convenience helpers for [ReminderChannel].
@@ -24,6 +30,10 @@ extension ReminderChannelX on ReminderChannel {
         return 'Prayer updates';
       case ReminderChannel.significantDate:
         return 'Significant dates';
+      case ReminderChannel.weeklyReview:
+        return 'Weekly review prompts';
+      case ReminderChannel.monthlyReview:
+        return 'Monthly review prompts';
     }
   }
 
@@ -36,6 +46,10 @@ extension ReminderChannelX on ReminderChannel {
         return const Duration(days: 1);
       case ReminderChannel.significantDate:
         return const Duration(days: 3);
+      case ReminderChannel.weeklyReview:
+        return Duration.zero;
+      case ReminderChannel.monthlyReview:
+        return Duration.zero;
     }
   }
 
@@ -48,6 +62,10 @@ extension ReminderChannelX on ReminderChannel {
         return 'Reminders triggered after a prayer request has remained pending.';
       case ReminderChannel.significantDate:
         return 'Notifications sent ahead of birthdays, anniversaries, and other cues.';
+      case ReminderChannel.weeklyReview:
+        return 'Monday summaries linking to pending prayer requests that still need updates.';
+      case ReminderChannel.monthlyReview:
+        return 'Monthly nudges calling out contacts that have gone quiet.';
     }
   }
 }
