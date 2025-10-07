@@ -4,11 +4,12 @@ import 'package:sqflite/sqflite.dart';
 
 import '../models/contact.dart';
 import '../models/interaction.dart';
+import '../models/prayer_request.dart';
 import '../models/relationship.dart';
 
 class DBHelper {
   static const _dbName = 'contacts.db';
-  static const _dbVersion = 4;
+  static const _dbVersion = 5;
 
   static final DBHelper _instance = DBHelper._();
   static Database? _database;
@@ -106,6 +107,22 @@ class DBHelper {
         notes TEXT,
         FOREIGN KEY(sourceContactId) REFERENCES contacts(id) ON DELETE CASCADE,
         FOREIGN KEY(targetContactId) REFERENCES contacts(id) ON DELETE CASCADE
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE prayer_requests (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        contactId TEXT NOT NULL,
+        interactionId INTEGER,
+        description TEXT NOT NULL,
+        status TEXT NOT NULL,
+        requestedAt TEXT NOT NULL,
+        answeredAt TEXT,
+        category TEXT,
+        reflectionNotes TEXT,
+        FOREIGN KEY(contactId) REFERENCES contacts(id) ON DELETE CASCADE,
+        FOREIGN KEY(interactionId) REFERENCES interactions(id) ON DELETE SET NULL
       )
     ''');
   }
@@ -206,6 +223,24 @@ class DBHelper {
 
       await db.execute('UPDATE contacts SET history = NULL');
     }
+
+    if (oldVersion < 5) {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS prayer_requests (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          contactId TEXT NOT NULL,
+          interactionId INTEGER,
+          description TEXT NOT NULL,
+          status TEXT NOT NULL,
+          requestedAt TEXT NOT NULL,
+          answeredAt TEXT,
+          category TEXT,
+          reflectionNotes TEXT,
+          FOREIGN KEY(contactId) REFERENCES contacts(id) ON DELETE CASCADE,
+          FOREIGN KEY(interactionId) REFERENCES interactions(id) ON DELETE SET NULL
+        )
+      ''');
+    }
   }
 
   // -------------------------------------------------------------
@@ -253,6 +288,10 @@ class DBHelper {
     await _upsertMeetContext(txn, contact);
     await _replaceContactMethods(txn, contact);
     await _replaceContactTags(txn, contact);
+
+    if (contact.prayerRequests.isNotEmpty) {
+      await _replacePrayerRequests(txn, contact);
+    }
   }
 
   Future<void> _upsertMeetContext(
@@ -324,6 +363,26 @@ class DBHelper {
     }
   }
 
+  Future<void> _replacePrayerRequests(
+    DatabaseExecutor txn,
+    Contact contact,
+  ) async {
+    await txn.delete(
+      'prayer_requests',
+      where: 'contactId = ?',
+      whereArgs: [contact.id],
+    );
+
+    for (final request in contact.prayerRequests) {
+      await txn.insert(
+        'prayer_requests',
+        request
+            .copyWith(contactId: contact.id)
+            .toMap(includeId: false),
+      );
+    }
+  }
+
   /// Retrieve all contacts alongside their related metadata from companion tables.
   Future<List<Contact>> getContacts() async {
     final db = await database;
@@ -373,6 +432,20 @@ class DBHelper {
       );
     }
 
+    final prayerRows = await db.query(
+      'prayer_requests',
+      orderBy: 'requestedAt DESC',
+    );
+
+    final prayersByContact = <String, List<PrayerRequest>>{};
+    for (final row in prayerRows) {
+      final contactId = row['contactId'] as String;
+      prayersByContact.putIfAbsent(contactId, () => []);
+      prayersByContact[contactId]!.add(
+        PrayerRequest.fromMap(Map<String, dynamic>.from(row)),
+      );
+    }
+
     return maps.map((map) {
       final contactMap = Map<String, dynamic>.from(map);
 
@@ -389,6 +462,10 @@ class DBHelper {
       final context = contextsByContact[contactMap['id']];
       contactMap['metThroughId'] = context?['metThroughId'];
       contactMap['firstMeetingNotes'] = context?['firstMeetingNotes'];
+      contactMap['prayerRequests'] = prayersByContact[contactMap['id']]?.map(
+                (request) => request.toMap(),
+              ).toList() ??
+          [];
 
       return Contact.fromMap(contactMap);
     }).toList();
@@ -513,5 +590,97 @@ class DBHelper {
     return rows
         .map((row) => Relationship.fromMap(Map<String, dynamic>.from(row)))
         .toList();
+  }
+
+  Future<PrayerRequest> insertPrayerRequest(PrayerRequest request) async {
+    final db = await database;
+    final id = await db.insert(
+      'prayer_requests',
+      request.toMap(includeId: false),
+    );
+    return request.copyWith(id: id);
+  }
+
+  Future<void> updatePrayerRequest(PrayerRequest request) async {
+    if (request.id == null) {
+      await insertPrayerRequest(request);
+      return;
+    }
+
+    final db = await database;
+    await db.update(
+      'prayer_requests',
+      request.toMap(includeId: false),
+      where: 'id = ?',
+      whereArgs: [request.id],
+    );
+  }
+
+  Future<void> deletePrayerRequest(int id) async {
+    final db = await database;
+    await db.delete(
+      'prayer_requests',
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
+  Future<List<PrayerRequest>> getPrayerRequestsForContact(
+    String contactId,
+  ) async {
+    final db = await database;
+    final rows = await db.query(
+      'prayer_requests',
+      where: 'contactId = ?',
+      whereArgs: [contactId],
+      orderBy: 'requestedAt DESC',
+    );
+
+    return rows
+        .map((row) => PrayerRequest.fromMap(Map<String, dynamic>.from(row)))
+        .toList();
+  }
+
+  Future<List<PrayerRequest>> getPrayerRequests({
+    PrayerRequestStatus? status,
+    int? limit,
+    bool latestAnsweredFirst = false,
+  }) async {
+    final db = await database;
+    final orderBy = latestAnsweredFirst
+        ? 'COALESCE(answeredAt, requestedAt) DESC'
+        : 'requestedAt DESC';
+    final rows = await db.query(
+      'prayer_requests',
+      where: status != null ? 'status = ?' : null,
+      whereArgs: status != null ? [status.name] : null,
+      orderBy: orderBy,
+      limit: limit,
+    );
+
+    return rows
+        .map((row) => PrayerRequest.fromMap(Map<String, dynamic>.from(row)))
+        .toList();
+  }
+
+  Future<Map<PrayerRequestStatus, int>> getPrayerRequestCounts() async {
+    final db = await database;
+    final rows = await db.rawQuery('''
+      SELECT status, COUNT(*) as total
+      FROM prayer_requests
+      GROUP BY status
+    ''');
+
+    final counts = {
+      for (final status in PrayerRequestStatus.values) status: 0,
+    };
+
+    for (final row in rows) {
+      final status =
+          PrayerRequestStatusX.fromStorage(row['status'] as String?);
+      counts[status] = (row['total'] as int?) ?? 0;
+    }
+
+    return counts;
   }
 }
