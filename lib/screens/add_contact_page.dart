@@ -7,6 +7,7 @@ import 'package:path_provider/path_provider.dart';
 
 import '../db/db_helper.dart';
 import '../models/contact.dart';
+import '../services/reminder_coordinator.dart';
 
 class AddContactPage extends StatefulWidget {
   const AddContactPage({super.key});
@@ -158,6 +159,7 @@ class _AddContactPageState extends State<AddContactPage> {
 
     final dbHelper = DBHelper();
     await dbHelper.insertContact(newContact);
+    await ReminderCoordinator().syncSignificantDates(newContact);
 
     await _exportBackup();
 

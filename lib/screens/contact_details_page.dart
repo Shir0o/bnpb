@@ -16,6 +16,7 @@ import '../models/interaction.dart';
 import '../models/prayer_request.dart';
 import '../models/relationship.dart';
 import '../services/calendar_integration_service.dart';
+import '../services/reminder_coordinator.dart';
 import '../widgets/people_card.dart';
 
 class ContactDetailsPage extends StatefulWidget {
@@ -689,11 +690,17 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
                     cleanedReflection.isEmpty ? null : cleanedReflection,
               );
 
+              PrayerRequest savedRequest;
               if (request == null) {
-                await DBHelper().insertPrayerRequest(payload);
+                savedRequest = await DBHelper().insertPrayerRequest(payload);
               } else {
                 await DBHelper().updatePrayerRequest(payload);
+                savedRequest = payload;
               }
+
+              final contactSnapshot = _buildContactFromState();
+              await ReminderCoordinator()
+                  .syncPrayerRequestReminder(contactSnapshot, savedRequest);
 
               if (!mounted) return;
               Navigator.pop(context, request == null ? 'created' : 'updated');
@@ -910,6 +917,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
       return;
     }
     await DBHelper().deletePrayerRequest(request.id!);
+    await ReminderCoordinator().cancelPrayerRequestReminder(request);
     await _refreshPrayerRequests();
 
     if (!mounted) return;
@@ -960,6 +968,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
   Future<void> _updateContact() async {
     final updatedContact = _buildContactFromState();
     await DBHelper().updateContact(updatedContact);
+    await ReminderCoordinator().refreshContact(updatedContact.id);
     await _exportBackup();
 
     if (!mounted) return;
@@ -1012,6 +1021,8 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
             ),
             ElevatedButton(
               onPressed: () async {
+                await ReminderCoordinator()
+                    .cancelAllForContact(widget.contact.id);
                 await DBHelper().deleteContact(widget.contact.id);
                 widget.onDelete();
                 if (mounted) {
@@ -1034,6 +1045,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
     if (interaction.id == null) return;
 
     await DBHelper().deleteInteraction(interaction.id!);
+    await ReminderCoordinator().cancelInteractionReminder(interaction);
     setState(() {
       _interactions.removeWhere((item) => item.id == interaction.id);
     });
@@ -1254,6 +1266,13 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
 
               final savedInteraction =
                   await DBHelper().insertInteraction(interaction);
+
+              final contactSnapshot = _buildContactFromState(
+                interactionsOverride: List<Interaction>.from(_interactions)
+                  ..add(savedInteraction),
+              );
+              await ReminderCoordinator()
+                  .syncInteractionReminder(contactSnapshot, savedInteraction);
 
               if (!mounted) return;
               Navigator.pop(context, savedInteraction);
