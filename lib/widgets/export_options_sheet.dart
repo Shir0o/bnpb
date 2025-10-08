@@ -64,6 +64,14 @@ class _ExportOptionsSheetState extends State<ExportOptionsSheet> {
     );
   }
 
+  Future<void> _exportJson() async {
+    await _performExport(
+      generator: (fields) => _exportService.exportJson(widget.contacts, fields),
+      description: 'BNPB JSON export ready to review.',
+      successMessage: 'JSON export shared securely.',
+    );
+  }
+
   Future<void> _exportEncryptedArchive() async {
     final passphrase = _passphraseController.text.trim();
     if (passphrase.isEmpty) {
@@ -144,8 +152,8 @@ class _ExportOptionsSheetState extends State<ExportOptionsSheet> {
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  'Choose which details to include. CSV/PDF exports remain on '
-                  'device until you share them. Encrypted archives require a '
+                  'Choose which details to include. CSV/PDF/JSON exports remain '
+                  'on device until you share them. Encrypted archives require a '
                   'passphrase and bundle the selected fields inside AES-secured '
                   'ZIP data.',
                   style: Theme.of(context).textTheme.bodyMedium,
@@ -205,6 +213,12 @@ class _ExportOptionsSheetState extends State<ExportOptionsSheet> {
                             ),
                           ),
                         ],
+                      ),
+                      const SizedBox(height: 12),
+                      OutlinedButton.icon(
+                        onPressed: _exportJson,
+                        icon: const Icon(Icons.data_object_outlined),
+                        label: const Text('Export JSON'),
                       ),
                       const SizedBox(height: 12),
                       FilledButton.icon(
