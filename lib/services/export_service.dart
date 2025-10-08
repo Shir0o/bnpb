@@ -26,7 +26,7 @@ class ExportField {
   final String description;
 }
 
-/// Provides CSV, PDF, and encrypted archive exports for contacts.
+/// Provides CSV, PDF, JSON, and encrypted archive exports for contacts.
 class ExportService {
   ExportService._();
 
@@ -132,6 +132,20 @@ class ExportService {
 
     final file = await _createTempFile('contacts_export', 'pdf');
     await file.writeAsBytes(await pdf.save());
+    return file;
+  }
+
+  /// Generates a JSON file containing the selected fields for each contact.
+  Future<File> exportJson(
+    List<Contact> contacts,
+    List<String> fieldIds,
+  ) async {
+    final payload = contacts
+        .map((contact) => _jsonValueForFieldSelection(contact, fieldIds))
+        .toList();
+
+    final file = await _createTempFile('contacts_export', 'json');
+    await file.writeAsString(jsonEncode(payload));
     return file;
   }
 

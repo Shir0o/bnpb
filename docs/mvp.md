@@ -7,7 +7,7 @@ The MVP targets field directors and ministry coordinators who need a lightweight
 | Milestone | Target Outcomes | Acceptance Criteria |
 | --- | --- | --- |
 | **M0 – Foundation & Data Layer** | Establish project scaffolding, persistence, and seed data for exploration. | - Sqflite schema creates contacts, interactions, prayer requests, and notification preference tables on first launch.<br>- Demo data loads when the database is empty so the analytics screen can render sample insights.<br>- App boots on Android, iOS, and web using the shared Flutter entry point. |
-| **M1 – Contact Management** | Enable core contact CRUD flows and relationship tagging. | - Users can add, edit, and archive contacts with name, relationship type, and notes.<br>- Relationship graph view surfaces primary relationship tags for each saved contact.<br>- Export sheet produces a CSV with active contacts and their latest interaction summary. |
+| **M1 – Contact Management** | Enable core contact CRUD flows and relationship tagging. | - Users can add, edit, and archive contacts with name, relationship type, and notes.<br>- Relationship graph view surfaces primary relationship tags for each saved contact.<br>- Export sheet produces CSV/JSON files with active contacts and their latest interaction summary. |
 | **M2 – Prayer & Interaction Tracking** | Capture ongoing ministry context for each contact. | - Interaction log allows logging of meetings with duration, notes, and optional follow-up date.<br>- Prayer requests can be marked answered and appear on the contact detail timeline.<br>- Timeline view merges interactions and prayer updates in chronological order. |
 | **M3 – Reminders & Notifications** | Keep commitments on track through scheduled prompts. | - Notification settings page exposes per-channel frequency (follow-up, prayer, review).<br>- Reminder coordinator re-evaluates schedules whenever contacts or interactions change.<br>- Users can snooze or mark reminders done from the delivered notification. |
 | **M4 – Analytics Dashboard (MVP Complete)** | Provide strategic insight into engagement patterns. | - Analytics page displays summary metrics, top contacts, category breakdown, timeline chart, and gap warnings.<br>- Date range selector refreshes metrics without app restart.<br>- Exported analytics snapshot (PDF/CSV) matches on-screen totals for the selected range. |
@@ -40,7 +40,7 @@ The MVP targets field directors and ministry coordinators who need a lightweight
    - Aggregate data across contacts to highlight trends.
    - Acceptance: Dashboard cards render accurate totals over selectable date ranges.
 9. **Data Export & Sharing** (M4)
-   - Offer CSV/PDF export of contact and analytics data.
+   - Offer CSV/PDF/JSON export of contact and analytics data.
    - Acceptance: Export file downloads/shares successfully on mobile and desktop targets.
 
 ## Out of Scope for MVP

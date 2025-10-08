@@ -15,7 +15,7 @@ BNPB stores contact insights entirely on your device. No data is uploaded to rem
 - Supported devices may also unlock with biometrics (Face ID, Touch ID, or fingerprint). Biometrics rely on the operating system—BNPB never sees your biometric template.
 
 ## Exports
-- CSV and PDF exports are created on demand and stay local until you share them.
+- CSV, PDF, and JSON exports are created on demand and stay local until you share them.
 - Encrypted archives wrap selected contact fields in an AES-256 encrypted ZIP file that requires a passphrase to open.
 - Exports should be shared only with people who have consent from the contacts represented in the file.
 

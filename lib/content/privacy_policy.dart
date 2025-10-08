@@ -25,7 +25,7 @@ Local authentication
   biometric template.
 
 Exports
-• CSV and PDF exports are created on demand and stay local until you share
+• CSV, PDF, and JSON exports are created on demand and stay local until you share
   them.
 • Encrypted archives wrap selected contact fields in an AES-256 encrypted ZIP
   file that requires a passphrase to open.

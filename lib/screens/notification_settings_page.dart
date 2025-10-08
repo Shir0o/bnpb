@@ -299,7 +299,7 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
               ),
               const SizedBox(height: 8),
               Text(
-                'Generate CSV, PDF, or encrypted archives with selected fields. '
+                'Generate CSV, PDF, JSON, or encrypted archives with selected fields. '
                 'Encrypted SQLCipher backups continue to live in the app documents '
                 'folder and rotate automatically when contacts change.',
                 style: Theme.of(context).textTheme.bodySmall,
