@@ -3,35 +3,6 @@ import 'dart:convert';
 import 'interaction.dart';
 import 'prayer_request.dart';
 
-/// A single way to reach a contact, such as an email address or phone number.
-class ContactMethod {
-  final String type;
-  final String value;
-  final String? label;
-
-  const ContactMethod({
-    required this.type,
-    required this.value,
-    this.label,
-  });
-
-  Map<String, dynamic> toMap() {
-    return {
-      'type': type,
-      'value': value,
-      'label': label,
-    };
-  }
-
-  factory ContactMethod.fromMap(Map<String, dynamic> map) {
-    return ContactMethod(
-      type: map['type'] as String,
-      value: map['value'] as String,
-      label: map['label'] as String?,
-    );
-  }
-}
-
 class Contact {
   final String id; // Unique identifier for the contact
   final String firstName; // First name of the contact
@@ -41,7 +12,6 @@ class Contact {
   final String? location; // Location of the contact (optional)
   final String? metThroughId; // Identifier for the person who introduced the contact
   final String? firstMeetingNotes; // Notes from the first meeting
-  final List<ContactMethod> contactMethods; // Reachable methods (phone/email)
   final List<String> tags; // Relationship tags
   /// Lightweight descriptors that help recognize the contact quickly.
   final List<String> recognitionKeywords;
@@ -63,15 +33,13 @@ class Contact {
     this.location,
     this.metThroughId,
     this.firstMeetingNotes,
-    List<ContactMethod>? contactMethods,
     List<String>? tags,
     List<String>? recognitionKeywords,
     List<String>? recognitionPhotoUris,
     List<String>? recognitionReminders,
     List<Interaction>? interactions,
     List<PrayerRequest>? prayerRequests,
-  })  : contactMethods = contactMethods ?? const [],
-        tags = tags ?? const [],
+  })  : tags = tags ?? const [],
         recognitionKeywords = recognitionKeywords ?? const [],
         recognitionPhotoUris = recognitionPhotoUris ?? const [],
         recognitionReminders = recognitionReminders ?? const [],
@@ -87,7 +55,6 @@ class Contact {
     String? metThroughId,
     bool clearMetThroughId = false,
     String? firstMeetingNotes,
-    List<ContactMethod>? contactMethods,
     List<String>? tags,
     List<String>? recognitionKeywords,
     List<String>? recognitionPhotoUris,
@@ -106,7 +73,6 @@ class Contact {
           ? null
           : (metThroughId ?? this.metThroughId),
       firstMeetingNotes: firstMeetingNotes ?? this.firstMeetingNotes,
-      contactMethods: contactMethods ?? this.contactMethods,
       tags: tags ?? this.tags,
       recognitionKeywords:
           recognitionKeywords ?? this.recognitionKeywords,
@@ -131,7 +97,6 @@ class Contact {
       'location': location,
       'metThroughId': metThroughId,
       'firstMeetingNotes': firstMeetingNotes,
-      'contactMethods': contactMethods.map((entry) => entry.toMap()).toList(),
       'tags': tags,
       'recognitionKeywords': recognitionKeywords,
       'recognitionPhotoUris': recognitionPhotoUris,
@@ -153,11 +118,6 @@ class Contact {
       location: map['location'] as String?,
       metThroughId: map['metThroughId'] as String?,
       firstMeetingNotes: map['firstMeetingNotes'] as String?,
-      contactMethods: (map['contactMethods'] as List<dynamic>?)
-              ?.map((entry) =>
-                  ContactMethod.fromMap(Map<String, dynamic>.from(entry)))
-              .toList() ??
-          const [],
       tags: (map['tags'] as List<dynamic>?)
               ?.map((tag) => tag as String)
               .toList() ??

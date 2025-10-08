@@ -33,7 +33,6 @@ class _AddContactPageState extends State<AddContactPage> {
   final TextEditingController _reminderController = TextEditingController();
   final TextEditingController _photoCueController = TextEditingController();
 
-  final List<_MethodFormEntry> _methodEntries = [];
   final List<String> _selectedTags = [];
   final List<String> _keywords = [];
   final List<String> _reminderCues = [];
@@ -47,7 +46,6 @@ class _AddContactPageState extends State<AddContactPage> {
   @override
   void initState() {
     super.initState();
-    _addMethodEntry();
     _loadReferenceData();
   }
 
@@ -63,9 +61,6 @@ class _AddContactPageState extends State<AddContactPage> {
     _keywordController.dispose();
     _reminderController.dispose();
     _photoCueController.dispose();
-    for (final entry in _methodEntries) {
-      entry.dispose();
-    }
     super.dispose();
   }
 
@@ -82,25 +77,6 @@ class _AddContactPageState extends State<AddContactPage> {
       _availableContacts = contacts;
       _availableTags = tags;
       _isLoadingReferenceData = false;
-    });
-  }
-
-  void _addMethodEntry({ContactMethod? method}) {
-    setState(() {
-      _methodEntries.add(
-        _MethodFormEntry(
-          type: method?.type ?? 'phone',
-          value: method?.value ?? '',
-          label: method?.label ?? '',
-        ),
-      );
-    });
-  }
-
-  void _removeMethodEntry(_MethodFormEntry entry) {
-    setState(() {
-      _methodEntries.remove(entry);
-      entry.dispose();
     });
   }
 
@@ -121,19 +97,6 @@ class _AddContactPageState extends State<AddContactPage> {
       _addPhotoCueFromInput();
     }
 
-    final methods = _methodEntries
-        .map(
-          (entry) => ContactMethod(
-            type: entry.type,
-            value: entry.valueController.text.trim(),
-            label: entry.labelController.text.trim().isEmpty
-                ? null
-                : entry.labelController.text.trim(),
-          ),
-        )
-        .where((method) => method.value.isNotEmpty)
-        .toList();
-
     final newContact = Contact(
       id: DateTime.now().toIso8601String(),
       firstName: _firstNameController.text.trim(),
@@ -151,7 +114,6 @@ class _AddContactPageState extends State<AddContactPage> {
       firstMeetingNotes: _firstMeetingNotesController.text.trim().isEmpty
           ? null
           : _firstMeetingNotesController.text.trim(),
-      contactMethods: methods,
       tags: List<String>.from(_selectedTags),
       recognitionKeywords: List<String>.from(_keywords),
       recognitionPhotoUris: List<String>.from(_photoCues),
@@ -192,12 +154,6 @@ class _AddContactPageState extends State<AddContactPage> {
     _keywords.clear();
     _reminderCues.clear();
     _photoCues.clear();
-
-    for (final entry in _methodEntries) {
-      entry.dispose();
-    }
-    _methodEntries.clear();
-    _addMethodEntry();
 
     setState(() {});
   }
@@ -418,34 +374,6 @@ class _AddContactPageState extends State<AddContactPage> {
                   _buildTextField(
                     controller: _locationController,
                     label: 'Location (Optional)',
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              _buildCard(
-                children: [
-                  Text(
-                    'Contact Methods',
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  const SizedBox(height: 12),
-                  Column(
-                    children: _methodEntries
-                        .map((entry) => Padding(
-                              padding: const EdgeInsets.only(bottom: 12.0),
-                              child: _ContactMethodRow(
-                                entry: entry,
-                                onRemove: _methodEntries.length > 1
-                                    ? () => _removeMethodEntry(entry)
-                                    : null,
-                              ),
-                            ))
-                        .toList(),
-                  ),
-                  OutlinedButton.icon(
-                    onPressed: _addMethodEntry,
-                    icon: const Icon(Icons.add),
-                    label: const Text('Add Contact Method'),
                   ),
                 ],
               ),
@@ -706,104 +634,5 @@ class _AddContactPageState extends State<AddContactPage> {
     while (backups.length > 5) {
       backups.removeLast().deleteSync();
     }
-  }
-}
-
-class _MethodFormEntry {
-  _MethodFormEntry({
-    required String type,
-    required String value,
-    required String label,
-  })  : type = type,
-        valueController = TextEditingController(text: value),
-        labelController = TextEditingController(text: label);
-
-  String type;
-  final TextEditingController valueController;
-  final TextEditingController labelController;
-
-  void dispose() {
-    valueController.dispose();
-    labelController.dispose();
-  }
-}
-
-class _ContactMethodRow extends StatefulWidget {
-  const _ContactMethodRow({
-    required this.entry,
-    this.onRemove,
-  });
-
-  final _MethodFormEntry entry;
-  final VoidCallback? onRemove;
-
-  @override
-  State<_ContactMethodRow> createState() => _ContactMethodRowState();
-}
-
-class _ContactMethodRowState extends State<_ContactMethodRow> {
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              flex: 2,
-              child: DropdownButtonFormField<String>(
-                value: widget.entry.type,
-                decoration: const InputDecoration(
-                  labelText: 'Type',
-                  border: OutlineInputBorder(),
-                ),
-                items: const [
-                  DropdownMenuItem(value: 'phone', child: Text('Phone')),
-                  DropdownMenuItem(value: 'email', child: Text('Email')),
-                  DropdownMenuItem(value: 'other', child: Text('Other')),
-                ],
-                onChanged: (value) {
-                  if (value == null) return;
-                  setState(() {
-                    widget.entry.type = value;
-                  });
-                },
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              flex: 4,
-              child: TextField(
-                controller: widget.entry.valueController,
-                decoration: const InputDecoration(
-                  labelText: 'Handle',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              flex: 3,
-              child: TextField(
-                controller: widget.entry.labelController,
-                decoration: const InputDecoration(
-                  labelText: 'Label (Optional)',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-            ),
-            if (widget.onRemove != null) ...[
-              const SizedBox(width: 12),
-              IconButton(
-                icon: const Icon(Icons.delete_outline),
-                tooltip: 'Remove method',
-                onPressed: widget.onRemove,
-              ),
-            ],
-          ],
-        ),
-      ],
-    );
   }
 }

@@ -932,63 +932,63 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
     List<Duration> options;
     switch (channel) {
       case ReminderChannel.followUp:
-        options = const [
-          Duration(minutes: 0),
-          Duration(minutes: 10),
-          Duration(minutes: 30),
-          Duration(hours: 1),
-          Duration(hours: 2),
-          Duration(hours: 6),
-          Duration(days: 1),
-          Duration(days: 2),
-          Duration(days: 3),
+        options = [
+          const Duration(minutes: 0),
+          const Duration(minutes: 10),
+          const Duration(minutes: 30),
+          const Duration(hours: 1),
+          const Duration(hours: 2),
+          const Duration(hours: 6),
+          const Duration(days: 1),
+          const Duration(days: 2),
+          const Duration(days: 3),
         ];
         break;
       case ReminderChannel.prayerUpdate:
-        options = const [
-          Duration(minutes: 0),
-          Duration(hours: 6),
-          Duration(hours: 12),
-          Duration(days: 1),
-          Duration(days: 2),
-          Duration(days: 3),
-          Duration(days: 5),
-          Duration(days: 7),
-          Duration(days: 14),
+        options = [
+          const Duration(minutes: 0),
+          const Duration(hours: 6),
+          const Duration(hours: 12),
+          const Duration(days: 1),
+          const Duration(days: 2),
+          const Duration(days: 3),
+          const Duration(days: 5),
+          const Duration(days: 7),
+          const Duration(days: 14),
         ];
         break;
       case ReminderChannel.significantDate:
-        options = const [
-          Duration(minutes: 0),
-          Duration(days: 1),
-          Duration(days: 2),
-          Duration(days: 3),
-          Duration(days: 5),
-          Duration(days: 7),
-          Duration(days: 14),
-          Duration(days: 30),
+        options = [
+          const Duration(minutes: 0),
+          const Duration(days: 1),
+          const Duration(days: 2),
+          const Duration(days: 3),
+          const Duration(days: 5),
+          const Duration(days: 7),
+          const Duration(days: 14),
+          const Duration(days: 30),
         ];
         break;
       case ReminderChannel.weeklyReview:
-        options = const [
-          Duration(minutes: 0),
-          Duration(hours: 3),
-          Duration(hours: 6),
-          Duration(hours: 12),
-          Duration(days: 1),
-          Duration(days: 2),
-          Duration(days: 3),
+        options = [
+          const Duration(minutes: 0),
+          const Duration(hours: 3),
+          const Duration(hours: 6),
+          const Duration(hours: 12),
+          const Duration(days: 1),
+          const Duration(days: 2),
+          const Duration(days: 3),
         ];
         break;
       case ReminderChannel.monthlyReview:
-        options = const [
-          Duration(minutes: 0),
-          Duration(hours: 6),
-          Duration(hours: 12),
-          Duration(days: 1),
-          Duration(days: 2),
-          Duration(days: 3),
-          Duration(days: 7),
+        options = [
+          const Duration(minutes: 0),
+          const Duration(hours: 6),
+          const Duration(hours: 12),
+          const Duration(days: 1),
+          const Duration(days: 2),
+          const Duration(days: 3),
+          const Duration(days: 7),
         ];
         break;
     }

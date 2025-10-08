@@ -63,11 +63,6 @@ class ExportService {
       description: 'Relationship and grouping tags',
     ),
     ExportField(
-      id: 'contactMethods',
-      label: 'Contact methods',
-      description: 'Emails, phone numbers, and other reach-out channels',
-    ),
-    ExportField(
       id: 'recognitionKeywords',
       label: 'Recognition keywords',
       description: 'Personal cues that help remember the contact',
@@ -194,13 +189,6 @@ class ExportService {
         return contact.location ?? '';
       case 'tags':
         return contact.tags.join(', ');
-      case 'contactMethods':
-        return contact.contactMethods
-            .map((method) =>
-                method.label != null && method.label!.isNotEmpty
-                    ? '${method.label}: ${method.value}'
-                    : '${method.type}: ${method.value}')
-            .join('; ');
       case 'recognitionKeywords':
         return contact.recognitionKeywords.join(', ');
       case 'recognitionReminders':
@@ -232,11 +220,6 @@ class ExportService {
           break;
         case 'tags':
           map['tags'] = contact.tags;
-          break;
-        case 'contactMethods':
-          map['contactMethods'] = contact.contactMethods
-              .map((method) => method.toMap())
-              .toList();
           break;
         case 'recognitionKeywords':
           map['recognitionKeywords'] = contact.recognitionKeywords;

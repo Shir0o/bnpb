@@ -3,9 +3,6 @@ import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:google_sign_in/google_sign_in.dart';
-import 'package:googleapis/calendar/v3.dart' as gcal;
-import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:timeline_tile/timeline_tile.dart';
@@ -17,7 +14,6 @@ import '../models/contact.dart';
 import '../models/interaction.dart';
 import '../models/prayer_request.dart';
 import '../models/relationship.dart';
-import '../services/calendar_integration_service.dart';
 import '../services/reminder_coordinator.dart';
 import '../widgets/people_card.dart';
 import '../constants/storage.dart';
@@ -50,10 +46,6 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
   final TextEditingController _keywordController = TextEditingController();
   final TextEditingController _reminderController = TextEditingController();
   final TextEditingController _photoCueController = TextEditingController();
-  final CalendarIntegrationService _calendarIntegrationService =
-      CalendarIntegrationService();
-
-  bool _isImportingCalendar = false;
 
   List<Interaction> _interactions = [];
   bool _isLoadingInteractions = false;
@@ -75,7 +67,6 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
     'other': Icons.more_horiz,
   };
 
-  List<_MethodFormEntry> _methodEntries = [];
   List<String> _selectedTags = [];
   List<String> _keywords = [];
   List<String> _reminderCues = [];
@@ -119,20 +110,6 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
     _keywords = List<String>.from(contact.recognitionKeywords);
     _reminderCues = List<String>.from(contact.recognitionReminders);
     _photoCues = List<String>.from(contact.recognitionPhotoUris);
-    _methodEntries = contact.contactMethods
-        .map(
-          (method) => _MethodFormEntry(
-            type: method.type,
-            value: method.value,
-            label: method.label ?? '',
-          ),
-        )
-        .toList();
-    if (_methodEntries.isEmpty) {
-      _methodEntries.add(
-        _MethodFormEntry(type: 'phone', value: '', label: ''),
-      );
-    }
 
     _interactionSearchController.addListener(() {
       setState(() {
@@ -158,9 +135,6 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
     _keywordController.dispose();
     _reminderController.dispose();
     _photoCueController.dispose();
-    for (final entry in _methodEntries) {
-      entry.dispose();
-    }
     super.dispose();
   }
 
@@ -215,91 +189,6 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
     });
   }
 
-  Future<void> _importFromCalendar() async {
-    final now = DateTime.now();
-    final initialRange = DateTimeRange(
-      start: now.subtract(const Duration(days: 30)),
-      end: now,
-    );
-
-    final selectedRange = await showDateRangePicker(
-      context: context,
-      initialDateRange: initialRange,
-      firstDate: DateTime(now.year - 5),
-      lastDate: DateTime(now.year + 2),
-    );
-
-    if (selectedRange == null) {
-      return;
-    }
-
-    if (!mounted) return;
-
-    setState(() {
-      _isImportingCalendar = true;
-    });
-
-    try {
-      final googleSignIn = GoogleSignIn(
-        scopes: const [gcal.CalendarApi.calendarReadonlyScope],
-      );
-      GoogleSignInAccount? account;
-      try {
-        account = await googleSignIn.signInSilently();
-      } catch (_) {
-        account = null;
-      }
-      account ??= await googleSignIn.signIn();
-
-      if (account == null) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Google sign-in cancelled.')),
-        );
-        return;
-      }
-
-      final authHeaders = await account.authHeaders;
-      final client = _GoogleAuthClient(authHeaders);
-      try {
-        final calendarApi = gcal.CalendarApi(client);
-        final importedInteractions =
-            await _calendarIntegrationService.importForContact(
-          contact: _buildContactFromState(),
-          calendarApi: calendarApi,
-          start: selectedRange.start,
-          end: selectedRange.end.add(const Duration(days: 1)),
-        );
-
-        await _refreshInteractions();
-
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              importedInteractions.isEmpty
-                  ? 'No matching calendar events found.'
-                  : 'Imported ${importedInteractions.length} calendar event${importedInteractions.length == 1 ? '' : 's'}.',
-            ),
-          ),
-        );
-      } finally {
-        client.close();
-      }
-    } catch (error) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Calendar import failed: $error')),
-      );
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isImportingCalendar = false;
-        });
-      }
-    }
-  }
-
   Future<void> _refreshPrayerRequests() async {
     setState(() {
       _isLoadingPrayers = true;
@@ -317,25 +206,6 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
         _selectedPrayerStatus = null;
       }
       _isLoadingPrayers = false;
-    });
-  }
-
-  void _addMethodEntry({ContactMethod? method}) {
-    setState(() {
-      _methodEntries.add(
-        _MethodFormEntry(
-          type: method?.type ?? 'phone',
-          value: method?.value ?? '',
-          label: method?.label ?? '',
-        ),
-      );
-    });
-  }
-
-  void _removeMethodEntry(_MethodFormEntry entry) {
-    setState(() {
-      _methodEntries.remove(entry);
-      entry.dispose();
     });
   }
 
@@ -930,19 +800,6 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
   }
 
   Contact _buildContactFromState({List<Interaction>? interactionsOverride}) {
-    final methods = _methodEntries
-        .map(
-          (entry) => ContactMethod(
-            type: entry.type,
-            value: entry.valueController.text.trim(),
-            label: entry.labelController.text.trim().isEmpty
-                ? null
-                : entry.labelController.text.trim(),
-          ),
-        )
-        .where((method) => method.value.isNotEmpty)
-        .toList();
-
     final lastNameText = _lastNameController.text.trim();
     final nicknameText = _nicknameController.text.trim();
     final locationText = _locationController.text.trim();
@@ -958,7 +815,6 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
       metThroughId: _selectedMetThroughId,
       firstMeetingNotes:
           firstMeetingNotesText.isEmpty ? null : firstMeetingNotesText,
-      contactMethods: methods,
       tags: List<String>.from(_selectedTags),
       recognitionKeywords: List<String>.from(_keywords),
       recognitionPhotoUris: List<String>.from(_photoCues),
@@ -1060,624 +916,37 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
     );
   }
 
-  void _showQuickAddInteractionSheet() {
-    showModalBottomSheet<Interaction>(
+  void _showQuickAddInteractionSheet() async {
+    final interaction = await showModalBottomSheet<Interaction>(
       context: context,
       isScrollControlled: true,
-      builder: (context) {
-        final summaryController = TextEditingController();
-        final locationController = TextEditingController();
-        final durationController = TextEditingController();
-        final categoryController = TextEditingController();
-        DateTime occurredAt = DateTime.now();
-        DateTime? followUpAt;
-        String medium = 'in_person';
-        bool markForPrayer = false;
-        List<AttachmentReference> attachments = [];
-        final speechToText = SpeechToText();
-        bool speechInitialized = false;
-        bool hasSpeechCapability = false;
-        bool isListening = false;
-        String speechBaseText = '';
-        bool sheetActive = true;
+      builder: (context) => _LogInteractionSheet(
+        contact: widget.contact,
+        existingInteractions: List<Interaction>.from(_interactions),
+      ),
+    );
 
-        return StatefulBuilder(
-          builder: (context, setStateSheet) {
-            Future<void> pickDateTime() async {
-              final date = await showDatePicker(
-                context: context,
-                initialDate: occurredAt,
-                firstDate: DateTime(2000),
-                lastDate: DateTime(2100),
-              );
-              if (date == null) return;
-              final time = await showTimePicker(
-                context: context,
-                initialTime: TimeOfDay.fromDateTime(occurredAt),
-              );
-              if (time == null) return;
-              setStateSheet(() {
-                occurredAt = DateTime(
-                  date.year,
-                  date.month,
-                  date.day,
-                  time.hour,
-                  time.minute,
-                );
-              });
-            }
+    if (!mounted || interaction == null) {
+      return;
+    }
 
-            Future<void> pickFollowUp() async {
-              final date = await showDatePicker(
-                context: context,
-                initialDate: followUpAt ?? DateTime.now(),
-                firstDate: DateTime.now().subtract(const Duration(days: 1)),
-                lastDate: DateTime(2100),
-              );
-              if (date == null) return;
-              final time = await showTimePicker(
-                context: context,
-                initialTime: TimeOfDay.fromDateTime(followUpAt ?? DateTime.now()),
-              );
-              if (time == null) return;
-              setStateSheet(() {
-                followUpAt = DateTime(
-                  date.year,
-                  date.month,
-                  date.day,
-                  time.hour,
-                  time.minute,
-                );
-              });
-            }
+    final updated = List<Interaction>.from(_interactions)
+      ..add(interaction)
+      ..sort((a, b) => b.occurredAt.compareTo(a.occurredAt));
 
-            Future<void> addFileAttachment() async {
-              final result = await FilePicker.platform.pickFiles();
-              final file = result?.files.single;
-              final path = file?.path;
-              if (path == null) return;
-              setStateSheet(() {
-                attachments = List<AttachmentReference>.from(attachments)
-                  ..add(
-                    AttachmentReference(
-                      uri: path,
-                      source: AttachmentSource.local,
-                      label: file?.name,
-                    ),
-                  );
-              });
-            }
-
-            Future<void> addLinkAttachment() async {
-              final linkController = TextEditingController();
-              final labelController = TextEditingController();
-              final link = await showDialog<String>(
-                context: context,
-                builder: (context) {
-                  return AlertDialog(
-                    title: const Text('Add Link'),
-                    content: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        TextField(
-                          controller: linkController,
-                          decoration: const InputDecoration(
-                            labelText: 'URL',
-                            border: OutlineInputBorder(),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        TextField(
-                          controller: labelController,
-                          decoration: const InputDecoration(
-                            labelText: 'Label (optional)',
-                            border: OutlineInputBorder(),
-                          ),
-                        ),
-                      ],
-                    ),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(context),
-                        child: const Text('Cancel'),
-                      ),
-                      ElevatedButton(
-                        onPressed: () {
-                          final link = linkController.text.trim();
-                          if (link.isEmpty) {
-                            Navigator.pop(context);
-                            return;
-                          }
-                          final label = labelController.text.trim();
-                          Navigator.pop(
-                            context,
-                            jsonEncode({
-                              'uri': link,
-                              'label': label.isEmpty ? null : label,
-                            }),
-                          );
-                        },
-                        child: const Text('Add'),
-                      ),
-                    ],
-                  );
-                },
-              );
-
-              if (link == null) return;
-              final decoded = jsonDecode(link) as Map<String, dynamic>;
-              setStateSheet(() {
-                attachments = List<AttachmentReference>.from(attachments)
-                  ..add(
-                    AttachmentReference(
-                      uri: decoded['uri'] as String,
-                      source: AttachmentSource.cloud,
-                      label: decoded['label'] as String?,
-                    ),
-                  );
-              });
-            }
-
-            void removeAttachment(AttachmentReference attachment) {
-              setStateSheet(() {
-                attachments = List<AttachmentReference>.from(attachments)
-                  ..removeWhere((item) => item.uri == attachment.uri);
-              });
-            }
-
-            Future<void> stopListening() async {
-              if (!isListening) {
-                return;
-              }
-              await speechToText.stop();
-              speechBaseText = summaryController.text.trim();
-              if (!sheetActive) {
-                isListening = false;
-                return;
-              }
-              setStateSheet(() {
-                isListening = false;
-              });
-            }
-
-            Future<void> toggleVoiceInput() async {
-              if (isListening) {
-                await stopListening();
-                return;
-              }
-
-              if (!speechInitialized) {
-                try {
-                  final available = await speechToText.initialize(
-                    onError: (error) {
-                      if (!sheetActive) {
-                        return;
-                      }
-                      setStateSheet(() {
-                        isListening = false;
-                      });
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('Voice capture error: ${error.errorMsg}'),
-                        ),
-                      );
-                    },
-                    onStatus: (status) {
-                      if (!sheetActive) {
-                        return;
-                      }
-                      final normalized = status.toLowerCase();
-                      if (normalized == 'done' || normalized == 'notlistening') {
-                        setStateSheet(() {
-                          isListening = false;
-                        });
-                        speechBaseText = summaryController.text.trim();
-                      }
-                    },
-                  );
-                  speechInitialized = true;
-                  hasSpeechCapability = available;
-                  if (!available) {
-                    if (sheetActive) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text(
-                            'Speech recognition is unavailable on this device.',
-                          ),
-                        ),
-                      );
-                    }
-                    return;
-                  }
-                } catch (error) {
-                  if (sheetActive) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Speech recognition failed: $error'),
-                      ),
-                    );
-                  }
-                  return;
-                }
-              } else if (!hasSpeechCapability) {
-                if (sheetActive) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Speech recognition permission is not granted.'),
-                    ),
-                  );
-                }
-                return;
-              }
-
-              FocusScope.of(context).unfocus();
-              speechBaseText = summaryController.text.trim();
-
-              try {
-                final started = await speechToText.listen(
-                  listenMode: ListenMode.dictation,
-                  onResult: (SpeechRecognitionResult result) {
-                    if (!sheetActive) {
-                      return;
-                    }
-                    final recognized = result.recognizedWords.trim();
-                    setStateSheet(() {
-                      final base = speechBaseText.trim();
-                      final pieces = <String>[];
-                      if (base.isNotEmpty) {
-                        pieces.add(base);
-                      }
-                      if (recognized.isNotEmpty) {
-                        pieces.add(recognized);
-                      }
-                      final combined =
-                          pieces.join(pieces.length > 1 ? ' ' : '').trim();
-                      summaryController.value = TextEditingValue(
-                        text: combined,
-                        selection: TextSelection.collapsed(
-                          offset: combined.length,
-                        ),
-                      );
-                    });
-                  },
-                );
-                if (!started) {
-                  if (sheetActive) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Unable to start voice capture.'),
-                      ),
-                    );
-                  }
-                  return;
-                }
-                if (!sheetActive) {
-                  await speechToText.stop();
-                  return;
-                }
-                setStateSheet(() {
-                  isListening = true;
-                });
-              } catch (error) {
-                if (sheetActive) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Voice capture error: $error')),
-                  );
-                }
-              }
-            }
-
-            Future<void> saveInteraction() async {
-              final summary = summaryController.text.trim();
-              if (summary.isEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Add a short summary first.')),
-                );
-                return;
-              }
-
-              final durationText = durationController.text.trim();
-              final durationMinutes = durationText.isEmpty
-                  ? null
-                  : int.tryParse(durationText);
-              if (durationText.isNotEmpty && durationMinutes == null) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Duration must be a number of minutes.'),
-                  ),
-                );
-                return;
-              }
-              if (durationMinutes != null && durationMinutes < 0) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Duration cannot be negative.'),
-                  ),
-                );
-                return;
-              }
-
-              final categoryText = categoryController.text.trim();
-              final category = categoryText.isEmpty ? null : categoryText;
-
-              final interaction = Interaction(
-                contactId: widget.contact.id,
-                occurredAt: occurredAt,
-                summary: summary,
-                medium: medium,
-                location:
-                    locationController.text.trim().isEmpty
-                        ? null
-                        : locationController.text.trim(),
-                attachments: attachments,
-                markForPrayer: markForPrayer,
-                followUpAt: followUpAt,
-                durationMinutes: durationMinutes,
-                category: category,
-              );
-
-              final savedInteraction =
-                  await DBHelper().insertInteraction(interaction);
-
-              final contactSnapshot = _buildContactFromState(
-                interactionsOverride: List<Interaction>.from(_interactions)
-                  ..add(savedInteraction),
-              );
-              await ReminderCoordinator()
-                  .syncInteractionReminder(contactSnapshot, savedInteraction);
-
-              if (!mounted) return;
-              await stopListening();
-              sheetActive = false;
-              Navigator.pop(context, savedInteraction);
-            }
-
-            return WillPopScope(
-              onWillPop: () async {
-                sheetActive = false;
-                await stopListening();
-                return true;
-              },
-              child: Padding(
-                padding: EdgeInsets.only(
-                  left: 16,
-                  right: 16,
-                  bottom: MediaQuery.of(context).viewInsets.bottom + 24,
-                  top: 24,
-                ),
-                child: SingleChildScrollView(
-                  child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Log interaction',
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.close),
-                          onPressed: () async {
-                            sheetActive = false;
-                            await stopListening();
-                            Navigator.pop(context);
-                          },
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    TextField(
-                      controller: summaryController,
-                      decoration: InputDecoration(
-                        labelText: 'Summary',
-                        border: const OutlineInputBorder(),
-                        helperText: isListening ? 'Listening…' : null,
-                        suffixIcon: IconButton(
-                          icon: Icon(
-                            isListening ? Icons.mic : Icons.mic_none,
-                            color: isListening
-                                ? Theme.of(context).colorScheme.primary
-                                : null,
-                          ),
-                          onPressed: toggleVoiceInput,
-                          tooltip: isListening
-                              ? 'Stop voice capture'
-                              : 'Use voice to text',
-                        ),
-                      ),
-                      textCapitalization: TextCapitalization.sentences,
-                      maxLines: 2,
-                    ),
-                    const SizedBox(height: 12),
-                    DropdownButtonFormField<String>(
-                      value: medium,
-                      decoration: const InputDecoration(
-                        labelText: 'Medium',
-                        border: OutlineInputBorder(),
-                      ),
-                      items: const [
-                        DropdownMenuItem(
-                          value: 'in_person',
-                          child: Text('In-person'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'call',
-                          child: Text('Call'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'message',
-                          child: Text('Message'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'online',
-                          child: Text('Online Meeting'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'other',
-                          child: Text('Other'),
-                        ),
-                      ],
-                      onChanged: (value) {
-                        if (value == null) return;
-                        setStateSheet(() {
-                          medium = value;
-                        });
-                      },
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: locationController,
-                      decoration: const InputDecoration(
-                        labelText: 'Location (optional)',
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: durationController,
-                      keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(
-                        labelText: 'Duration (minutes, optional)',
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: categoryController,
-                      decoration: const InputDecoration(
-                        labelText: 'Category (optional)',
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: const Text('Occurred at'),
-                      subtitle: Text(
-                        DateFormat.yMMMd().add_jm().format(occurredAt),
-                      ),
-                      trailing: const Icon(Icons.edit_outlined),
-                      onTap: pickDateTime,
-                    ),
-                    SwitchListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: const Text('Mark for prayer'),
-                      value: markForPrayer,
-                      onChanged: (value) {
-                        setStateSheet(() {
-                          markForPrayer = value;
-                        });
-                      },
-                    ),
-                    ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: const Text('Follow-up reminder'),
-                      subtitle: Text(
-                        followUpAt != null
-                            ? DateFormat.yMMMd().add_jm().format(followUpAt!)
-                            : 'None',
-                      ),
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          if (followUpAt != null)
-                            IconButton(
-                              icon: const Icon(Icons.close),
-                              onPressed: () {
-                                setStateSheet(() {
-                                  followUpAt = null;
-                                });
-                              },
-                            ),
-                          IconButton(
-                            icon: const Icon(Icons.calendar_month_outlined),
-                            onPressed: pickFollowUp,
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      'Attachments',
-                      style: Theme.of(context).textTheme.titleSmall,
-                    ),
-                    const SizedBox(height: 8),
-                    if (attachments.isEmpty)
-                      const Text(
-                        'Add quick notes, files, or shared links.',
-                        style: TextStyle(color: Colors.grey),
-                      )
-                    else
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: attachments
-                            .map(
-                              (attachment) => InputChip(
-                                label: Text(
-                                  attachment.label ??
-                                      attachment.uri.split('/').last,
-                                ),
-                                avatar: Icon(
-                                  attachment.source == AttachmentSource.local
-                                      ? Icons.insert_drive_file_outlined
-                                      : Icons.cloud_outlined,
-                                ),
-                                onDeleted: () => removeAttachment(attachment),
-                              ),
-                            )
-                            .toList(),
-                      ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        OutlinedButton.icon(
-                          onPressed: addFileAttachment,
-                          icon: const Icon(Icons.attach_file),
-                          label: const Text('Device file'),
-                        ),
-                        const SizedBox(width: 12),
-                        OutlinedButton.icon(
-                          onPressed: addLinkAttachment,
-                          icon: const Icon(Icons.link),
-                          label: const Text('Add link'),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 24),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton.icon(
-                        onPressed: saveInteraction,
-                        icon: const Icon(Icons.check),
-                        label: const Text('Save'),
-                      ),
-                    ),
-                  ],
-                ),
-                ),
-              ),
-            );
-          },
-        );
-      },
-    ).then((interaction) {
-      if (interaction == null) return;
-      setState(() {
-        _interactions = List<Interaction>.from(_interactions)
-          ..add(interaction)
-          ..sort((a, b) => b.occurredAt.compareTo(a.occurredAt));
-        _interactionLookup = {
-          for (final item in _interactions)
-            if (item.id != null) item.id!: item,
-        };
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Interaction logged')),
-      );
+    setState(() {
+      _interactions = updated;
+      _interactionLookup = {
+        for (final item in updated)
+          if (item.id != null) item.id!: item,
+      };
     });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Interaction logged')),
+    );
   }
+
 
   Future<void> _refreshRelationships() async {
     setState(() {
@@ -2083,36 +1352,6 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
             const SizedBox(height: 16),
             _buildCard(
               children: [
-                Text(
-                  'Contact Methods',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-                const SizedBox(height: 12),
-                Column(
-                  children: _methodEntries
-                      .map(
-                        (entry) => Padding(
-                          padding: const EdgeInsets.only(bottom: 12.0),
-                          child: _ContactMethodRow(
-                            entry: entry,
-                            onRemove: _methodEntries.length > 1
-                                ? () => _removeMethodEntry(entry)
-                                : null,
-                          ),
-                        ),
-                      )
-                      .toList(),
-                ),
-                OutlinedButton.icon(
-                  onPressed: _addMethodEntry,
-                  icon: const Icon(Icons.add),
-                  label: const Text('Add Contact Method'),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            _buildCard(
-              children: [
                 DropdownButtonFormField<String?>(
                   value: _selectedMetThroughId,
                   decoration: _buildInputDecoration('Met Through (Optional)'),
@@ -2301,21 +1540,6 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
                         'Interactions',
                         style: Theme.of(context).textTheme.titleMedium,
                       ),
-                    ),
-                    if (_isImportingCalendar)
-                      const Padding(
-                        padding: EdgeInsets.only(right: 12),
-                        child: SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        ),
-                      ),
-                    FilledButton.tonalIcon(
-                      onPressed:
-                          _isImportingCalendar ? null : _importFromCalendar,
-                      icon: const Icon(Icons.calendar_month_outlined),
-                      label: const Text('Import'),
                     ),
                   ],
                 ),
@@ -2871,115 +2095,626 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
   }
 }
 
-class _GoogleAuthClient extends http.BaseClient {
-  _GoogleAuthClient(this._headers);
-
-  final Map<String, String> _headers;
-  final http.Client _client = http.Client();
-
-  @override
-  Future<http.StreamedResponse> send(http.BaseRequest request) {
-    request.headers.addAll(_headers);
-    return _client.send(request);
-  }
-
-  @override
-  void close() {
-    _client.close();
-    super.close();
-  }
-}
-
-class _MethodFormEntry {
-  _MethodFormEntry({
-    required String type,
-    required String value,
-    required String label,
-  })  : type = type,
-        valueController = TextEditingController(text: value),
-        labelController = TextEditingController(text: label);
-
-  String type;
-  final TextEditingController valueController;
-  final TextEditingController labelController;
-
-  void dispose() {
-    valueController.dispose();
-    labelController.dispose();
-  }
-}
-
-class _ContactMethodRow extends StatefulWidget {
-  const _ContactMethodRow({
-    required this.entry,
-    this.onRemove,
+class _LogInteractionSheet extends StatefulWidget {
+  const _LogInteractionSheet({
+    required this.contact,
+    required this.existingInteractions,
   });
 
-  final _MethodFormEntry entry;
-  final VoidCallback? onRemove;
+  final Contact contact;
+  final List<Interaction> existingInteractions;
 
   @override
-  State<_ContactMethodRow> createState() => _ContactMethodRowState();
+  State<_LogInteractionSheet> createState() => _LogInteractionSheetState();
 }
 
-class _ContactMethodRowState extends State<_ContactMethodRow> {
+class _LogInteractionSheetState extends State<_LogInteractionSheet> {
+  late final TextEditingController _summaryController;
+  late final TextEditingController _locationController;
+  late final TextEditingController _durationController;
+  late final TextEditingController _categoryController;
+
+  final SpeechToText _speechToText = SpeechToText();
+
+  DateTime _occurredAt = DateTime.now();
+  DateTime? _followUpAt;
+  String _medium = 'in_person';
+  bool _markForPrayer = false;
+  List<AttachmentReference> _attachments = [];
+
+  bool _speechInitialized = false;
+  bool _hasSpeechCapability = false;
+  bool _isListening = false;
+  String _speechBaseText = '';
+
+  bool _sheetActive = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _summaryController = TextEditingController();
+    _locationController = TextEditingController();
+    _durationController = TextEditingController();
+    _categoryController = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _sheetActive = false;
+    _speechToText.stop();
+    _speechToText.cancel();
+    _summaryController.dispose();
+    _locationController.dispose();
+    _durationController.dispose();
+    _categoryController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickDateTime() async {
+    final date = await showDatePicker(
+      context: context,
+      initialDate: _occurredAt,
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2100),
+    );
+    if (date == null) return;
+    final time = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(_occurredAt),
+    );
+    if (time == null) return;
+    setState(() {
+      _occurredAt = DateTime(
+        date.year,
+        date.month,
+        date.day,
+        time.hour,
+        time.minute,
+      );
+    });
+  }
+
+  Future<void> _pickFollowUp() async {
+    final date = await showDatePicker(
+      context: context,
+      initialDate: _followUpAt ?? DateTime.now(),
+      firstDate: DateTime.now().subtract(const Duration(days: 1)),
+      lastDate: DateTime(2100),
+    );
+    if (date == null) return;
+    final time = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(_followUpAt ?? DateTime.now()),
+    );
+    if (time == null) return;
+    setState(() {
+      _followUpAt = DateTime(
+        date.year,
+        date.month,
+        date.day,
+        time.hour,
+        time.minute,
+      );
+    });
+  }
+
+  Future<void> _addFileAttachment() async {
+    final result = await FilePicker.platform.pickFiles();
+    final file = result?.files.single;
+    final path = file?.path;
+    if (path == null) return;
+    setState(() {
+      _attachments = List<AttachmentReference>.from(_attachments)
+        ..add(
+          AttachmentReference(
+            uri: path,
+            source: AttachmentSource.local,
+            label: file?.name,
+          ),
+        );
+    });
+  }
+
+  Future<void> _addLinkAttachment() async {
+    final linkController = TextEditingController();
+    final labelController = TextEditingController();
+    final link = await showDialog<String>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Add Link'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: linkController,
+                decoration: const InputDecoration(
+                  labelText: 'URL',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: labelController,
+                decoration: const InputDecoration(
+                  labelText: 'Label (optional)',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                final url = linkController.text.trim();
+                if (url.isEmpty) {
+                  Navigator.pop(context);
+                  return;
+                }
+                final label = labelController.text.trim();
+                Navigator.pop(
+                  context,
+                  jsonEncode({
+                    'uri': url,
+                    'label': label.isEmpty ? null : label,
+                  }),
+                );
+              },
+              child: const Text('Add'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (link == null) return;
+    final decoded = jsonDecode(link) as Map<String, dynamic>;
+    setState(() {
+      _attachments = List<AttachmentReference>.from(_attachments)
+        ..add(
+          AttachmentReference(
+            uri: decoded['uri'] as String,
+            source: AttachmentSource.cloud,
+            label: decoded['label'] as String?,
+          ),
+        );
+    });
+  }
+
+  void _removeAttachment(AttachmentReference attachment) {
+    setState(() {
+      _attachments = List<AttachmentReference>.from(_attachments)
+        ..removeWhere((item) => item.uri == attachment.uri);
+    });
+  }
+
+  Future<void> _stopListening() async {
+    if (!_speechInitialized || !_isListening) return;
+    try {
+      await _speechToText.stop();
+      _speechBaseText = _summaryController.text.trim();
+    } catch (_) {
+      // Ignore teardown failures.
+    } finally {
+      if (_sheetActive && mounted) {
+        setState(() {
+          _isListening = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _toggleVoiceInput() async {
+    if (_isListening) {
+      await _stopListening();
+      return;
+    }
+
+    if (!_speechInitialized) {
+      try {
+        final available = await _speechToText.initialize(
+          onError: (error) {
+            if (!_sheetActive || !mounted) return;
+            setState(() {
+              _isListening = false;
+            });
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Voice capture error: ${error.errorMsg}'),
+              ),
+            );
+          },
+          onStatus: (status) {
+            if (!_sheetActive || !mounted) return;
+            final normalized = status.toLowerCase();
+            if (normalized == 'done' || normalized == 'notlistening') {
+              setState(() {
+                _isListening = false;
+              });
+              _speechBaseText = _summaryController.text.trim();
+            }
+          },
+        );
+        _speechInitialized = true;
+        _hasSpeechCapability = available;
+        if (!available) {
+          if (_sheetActive && mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Speech recognition is unavailable on this device.'),
+              ),
+            );
+          }
+          return;
+        }
+      } catch (error) {
+        if (_sheetActive && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Speech recognition failed: $error')),
+          );
+        }
+        return;
+      }
+    } else if (!_hasSpeechCapability) {
+      if (_sheetActive && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Speech recognition permission is not granted.'),
+          ),
+        );
+      }
+      return;
+    }
+
+    FocusScope.of(context).unfocus();
+    _speechBaseText = _summaryController.text.trim();
+
+    try {
+      final started = await _speechToText.listen(
+        listenMode: ListenMode.dictation,
+        onResult: (SpeechRecognitionResult result) {
+          if (!_sheetActive || !mounted) {
+            return;
+          }
+          final recognized = result.recognizedWords.trim();
+          setState(() {
+            final base = _speechBaseText.trim();
+            final pieces = <String>[];
+            if (base.isNotEmpty) {
+              pieces.add(base);
+            }
+            if (recognized.isNotEmpty) {
+              pieces.add(recognized);
+            }
+            final combined = pieces.join(pieces.length > 1 ? ' ' : '').trim();
+            _summaryController.value = TextEditingValue(
+              text: combined,
+              selection: TextSelection.collapsed(offset: combined.length),
+            );
+          });
+        },
+      );
+      if (!started) {
+        if (_sheetActive && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Unable to start voice capture.')),
+          );
+        }
+        return;
+      }
+      if (!_sheetActive) {
+        await _speechToText.stop();
+        return;
+      }
+      if (mounted) {
+        setState(() {
+          _isListening = true;
+        });
+      }
+    } catch (error) {
+      if (_sheetActive && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Voice capture error: $error')),
+        );
+      }
+    }
+  }
+
+  Future<void> _saveInteraction() async {
+    final summary = _summaryController.text.trim();
+    if (summary.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Add a short summary first.')),
+      );
+      return;
+    }
+
+    final durationText = _durationController.text.trim();
+    final durationMinutes =
+        durationText.isEmpty ? null : int.tryParse(durationText);
+    if (durationText.isNotEmpty && durationMinutes == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Duration must be a number of minutes.')),
+      );
+      return;
+    }
+    if (durationMinutes != null && durationMinutes < 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Duration cannot be negative.')),
+      );
+      return;
+    }
+
+    final categoryText = _categoryController.text.trim();
+    final category = categoryText.isEmpty ? null : categoryText;
+
+    final interaction = Interaction(
+      contactId: widget.contact.id,
+      occurredAt: _occurredAt,
+      summary: summary,
+      medium: _medium,
+      location: _locationController.text.trim().isEmpty
+          ? null
+          : _locationController.text.trim(),
+      attachments: _attachments,
+      markForPrayer: _markForPrayer,
+      followUpAt: _followUpAt,
+      durationMinutes: durationMinutes,
+      category: category,
+    );
+
+    final savedInteraction = await DBHelper().insertInteraction(interaction);
+
+    final contactSnapshot = widget.contact.copyWith(
+      interactions: [
+        ...widget.existingInteractions,
+        savedInteraction,
+      ],
+    );
+
+    await ReminderCoordinator()
+        .syncInteractionReminder(contactSnapshot, savedInteraction);
+
+    if (!mounted) return;
+    await _stopListening();
+    Navigator.of(context).pop(savedInteraction);
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(
-          flex: 2,
-          child: DropdownButtonFormField<String>(
-            value: widget.entry.type,
-            decoration: const InputDecoration(
-              labelText: 'Type',
-              border: OutlineInputBorder(),
-            ),
-            items: const [
-              DropdownMenuItem(value: 'phone', child: Text('Phone')),
-              DropdownMenuItem(value: 'email', child: Text('Email')),
-              DropdownMenuItem(value: 'other', child: Text('Other')),
+    return WillPopScope(
+      onWillPop: () async {
+        _sheetActive = false;
+        await _stopListening();
+        return true;
+      },
+      child: Padding(
+        padding: EdgeInsets.only(
+          left: 16,
+          right: 16,
+          bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+          top: 24,
+        ),
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Log interaction',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () async {
+                      _sheetActive = false;
+                      await _stopListening();
+                      if (mounted) {
+                        Navigator.of(context).pop();
+                      }
+                    },
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: _summaryController,
+                decoration: InputDecoration(
+                  labelText: 'Summary',
+                  border: const OutlineInputBorder(),
+                  helperText: _isListening ? 'Listening…' : null,
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _isListening ? Icons.mic : Icons.mic_none,
+                      color: _isListening
+                          ? Theme.of(context).colorScheme.primary
+                          : null,
+                    ),
+                    onPressed: _toggleVoiceInput,
+                    tooltip:
+                        _isListening ? 'Stop voice capture' : 'Use voice to text',
+                  ),
+                ),
+                textCapitalization: TextCapitalization.sentences,
+                maxLines: 2,
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                value: _medium,
+                decoration: const InputDecoration(
+                  labelText: 'Medium',
+                  border: OutlineInputBorder(),
+                ),
+                items: const [
+                  DropdownMenuItem(
+                    value: 'in_person',
+                    child: Text('In-person'),
+                  ),
+                  DropdownMenuItem(
+                    value: 'call',
+                    child: Text('Call'),
+                  ),
+                  DropdownMenuItem(
+                    value: 'message',
+                    child: Text('Message'),
+                  ),
+                  DropdownMenuItem(
+                    value: 'online',
+                    child: Text('Online Meeting'),
+                  ),
+                  DropdownMenuItem(
+                    value: 'other',
+                    child: Text('Other'),
+                  ),
+                ],
+                onChanged: (value) {
+                  if (value == null) return;
+                  setState(() {
+                    _medium = value;
+                  });
+                },
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _locationController,
+                decoration: const InputDecoration(
+                  labelText: 'Location (optional)',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _durationController,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'Duration (minutes, optional)',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _categoryController,
+                decoration: const InputDecoration(
+                  labelText: 'Category (optional)',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 12),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Occurred at'),
+                subtitle: Text(
+                  DateFormat.yMMMd().add_jm().format(_occurredAt),
+                ),
+                trailing: const Icon(Icons.edit_outlined),
+                onTap: _pickDateTime,
+              ),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Mark for prayer'),
+                value: _markForPrayer,
+                onChanged: (value) {
+                  setState(() {
+                    _markForPrayer = value;
+                  });
+                },
+              ),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Follow-up reminder'),
+                subtitle: Text(
+                  _followUpAt != null
+                      ? DateFormat.yMMMd().add_jm().format(_followUpAt!)
+                      : 'None',
+                ),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (_followUpAt != null)
+                      IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: () {
+                          setState(() {
+                            _followUpAt = null;
+                          });
+                        },
+                      ),
+                    IconButton(
+                      icon: const Icon(Icons.calendar_month_outlined),
+                      onPressed: _pickFollowUp,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Attachments',
+                style: Theme.of(context).textTheme.titleSmall,
+              ),
+              const SizedBox(height: 8),
+              if (_attachments.isEmpty)
+                const Text(
+                  'Add quick notes, files, or shared links.',
+                  style: TextStyle(color: Colors.grey),
+                )
+              else
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: _attachments
+                      .map(
+                        (attachment) => InputChip(
+                          label: Text(
+                            attachment.label ??
+                                attachment.uri.split('/').last,
+                          ),
+                          avatar: Icon(
+                            attachment.source == AttachmentSource.local
+                                ? Icons.insert_drive_file_outlined
+                                : Icons.cloud_outlined,
+                          ),
+                          onDeleted: () => _removeAttachment(attachment),
+                        ),
+                      )
+                      .toList(),
+                ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  OutlinedButton.icon(
+                    onPressed: _addFileAttachment,
+                    icon: const Icon(Icons.attach_file),
+                    label: const Text('Device file'),
+                  ),
+                  const SizedBox(width: 12),
+                  OutlinedButton.icon(
+                    onPressed: _addLinkAttachment,
+                    icon: const Icon(Icons.link),
+                    label: const Text('Add link'),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: _saveInteraction,
+                  icon: const Icon(Icons.check),
+                  label: const Text('Save'),
+                ),
+              ),
             ],
-            onChanged: (value) {
-              if (value == null) return;
-              setState(() {
-                widget.entry.type = value;
-              });
-            },
           ),
         ),
-        const SizedBox(width: 12),
-        Expanded(
-          flex: 4,
-          child: TextField(
-            controller: widget.entry.valueController,
-            decoration: const InputDecoration(
-              labelText: 'Handle',
-              border: OutlineInputBorder(),
-            ),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          flex: 3,
-          child: TextField(
-            controller: widget.entry.labelController,
-            decoration: const InputDecoration(
-              labelText: 'Label (Optional)',
-              border: OutlineInputBorder(),
-            ),
-          ),
-        ),
-        if (widget.onRemove != null) ...[
-          const SizedBox(width: 12),
-          IconButton(
-            icon: const Icon(Icons.delete_outline),
-            tooltip: 'Remove method',
-            onPressed: widget.onRemove,
-          ),
-        ],
-      ],
+      ),
     );
   }
 }
+
+

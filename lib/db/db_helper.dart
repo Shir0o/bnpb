@@ -61,17 +61,6 @@ class DBHelper {
     ''');
 
     await db.execute('''
-      CREATE TABLE contact_methods (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        contactId TEXT,
-        type TEXT,
-        value TEXT,
-        label TEXT,
-        FOREIGN KEY(contactId) REFERENCES contacts(id) ON DELETE CASCADE
-      )
-    ''');
-
-    await db.execute('''
       CREATE TABLE contact_tags (
         contactId TEXT,
         tag TEXT,
@@ -159,16 +148,6 @@ class DBHelper {
   ) async {
     if (oldVersion < 2) {
       await db.execute('ALTER TABLE contacts ADD COLUMN nickname TEXT');
-      await db.execute('''
-        CREATE TABLE IF NOT EXISTS contact_methods (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          contactId TEXT,
-          type TEXT,
-          value TEXT,
-          label TEXT,
-          FOREIGN KEY(contactId) REFERENCES contacts(id) ON DELETE CASCADE
-        )
-      ''');
       await db.execute('''
         CREATE TABLE IF NOT EXISTS contact_tags (
           contactId TEXT,
@@ -352,7 +331,6 @@ class DBHelper {
     }
 
     await _upsertMeetContext(txn, contact);
-    await _replaceContactMethods(txn, contact);
     await _replaceContactTags(txn, contact);
 
     if (contact.prayerRequests.isNotEmpty) {
@@ -387,27 +365,6 @@ class DBHelper {
       },
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
-  }
-
-  Future<void> _replaceContactMethods(
-    DatabaseExecutor txn,
-    Contact contact,
-  ) async {
-    await txn.delete(
-      'contact_methods',
-      where: 'contactId = ?',
-      whereArgs: [contact.id],
-    );
-
-    for (final method in contact.contactMethods) {
-      if (method.value.isEmpty) continue;
-      await txn.insert('contact_methods', {
-        'contactId': contact.id,
-        'type': method.type,
-        'value': method.value,
-        'label': method.label,
-      });
-    }
   }
 
   Future<void> _replaceContactTags(
@@ -458,11 +415,6 @@ class DBHelper {
       whereArgs: contactId != null ? [contactId] : null,
     );
 
-    final methodRows = await db.query(
-      'contact_methods',
-      where: contactId != null ? 'contactId = ?' : null,
-      whereArgs: contactId != null ? [contactId] : null,
-    );
     final tagRows = await db.query(
       'contact_tags',
       where: contactId != null ? 'contactId = ?' : null,
@@ -473,19 +425,6 @@ class DBHelper {
       where: contactId != null ? 'contactId = ?' : null,
       whereArgs: contactId != null ? [contactId] : null,
     );
-
-    final methodsByContact = <String, List<ContactMethod>>{};
-    for (final row in methodRows) {
-      final contactId = row['contactId'] as String;
-      methodsByContact.putIfAbsent(contactId, () => []);
-      methodsByContact[contactId]!.add(
-        ContactMethod(
-          type: row['type'] as String,
-          value: row['value'] as String,
-          label: row['label'] as String?,
-        ),
-      );
-    }
 
     final tagsByContact = <String, List<String>>{};
     for (final row in tagRows) {
@@ -550,10 +489,6 @@ class DBHelper {
               ).toList() ??
           [];
 
-      contactMap['contactMethods'] = methodsByContact[contactMap['id']]?.map(
-                (method) => method.toMap(),
-              ).toList() ??
-          [];
       contactMap['tags'] = tagsByContact[contactMap['id']] ?? [];
       final context = contextsByContact[contactMap['id']];
       contactMap['metThroughId'] = context?['metThroughId'];
