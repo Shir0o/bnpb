@@ -2292,10 +2292,20 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
                   ],
                 ),
               ),
-              IconButton(
-                icon: const Icon(Icons.delete_outline),
-                tooltip: 'Delete interaction',
-                onPressed: () => _deleteInteraction(interaction),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.edit_outlined),
+                    tooltip: 'Edit interaction',
+                    onPressed: () => _showEditInteractionSheet(interaction),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.delete_outline),
+                    tooltip: 'Delete interaction',
+                    onPressed: () => _deleteInteraction(interaction),
+                  ),
+                ],
               ),
             ],
           ),
@@ -2360,6 +2370,45 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
     );
   }
 
+  void _showEditInteractionSheet(Interaction interaction) async {
+    final updatedInteraction = await showModalBottomSheet<Interaction>(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => _LogInteractionSheet(
+        contact: widget.contact,
+        existingInteractions: List<Interaction>.from(_interactions),
+        initialInteraction: interaction,
+        onInteractionSaved: (updated) {
+          final nextInteractions = List<Interaction>.from(_interactions);
+          final index = nextInteractions.indexWhere(
+            (item) => item.id == updated.id,
+          );
+          if (index != -1) {
+            nextInteractions[index] = updated;
+          } else {
+            nextInteractions.add(updated);
+          }
+          nextInteractions.sort((a, b) => b.occurredAt.compareTo(a.occurredAt));
+          setState(() {
+            _interactions = nextInteractions;
+            _interactionLookup = {
+              for (final item in nextInteractions)
+                if (item.id != null) item.id!: item,
+            };
+          });
+        },
+      ),
+    );
+
+    if (!mounted || updatedInteraction == null) {
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Interaction updated')),
+    );
+  }
+
   Widget _buildInfoPill({
     required IconData icon,
     required String label,
@@ -2418,10 +2467,14 @@ class _LogInteractionSheet extends StatefulWidget {
   const _LogInteractionSheet({
     required this.contact,
     required this.existingInteractions,
+    this.initialInteraction,
+    this.onInteractionSaved,
   });
 
   final Contact contact;
   final List<Interaction> existingInteractions;
+  final Interaction? initialInteraction;
+  final ValueChanged<Interaction>? onInteractionSaved;
 
   @override
   State<_LogInteractionSheet> createState() => _LogInteractionSheetState();
@@ -2451,10 +2504,28 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
   @override
   void initState() {
     super.initState();
-    _summaryController = TextEditingController();
-    _locationController = TextEditingController();
-    _durationController = TextEditingController();
-    _categoryController = TextEditingController();
+    final initial = widget.initialInteraction;
+    _summaryController =
+        TextEditingController(text: initial != null ? initial.summary : '');
+    _locationController = TextEditingController(
+      text: initial?.location ?? '',
+    );
+    _durationController = TextEditingController(
+      text: initial?.durationMinutes != null
+          ? initial!.durationMinutes.toString()
+          : '',
+    );
+    _categoryController = TextEditingController(text: initial?.category ?? '');
+    _occurredAt = initial?.occurredAt ?? DateTime.now();
+    _followUpAt = initial?.followUpAt;
+    _medium = initial?.medium ?? 'in_person';
+    _markForPrayer = initial?.markForPrayer ?? false;
+    _attachments = initial != null
+        ? initial.attachments
+            .map((attachment) => attachment.copyWith())
+            .toList()
+        : [];
+    _speechBaseText = _summaryController.text.trim();
   }
 
   @override
@@ -2772,6 +2843,7 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
     final category = categoryText.isEmpty ? null : categoryText;
 
     final interaction = Interaction(
+      id: widget.initialInteraction?.id,
       contactId: widget.contact.id,
       occurredAt: _occurredAt,
       summary: summary,
@@ -2779,24 +2851,47 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
       location: _locationController.text.trim().isEmpty
           ? null
           : _locationController.text.trim(),
-      attachments: _attachments,
+      attachments: List<AttachmentReference>.from(_attachments),
       markForPrayer: _markForPrayer,
       followUpAt: _followUpAt,
       durationMinutes: durationMinutes,
       category: category,
     );
 
-    final savedInteraction = await DBHelper().insertInteraction(interaction);
+    final bool isEditing = widget.initialInteraction != null;
+    late final Interaction savedInteraction;
+    late final List<Interaction> updatedInteractions;
 
-    final contactSnapshot = widget.contact.copyWith(
-      interactions: [
+    if (isEditing) {
+      await DBHelper().updateInteraction(interaction);
+      savedInteraction = interaction;
+      updatedInteractions = List<Interaction>.from(widget.existingInteractions);
+      final index = updatedInteractions.indexWhere(
+        (item) => item.id == savedInteraction.id,
+      );
+      if (index != -1) {
+        updatedInteractions[index] = savedInteraction;
+      } else {
+        updatedInteractions.add(savedInteraction);
+      }
+    } else {
+      savedInteraction = await DBHelper().insertInteraction(interaction);
+      updatedInteractions = [
         ...widget.existingInteractions,
         savedInteraction,
-      ],
+      ];
+    }
+
+    updatedInteractions.sort((a, b) => b.occurredAt.compareTo(a.occurredAt));
+
+    final contactSnapshot = widget.contact.copyWith(
+      interactions: updatedInteractions,
     );
 
     await ReminderCoordinator()
         .syncInteractionReminder(contactSnapshot, savedInteraction);
+
+    widget.onInteractionSaved?.call(savedInteraction);
 
     if (!mounted) return;
     await _stopListening();
@@ -2805,6 +2900,7 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final isEditing = widget.initialInteraction != null;
     return WillPopScope(
       onWillPop: () async {
         _sheetActive = false;
@@ -2826,7 +2922,7 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    'Log interaction',
+                    isEditing ? 'Edit interaction' : 'Log interaction',
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                   IconButton(
@@ -3025,7 +3121,7 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
                 child: ElevatedButton.icon(
                   onPressed: _saveInteraction,
                   icon: const Icon(Icons.check),
-                  label: const Text('Save'),
+                  label: Text(isEditing ? 'Update' : 'Save'),
                 ),
               ),
             ],
