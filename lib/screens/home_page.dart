@@ -370,37 +370,34 @@ class _HomePageState extends State<HomePage> {
     return grouped;
   }
 
-  Widget _buildGroupedContactsList() {
+  List<Widget> _buildGroupedContactsList() {
     final groupedContacts = _groupContactsByLocation(_filteredContacts);
 
-    return ListView(
-      padding: const EdgeInsets.only(bottom: 24),
-      children: groupedContacts.entries.map((entry) {
-        final location = entry.key;
-        final contactsInLocation = entry.value;
+    return groupedContacts.entries.map((entry) {
+      final location = entry.key;
+      final contactsInLocation = entry.value;
 
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 12),
-          child: ExpansionTile(
-            title: Text(location),
-            childrenPadding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            children: contactsInLocation.map((contact) {
-              final match = _activeMatches[contact.id];
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: PeopleCard(
-                  contact: contact,
-                  onTap: () => _navigateToContactDetails(contact),
-                  highlightLabel: match?.matchDescription,
-                  highlightText: match?.snippet,
-                ),
-              );
-            }).toList(),
-          ),
-        );
-      }).toList(),
-    );
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 12),
+        child: ExpansionTile(
+          title: Text(location),
+          childrenPadding:
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          children: contactsInLocation.map((contact) {
+            final match = _activeMatches[contact.id];
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: PeopleCard(
+                contact: contact,
+                onTap: () => _navigateToContactDetails(contact),
+                highlightLabel: match?.matchDescription,
+                highlightText: match?.snippet,
+              ),
+            );
+          }).toList(),
+        ),
+      );
+    }).toList();
   }
 
   Future<void> _openExportSheet() async {
@@ -535,6 +532,8 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
+    final groupedContactSections = _buildGroupedContactsList();
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Contacts'),
@@ -580,38 +579,59 @@ class _HomePageState extends State<HomePage> {
           ),
         ],
       ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: TextField(
-              controller: _searchController,
-              decoration: InputDecoration(
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16.0),
+      body: CustomScrollView(
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+        slivers: [
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+            sliver: SliverToBoxAdapter(
+              child: TextField(
+                controller: _searchController,
+                decoration: InputDecoration(
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16.0),
+                  ),
+                  prefixIcon: const Icon(Icons.search),
+                  hintText: 'Search contacts...',
                 ),
-                prefixIcon: const Icon(Icons.search),
-                hintText: 'Search contacts...',
               ),
             ),
           ),
-          Padding(
+          SliverPadding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
-            child: _buildPrayerInsightsCard(),
+            sliver: SliverToBoxAdapter(
+              child: _buildPrayerInsightsCard(),
+            ),
           ),
-          const SizedBox(height: 16),
+          const SliverToBoxAdapter(child: SizedBox(height: 16)),
           if (_availableTags.isNotEmpty ||
               _availableMetThroughIds.isNotEmpty ||
               _hasUnintroducedContacts)
-            Padding(
+            SliverPadding(
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              child: _buildFilterSection(),
+              sliver: SliverToBoxAdapter(
+                child: _buildFilterSection(),
+              ),
             ),
-          Expanded(
-            child: _filteredContacts.isEmpty
-                ? const Center(child: Text('No contacts available.'))
-                : _buildGroupedContactsList(),
-          ),
+          if (_availableTags.isNotEmpty ||
+              _availableMetThroughIds.isNotEmpty ||
+              _hasUnintroducedContacts)
+            const SliverToBoxAdapter(child: SizedBox(height: 16)),
+          if (groupedContactSections.isEmpty)
+            const SliverFillRemaining(
+              hasScrollBody: false,
+              child: Center(child: Text('No contacts available.')),
+            )
+          else
+            SliverPadding(
+              padding: const EdgeInsets.only(bottom: 24),
+              sliver: SliverList(
+                delegate: SliverChildBuilderDelegate(
+                  (context, index) => groupedContactSections[index],
+                  childCount: groupedContactSections.length,
+                ),
+              ),
+            ),
         ],
       ),
     );
