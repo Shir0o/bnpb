@@ -11,7 +11,7 @@ import '../services/security_service.dart';
 import '../constants/storage.dart';
 
 class DBHelper {
-  static const _dbVersion = 8;
+  static const _dbVersion = 9;
 
   static final DBHelper _instance = DBHelper._();
   static Database? _database;
@@ -80,10 +80,8 @@ class DBHelper {
     await db.execute('''
       CREATE TABLE meet_contexts (
         contactId TEXT PRIMARY KEY,
-        metThroughId TEXT,
         firstMeetingNotes TEXT,
-        FOREIGN KEY(contactId) REFERENCES contacts(id) ON DELETE CASCADE,
-        FOREIGN KEY(metThroughId) REFERENCES contacts(id) ON DELETE SET NULL
+        FOREIGN KEY(contactId) REFERENCES contacts(id) ON DELETE CASCADE
       )
     ''');
 
@@ -167,10 +165,8 @@ class DBHelper {
       await db.execute('''
         CREATE TABLE IF NOT EXISTS meet_contexts (
           contactId TEXT PRIMARY KEY,
-          metThroughId TEXT,
           firstMeetingNotes TEXT,
-          FOREIGN KEY(contactId) REFERENCES contacts(id) ON DELETE CASCADE,
-          FOREIGN KEY(metThroughId) REFERENCES contacts(id) ON DELETE SET NULL
+          FOREIGN KEY(contactId) REFERENCES contacts(id) ON DELETE CASCADE
         )
       ''');
     }
@@ -291,6 +287,24 @@ class DBHelper {
         ON notification_preferences(scopeType, scopeId, channel)
       ''');
     }
+
+    if (oldVersion < 9) {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS meet_contexts_new (
+          contactId TEXT PRIMARY KEY,
+          firstMeetingNotes TEXT,
+          FOREIGN KEY(contactId) REFERENCES contacts(id) ON DELETE CASCADE
+        )
+      ''');
+
+      await db.execute('''
+        INSERT INTO meet_contexts_new (contactId, firstMeetingNotes)
+        SELECT contactId, firstMeetingNotes FROM meet_contexts
+      ''');
+
+      await db.execute('DROP TABLE IF EXISTS meet_contexts');
+      await db.execute('ALTER TABLE meet_contexts_new RENAME TO meet_contexts');
+    }
   }
 
   // -------------------------------------------------------------
@@ -350,10 +364,8 @@ class DBHelper {
     DatabaseExecutor txn,
     Contact contact,
   ) async {
-    final hasContext = (contact.metThroughId != null &&
-            contact.metThroughId!.isNotEmpty) ||
-        (contact.firstMeetingNotes != null &&
-            contact.firstMeetingNotes!.isNotEmpty);
+    final hasContext = contact.firstMeetingNotes != null &&
+        contact.firstMeetingNotes!.isNotEmpty;
 
     if (!hasContext) {
       await txn.delete(
@@ -368,7 +380,6 @@ class DBHelper {
       'meet_contexts',
       {
         'contactId': contact.id,
-        'metThroughId': contact.metThroughId,
         'firstMeetingNotes': contact.firstMeetingNotes,
       },
       conflictAlgorithm: ConflictAlgorithm.replace,
@@ -499,7 +510,6 @@ class DBHelper {
 
       contactMap['tags'] = tagsByContact[contactMap['id']] ?? [];
       final context = contextsByContact[contactMap['id']];
-      contactMap['metThroughId'] = context?['metThroughId'];
       contactMap['firstMeetingNotes'] = context?['firstMeetingNotes'];
       contactMap['prayerRequests'] = prayersByContact[contactMap['id']]?.map(
                 (request) => request.toMap(),

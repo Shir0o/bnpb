@@ -32,10 +32,7 @@ class _HomePageState extends State<HomePage> {
   final Map<String, Contact> _contactLookup = {};
   final ContactSearchService _searchService = ContactSearchService();
   List<String> _availableTags = [];
-  List<String> _availableMetThroughIds = [];
   String? _selectedTagFilter;
-  String? _selectedMetThroughFilterId;
-  bool _hasUnintroducedContacts = false;
   Map<PrayerRequestStatus, int> _prayerCounts = {
     for (final status in PrayerRequestStatus.values) status: 0,
   };
@@ -44,8 +41,6 @@ class _HomePageState extends State<HomePage> {
   PrayerRequestStatus? _selectedPrayerStatusFilter;
   bool _isLoadingPrayerInsights = false;
   Map<String, ContactMatch> _activeMatches = {};
-
-  static const String _noIntroducerFilter = '__no_introducer__';
 
   @override
   void initState() {
@@ -80,18 +75,6 @@ class _HomePageState extends State<HomePage> {
         .toSet()
         .toList()
       ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
-    final metThroughIds = sortedContacts
-        .map((contact) => contact.metThroughId)
-        .whereType<String>()
-        .toSet()
-        .toList();
-    metThroughIds.sort((a, b) =>
-        _displayNameForContactId(lookup, a).toLowerCase().compareTo(
-              _displayNameForContactId(lookup, b).toLowerCase(),
-            ));
-    final hasUnintroduced =
-        sortedContacts.any((contact) => contact.metThroughId == null);
-
     setState(() {
       _contacts = sortedContacts;
       _contactLookup
@@ -100,14 +83,7 @@ class _HomePageState extends State<HomePage> {
       if (_selectedTagFilter != null && !tags.contains(_selectedTagFilter)) {
         _selectedTagFilter = null;
       }
-      if (_selectedMetThroughFilterId != null &&
-          _selectedMetThroughFilterId != _noIntroducerFilter &&
-          !metThroughIds.contains(_selectedMetThroughFilterId)) {
-        _selectedMetThroughFilterId = null;
-      }
       _availableTags = tags;
-      _availableMetThroughIds = metThroughIds;
-      _hasUnintroducedContacts = hasUnintroduced;
       _searchService.index(sortedContacts);
       _filteredContacts = _applyFilters(sortedContacts);
     });
@@ -162,16 +138,6 @@ class _HomePageState extends State<HomePage> {
       final matchesTag = _selectedTagFilter == null ||
           contact.tags.contains(_selectedTagFilter);
 
-      final matchesMetThrough = () {
-        if (_selectedMetThroughFilterId == null) {
-          return true;
-        }
-        if (_selectedMetThroughFilterId == _noIntroducerFilter) {
-          return contact.metThroughId == null;
-        }
-        return contact.metThroughId == _selectedMetThroughFilterId;
-      }();
-
       final matchesPrayerStatus = () {
         if (_selectedPrayerStatusFilter == null) {
           return true;
@@ -180,7 +146,7 @@ class _HomePageState extends State<HomePage> {
             .any((request) => request.status == _selectedPrayerStatusFilter);
       }();
 
-      return matchesTag && matchesMetThrough && matchesPrayerStatus;
+      return matchesTag && matchesPrayerStatus;
     }).toList();
   }
 
@@ -196,17 +162,6 @@ class _HomePageState extends State<HomePage> {
         _selectedTagFilter = null;
       } else {
         _selectedTagFilter = tag;
-      }
-      _filteredContacts = _applyFilters(_contacts);
-    });
-  }
-
-  void _toggleMetThroughFilter(String key) {
-    setState(() {
-      if (_selectedMetThroughFilterId == key) {
-        _selectedMetThroughFilterId = null;
-      } else {
-        _selectedMetThroughFilterId = key;
       }
       _filteredContacts = _applyFilters(_contacts);
     });
@@ -533,6 +488,9 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     final groupedContactSections = _buildGroupedContactsList();
+    final hasPrayerFilters =
+        _prayerCounts.values.any((count) => count > 0);
+    final hasFilterOptions = hasPrayerFilters || _availableTags.isNotEmpty;
 
     return Scaffold(
       appBar: AppBar(
@@ -604,18 +562,14 @@ class _HomePageState extends State<HomePage> {
             ),
           ),
           const SliverToBoxAdapter(child: SizedBox(height: 16)),
-          if (_availableTags.isNotEmpty ||
-              _availableMetThroughIds.isNotEmpty ||
-              _hasUnintroducedContacts)
+          if (hasFilterOptions)
             SliverPadding(
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
               sliver: SliverToBoxAdapter(
                 child: _buildFilterSection(),
               ),
             ),
-          if (_availableTags.isNotEmpty ||
-              _availableMetThroughIds.isNotEmpty ||
-              _hasUnintroducedContacts)
+          if (hasFilterOptions)
             const SliverToBoxAdapter(child: SizedBox(height: 16)),
           if (groupedContactSections.isEmpty)
             const SliverFillRemaining(
@@ -662,9 +616,7 @@ class _HomePageState extends State<HomePage> {
                 )
                 .toList(),
           ),
-          if (_availableTags.isNotEmpty ||
-              _availableMetThroughIds.isNotEmpty ||
-              _hasUnintroducedContacts)
+          if (_availableTags.isNotEmpty)
             const SizedBox(height: 12),
         ],
         if (_availableTags.isNotEmpty) ...[
@@ -685,33 +637,6 @@ class _HomePageState extends State<HomePage> {
                   ),
                 )
                 .toList(),
-          ),
-        ],
-        if (_availableMetThroughIds.isNotEmpty || _hasUnintroducedContacts) ...[
-          if (_availableTags.isNotEmpty) const SizedBox(height: 12),
-          const Text(
-            'Filter by introducer',
-            style: TextStyle(fontWeight: FontWeight.w600),
-          ),
-          const SizedBox(height: 4),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              if (_hasUnintroducedContacts)
-                FilterChip(
-                  label: const Text('No introducer'),
-                  selected: _selectedMetThroughFilterId == _noIntroducerFilter,
-                  onSelected: (_) => _toggleMetThroughFilter(_noIntroducerFilter),
-                ),
-              ..._availableMetThroughIds.map(
-                (id) => FilterChip(
-                  label: Text(_displayNameForContactId(_contactLookup, id)),
-                  selected: _selectedMetThroughFilterId == id,
-                  onSelected: (_) => _toggleMetThroughFilter(id),
-                ),
-              ),
-            ],
           ),
         ],
       ],
