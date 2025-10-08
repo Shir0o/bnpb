@@ -2998,6 +2998,7 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
               const SizedBox(height: 12),
               TextField(
                 controller: _locationController,
+                textCapitalization: TextCapitalization.words,
                 decoration: const InputDecoration(
                   labelText: 'Location (optional)',
                   border: OutlineInputBorder(),
@@ -3015,6 +3016,7 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
               const SizedBox(height: 12),
               TextField(
                 controller: _categoryController,
+                textCapitalization: TextCapitalization.words,
                 decoration: const InputDecoration(
                   labelText: 'Category (optional)',
                   border: OutlineInputBorder(),
