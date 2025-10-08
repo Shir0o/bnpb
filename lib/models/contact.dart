@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'package:uuid/uuid.dart';
+
 import 'interaction.dart';
 import 'prayer_request.dart';
 
@@ -101,8 +103,10 @@ class Contact {
 
   // Creates a Contact object from a Map that already has `interactions` as a List of Maps.
   static Contact fromMap(Map<String, dynamic> map) {
+    final contactId = (map['id'] as String?)?.trim();
     return Contact(
-      id: map['id'] as String,
+      id:
+          contactId != null && contactId.isNotEmpty ? contactId : const Uuid().v4(),
       firstName: map['firstName'] as String,
       middleName: (map['middleName'] ?? '') as String,
       lastName: map['lastName'] as String?,
