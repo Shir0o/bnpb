@@ -72,7 +72,6 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
   List<Contact> _availableContacts = [];
   Map<String, Contact> _contactLookup = {};
   List<String> _availableTags = [];
-  String? _selectedMetThroughId;
   bool _isLoadingReferenceData = false;
   List<Relationship> _relationships = [];
   bool _isLoadingRelationships = false;
@@ -800,7 +799,6 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
       lastName: lastNameText.isEmpty ? null : lastNameText,
       nickname: nicknameText.isEmpty ? null : nicknameText,
       location: locationText.isEmpty ? null : locationText,
-      metThroughId: _selectedMetThroughId,
       firstMeetingNotes:
           firstMeetingNotesText.isEmpty ? null : firstMeetingNotesText,
       tags: List<String>.from(_selectedTags),
@@ -819,7 +817,6 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
     _nicknameController.text = contact.nickname ?? '';
     _locationController.text = contact.location ?? '';
     _firstMeetingNotesController.text = contact.firstMeetingNotes ?? '';
-    _selectedMetThroughId = contact.metThroughId;
     _selectedTags = List<String>.from(contact.tags);
     _keywords = List<String>.from(contact.recognitionKeywords);
     _reminderCues = List<String>.from(contact.recognitionReminders);
@@ -1270,41 +1267,8 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
     final previewContact = _buildContactFromState();
     final displayName = previewContact.fullName;
 
-    final metThroughItems = <DropdownMenuItem<String?>>[
-      const DropdownMenuItem<String?>(
-        value: null,
-        child: Text('None'),
-      ),
-      ..._availableContacts.map(
-        (contact) => DropdownMenuItem<String?>(
-          value: contact.id,
-          child: Text(
-            contact.fullName.isNotEmpty
-                ? contact.fullName
-                : contact.nickname ?? 'Unnamed Contact',
-          ),
-        ),
-      ),
-    ];
-
-    if (_selectedMetThroughId != null &&
-        metThroughItems.every((item) => item.value != _selectedMetThroughId)) {
-      final fallbackContact = _contactLookup[_selectedMetThroughId!];
-      metThroughItems.add(
-        DropdownMenuItem<String?>(
-          value: _selectedMetThroughId,
-          child: Text(
-            fallbackContact?.fullName.isNotEmpty == true
-                ? fallbackContact!.fullName
-                : (fallbackContact?.nickname ?? 'Unknown contact'),
-          ),
-        ),
-      );
-    }
-
-    final detailSections = _isEditing
-        ? _buildEditingSections(metThroughItems)
-        : _buildReadOnlySections(previewContact);
+    final detailSections =
+        _isEditing ? _buildEditingSections() : _buildReadOnlySections(previewContact);
 
     return Scaffold(
       appBar: AppBar(
@@ -1368,9 +1332,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
     );
   }
 
-  List<Widget> _buildEditingSections(
-    List<DropdownMenuItem<String?>> metThroughItems,
-  ) {
+  List<Widget> _buildEditingSections() {
     final sections = <Widget>[];
     void addSection(Widget widget) {
       if (sections.isNotEmpty) {
@@ -1380,7 +1342,6 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
     }
 
     addSection(_buildEditDetailsCard());
-    addSection(_buildEditMeetContextCard(metThroughItems));
     addSection(_buildEditRecognitionCard());
     addSection(_buildEditTagsCard());
     return sections;
@@ -1396,7 +1357,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
       sections.add(widget);
     }
 
-    addSection(_buildViewMeetContextCard(contact));
+    addSection(_buildViewMeetingNotesCard(contact));
     addSection(_buildViewRecognitionCard(contact));
     addSection(_buildViewTagsCard(contact));
     return sections;
@@ -1428,25 +1389,6 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
         _buildTextField(
           controller: _locationController,
           label: 'Location (Optional)',
-        ),
-      ],
-    );
-  }
-
-  Widget _buildEditMeetContextCard(
-    List<DropdownMenuItem<String?>> metThroughItems,
-  ) {
-    return _buildCard(
-      children: [
-        DropdownButtonFormField<String?>(
-          value: _selectedMetThroughId,
-          decoration: _buildInputDecoration('Met Through (Optional)'),
-          items: metThroughItems,
-          onChanged: (value) {
-            setState(() {
-              _selectedMetThroughId = value;
-            });
-          },
         ),
         const SizedBox(height: 16),
         _buildTextField(
@@ -1595,22 +1537,9 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
     );
   }
 
-  Widget? _buildViewMeetContextCard(Contact contact) {
-    final items = <Widget>[];
-    if ((contact.metThroughId ?? '').isNotEmpty) {
-      items.add(
-        _buildDetailLine(
-          'Met through',
-          _displayNameForContactId(contact.metThroughId!),
-        ),
-      );
-    }
-    if ((contact.firstMeetingNotes ?? '').isNotEmpty) {
-      items.add(
-        _buildDetailLine('First meeting notes', contact.firstMeetingNotes!),
-      );
-    }
-    if (items.isEmpty) {
+  Widget? _buildViewMeetingNotesCard(Contact contact) {
+    final notes = contact.firstMeetingNotes;
+    if (notes == null || notes.isEmpty) {
       return null;
     }
     return _buildCard(
@@ -1620,7 +1549,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
           style: Theme.of(context).textTheme.titleMedium,
         ),
         const SizedBox(height: 12),
-        ...items,
+        _buildDetailLine('First meeting notes', notes),
       ],
     );
   }

@@ -114,55 +114,9 @@ class _RelationshipExplorerPageState extends State<RelationshipExplorerPage> {
     }).toList();
   }
 
-  List<Widget> _buildMetThroughTiles(BuildContext context) {
-    final contactsWithIntroducer = _contacts
-        .where((contact) => contact.metThroughId != null)
-        .toList()
-      ..sort(
-        (a, b) => _displayName(a.id)
-            .toLowerCase()
-            .compareTo(_displayName(b.id).toLowerCase()),
-      );
-
-    return contactsWithIntroducer.map((contact) {
-      final path = _buildMetThroughPath(contact);
-      return Card(
-        child: ListTile(
-          leading: const Icon(Icons.route_outlined),
-          title: Text(_displayName(contact.id)),
-          subtitle: Text(path),
-        ),
-      );
-    }).toList();
-  }
-
-  String _buildMetThroughPath(Contact contact) {
-    final visited = <String>{contact.id};
-    final segments = <String>[_displayName(contact.id)];
-
-    var current = contact;
-    while (current.metThroughId != null) {
-      final nextId = current.metThroughId!;
-      if (!visited.add(nextId)) {
-        segments.add('…');
-        break;
-      }
-
-      segments.add(_displayName(nextId));
-      final next = _contactLookup[nextId];
-      if (next == null) {
-        break;
-      }
-      current = next;
-    }
-
-    return segments.join(' ← ');
-  }
-
   @override
   Widget build(BuildContext context) {
     final sharedCards = _buildSharedConnectionCards(context);
-    final metThroughTiles = _buildMetThroughTiles(context);
 
     return Scaffold(
       appBar: AppBar(
@@ -193,24 +147,6 @@ class _RelationshipExplorerPageState extends State<RelationshipExplorerPage> {
                     )
                   else
                     ...sharedCards,
-                  const SizedBox(height: 24),
-                  Text(
-                    'Met through paths',
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
-                  const SizedBox(height: 12),
-                  if (metThroughTiles.isEmpty)
-                    Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Text(
-                          'No "met through" data recorded yet.',
-                          style: Theme.of(context).textTheme.bodyMedium,
-                        ),
-                      ),
-                    )
-                  else
-                    ...metThroughTiles,
                 ],
               ),
             ),

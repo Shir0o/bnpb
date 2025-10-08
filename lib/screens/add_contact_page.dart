@@ -34,9 +34,7 @@ class _AddContactPageState extends State<AddContactPage> {
   final List<String> _reminderCues = [];
   final List<String> _photoCues = [];
 
-  List<Contact> _availableContacts = [];
   List<String> _availableTags = [];
-  String? _selectedMetThroughId;
   bool _isLoadingReferenceData = false;
 
   @override
@@ -66,11 +64,9 @@ class _AddContactPageState extends State<AddContactPage> {
     });
 
     final dbHelper = DBHelper();
-    final contacts = await dbHelper.getContacts();
     final tags = await dbHelper.getAllTags();
 
     setState(() {
-      _availableContacts = contacts;
       _availableTags = tags;
       _isLoadingReferenceData = false;
     });
@@ -106,7 +102,6 @@ class _AddContactPageState extends State<AddContactPage> {
       location: _locationController.text.trim().isEmpty
           ? null
           : _locationController.text.trim(),
-      metThroughId: _selectedMetThroughId,
       firstMeetingNotes: _firstMeetingNotesController.text.trim().isEmpty
           ? null
           : _firstMeetingNotesController.text.trim(),
@@ -145,7 +140,6 @@ class _AddContactPageState extends State<AddContactPage> {
     _keywordController.clear();
     _reminderController.clear();
     _photoCueController.clear();
-    _selectedMetThroughId = null;
     _selectedTags.clear();
     _keywords.clear();
     _reminderCues.clear();
@@ -321,15 +315,6 @@ class _AddContactPageState extends State<AddContactPage> {
 
   @override
   Widget build(BuildContext context) {
-    final metThroughOptions = _availableContacts
-        .map((contact) => DropdownMenuItem<String?>(
-              value: contact.id,
-              child: Text(contact.fullName.isNotEmpty
-                  ? contact.fullName
-                  : contact.nickname ?? 'Unnamed Contact'),
-            ))
-        .toList();
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('Add Contact'),
@@ -376,25 +361,6 @@ class _AddContactPageState extends State<AddContactPage> {
               const SizedBox(height: 16),
               _buildCard(
                 children: [
-                  DropdownButtonFormField<String?>(
-                    value: _selectedMetThroughId,
-                    decoration: _buildInputDecoration(
-                      'Met Through (Optional)',
-                    ),
-                    items: [
-                      const DropdownMenuItem<String?>(
-                        value: null,
-                        child: Text('None'),
-                      ),
-                      ...metThroughOptions,
-                    ],
-                    onChanged: (value) {
-                      setState(() {
-                        _selectedMetThroughId = value;
-                      });
-                    },
-                  ),
-                  const SizedBox(height: 16),
                   _buildTextField(
                     controller: _firstMeetingNotesController,
                     label: 'First Meeting Notes (Optional)',

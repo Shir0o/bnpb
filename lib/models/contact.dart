@@ -10,7 +10,6 @@ class Contact {
   final String? lastName; // Last name of the contact (optional)
   final String? nickname; // Nickname of the contact (optional)
   final String? location; // Location of the contact (optional)
-  final String? metThroughId; // Identifier for the person who introduced the contact
   final String? firstMeetingNotes; // Notes from the first meeting
   final List<String> tags; // Relationship tags
   /// Lightweight descriptors that help recognize the contact quickly.
@@ -31,7 +30,6 @@ class Contact {
     this.lastName,
     this.nickname,
     this.location,
-    this.metThroughId,
     this.firstMeetingNotes,
     List<String>? tags,
     List<String>? recognitionKeywords,
@@ -52,8 +50,6 @@ class Contact {
     String? lastName,
     String? nickname,
     String? location,
-    String? metThroughId,
-    bool clearMetThroughId = false,
     String? firstMeetingNotes,
     List<String>? tags,
     List<String>? recognitionKeywords,
@@ -69,9 +65,6 @@ class Contact {
       lastName: lastName ?? this.lastName,
       nickname: nickname ?? this.nickname,
       location: location ?? this.location,
-      metThroughId: clearMetThroughId
-          ? null
-          : (metThroughId ?? this.metThroughId),
       firstMeetingNotes: firstMeetingNotes ?? this.firstMeetingNotes,
       tags: tags ?? this.tags,
       recognitionKeywords:
@@ -95,7 +88,6 @@ class Contact {
       'lastName': lastName,
       'nickname': nickname,
       'location': location,
-      'metThroughId': metThroughId,
       'firstMeetingNotes': firstMeetingNotes,
       'tags': tags,
       'recognitionKeywords': recognitionKeywords,
@@ -116,7 +108,6 @@ class Contact {
       lastName: map['lastName'] as String?,
       nickname: map['nickname'] as String?,
       location: map['location'] as String?,
-      metThroughId: map['metThroughId'] as String?,
       firstMeetingNotes: map['firstMeetingNotes'] as String?,
       tags: (map['tags'] as List<dynamic>?)
               ?.map((tag) => tag as String)
