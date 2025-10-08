@@ -2410,6 +2410,7 @@ class _LogInteractionSheet extends StatefulWidget {
 }
 
 class _LogInteractionSheetState extends State<_LogInteractionSheet> {
+  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   late final TextEditingController _summaryController;
   late final TextEditingController _locationController;
   late final TextEditingController _durationController;
@@ -2429,6 +2430,36 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
   String _speechBaseText = '';
 
   bool _sheetActive = true;
+  AutovalidateMode _autovalidateMode = AutovalidateMode.disabled;
+  bool _isSaveEnabled = false;
+  bool _formWasSubmitted = false;
+
+  bool _calculateSaveEnabled() {
+    final summaryFilled = _summaryController.text.trim().isNotEmpty;
+    if (!summaryFilled) {
+      return false;
+    }
+
+    if (!_formWasSubmitted) {
+      return true;
+    }
+
+    final formState = _formKey.currentState;
+    if (formState == null) {
+      return summaryFilled;
+    }
+
+    return formState.validate();
+  }
+
+  void _updateSaveEnabled() {
+    final nextValue = _calculateSaveEnabled();
+    if (nextValue != _isSaveEnabled) {
+      setState(() {
+        _isSaveEnabled = nextValue;
+      });
+    }
+  }
 
   @override
   void initState() {
@@ -2455,6 +2486,9 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
             .toList()
         : [];
     _speechBaseText = _summaryController.text.trim();
+    _summaryController.addListener(_updateSaveEnabled);
+    _durationController.addListener(_updateSaveEnabled);
+    _isSaveEnabled = _calculateSaveEnabled();
   }
 
   @override
@@ -2462,6 +2496,8 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
     _sheetActive = false;
     _speechToText.stop();
     _speechToText.cancel();
+    _summaryController.removeListener(_updateSaveEnabled);
+    _durationController.removeListener(_updateSaveEnabled);
     _summaryController.dispose();
     _locationController.dispose();
     _durationController.dispose();
@@ -2744,30 +2780,21 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
   }
 
   Future<void> _saveInteraction() async {
-    final summary = _summaryController.text.trim();
-    if (summary.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Add a short summary first.')),
-      );
+    final form = _formKey.currentState;
+    final isValid = form?.validate() ?? false;
+    if (!isValid) {
+      setState(() {
+        _formWasSubmitted = true;
+        _autovalidateMode = AutovalidateMode.onUserInteraction;
+      });
+      _updateSaveEnabled();
       return;
     }
 
+    final summary = _summaryController.text.trim();
     final durationText = _durationController.text.trim();
     final durationMinutes =
         durationText.isEmpty ? null : int.tryParse(durationText);
-    if (durationText.isNotEmpty && durationMinutes == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Duration must be a number of minutes.')),
-      );
-      return;
-    }
-    if (durationMinutes != null && durationMinutes < 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Duration cannot be negative.')),
-      );
-      return;
-    }
-
     final categoryText = _categoryController.text.trim();
     final category = categoryText.isEmpty ? null : categoryText;
 
@@ -2844,12 +2871,15 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
           top: 24,
         ),
         child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
+          child: Form(
+            key: _formKey,
+            autovalidateMode: _autovalidateMode,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
                   Text(
                     isEditing ? 'Edit interaction' : 'Log interaction',
                     style: Theme.of(context).textTheme.titleMedium,
@@ -2867,10 +2897,10 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
                 ],
               ),
               const SizedBox(height: 16),
-              TextField(
+              TextFormField(
                 controller: _summaryController,
                 decoration: InputDecoration(
-                  labelText: 'Summary',
+                  labelText: 'Summary *',
                   border: const OutlineInputBorder(),
                   helperText: _isListening ? 'Listening...' : null,
                   suffixIcon: IconButton(
@@ -2887,6 +2917,12 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
                 ),
                 textCapitalization: TextCapitalization.sentences,
                 maxLines: 2,
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Add a short summary first.';
+                  }
+                  return null;
+                },
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
@@ -2934,13 +2970,27 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
                 ),
               ),
               const SizedBox(height: 12),
-              TextField(
+              TextFormField(
                 controller: _durationController,
                 keyboardType: TextInputType.number,
                 decoration: const InputDecoration(
                   labelText: 'Duration (minutes, optional)',
                   border: OutlineInputBorder(),
                 ),
+                validator: (value) {
+                  final text = value?.trim() ?? '';
+                  if (text.isEmpty) {
+                    return null;
+                  }
+                  final parsed = int.tryParse(text);
+                  if (parsed == null) {
+                    return 'Duration must be a number of minutes.';
+                  }
+                  if (parsed < 0) {
+                    return 'Duration cannot be negative.';
+                  }
+                  return null;
+                },
               ),
               const SizedBox(height: 12),
               TextField(
@@ -3050,7 +3100,7 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
-                  onPressed: _saveInteraction,
+                  onPressed: _isSaveEnabled ? _saveInteraction : null,
                   icon: const Icon(Icons.check),
                   label: Text(isEditing ? 'Update' : 'Save'),
                 ),
