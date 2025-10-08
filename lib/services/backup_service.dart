@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -107,7 +108,8 @@ class BackupService {
     final backupDir = await ensureBackupDirectoryExists();
     final entries = await backupDir
         .list()
-        .whereType<File>()
+        .where((entity) => entity is File)
+        .cast<File>()
         .where(
           (file) =>
               file.path.endsWith('.db') &&
