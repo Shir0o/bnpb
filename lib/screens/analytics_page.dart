@@ -181,7 +181,8 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
         .map((entry) => _resolveValue(entry.totalMinutes, entry.interactionCount))
         .toList();
     final maxY = values.reduce(math.max);
-    final yInterval = maxY == 0 ? 1 : math.max(1, maxY / 4);
+    final double yInterval =
+        (maxY == 0 ? 1 : math.max(1, maxY / 4)).toDouble();
 
     return Card(
       child: Padding(
@@ -368,7 +369,8 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
         .map((entry) => _resolveValue(entry.totalMinutes, entry.interactionCount))
         .toList();
     final maxY = values.reduce(math.max);
-    final yInterval = maxY == 0 ? 1 : math.max(1, maxY / 4);
+    final double yInterval =
+        (maxY == 0 ? 1 : math.max(1, maxY / 4)).toDouble();
 
     return Card(
       child: Padding(

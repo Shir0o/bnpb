@@ -74,7 +74,7 @@ class SecurityService {
 
     final salt = base64Decode(storedSalt);
     final computed = _hashPasscode(passcode, salt);
-    return secureEquals(computed.codeUnits, storedHash.codeUnits);
+    return _secureEquals(computed.codeUnits, storedHash.codeUnits);
   }
 
   /// Whether biometric authentication is currently toggled on.
@@ -163,9 +163,23 @@ class SecurityService {
   Future<void> closeDatabases() async {
     final databasesPath = await getDatabasesPath();
     final dbFile = File(p.join(databasesPath, StorageConstants.databaseFileName));
-    if (await dbFile.exists()) {
-      await databaseFactory.close();
+    final dbPath = dbFile.path;
+    try {
+      await databaseFactory.deleteDatabase(dbPath);
+    } on DatabaseException {
+      // Ignore when the database has already been removed or was never created.
     }
+  }
+
+  bool _secureEquals(List<int> a, List<int> b) {
+    if (a.length != b.length) {
+      return false;
+    }
+    var diff = 0;
+    for (var i = 0; i < a.length; i++) {
+      diff |= a[i] ^ b[i];
+    }
+    return diff == 0;
   }
 
   List<int> _generateSalt() {

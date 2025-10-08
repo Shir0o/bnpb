@@ -1056,7 +1056,13 @@ class _PreferenceControl extends StatelessWidget {
               const SizedBox(width: 16),
               DropdownButton<Duration>(
                 value: leadTime,
-                onChanged: enabled ? onLeadTimeChanged : null,
+                onChanged: enabled
+                    ? (value) {
+                        if (value != null) {
+                          onLeadTimeChanged(value);
+                        }
+                      }
+                    : null,
                 items: leadTimeOptions
                     .map(
                       (option) => DropdownMenuItem<Duration>(

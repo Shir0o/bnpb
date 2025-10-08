@@ -52,12 +52,19 @@ class ReminderService {
     final androidImpl = _plugin
         .resolvePlatformSpecificImplementation<
             AndroidFlutterLocalNotificationsPlugin>();
-    await androidImpl?.requestPermission();
+    await androidImpl?.requestNotificationsPermission();
 
-    final darwinImpl = _plugin
-        .resolvePlatformSpecificImplementation<
-            DarwinFlutterLocalNotificationsPlugin>();
-    await darwinImpl?.requestPermissions(
+    final iosImpl = _plugin.resolvePlatformSpecificImplementation<
+        IOSFlutterLocalNotificationsPlugin>();
+    await iosImpl?.requestPermissions(
+      alert: true,
+      badge: true,
+      sound: true,
+    );
+
+    final macImpl = _plugin.resolvePlatformSpecificImplementation<
+        MacOSFlutterLocalNotificationsPlugin>();
+    await macImpl?.requestPermissions(
       alert: true,
       badge: true,
       sound: true,

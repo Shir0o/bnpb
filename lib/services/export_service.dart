@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:archive/archive.dart';
 import 'package:crypto/crypto.dart';
@@ -253,6 +254,6 @@ class ExportService {
 
   Key _deriveKey(String passphrase) {
     final digest = sha256.convert(utf8.encode(passphrase));
-    return Key(digest.bytes.sublist(0, 32));
+    return Key(Uint8List.fromList(digest.bytes.sublist(0, 32)));
   }
 }
