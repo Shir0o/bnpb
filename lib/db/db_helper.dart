@@ -26,6 +26,14 @@ class DBHelper {
     return _database!;
   }
 
+  /// Closes the cached database instance and clears the static reference.
+  Future<void> close() async {
+    if (_database != null) {
+      await _database!.close();
+      _database = null;
+    }
+  }
+
   Future<Database> _initDatabase() async {
     final dbPath = await getDatabasesPath();
     final encryptionKey = await SecurityService().obtainDatabaseKey();

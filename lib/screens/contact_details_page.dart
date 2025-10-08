@@ -1,10 +1,7 @@
 import 'dart:convert';
-import 'dart:io';
-
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:speech_to_text/speech_recognition_result.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 
@@ -13,9 +10,9 @@ import '../models/contact.dart';
 import '../models/interaction.dart';
 import '../models/prayer_request.dart';
 import '../models/relationship.dart';
+import '../services/backup_service.dart';
 import '../services/reminder_coordinator.dart';
 import '../widgets/people_card.dart';
-import '../constants/storage.dart';
 
 class ContactDetailsPage extends StatefulWidget {
   final Contact contact;
@@ -863,7 +860,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
     final updatedContact = _buildContactFromState();
     await DBHelper().updateContact(updatedContact);
     await ReminderCoordinator().refreshContact(updatedContact.id);
-    await _exportBackup();
+    await BackupService().exportBackup();
 
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -871,35 +868,6 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
     );
 
     Navigator.pop(context);
-  }
-
-  Future<void> _exportBackup() async {
-    final directory = await getApplicationDocumentsDirectory();
-    final backupDir = Directory('${directory.path}/backups');
-
-    if (!backupDir.existsSync()) {
-      backupDir.createSync(recursive: true);
-    }
-
-    final dbFile = File(
-        '${directory.path}/${StorageConstants.databaseFileName}');
-    if (!dbFile.existsSync()) return;
-
-    final timestamp = DateFormat('yyyy-MM-dd_HH-mm-ss').format(DateTime.now());
-    final backupFile = File('${backupDir.path}/backup_$timestamp.db');
-
-    await dbFile.copy(backupFile.path);
-
-    final backups = backupDir
-        .listSync()
-        .whereType<File>()
-        .where((file) => file.path.contains('backup_'))
-        .toList()
-      ..sort((a, b) => b.statSync().modified.compareTo(a.statSync().modified));
-
-    while (backups.length > 5) {
-      backups.removeLast().deleteSync();
-    }
   }
 
   void _confirmDelete() {
