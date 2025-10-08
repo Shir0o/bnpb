@@ -4,7 +4,7 @@ import 'package:intl/intl.dart';
 import '../services/backup_service.dart';
 
 /// Result options returned from the [BackupRestoreSheet].
-enum BackupRestoreSheetResult { restored, csvImport, legacyImport }
+enum BackupRestoreSheetResult { restored, legacyImport }
 
 /// Bottom sheet that surfaces rolling backups and allows restoring snapshots.
 class BackupRestoreSheet extends StatefulWidget {
@@ -113,7 +113,7 @@ class _BackupRestoreSheetState extends State<BackupRestoreSheet> {
             const SizedBox(height: 8),
             Text(
               'Rolling backups capture the encrypted database after each change. '
-              'Choose a snapshot to restore, import a CSV export, or import a legacy export instead.',
+              'Choose a snapshot to restore or import a legacy export instead.',
               style: theme.textTheme.bodyMedium,
               textAlign: TextAlign.center,
             ),
@@ -171,13 +171,6 @@ class _BackupRestoreSheetState extends State<BackupRestoreSheet> {
               ),
             ),
             const SizedBox(height: 20),
-            OutlinedButton.icon(
-              onPressed: () =>
-                  Navigator.of(context).pop(BackupRestoreSheetResult.csvImport),
-              icon: const Icon(Icons.table_chart_outlined),
-              label: const Text('Import CSV export'),
-            ),
-            const SizedBox(height: 12),
             OutlinedButton.icon(
               onPressed: () =>
                   Navigator.of(context).pop(BackupRestoreSheetResult.legacyImport),

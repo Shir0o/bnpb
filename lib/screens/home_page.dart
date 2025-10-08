@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:csv/csv.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -10,7 +9,6 @@ import '../db/db_helper.dart';
 import '../models/contact.dart';
 import '../models/prayer_request.dart';
 import '../services/contact_search_service.dart';
-import '../services/export_service.dart';
 import '../services/reminder_coordinator.dart';
 import '../widgets/backup_restore_sheet.dart';
 import '../widgets/export_options_sheet.dart';
@@ -444,188 +442,9 @@ class _HomePageState extends State<HomePage> {
           const SnackBar(content: Text('Backup restored successfully.')),
         );
         break;
-      case BackupRestoreSheetResult.csvImport:
-        await _importCsvExport();
-        break;
       case BackupRestoreSheetResult.legacyImport:
         await _importLegacyJson();
         break;
-    }
-  }
-
-  Future<void> _importCsvExport() async {
-    try {
-      final result = await FilePicker.platform.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: ['csv'],
-      );
-
-      if (result == null || result.files.isEmpty) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('No file selected.')),
-        );
-        return;
-      }
-
-      final filePath = result.files.single.path;
-      if (filePath == null) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Invalid file.')),
-        );
-        return;
-      }
-
-      final file = File(filePath);
-      final content = await file.readAsString();
-      final rows = const CsvToListConverter().convert(content);
-
-      if (rows.isEmpty) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Selected CSV file was empty.')),
-        );
-        return;
-      }
-
-      final headerRow = rows.first
-          .map((cell) => cell?.toString().trim() ?? '')
-          .toList(growable: false);
-
-      final labelToFieldId = {
-        for (final field in ExportService.availableFields)
-          field.label.toLowerCase(): field.id,
-      };
-      final fieldIdToLabel = {
-        for (final field in ExportService.availableFields) field.id: field.label,
-      };
-
-      final columnToFieldId = <int, String>{};
-      for (var i = 0; i < headerRow.length; i++) {
-        final normalizedLabel = headerRow[i].toLowerCase();
-        final fieldId = labelToFieldId[normalizedLabel];
-        if (fieldId != null) {
-          columnToFieldId[i] = fieldId;
-        }
-      }
-
-      const requiredFieldIds = {'firstName'};
-      final missingRequired = requiredFieldIds
-          .where((id) => !columnToFieldId.values.contains(id))
-          .map((id) => fieldIdToLabel[id] ?? id)
-          .toList();
-
-      if (missingRequired.isNotEmpty) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Missing required columns: ${missingRequired.join(', ')}.',
-            ),
-          ),
-        );
-        return;
-      }
-
-      if (rows.length <= 1) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('No contacts found in CSV file.')),
-        );
-        return;
-      }
-
-      String? toNullable(String? value) {
-        if (value == null) {
-          return null;
-        }
-        final trimmed = value.trim();
-        return trimmed.isEmpty ? null : trimmed;
-      }
-
-      List<String> splitList(String? value) {
-        if (value == null) {
-          return const [];
-        }
-        return value
-            .split(',')
-            .map((entry) => entry.trim())
-            .where((entry) => entry.isNotEmpty)
-            .toList();
-      }
-
-      final contactsToInsert = <Contact>[];
-      final baseTimestamp = DateTime.now().microsecondsSinceEpoch;
-
-      for (var rowIndex = 1; rowIndex < rows.length; rowIndex++) {
-        final dynamicRow = rows[rowIndex];
-        if (dynamicRow is! List) {
-          throw FormatException(
-            'Unexpected row structure at line ${rowIndex + 1}.',
-          );
-        }
-
-        final cells = dynamicRow.cast<dynamic>();
-        final data = <String, String>{};
-
-        columnToFieldId.forEach((columnIndex, fieldId) {
-          if (columnIndex >= cells.length) {
-            return;
-          }
-          final cellValue = cells[columnIndex];
-          if (cellValue == null) {
-            return;
-          }
-          data[fieldId] = cellValue.toString();
-        });
-
-        final firstName = data['firstName']?.trim() ?? '';
-        if (firstName.isEmpty) {
-          throw FormatException(
-            'Row ${rowIndex + 1} is missing a first name.',
-          );
-        }
-
-        contactsToInsert.add(
-          Contact(
-            id: '${baseTimestamp + rowIndex}',
-            firstName: firstName,
-            lastName: toNullable(data['lastName']),
-            nickname: toNullable(data['nickname']),
-            location: toNullable(data['location']),
-            firstMeetingNotes: toNullable(data['firstMeetingNotes']),
-            tags: splitList(data['tags']),
-            recognitionKeywords: splitList(data['recognitionKeywords']),
-            recognitionReminders: splitList(data['recognitionReminders']),
-          ),
-        );
-      }
-
-      if (contactsToInsert.isEmpty) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('No contacts found in CSV file.')),
-        );
-        return;
-      }
-
-      for (final contact in contactsToInsert) {
-        await _dbHelper.insertContact(contact);
-        await ReminderCoordinator().syncSignificantDates(contact);
-      }
-
-      await _fetchContacts();
-
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Contacts imported successfully!')),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to import contacts: $e')),
-      );
     }
   }
 
