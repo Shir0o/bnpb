@@ -5,7 +5,6 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:timeline_tile/timeline_tile.dart';
 import 'package:speech_to_text/speech_recognition_result.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 
@@ -2194,7 +2193,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
     );
   }
 
-  TimelineTile _buildTimelineTile({
+  Widget _buildTimelineTile({
     required Interaction interaction,
     required bool isFirst,
     required bool isLast,
@@ -2204,80 +2203,78 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
         ? theme.colorScheme.secondary
         : theme.colorScheme.primary;
 
-    return TimelineTile(
-      alignment: TimelineAlign.manual,
-      lineXY: 0.15,
-      isFirst: isFirst,
-      isLast: isLast,
-      beforeLineStyle: LineStyle(
-        color: theme.colorScheme.outlineVariant,
-        thickness: 2,
-      ),
-      afterLineStyle: LineStyle(
-        color: theme.colorScheme.outlineVariant,
-        thickness: 2,
-      ),
-      indicatorStyle: IndicatorStyle(
-        width: 32,
-        height: 32,
-        indicator: Container(
-          decoration: BoxDecoration(
-            color: indicatorColor,
-            shape: BoxShape.circle,
-            boxShadow: [
-              BoxShadow(
-                color: indicatorColor.withOpacity(0.3),
-                blurRadius: 6,
-                offset: const Offset(0, 3),
-              ),
-            ],
-          ),
-          child: Icon(
-            interaction.markForPrayer
-                ? Icons.volunteer_activism
-                : Icons.event,
-            size: 18,
-            color: theme.colorScheme.onPrimary,
-          ),
-        ),
-      ),
-      startChild: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.end,
+    final onIndicatorColor = interaction.markForPrayer
+        ? theme.colorScheme.onSecondary
+        : theme.colorScheme.onPrimary;
+    final lineColor = theme.colorScheme.outlineVariant;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(
-              DateFormat.MMMd().format(interaction.occurredAt),
-              style: theme.textTheme.bodySmall,
-            ),
-            Text(
-              DateFormat.jm().format(interaction.occurredAt),
-              style: theme.textTheme.labelSmall,
-            ),
-            if (interaction.followUpAt != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 4),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    const Icon(Icons.alarm_outlined, size: 14),
-                    const SizedBox(width: 4),
-                    Flexible(
-                      child: Text(
-                        DateFormat.MMMd().add_jm().format(interaction.followUpAt!),
-                        style: theme.textTheme.labelSmall,
-                        overflow: TextOverflow.ellipsis,
+            SizedBox(
+              width: 48,
+              child: Column(
+                children: [
+                  if (!isFirst)
+                    Expanded(
+                      child: Center(
+                        child: Container(
+                          width: 2,
+                          color: lineColor,
+                        ),
                       ),
+                    )
+                  else
+                    const SizedBox(height: 8),
+                  Container(
+                    width: 24,
+                    height: 24,
+                    decoration: BoxDecoration(
+                      color: indicatorColor,
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: theme.colorScheme.surface,
+                        width: 2,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: indicatorColor.withOpacity(0.28),
+                          blurRadius: 6,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
+                    child: Icon(
+                      interaction.markForPrayer
+                          ? Icons.volunteer_activism
+                          : Icons.event,
+                      size: 16,
+                      color: onIndicatorColor,
+                    ),
+                  ),
+                  if (!isLast)
+                    Expanded(
+                      child: Center(
+                        child: Container(
+                          width: 2,
+                          color: lineColor,
+                        ),
+                      ),
+                    )
+                  else
+                    const SizedBox(height: 8),
+                ],
               ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildInteractionCard(interaction),
+            ),
           ],
         ),
-      ),
-      endChild: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        child: _buildInteractionCard(interaction),
       ),
     );
   }
@@ -2287,8 +2284,23 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
     final mediumLabel = _mediumLabels[interaction.medium] ?? interaction.medium;
     final mediumIcon = _mediumIcons[interaction.medium] ?? Icons.forum_outlined;
 
+    final occurredAtLabel =
+        DateFormat.yMMMd().add_jm().format(interaction.occurredAt);
+    final metadataPills = <Widget>[
+      _buildInfoPill(icon: mediumIcon, label: mediumLabel),
+      if (interaction.durationMinutes != null)
+        _buildInfoPill(
+          icon: Icons.timer_outlined,
+          label: '${interaction.durationMinutes} min',
+        ),
+      if (interaction.markForPrayer)
+        _buildInfoPill(
+          icon: Icons.self_improvement,
+          label: 'Prayer focus',
+        ),
+    ];
+
     return Container(
-      margin: const EdgeInsets.only(left: 8),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: theme.colorScheme.surfaceVariant.withOpacity(0.4),
@@ -2302,9 +2314,45 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
-                child: Text(
-                  interaction.summary,
-                  style: theme.textTheme.titleSmall,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      interaction.summary,
+                      style: theme.textTheme.titleSmall,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      occurredAtLabel,
+                      style: theme.textTheme.bodySmall,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    if (interaction.location != null &&
+                        interaction.location!.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text(
+                          interaction.location!,
+                          style: theme.textTheme.bodySmall,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    if (interaction.category != null &&
+                        interaction.category!.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 2),
+                        child: Text(
+                          interaction.category!,
+                          style: theme.textTheme.labelSmall,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                  ],
                 ),
               ),
               IconButton(
@@ -2314,37 +2362,37 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
               ),
             ],
           ),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              Chip(
-                avatar: Icon(mediumIcon, size: 18),
-                label: Text(mediumLabel),
-              ),
-              if (interaction.durationMinutes != null)
-                Chip(
-                  avatar: const Icon(Icons.timer_outlined, size: 18),
-                  label: Text('${interaction.durationMinutes} min'),
+          if (metadataPills.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: metadataPills,
+            ),
+          ],
+          if (interaction.followUpAt != null) ...[
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Icon(
+                  Icons.alarm_outlined,
+                  size: 18,
+                  color: theme.colorScheme.primary,
                 ),
-              if (interaction.location != null && interaction.location!.isNotEmpty)
-                Chip(
-                  avatar: const Icon(Icons.place_outlined, size: 18),
-                  label: Text(interaction.location!),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    DateFormat.MMMd()
+                        .add_jm()
+                        .format(interaction.followUpAt!),
+                    style: theme.textTheme.labelSmall,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
-              if (interaction.category != null && interaction.category!.isNotEmpty)
-                Chip(
-                  avatar: const Icon(Icons.label_outline, size: 18),
-                  label: Text(interaction.category!),
-                ),
-              if (interaction.markForPrayer)
-                Chip(
-                  avatar: const Icon(Icons.self_improvement, size: 18),
-                  label: const Text('Prayer focus'),
-                ),
-            ],
-          ),
+              ],
+            ),
+          ],
           if (interaction.attachments.isNotEmpty) ...[
             const SizedBox(height: 12),
             Wrap(
@@ -2352,18 +2400,13 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
               runSpacing: 8,
               children: interaction.attachments
                   .map(
-                    (attachment) => InputChip(
-                      label: Text(
-                        attachment.label ??
-                            attachment.uri.split('/').last,
-                      ),
-                      avatar: Icon(
-                        attachment.source == AttachmentSource.local
-                            ? Icons.insert_drive_file_outlined
-                            : Icons.cloud_outlined,
-                        size: 18,
-                      ),
-                      onPressed: () {
+                    (attachment) => _buildInfoPill(
+                      icon: attachment.source == AttachmentSource.local
+                          ? Icons.insert_drive_file_outlined
+                          : Icons.cloud_outlined,
+                      label: attachment.label ??
+                          attachment.uri.split('/').last,
+                      onTap: () {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
                             content: Text(attachment.uri),
@@ -2376,6 +2419,59 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
             ),
           ],
         ],
+      ),
+    );
+  }
+
+  Widget _buildInfoPill({
+    required IconData icon,
+    required String label,
+    VoidCallback? onTap,
+  }) {
+    final theme = Theme.of(context);
+    final textStyle = theme.textTheme.labelSmall?.copyWith(
+      color: theme.colorScheme.onSurfaceVariant,
+    );
+
+    final pill = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceVariant.withOpacity(0.5),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: theme.colorScheme.outlineVariant),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            icon,
+            size: 16,
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+          const SizedBox(width: 6),
+          Flexible(
+            child: Text(
+              label,
+              style: textStyle,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              softWrap: false,
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (onTap == null) {
+      return pill;
+    }
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(999),
+        child: pill,
       ),
     );
   }
