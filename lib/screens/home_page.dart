@@ -4,13 +4,13 @@ import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:path_provider/path_provider.dart';
 
 import '../db/db_helper.dart';
 import '../models/contact.dart';
 import '../models/prayer_request.dart';
 import '../services/contact_search_service.dart';
 import '../services/reminder_coordinator.dart';
+import '../widgets/backup_restore_sheet.dart';
 import '../widgets/export_options_sheet.dart';
 import '../widgets/people_card.dart';
 import 'contact_details_page.dart';
@@ -426,7 +426,32 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Future<void> _restoreContactsFromFile() async {
+  Future<void> _openRestoreSheet() async {
+    final result = await showModalBottomSheet<BackupRestoreSheetResult>(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => const BackupRestoreSheet(),
+    );
+
+    if (!mounted || result == null) {
+      return;
+    }
+
+    switch (result) {
+      case BackupRestoreSheetResult.restored:
+        await _fetchContacts();
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Backup restored successfully.')),
+        );
+        break;
+      case BackupRestoreSheetResult.legacyImport:
+        await _importLegacyJson();
+        break;
+    }
+  }
+
+  Future<void> _importLegacyJson() async {
     try {
       final result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
@@ -549,8 +574,9 @@ class _HomePageState extends State<HomePage> {
             onPressed: _openExportSheet,
           ),
           IconButton(
-            icon: const Icon(Icons.restore),
-            onPressed: _restoreContactsFromFile,
+            icon: const Icon(Icons.restore_outlined),
+            tooltip: 'Restore backups',
+            onPressed: _openRestoreSheet,
           ),
         ],
       ),
