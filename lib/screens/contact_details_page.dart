@@ -1396,7 +1396,6 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
       sections.add(widget);
     }
 
-    addSection(_buildViewDetailsCard(contact));
     addSection(_buildViewMeetContextCard(contact));
     addSection(_buildViewRecognitionCard(contact));
     addSection(_buildViewTagsCard(contact));
@@ -1592,36 +1591,6 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
                   .toList(),
             ),
           ),
-      ],
-    );
-  }
-
-  Widget _buildViewDetailsCard(Contact contact) {
-    final theme = Theme.of(context);
-    final rows = <Widget>[
-      _buildDetailLine('First name', contact.firstName),
-    ];
-    if (contact.middleName.isNotEmpty) {
-      rows.add(_buildDetailLine('Middle name', contact.middleName));
-    }
-    if ((contact.lastName ?? '').isNotEmpty) {
-      rows.add(_buildDetailLine('Last name', contact.lastName!));
-    }
-    if ((contact.nickname ?? '').isNotEmpty) {
-      rows.add(_buildDetailLine('Nickname', contact.nickname!));
-    }
-    if ((contact.location ?? '').isNotEmpty) {
-      rows.add(_buildDetailLine('Location', contact.location!));
-    }
-
-    return _buildCard(
-      children: [
-        Text(
-          'Details',
-          style: theme.textTheme.titleMedium,
-        ),
-        const SizedBox(height: 12),
-        ...rows,
       ],
     );
   }
