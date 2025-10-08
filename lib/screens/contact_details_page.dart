@@ -3109,6 +3109,7 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
           ),
         ),
       ),
+    ),
     );
   }
 }
