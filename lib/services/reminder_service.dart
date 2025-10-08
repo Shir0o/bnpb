@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:timezone/data/latest.dart' as tzdata;
@@ -21,31 +23,40 @@ class ReminderService {
 
   bool _initialized = false;
   bool _timeZoneInitialized = false;
+  bool _notificationsSupported = true;
 
   /// Ensures the plugin and time zone data are available before scheduling.
   Future<void> initialize() async {
-    if (_initialized) {
+    if (!_notificationsSupported || _initialized) {
       return;
     }
 
-    const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
-    const iosSettings = DarwinInitializationSettings(
-      requestAlertPermission: true,
-      requestBadgePermission: true,
-      requestSoundPermission: true,
-    );
+    try {
+      const androidSettings =
+          AndroidInitializationSettings('@mipmap/ic_launcher');
+      const iosSettings = DarwinInitializationSettings(
+        requestAlertPermission: true,
+        requestBadgePermission: true,
+        requestSoundPermission: true,
+      );
 
-    final settings = InitializationSettings(
-      android: androidSettings,
-      iOS: iosSettings,
-      macOS: iosSettings,
-    );
+      final settings = InitializationSettings(
+        android: androidSettings,
+        iOS: iosSettings,
+        macOS: iosSettings,
+      );
 
-    await _plugin.initialize(settings);
-    await _configureLocalTimeZone();
-    await _requestPlatformPermissions();
+      await _plugin.initialize(settings);
+      await _configureLocalTimeZone();
+      await _requestPlatformPermissions();
 
-    _initialized = true;
+      _initialized = true;
+    } catch (error, stackTrace) {
+      if (_markUnsupported('initialize', error, stackTrace)) {
+        return;
+      }
+      rethrow;
+    }
   }
 
   Future<void> _requestPlatformPermissions() async {
@@ -97,82 +108,88 @@ class ReminderService {
   }) async {
     await initialize();
 
-    final id = _notificationId(channel, key);
-    var target = scheduledAt;
-    final now = DateTime.now();
-    if (!target.isAfter(now)) {
-      target = now.add(const Duration(minutes: 1));
-    }
-    final tzTime = tz.TZDateTime.from(target, tz.local);
+    await _guardOperation('scheduleReminder($channel, $key)', () async {
+      final id = _notificationId(channel, key);
+      var target = scheduledAt;
+      final now = DateTime.now();
+      if (!target.isAfter(now)) {
+        target = now.add(const Duration(minutes: 1));
+      }
+      final tzTime = tz.TZDateTime.from(target, tz.local);
 
-    final androidDetails = AndroidNotificationDetails(
-      'reminders_${channel.name}',
-      channel.label,
-      channelDescription: channel.description,
-      importance: Importance.high,
-      priority: Priority.high,
-      category: AndroidNotificationCategory.reminder,
-    );
-    const darwinDetails = DarwinNotificationDetails(
-      categoryIdentifier: 'reminder',
-    );
+      final androidDetails = AndroidNotificationDetails(
+        'reminders_${channel.name}',
+        channel.label,
+        channelDescription: channel.description,
+        importance: Importance.high,
+        priority: Priority.high,
+        category: AndroidNotificationCategory.reminder,
+      );
+      const darwinDetails = DarwinNotificationDetails(
+        categoryIdentifier: 'reminder',
+      );
 
-    final payloadMap = <String, dynamic>{
-      'channel': channel.name,
-      'key': key,
-    };
-    if (contactId != null) {
-      payloadMap['contactId'] = contactId;
-    }
-    if (additionalPayload != null) {
-      payloadMap.addAll(additionalPayload);
-    }
-    final payload = jsonEncode(payloadMap);
+      final payloadMap = <String, dynamic>{
+        'channel': channel.name,
+        'key': key,
+      };
+      if (contactId != null) {
+        payloadMap['contactId'] = contactId;
+      }
+      if (additionalPayload != null) {
+        payloadMap.addAll(additionalPayload);
+      }
+      final payload = jsonEncode(payloadMap);
 
-    await _plugin.zonedSchedule(
-      id,
-      title,
-      body,
-      tzTime,
-      NotificationDetails(
-        android: androidDetails,
-        iOS: darwinDetails,
-        macOS: darwinDetails,
-      ),
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      uiLocalNotificationDateInterpretation:
-          UILocalNotificationDateInterpretation.absoluteTime,
-      payload: payload,
-    );
+      await _plugin.zonedSchedule(
+        id,
+        title,
+        body,
+        tzTime,
+        NotificationDetails(
+          android: androidDetails,
+          iOS: darwinDetails,
+          macOS: darwinDetails,
+        ),
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
+        payload: payload,
+      );
+    });
   }
 
   /// Cancels every notification scheduled for the supplied [channel]
   /// regardless of contact.
   Future<void> cancelChannel(ReminderChannel channel) async {
     await initialize();
-    final pending = await _plugin.pendingNotificationRequests();
-    for (final request in pending) {
-      final payload = request.payload;
-      if (payload == null) {
-        continue;
-      }
-      try {
-        final decoded = jsonDecode(payload) as Map<String, dynamic>;
-        if (decoded['channel'] == channel.name) {
-          await _plugin.cancel(request.id);
+    await _guardOperation('cancelChannel(${channel.name})', () async {
+      final pending = await _plugin.pendingNotificationRequests();
+      for (final request in pending) {
+        final payload = request.payload;
+        if (payload == null) {
+          continue;
         }
-      } catch (_) {
-        continue;
+        try {
+          final decoded = jsonDecode(payload) as Map<String, dynamic>;
+          if (decoded['channel'] == channel.name) {
+            await _plugin.cancel(request.id);
+          }
+        } catch (_) {
+          continue;
+        }
       }
-    }
+    });
   }
 
   /// Cancels a previously scheduled reminder using the [key] used during
   /// [scheduleReminder].
   Future<void> cancelReminder(ReminderChannel channel, String key) async {
     await initialize();
-    final id = _notificationId(channel, key);
-    await _plugin.cancel(id);
+    await _guardOperation('cancelReminder(${channel.name}, $key)', () async {
+      final id = _notificationId(channel, key);
+      await _plugin.cancel(id);
+    });
   }
 
   /// Cancels all reminders scheduled for [contactId] under a [channel].
@@ -181,48 +198,115 @@ class ReminderService {
     String contactId,
   ) async {
     await initialize();
-    final pending = await _plugin.pendingNotificationRequests();
-    for (final request in pending) {
-      final payload = request.payload;
-      if (payload == null) {
-        continue;
-      }
-      try {
-        final decoded = jsonDecode(payload) as Map<String, dynamic>;
-        if (decoded['channel'] == channel.name &&
-            decoded['contactId'] == contactId) {
-          await _plugin.cancel(request.id);
+    await _guardOperation(
+      'cancelChannelForContact(${channel.name}, $contactId)',
+      () async {
+        final pending = await _plugin.pendingNotificationRequests();
+        for (final request in pending) {
+          final payload = request.payload;
+          if (payload == null) {
+            continue;
+          }
+          try {
+            final decoded = jsonDecode(payload) as Map<String, dynamic>;
+            if (decoded['channel'] == channel.name &&
+                decoded['contactId'] == contactId) {
+              await _plugin.cancel(request.id);
+            }
+          } catch (_) {
+            continue;
+          }
         }
-      } catch (_) {
-        continue;
-      }
-    }
+      },
+    );
   }
 
   /// Cancels every reminder tied to [contactId].
   Future<void> cancelAllForContact(String contactId) async {
     await initialize();
-    final pending = await _plugin.pendingNotificationRequests();
-    for (final request in pending) {
-      final payload = request.payload;
-      if (payload == null) {
-        continue;
-      }
-      try {
-        final decoded = jsonDecode(payload) as Map<String, dynamic>;
-        if (decoded['contactId'] == contactId) {
-          await _plugin.cancel(request.id);
+    await _guardOperation('cancelAllForContact($contactId)', () async {
+      final pending = await _plugin.pendingNotificationRequests();
+      for (final request in pending) {
+        final payload = request.payload;
+        if (payload == null) {
+          continue;
         }
-      } catch (_) {
-        continue;
+        try {
+          final decoded = jsonDecode(payload) as Map<String, dynamic>;
+          if (decoded['contactId'] == contactId) {
+            await _plugin.cancel(request.id);
+          }
+        } catch (_) {
+          continue;
+        }
       }
-    }
+    });
   }
 
   /// Cancels every scheduled reminder regardless of contact.
   Future<void> cancelAll() async {
     await initialize();
-    await _plugin.cancelAll();
+    await _guardOperation('cancelAll', () async {
+      await _plugin.cancelAll();
+    });
+  }
+
+  Future<void> _guardOperation(
+    String context,
+    Future<void> Function() action,
+  ) async {
+    if (!_notificationsSupported) {
+      return;
+    }
+    try {
+      await action();
+    } catch (error, stackTrace) {
+      if (_markUnsupported(context, error, stackTrace)) {
+        return;
+      }
+      rethrow;
+    }
+  }
+
+  bool _markUnsupported(
+    String context,
+    Object error,
+    StackTrace stackTrace,
+  ) {
+    if (!_isUnsupportedError(error)) {
+      return false;
+    }
+    _notificationsSupported = false;
+    if (kDebugMode) {
+      debugPrint('ReminderService disabled ($context): $error');
+      debugPrint(stackTrace.toString());
+    }
+    return true;
+  }
+
+  bool _isUnsupportedError(Object error) {
+    if (error is MissingPluginException ||
+        error is UnimplementedError ||
+        error is UnsupportedError) {
+      return true;
+    }
+    if (error is PlatformException) {
+      final code = error.code.toLowerCase();
+      if (code.contains('unavailable') ||
+          code.contains('notimplemented') ||
+          code.contains('not_implemented') ||
+          code.contains('not_available') ||
+          code.contains('unsupported')) {
+        return true;
+      }
+      final message = (error.message ?? '').toLowerCase();
+      if (message.contains('not implemented') ||
+          message.contains('not available') ||
+          message.contains('unsupported')) {
+        return true;
+      }
+    }
+    return false;
   }
 
   int _notificationId(ReminderChannel channel, String key) {
