@@ -941,6 +941,8 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
     final interaction = await showModalBottomSheet<Interaction>(
       context: context,
       isScrollControlled: true,
+      isDismissible: false,
+      enableDrag: false,
       builder: (context) => _LogInteractionSheet(
         contact: widget.contact,
         existingInteractions: List<Interaction>.from(_interactions),
@@ -2312,6 +2314,8 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
     final updatedInteraction = await showModalBottomSheet<Interaction>(
       context: context,
       isScrollControlled: true,
+      isDismissible: false,
+      enableDrag: false,
       builder: (context) => _LogInteractionSheet(
         contact: widget.contact,
         existingInteractions: List<Interaction>.from(_interactions),
