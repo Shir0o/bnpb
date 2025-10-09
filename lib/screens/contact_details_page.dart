@@ -2865,13 +2865,6 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
         }
       }
 
-      final contactSnapshot = widget.contact.copyWith(
-        interactions: committedInteractions,
-      );
-
-      await ReminderCoordinator()
-          .syncInteractionReminder(contactSnapshot, savedInteraction);
-
       widget.onInteractionsUpdated?.call(
         List<Interaction>.from(committedInteractions),
       );
