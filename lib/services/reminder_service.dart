@@ -6,8 +6,11 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:timezone/data/latest.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/notification_preference.dart';
+import '../repositories/notification_preferences_repository.dart';
+import 'platform_info.dart' as platform_info;
 
 /// Handles platform notification scheduling for reminders.
 class ReminderService {
@@ -21,9 +24,14 @@ class ReminderService {
   final FlutterLocalNotificationsPlugin _plugin =
       FlutterLocalNotificationsPlugin();
 
+  final NotificationPreferencesRepository _preferencesRepository =
+      NotificationPreferencesRepository();
+  SharedPreferences? _sharedPreferences;
+
   bool _initialized = false;
   bool _timeZoneInitialized = false;
   bool _notificationsSupported = true;
+  bool? _exactAlarmOptIn;
 
   /// Ensures the plugin and time zone data are available before scheduling.
   Future<void> initialize() async {
@@ -64,7 +72,8 @@ class ReminderService {
         .resolvePlatformSpecificImplementation<
             AndroidFlutterLocalNotificationsPlugin>();
     await androidImpl?.requestNotificationsPermission();
-    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+
+    if (await _shouldRequestExactAlarmPermission()) {
       await androidImpl?.requestExactAlarmsPermission();
     }
 
@@ -339,5 +348,95 @@ class ReminderService {
     final seed = '${channel.name}::$key';
     final hash = seed.hashCode;
     return hash & 0x7fffffff;
+  }
+
+  Future<bool> _shouldRequestExactAlarmPermission() async {
+    if (kIsWeb || !platform_info.isAndroid) {
+      return false;
+    }
+
+    if (!await _deviceRequiresExactAlarmPermission()) {
+      return false;
+    }
+
+    await _ensureExactAlarmOptInLoaded();
+    if (!(_exactAlarmOptIn ?? false)) {
+      return false;
+    }
+
+    if (!await _hasEnabledExactAlarmReminders()) {
+      return false;
+    }
+
+    return true;
+  }
+
+  Future<bool> _deviceRequiresExactAlarmPermission() async {
+    final sdkInt = await platform_info.androidSdkInt();
+    if (sdkInt == null) {
+      return true;
+    }
+    return sdkInt >= 31;
+  }
+
+  Future<void> _ensureExactAlarmOptInLoaded() async {
+    if (_exactAlarmOptIn != null) {
+      return;
+    }
+    final prefs = _sharedPreferences ??= await SharedPreferences.getInstance();
+    _exactAlarmOptIn = prefs.getBool(_exactAlarmOptInKey) ?? false;
+  }
+
+  Future<bool> _hasEnabledExactAlarmReminders() async {
+    try {
+      await _preferencesRepository.ensureDefaults();
+      final preferences = await _preferencesRepository.loadPreferences(
+        scopeType: NotificationScopeType.global,
+      );
+      if (preferences.isEmpty) {
+        return true;
+      }
+      return preferences.any((preference) => preference.enabled);
+    } catch (_) {
+      return true;
+    }
+  }
+
+  static const String _exactAlarmOptInKey = 'reminder_exact_alarm_opt_in';
+
+  /// Persists whether the user has opted into requesting the exact alarm
+  /// permission.
+  Future<void> updateExactAlarmOptIn(bool value) async {
+    final prefs = _sharedPreferences ??= await SharedPreferences.getInstance();
+    await prefs.setBool(_exactAlarmOptInKey, value);
+    _exactAlarmOptIn = value;
+  }
+
+  /// Returns whether the user has opted into requesting exact alarm access.
+  Future<bool> isExactAlarmOptInEnabled() async {
+    await _ensureExactAlarmOptInLoaded();
+    return _exactAlarmOptIn ?? false;
+  }
+
+  /// Indicates if the running platform may require the exact alarm
+  /// permission.
+  Future<bool> isExactAlarmPermissionRelevant() async {
+    if (kIsWeb || !platform_info.isAndroid) {
+      return false;
+    }
+    return await _deviceRequiresExactAlarmPermission();
+  }
+
+  /// Requests the exact alarm permission when the user has opted in and the
+  /// device requires it.
+  Future<bool> requestExactAlarmPermission() async {
+    if (!await _shouldRequestExactAlarmPermission()) {
+      return true;
+    }
+    final androidImpl = _plugin
+        .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>();
+    final result = await androidImpl?.requestExactAlarmsPermission();
+    return result ?? true;
   }
 }
