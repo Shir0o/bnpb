@@ -124,115 +124,138 @@ class _ExportOptionsSheetState extends State<ExportOptionsSheet> {
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+    final theme = Theme.of(context);
 
-    return SafeArea(
-      child: Padding(
-        padding: EdgeInsets.only(bottom: bottomInset),
-        child: SingleChildScrollView(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return SafeArea(
           child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        'Export contacts',
-                        style: Theme.of(context).textTheme.titleLarge,
-                      ),
+            padding: EdgeInsets.only(bottom: bottomInset),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(maxHeight: constraints.maxHeight),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            'Export contacts',
+                            style: theme.textTheme.titleLarge,
+                          ),
+                        ),
+                        IconButton(
+                          onPressed: () => Navigator.of(context).pop(),
+                          icon: const Icon(Icons.close),
+                          tooltip: 'Cancel export',
+                        ),
+                      ],
                     ),
-                    IconButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      icon: const Icon(Icons.close),
-                      tooltip: 'Cancel export',
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  'Choose which details to include. CSV/PDF/JSON exports remain '
-                  'on device until you share them. Encrypted archives require a '
-                  'passphrase and bundle the selected fields inside AES-secured '
-                  'ZIP data.',
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
-                const SizedBox(height: 12),
-                ...ExportService.availableFields.map((field) {
-                  final selected = _selectedFields.contains(field.id);
-                  return CheckboxListTile(
-                    value: selected,
-                    onChanged: (value) {
-                      if (value == null) return;
-                      _toggleField(field.id, value);
-                    },
-                    dense: true,
-                    title: Text(field.label),
-                    subtitle: Text(field.description),
-                    controlAffinity: ListTileControlAffinity.leading,
-                  );
-                }),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: _passphraseController,
-                  enabled: !_isExporting,
-                  decoration: const InputDecoration(
-                    labelText: 'Encrypted archive passphrase',
-                    hintText: 'Use a phrase you can remember',
                   ),
-                ),
-                if (_error != null) ...[
-                  const SizedBox(height: 8),
-                  Text(
-                    _error!,
-                    style: TextStyle(color: Theme.of(context).colorScheme.error),
-                  ),
-                ],
-                const SizedBox(height: 16),
-                if (_isExporting)
-                  const LinearProgressIndicator()
-                else
-                  Column(
-                    children: [
-                      Row(
+                  const SizedBox(height: 12),
+                  Flexible(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      child: ListView(
+                        padding: EdgeInsets.zero,
                         children: [
-                          Expanded(
-                            child: OutlinedButton.icon(
-                              onPressed: _exportCsv,
-                              icon: const Icon(Icons.table_chart_outlined),
-                              label: const Text('Export CSV'),
+                          Text(
+                            'Choose which details to include. CSV/PDF/JSON exports remain '
+                            'on device until you share them. Encrypted archives require a '
+                            'passphrase and bundle the selected fields inside AES-secured '
+                            'ZIP data.',
+                            style: theme.textTheme.bodyMedium,
+                          ),
+                          const SizedBox(height: 12),
+                          ...ExportService.availableFields.map((field) {
+                            final selected = _selectedFields.contains(field.id);
+                            return CheckboxListTile(
+                              value: selected,
+                              onChanged: (value) {
+                                if (value == null) return;
+                                _toggleField(field.id, value);
+                              },
+                              dense: true,
+                              title: Text(field.label),
+                              subtitle: Text(field.description),
+                              controlAffinity: ListTileControlAffinity.leading,
+                            );
+                          }),
+                          const SizedBox(height: 12),
+                          TextField(
+                            controller: _passphraseController,
+                            enabled: !_isExporting,
+                            decoration: const InputDecoration(
+                              labelText: 'Encrypted archive passphrase',
+                              hintText: 'Use a phrase you can remember',
                             ),
                           ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: OutlinedButton.icon(
-                              onPressed: _exportPdf,
-                              icon: const Icon(Icons.picture_as_pdf_outlined),
-                              label: const Text('Export PDF'),
+                          if (_error != null) ...[
+                            const SizedBox(height: 8),
+                            Text(
+                              _error!,
+                              style: TextStyle(
+                                color: theme.colorScheme.error,
+                              ),
                             ),
-                          ),
+                          ],
                         ],
                       ),
-                      const SizedBox(height: 12),
-                      OutlinedButton.icon(
-                        onPressed: _exportJson,
-                        icon: const Icon(Icons.data_object_outlined),
-                        label: const Text('Export JSON'),
-                      ),
-                      const SizedBox(height: 12),
-                      FilledButton.icon(
-                        onPressed: _exportEncryptedArchive,
-                        icon: const Icon(Icons.lock_outline),
-                        label: const Text('Create encrypted archive'),
-                      ),
-                    ],
+                    ),
                   ),
-              ],
+                  SafeArea(
+                    top: false,
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+                      child: _isExporting
+                          ? const LinearProgressIndicator()
+                          : Column(
+                              children: [
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: OutlinedButton.icon(
+                                        onPressed: _exportCsv,
+                                        icon: const Icon(Icons.table_chart_outlined),
+                                        label: const Text('Export CSV'),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: OutlinedButton.icon(
+                                        onPressed: _exportPdf,
+                                        icon:
+                                            const Icon(Icons.picture_as_pdf_outlined),
+                                        label: const Text('Export PDF'),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 12),
+                                OutlinedButton.icon(
+                                  onPressed: _exportJson,
+                                  icon: const Icon(Icons.data_object_outlined),
+                                  label: const Text('Export JSON'),
+                                ),
+                                const SizedBox(height: 12),
+                                FilledButton.icon(
+                                  onPressed: _exportEncryptedArchive,
+                                  icon: const Icon(Icons.lock_outline),
+                                  label: const Text('Create encrypted archive'),
+                                ),
+                              ],
+                            ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }
