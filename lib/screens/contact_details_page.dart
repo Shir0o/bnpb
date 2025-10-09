@@ -909,13 +909,15 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
     if (interaction.id == null) return;
 
     await DBHelper().deleteInteraction(interaction.id!);
-    await BackupService().exportBackup();
     await ReminderCoordinator().cancelInteractionReminder(interaction);
-    if (!mounted) return;
 
     final nextInteractions = List<Interaction>.from(_interactions)
       ..removeWhere((item) => item.id == interaction.id);
-    _applyInteractionListUpdate(nextInteractions);
+    if (mounted) {
+      _applyInteractionListUpdate(nextInteractions);
+    }
+
+    await BackupService().exportBackup();
 
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
