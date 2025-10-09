@@ -855,16 +855,23 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
 
   Future<void> _updateContact() async {
     final updatedContact = _buildContactFromState();
-    await DBHelper().updateContact(updatedContact);
-    await ReminderCoordinator().refreshContact(updatedContact.id);
-    await BackupService().exportBackup();
+    try {
+      await DBHelper().updateContact(updatedContact);
+      await ReminderCoordinator().refreshContact(updatedContact.id);
+      await BackupService().exportBackup();
 
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Contact updated successfully!')),
-    );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Contact updated successfully!')),
+      );
 
-    Navigator.pop(context);
+      Navigator.pop(context, updatedContact);
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to update contact: $error')),
+      );
+    }
   }
 
   void _confirmDelete() {
