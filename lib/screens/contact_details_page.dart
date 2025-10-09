@@ -951,10 +951,6 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
     if (!mounted || interaction == null) {
       return;
     }
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Interaction logged')),
-    );
   }
 
 
