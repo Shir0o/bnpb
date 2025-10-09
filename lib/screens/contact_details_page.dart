@@ -913,6 +913,18 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
     );
   }
 
+  void _applyInteractionListUpdate(List<Interaction> interactions) {
+    final nextInteractions = List<Interaction>.from(interactions)
+      ..sort((a, b) => b.occurredAt.compareTo(a.occurredAt));
+    setState(() {
+      _interactions = nextInteractions;
+      _interactionLookup = {
+        for (final item in nextInteractions)
+          if (item.id != null) item.id!: item,
+      };
+    });
+  }
+
   void _showQuickAddInteractionSheet() async {
     final interaction = await showModalBottomSheet<Interaction>(
       context: context,
@@ -920,24 +932,16 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
       builder: (context) => _LogInteractionSheet(
         contact: widget.contact,
         existingInteractions: List<Interaction>.from(_interactions),
+        onInteractionsUpdated: (updated) {
+          if (!mounted) return;
+          _applyInteractionListUpdate(updated);
+        },
       ),
     );
 
     if (!mounted || interaction == null) {
       return;
     }
-
-    final updated = List<Interaction>.from(_interactions)
-      ..add(interaction)
-      ..sort((a, b) => b.occurredAt.compareTo(a.occurredAt));
-
-    setState(() {
-      _interactions = updated;
-      _interactionLookup = {
-        for (final item in updated)
-          if (item.id != null) item.id!: item,
-      };
-    });
 
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Interaction logged')),
@@ -2304,24 +2308,9 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
         contact: widget.contact,
         existingInteractions: List<Interaction>.from(_interactions),
         initialInteraction: interaction,
-        onInteractionSaved: (updated) {
-          final nextInteractions = List<Interaction>.from(_interactions);
-          final index = nextInteractions.indexWhere(
-            (item) => item.id == updated.id,
-          );
-          if (index != -1) {
-            nextInteractions[index] = updated;
-          } else {
-            nextInteractions.add(updated);
-          }
-          nextInteractions.sort((a, b) => b.occurredAt.compareTo(a.occurredAt));
-          setState(() {
-            _interactions = nextInteractions;
-            _interactionLookup = {
-              for (final item in nextInteractions)
-                if (item.id != null) item.id!: item,
-            };
-          });
+        onInteractionsUpdated: (updated) {
+          if (!mounted) return;
+          _applyInteractionListUpdate(updated);
         },
       ),
     );
@@ -2394,13 +2383,13 @@ class _LogInteractionSheet extends StatefulWidget {
     required this.contact,
     required this.existingInteractions,
     this.initialInteraction,
-    this.onInteractionSaved,
+    this.onInteractionsUpdated,
   });
 
   final Contact contact;
   final List<Interaction> existingInteractions;
   final Interaction? initialInteraction;
-  final ValueChanged<Interaction>? onInteractionSaved;
+  final ValueChanged<List<Interaction>>? onInteractionsUpdated;
 
   @override
   State<_LogInteractionSheet> createState() => _LogInteractionSheetState();
@@ -2430,6 +2419,7 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
   AutovalidateMode _autovalidateMode = AutovalidateMode.disabled;
   bool _isSaveEnabled = false;
   bool _formWasSubmitted = false;
+  bool _isSavingInteraction = false;
 
   bool _calculateSaveEnabled() {
     final summaryFilled = _summaryController.text.trim().isNotEmpty;
@@ -2788,6 +2778,14 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
       return;
     }
 
+    if (_isSavingInteraction) {
+      return;
+    }
+
+    setState(() {
+      _isSavingInteraction = true;
+    });
+
     final summary = _summaryController.text.trim();
     final durationText = _durationController.text.trim();
     final durationMinutes =
@@ -2812,57 +2810,101 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
     );
 
     final bool isEditing = widget.initialInteraction != null;
-    late final Interaction savedInteraction;
-    late final List<Interaction> updatedInteractions;
+    final previousInteractions =
+        List<Interaction>.from(widget.existingInteractions);
+    final optimisticInteractions = List<Interaction>.from(previousInteractions);
 
     if (isEditing) {
-      await DBHelper().updateInteraction(interaction);
-      savedInteraction = interaction;
-      updatedInteractions = List<Interaction>.from(widget.existingInteractions);
-      final index = updatedInteractions.indexWhere(
-        (item) => item.id == savedInteraction.id,
+      final index = optimisticInteractions.indexWhere(
+        (item) => item.id == interaction.id,
       );
       if (index != -1) {
-        updatedInteractions[index] = savedInteraction;
+        optimisticInteractions[index] = interaction;
       } else {
-        updatedInteractions.add(savedInteraction);
+        optimisticInteractions.add(interaction);
       }
     } else {
-      savedInteraction = await DBHelper().insertInteraction(interaction);
-      updatedInteractions = [
-        ...widget.existingInteractions,
-        savedInteraction,
-      ];
+      optimisticInteractions.add(interaction);
     }
 
-    updatedInteractions.sort((a, b) => b.occurredAt.compareTo(a.occurredAt));
+    optimisticInteractions.sort((a, b) => b.occurredAt.compareTo(a.occurredAt));
 
-    final contactSnapshot = widget.contact.copyWith(
-      interactions: updatedInteractions,
+    widget.onInteractionsUpdated?.call(
+      List<Interaction>.from(optimisticInteractions),
     );
 
     try {
-      await ReminderCoordinator()
-          .syncInteractionReminder(contactSnapshot, savedInteraction);
-    } catch (error) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Failed to schedule reminder: $error. Interaction saved without reminder.',
-            ),
-          ),
-        );
+      final dbHelper = DBHelper();
+      Interaction savedInteraction;
+      if (isEditing) {
+        await dbHelper.updateInteraction(interaction);
+        savedInteraction = interaction;
+      } else {
+        savedInteraction = await dbHelper.insertInteraction(interaction);
       }
-    } finally {
-      widget.onInteractionSaved?.call(savedInteraction);
-      if (mounted) {
-        _sheetActive = false;
-        await _stopListening();
-        if (mounted) {
-          Navigator.of(context).pop(savedInteraction);
+
+      final committedInteractions = List<Interaction>.from(optimisticInteractions);
+      if (!isEditing) {
+        final pendingIndex = committedInteractions.indexWhere(
+          (item) => identical(item, interaction),
+        );
+        if (pendingIndex != -1) {
+          committedInteractions[pendingIndex] = savedInteraction;
+        } else {
+          committedInteractions.add(savedInteraction);
+          committedInteractions.sort(
+            (a, b) => b.occurredAt.compareTo(a.occurredAt),
+          );
         }
       }
+
+      final contactSnapshot = widget.contact.copyWith(
+        interactions: committedInteractions,
+      );
+
+      await ReminderCoordinator()
+          .syncInteractionReminder(contactSnapshot, savedInteraction);
+
+      widget.onInteractionsUpdated?.call(
+        List<Interaction>.from(committedInteractions),
+      );
+
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(isEditing
+              ? 'Interaction updated'
+              : 'Interaction logged'),
+        ),
+      );
+
+      _sheetActive = false;
+      await _stopListening();
+      if (mounted) {
+        Navigator.of(context).pop(savedInteraction);
+      }
+    } catch (error) {
+      widget.onInteractionsUpdated?.call(
+        List<Interaction>.from(previousInteractions),
+      );
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _isSavingInteraction = false;
+        _isSaveEnabled = _calculateSaveEnabled();
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to save interaction: $error'),
+        ),
+      );
     }
   }
 
@@ -3111,10 +3153,31 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
               const SizedBox(height: 24),
               SizedBox(
                 width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: _isSaveEnabled ? _saveInteraction : null,
-                  icon: const Icon(Icons.check),
-                  label: Text(isEditing ? 'Update' : 'Save'),
+                child: ElevatedButton(
+                  onPressed:
+                      _isSaveEnabled && !_isSavingInteraction ? _saveInteraction : null,
+                  child: _isSavingInteraction
+                      ? SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Theme.of(context)
+                                  .colorScheme
+                                  .onPrimary,
+                            ),
+                          ),
+                        )
+                      : Row(
+                          mainAxisSize: MainAxisSize.min,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.check),
+                            const SizedBox(width: 8),
+                            Text(isEditing ? 'Update' : 'Save'),
+                          ],
+                        ),
                 ),
               ),
             ],
