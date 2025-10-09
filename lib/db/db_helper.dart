@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:meta/meta.dart';
 import 'package:path/path.dart';
 import 'package:sqflite_sqlcipher/sqflite.dart';
 
@@ -354,10 +355,20 @@ class DBHelper {
 
     await _upsertMeetContext(txn, contact);
     await _replaceContactTags(txn, contact);
+    await _replaceInteractions(txn, contact);
 
     if (contact.prayerRequests.isNotEmpty) {
       await _replacePrayerRequests(txn, contact);
     }
+  }
+
+  @visibleForTesting
+  Future<void> upsertContactRowForTest(
+    DatabaseExecutor txn,
+    Contact contact, {
+    required bool isUpdate,
+  }) async {
+    await _upsertContactRow(txn, contact, isUpdate: isUpdate);
   }
 
   Future<void> _upsertMeetContext(
@@ -402,6 +413,31 @@ class DBHelper {
         'contactId': contact.id,
         'tag': tag,
       });
+    }
+  }
+
+  Future<void> _replaceInteractions(
+    DatabaseExecutor txn,
+    Contact contact,
+  ) async {
+    await txn.delete(
+      'interactions',
+      where: 'contactId = ?',
+      whereArgs: [contact.id],
+    );
+
+    if (contact.interactions.isEmpty) {
+      return;
+    }
+
+    for (final interaction in contact.interactions) {
+      final interactionMap = interaction.toMap(
+        includeId: false,
+        encodeAttachments: true,
+      );
+      interactionMap['contactId'] = contact.id;
+
+      await txn.insert('interactions', interactionMap);
     }
   }
 
