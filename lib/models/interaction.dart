@@ -113,16 +113,26 @@ class Interaction {
   }
 
   Map<String, dynamic> toMap({bool includeId = true}) {
+    final map = toJson(includeId: includeId);
+    map['attachments'] = jsonEncode(map['attachments']);
+    map['markForPrayer'] = markForPrayer ? 1 : 0;
+    return map;
+  }
+
+  /// Serializes the interaction into a JSON-friendly map.
+  ///
+  /// Attachments are emitted as a list of maps so export flows can embed them
+  /// without additional decoding.
+  Map<String, dynamic> toJson({bool includeId = true}) {
     final map = <String, dynamic>{
       'contactId': contactId,
       'occurredAt': occurredAt.toIso8601String(),
       'summary': summary,
       'medium': medium,
       'location': location,
-      'attachments': jsonEncode(
-        attachments.map((attachment) => attachment.toMap()).toList(),
-      ),
-      'markForPrayer': markForPrayer ? 1 : 0,
+      'attachments':
+          attachments.map((attachment) => attachment.toMap()).toList(),
+      'markForPrayer': markForPrayer,
       'followUpAt': followUpAt?.toIso8601String(),
       'durationMinutes': durationMinutes,
       'category': category,

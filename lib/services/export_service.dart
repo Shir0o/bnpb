@@ -6,6 +6,7 @@ import 'package:archive/archive.dart';
 import 'package:crypto/crypto.dart';
 import 'package:csv/csv.dart';
 import 'package:encrypt/encrypt.dart';
+import 'package:meta/meta.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
@@ -140,9 +141,7 @@ class ExportService {
     List<Contact> contacts,
     List<String> fieldIds,
   ) async {
-    final payload = contacts
-        .map((contact) => _jsonValueForFieldSelection(contact, fieldIds))
-        .toList();
+    final payload = buildExportPayload(contacts, fieldIds);
 
     final file = await _createTempFile('contacts_export', 'json');
     await file.writeAsString(jsonEncode(payload));
@@ -155,9 +154,7 @@ class ExportService {
     List<String> fieldIds,
     String passphrase,
   ) async {
-    final payload = contacts
-        .map((contact) => _jsonValueForFieldSelection(contact, fieldIds))
-        .toList();
+    final payload = buildExportPayload(contacts, fieldIds);
 
     final jsonBytes = utf8.encode(jsonEncode(payload));
 
@@ -248,7 +245,20 @@ class ExportService {
           break;
       }
     }
+    map['interactions'] = contact.interactions
+        .map((interaction) => interaction.toJson())
+        .toList();
     return map;
+  }
+
+  @visibleForTesting
+  List<Map<String, dynamic>> buildExportPayload(
+    List<Contact> contacts,
+    List<String> fieldIds,
+  ) {
+    return contacts
+        .map((contact) => _jsonValueForFieldSelection(contact, fieldIds))
+        .toList();
   }
 
   Key _deriveKey(String passphrase) {
