@@ -430,10 +430,14 @@ class _HomePageState extends State<HomePage> {
       final List<dynamic> jsonData = jsonDecode(fileContent);
 
       final restoredContacts = jsonData
-          .map((contactMap) => Contact.fromMap(contactMap as Map<String, dynamic>))
+          .map((contactMap) => Contact.fromMap(
+                Map<String, dynamic>.from(contactMap as Map),
+              ))
           .toList();
 
       for (final contact in restoredContacts) {
+        // insertContact uses ConflictAlgorithm.replace, so existing rows with the
+        // same stable contact id are updated instead of duplicated.
         await _dbHelper.insertContact(contact);
         await ReminderCoordinator().syncSignificantDates(contact);
       }
