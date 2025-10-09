@@ -28,6 +28,9 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
   bool _isLoading = true;
   bool _isUpdating = false;
   bool _isPurging = false;
+  bool _supportsExactAlarmPermission = false;
+  bool _requestingExactAlarmPermission = false;
+  bool _exactAlarmOptIn = false;
 
   List<Contact> _contacts = const <Contact>[];
   Map<String, Set<ReminderChannel>> _categoryChannels =
@@ -90,6 +93,10 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
     final hasPasscode = await _securityService.hasPasscode();
     final biometricEnabled = await _securityService.isBiometricEnabled();
     final biometricAvailable = await _securityService.canUseBiometrics();
+    final reminderService = ReminderService();
+    final supportsExactAlarmPermission =
+        await reminderService.isExactAlarmPermissionRelevant();
+    final exactAlarmOptIn = await reminderService.isExactAlarmOptInEnabled();
 
     if (!mounted) {
       return;
@@ -103,6 +110,8 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
       _hasPasscode = hasPasscode;
       _biometricAvailable = biometricAvailable;
       _biometricEnabled = biometricEnabled && biometricAvailable;
+      _supportsExactAlarmPermission = supportsExactAlarmPermission;
+      _exactAlarmOptIn = exactAlarmOptIn;
     });
   }
 
@@ -134,6 +143,10 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
               ),
             ),
             _buildGlobalSection(context),
+            if (_supportsExactAlarmPermission) ...[
+              const SizedBox(height: 16),
+              _buildExactAlarmSection(context),
+            ],
             const SizedBox(height: 16),
             _buildContactSection(context),
             const SizedBox(height: 16),
@@ -281,6 +294,152 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
         ),
       ),
     );
+  }
+
+  Widget _buildExactAlarmSection(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Card(
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Precise scheduling',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Exact alarms keep reminders firing at the exact minute on '
+                    'Android 12 and newer. Opt in before we ask Android for '
+                    'this additional permission.',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ],
+              ),
+            ),
+            SwitchListTile(
+              value: _exactAlarmOptIn,
+              onChanged: _requestingExactAlarmPermission
+                  ? null
+                  : (value) => _toggleExactAlarmOptIn(context, value),
+              title: const Text('Allow exact alarm scheduling'),
+              subtitle: const Text(
+                "You'll review a short explanation before Android opens its "
+                "permission screen.",
+              ),
+            ),
+            if (_requestingExactAlarmPermission)
+              const Padding(
+                padding: EdgeInsets.only(bottom: 16),
+                child: LinearProgressIndicator(minHeight: 2),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _toggleExactAlarmOptIn(
+    BuildContext context,
+    bool value,
+  ) async {
+    final reminderService = ReminderService();
+    if (value) {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            title: const Text('Stay on schedule'),
+            content: const Text(
+              'Android only grants exact alarm access when you confirm it '
+              'from the system dialog. Granting access keeps prayer updates, '
+              'follow-ups, and other reminders firing right on time. '
+              'You can change your mind later from this screen.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text('Not now'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                child: const Text('Continue'),
+              ),
+            ],
+          );
+        },
+      );
+
+      if (confirmed != true) {
+        setState(() {
+          _exactAlarmOptIn = false;
+        });
+        return;
+      }
+
+      setState(() {
+        _requestingExactAlarmPermission = true;
+      });
+
+      try {
+        await reminderService.updateExactAlarmOptIn(true);
+        final granted = await reminderService.requestExactAlarmPermission();
+        if (!mounted) {
+          return;
+        }
+        if (!granted) {
+          await reminderService.updateExactAlarmOptIn(false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Exact alarm permission was not granted.'),
+            ),
+          );
+        }
+        setState(() {
+          _exactAlarmOptIn = granted;
+        });
+      } catch (error) {
+        if (!mounted) {
+          return;
+        }
+        await reminderService.updateExactAlarmOptIn(false);
+        setState(() {
+          _exactAlarmOptIn = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to request exact alarm access: $error'),
+          ),
+        );
+      } finally {
+        if (mounted) {
+          setState(() {
+            _requestingExactAlarmPermission = false;
+          });
+        }
+      }
+    } else {
+      setState(() {
+        _requestingExactAlarmPermission = true;
+      });
+      try {
+        await reminderService.updateExactAlarmOptIn(false);
+      } finally {
+        if (!mounted) {
+          return;
+        }
+        setState(() {
+          _exactAlarmOptIn = false;
+          _requestingExactAlarmPermission = false;
+        });
+      }
+    }
   }
 
   Widget _buildDataSection(BuildContext context) {
