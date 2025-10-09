@@ -112,9 +112,14 @@ class Interaction {
     );
   }
 
-  Map<String, dynamic> toMap({bool includeId = true}) {
+  Map<String, dynamic> toMap({
+    bool includeId = true,
+    bool encodeAttachments = true,
+  }) {
     final map = toJson(includeId: includeId);
-    map['attachments'] = jsonEncode(map['attachments']);
+    if (encodeAttachments) {
+      map['attachments'] = jsonEncode(map['attachments']);
+    }
     map['markForPrayer'] = markForPrayer ? 1 : 0;
     return map;
   }
