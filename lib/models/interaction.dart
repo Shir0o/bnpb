@@ -174,7 +174,7 @@ class Interaction {
       medium: map['medium'] as String,
       location: map['location'] as String?,
       attachments: parsedAttachments,
-      markForPrayer: (map['markForPrayer'] as int? ?? 0) == 1,
+      markForPrayer: _parseMarkForPrayer(map['markForPrayer']),
       followUpAt: map['followUpAt'] != null
           ? DateTime.tryParse(map['followUpAt'] as String)
           : null,
@@ -197,6 +197,32 @@ class Interaction {
       return int.tryParse(value);
     }
     return null;
+  }
+
+  static bool _parseMarkForPrayer(dynamic value) {
+    if (value == null) {
+      return false;
+    }
+    if (value is bool) {
+      return value;
+    }
+    if (value is num) {
+      return value == 1;
+    }
+    if (value is String) {
+      final normalized = value.trim().toLowerCase();
+      if (normalized == 'true') {
+        return true;
+      }
+      if (normalized == 'false') {
+        return false;
+      }
+      final parsedInt = int.tryParse(normalized);
+      if (parsedInt != null) {
+        return parsedInt == 1;
+      }
+    }
+    return false;
   }
 
   static String? _parseOptionalCategory(dynamic value) {
