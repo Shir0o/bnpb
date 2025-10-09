@@ -2841,14 +2841,29 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
       interactions: updatedInteractions,
     );
 
-    await ReminderCoordinator()
-        .syncInteractionReminder(contactSnapshot, savedInteraction);
-
-    widget.onInteractionSaved?.call(savedInteraction);
-
-    if (!mounted) return;
-    await _stopListening();
-    Navigator.of(context).pop(savedInteraction);
+    try {
+      await ReminderCoordinator()
+          .syncInteractionReminder(contactSnapshot, savedInteraction);
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Failed to schedule reminder: $error. Interaction saved without reminder.',
+            ),
+          ),
+        );
+      }
+    } finally {
+      widget.onInteractionSaved?.call(savedInteraction);
+      if (mounted) {
+        _sheetActive = false;
+        await _stopListening();
+        if (mounted) {
+          Navigator.of(context).pop(savedInteraction);
+        }
+      }
+    }
   }
 
   @override
