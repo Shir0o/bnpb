@@ -909,6 +909,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
     if (interaction.id == null) return;
 
     await DBHelper().deleteInteraction(interaction.id!);
+    await BackupService().exportBackup();
     await ReminderCoordinator().cancelInteractionReminder(interaction);
     if (!mounted) return;
 
@@ -2847,6 +2848,8 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
       } else {
         savedInteraction = await dbHelper.insertInteraction(interaction);
       }
+
+      await BackupService().exportBackup();
 
       final committedInteractions = List<Interaction>.from(optimisticInteractions);
       if (!isEditing) {
