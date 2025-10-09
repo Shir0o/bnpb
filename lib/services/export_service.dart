@@ -217,7 +217,9 @@ class ExportService {
     Contact contact,
     List<String> fields,
   ) {
-    final map = <String, dynamic>{};
+    final map = <String, dynamic>{
+      'id': contact.id,
+    };
     for (final field in fields) {
       switch (field) {
         case 'firstName':
