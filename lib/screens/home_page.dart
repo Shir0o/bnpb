@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -51,6 +52,14 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _fetchContacts() async {
     final contacts = await _dbHelper.getContacts();
+    _applyContactsSnapshot(contacts);
+
+    await _loadPrayerInsights();
+  }
+
+  void _applyContactsSnapshot(List<Contact> contacts) {
+    if (!mounted) return;
+
     final sortedContacts = List<Contact>.from(contacts)
       ..sort((a, b) {
         final lastNameA = a.lastName?.toLowerCase() ?? '';
@@ -75,6 +84,9 @@ class _HomePageState extends State<HomePage> {
         .toSet()
         .toList()
       ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+
+    _searchService.index(sortedContacts);
+
     setState(() {
       _contacts = sortedContacts;
       _contactLookup
@@ -84,11 +96,8 @@ class _HomePageState extends State<HomePage> {
         _selectedTagFilter = null;
       }
       _availableTags = tags;
-      _searchService.index(sortedContacts);
       _filteredContacts = _applyFilters(sortedContacts);
     });
-
-    await _loadPrayerInsights();
   }
 
   Future<void> _loadPrayerInsights() async {
@@ -455,19 +464,54 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _deleteContact(String id) async {
-    await _dbHelper.deleteContact(id);
-    await ReminderCoordinator().cancelAllForContact(id);
-    await _fetchContacts();
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Contact deleted successfully.')),
-    );
+    final previousContacts = List<Contact>.from(_contacts);
+    final optimisticContacts =
+        previousContacts.where((contact) => contact.id != id).toList();
+
+    _applyContactsSnapshot(optimisticContacts);
+
+    try {
+      await _dbHelper.deleteContact(id);
+      await ReminderCoordinator().cancelAllForContact(id);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Contact deleted successfully.')),
+        );
+      }
+      unawaited(_fetchContacts());
+    } catch (error) {
+      _applyContactsSnapshot(previousContacts);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to delete contact: $error')),
+      );
+    }
   }
 
   Future<void> _updateContact(Contact contact) async {
-    await _dbHelper.updateContact(contact);
-    await ReminderCoordinator().refreshContact(contact.id);
-    _fetchContacts();
+    final previousContacts = List<Contact>.from(_contacts);
+    final optimisticContacts = previousContacts
+        .map((existing) => existing.id == contact.id ? contact : existing)
+        .toList();
+
+    _applyContactsSnapshot(optimisticContacts);
+
+    try {
+      await _dbHelper.updateContact(contact);
+      await ReminderCoordinator().refreshContact(contact.id);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Contact updated successfully.')),
+        );
+      }
+      unawaited(_fetchContacts());
+    } catch (error) {
+      _applyContactsSnapshot(previousContacts);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to update contact: $error')),
+      );
+    }
   }
 
   void _navigateToContactDetails(Contact contact) {
@@ -480,8 +524,15 @@ class _HomePageState extends State<HomePage> {
         ),
       ),
     )
-        .then((_) {
-      _fetchContacts();
+        .then((result) {
+      if (result is Contact) {
+        final previousContacts = List<Contact>.from(_contacts);
+        final optimisticContacts = previousContacts
+            .map((existing) => existing.id == result.id ? result : existing)
+            .toList();
+        _applyContactsSnapshot(optimisticContacts);
+      }
+      unawaited(_fetchContacts());
     });
   }
 
