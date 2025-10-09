@@ -80,6 +80,34 @@ void main() {
     expect(insertIndex, isNonNegative);
     expect(deleteIndex, lessThan(insertIndex));
   });
+
+  test('Interaction.fromMap accepts markForPrayer in multiple formats', () {
+    Map<String, dynamic> buildInteraction(dynamic markForPrayer) {
+      return {
+        'contactId': 'contact-123',
+        'occurredAt': '2024-01-15T12:00:00.000Z',
+        'summary': 'Coffee chat',
+        'medium': 'in_person',
+        'attachments': const [],
+        'markForPrayer': markForPrayer,
+      };
+    }
+
+    final boolBacked = Interaction.fromMap(buildInteraction(true));
+    expect(boolBacked.markForPrayer, isTrue);
+
+    final intBacked = Interaction.fromMap(buildInteraction(1));
+    expect(intBacked.markForPrayer, isTrue);
+
+    final stringTrue = Interaction.fromMap(buildInteraction('true'));
+    expect(stringTrue.markForPrayer, isTrue);
+
+    final stringOne = Interaction.fromMap(buildInteraction('1'));
+    expect(stringOne.markForPrayer, isTrue);
+
+    final falsey = Interaction.fromMap(buildInteraction(0));
+    expect(falsey.markForPrayer, isFalse);
+  });
 }
 
 class _InsertCall {
