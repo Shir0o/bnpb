@@ -910,9 +910,11 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
 
     await DBHelper().deleteInteraction(interaction.id!);
     await ReminderCoordinator().cancelInteractionReminder(interaction);
-    setState(() {
-      _interactions.removeWhere((item) => item.id == interaction.id);
-    });
+    if (!mounted) return;
+
+    final nextInteractions = List<Interaction>.from(_interactions)
+      ..removeWhere((item) => item.id == interaction.id);
+    _applyInteractionListUpdate(nextInteractions);
 
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
