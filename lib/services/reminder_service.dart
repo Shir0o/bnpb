@@ -64,6 +64,9 @@ class ReminderService {
         .resolvePlatformSpecificImplementation<
             AndroidFlutterLocalNotificationsPlugin>();
     await androidImpl?.requestNotificationsPermission();
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+      await androidImpl?.requestExactAlarmsPermission();
+    }
 
     final iosImpl = _plugin.resolvePlatformSpecificImplementation<
         IOSFlutterLocalNotificationsPlugin>();
@@ -277,6 +280,12 @@ class ReminderService {
       return false;
     }
     _notificationsSupported = false;
+    if (_isExactAlarmPermissionError(error)) {
+      debugPrint(
+        'ReminderService disabled ($context): exact alarm permission required. '
+        'Reminders will remain disabled until the permission is granted.',
+      );
+    }
     if (kDebugMode) {
       debugPrint('ReminderService disabled ($context): $error');
       debugPrint(stackTrace.toString());
@@ -291,6 +300,9 @@ class ReminderService {
       return true;
     }
     if (error is PlatformException) {
+      if (_isExactAlarmPermissionError(error)) {
+        return true;
+      }
       final code = error.code.toLowerCase();
       if (code.contains('unavailable') ||
           code.contains('notimplemented') ||
@@ -307,6 +319,20 @@ class ReminderService {
       }
     }
     return false;
+  }
+
+  bool _isExactAlarmPermissionError(Object error) {
+    if (error is! PlatformException) {
+      return false;
+    }
+    final code = error.code.toLowerCase();
+    if (code.contains('scheduleexactalarm') ||
+        code.contains('exactalarmpermission') ||
+        code == 'androidscheduleexactalarmpermissiondenied'.toLowerCase()) {
+      return true;
+    }
+    final message = (error.message ?? '').toLowerCase();
+    return message.contains('exact alarm');
   }
 
   int _notificationId(ReminderChannel channel, String key) {
