@@ -16,7 +16,7 @@ import '../widgets/people_card.dart';
 
 class ContactDetailsPage extends StatefulWidget {
   final Contact contact;
-  final VoidCallback onDelete;
+  final Future<void> Function() onDelete;
 
   const ContactDetailsPage({
     super.key,
@@ -868,27 +868,24 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
   }
 
   void _confirmDelete() {
+    final pageContext = context;
     showDialog(
-      context: context,
-      builder: (context) {
+      context: pageContext,
+      builder: (dialogContext) {
         return AlertDialog(
           title: const Text('Delete Contact'),
           content: const Text('Are you sure you want to delete this contact?'),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(context),
+              onPressed: () => Navigator.pop(dialogContext),
               child: const Text('Cancel'),
             ),
             ElevatedButton(
               onPressed: () async {
-                await ReminderCoordinator()
-                    .cancelAllForContact(widget.contact.id);
-                await DBHelper().deleteContact(widget.contact.id);
-                widget.onDelete();
-                if (mounted) {
-                  Navigator.pop(context);
-                  Navigator.pop(context);
-                }
+                await widget.onDelete();
+                if (!mounted) return;
+                Navigator.of(dialogContext).pop();
+                Navigator.of(pageContext).pop();
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.red,

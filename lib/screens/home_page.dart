@@ -453,7 +453,11 @@ class _HomePageState extends State<HomePage> {
   Future<void> _deleteContact(String id) async {
     await _dbHelper.deleteContact(id);
     await ReminderCoordinator().cancelAllForContact(id);
-    _fetchContacts();
+    await _fetchContacts();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Contact deleted successfully.')),
+    );
   }
 
   Future<void> _updateContact(Contact contact) async {
@@ -468,9 +472,7 @@ class _HomePageState extends State<HomePage> {
       MaterialPageRoute(
         builder: (context) => ContactDetailsPage(
           contact: contact,
-          onDelete: () {
-            _deleteContact(contact.id);
-          },
+          onDelete: () => _deleteContact(contact.id),
         ),
       ),
     )
