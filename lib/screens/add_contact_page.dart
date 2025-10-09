@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../db/db_helper.dart';
@@ -36,6 +39,7 @@ class _AddContactPageState extends State<AddContactPage> {
 
   List<String> _availableTags = [];
   bool _isLoadingReferenceData = false;
+  bool _isSavingContact = false;
 
   @override
   void initState() {
@@ -72,6 +76,9 @@ class _AddContactPageState extends State<AddContactPage> {
     });
   }
 
+  /// Saves a new contact while keeping the UI responsive by optimistically
+  /// disabling the save button, surfacing feedback immediately, and offloading
+  /// non-critical post-save work.
   Future<void> _saveContact() async {
     if (!_formKey.currentState!.validate()) {
       return;
@@ -111,21 +118,56 @@ class _AddContactPageState extends State<AddContactPage> {
       recognitionReminders: List<String>.from(_reminderCues),
     );
 
-    final dbHelper = DBHelper();
-    await dbHelper.insertContact(newContact);
-    await ReminderCoordinator().syncSignificantDates(newContact);
+    setState(() {
+      _isSavingContact = true;
+    });
 
-    await BackupService().exportBackup();
+    try {
+      final dbHelper = DBHelper();
+      await dbHelper.insertContact(newContact);
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Contact saved: ${newContact.fullName}'),
-        backgroundColor: Colors.green,
-      ),
-    );
+      if (!mounted) {
+        return;
+      }
 
-    _resetForm();
-    await _loadReferenceData();
+      final messenger = ScaffoldMessenger.of(context);
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text('Contact saved: ${newContact.fullName}'),
+          backgroundColor: Colors.green,
+        ),
+      );
+
+      unawaited(BackupService().exportBackup());
+
+      await ReminderCoordinator().syncSignificantDates(newContact);
+
+      _resetForm();
+      await _loadReferenceData();
+    } catch (error, stackTrace) {
+      if (!mounted) {
+        return;
+      }
+
+      final messenger = ScaffoldMessenger.of(context);
+      messenger
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            content: Text('Failed to save contact: $error'),
+            backgroundColor: Colors.red,
+          ),
+        );
+
+      debugPrint('Failed to save contact: $error');
+      debugPrintStack(stackTrace: stackTrace);
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSavingContact = false;
+        });
+      }
+    }
   }
 
   void _resetForm() {
@@ -515,8 +557,15 @@ class _AddContactPageState extends State<AddContactPage> {
               ),
               const SizedBox(height: 24),
               ElevatedButton(
-                onPressed: _isLoadingReferenceData ? null : _saveContact,
-                child: const Text('Save Contact'),
+                onPressed:
+                    _isLoadingReferenceData || _isSavingContact ? null : _saveContact,
+                child: _isSavingContact
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Text('Save Contact'),
               ),
             ],
           ),
