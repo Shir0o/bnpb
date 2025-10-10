@@ -122,6 +122,7 @@ class _HomePageState extends State<HomePage> {
   PrayerRequestStatus? _selectedPrayerStatusFilter;
   bool _isLoadingPrayerInsights = false;
   Map<String, ContactMatch> _activeMatches = {};
+  final Set<String> _expandedLocations = <String>{};
 
   @override
   void initState() {
@@ -497,24 +498,38 @@ class _HomePageState extends State<HomePage> {
       final location = entry.key;
       final contactsInLocation = entry.value;
 
+      final isExpanded = _expandedLocations.contains(location);
+
       return Padding(
         padding: const EdgeInsets.only(bottom: 12),
         child: ExpansionTile(
           tilePadding: EdgeInsets.zero,
           title: Text(location),
           childrenPadding: const EdgeInsets.only(top: 8),
-          children: contactsInLocation.map((contact) {
-            final match = _activeMatches[contact.id];
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: PeopleCard(
-                contact: contact,
-                onTap: () => _navigateToContactDetails(contact),
-                highlightLabel: match?.matchDescription,
-                highlightText: match?.snippet,
-              ),
-            );
-          }).toList(),
+          initiallyExpanded: isExpanded,
+          onExpansionChanged: (isExpanded) {
+            setState(() {
+              if (isExpanded) {
+                _expandedLocations.add(location);
+              } else {
+                _expandedLocations.remove(location);
+              }
+            });
+          },
+          children: isExpanded
+              ? contactsInLocation.map((contact) {
+                  final match = _activeMatches[contact.id];
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: PeopleCard(
+                      contact: contact,
+                      onTap: () => _navigateToContactDetails(contact),
+                      highlightLabel: match?.matchDescription,
+                      highlightText: match?.snippet,
+                    ),
+                  );
+                }).toList()
+              : const <Widget>[],
         ),
       );
     }).toList();
