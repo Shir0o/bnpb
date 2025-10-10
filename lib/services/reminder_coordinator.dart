@@ -1,5 +1,6 @@
 import 'dart:math';
 
+import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
 
 import '../db/db_helper.dart';
@@ -22,11 +23,33 @@ class ReminderCoordinator {
             preferencesRepository ?? NotificationPreferencesRepository(),
         _dbHelper = dbHelper ?? DBHelper();
 
-  static final ReminderCoordinator _instance =
-      ReminderCoordinator._();
+  @visibleForTesting
+  ReminderCoordinator.testHarness({
+    ReminderService? reminderService,
+    NotificationPreferencesRepository? preferencesRepository,
+    DBHelper? dbHelper,
+  }) : this._(
+          reminderService: reminderService,
+          preferencesRepository: preferencesRepository,
+          dbHelper: dbHelper,
+        );
+
+  static final ReminderCoordinator _instance = ReminderCoordinator._();
+
+  static ReminderCoordinator? _testOverride;
 
   /// Singleton accessor.
-  factory ReminderCoordinator() => _instance;
+  factory ReminderCoordinator() => _testOverride ?? _instance;
+
+  @visibleForTesting
+  static void overrideForTest(ReminderCoordinator coordinator) {
+    _testOverride = coordinator;
+  }
+
+  @visibleForTesting
+  static void resetTestOverride() {
+    _testOverride = null;
+  }
 
   final ReminderService _reminderService;
   final NotificationPreferencesRepository _preferencesRepository;
@@ -42,13 +65,26 @@ class ReminderCoordinator {
   }
 
   /// Reloads the contact from persistence and rebuilds reminders.
-  Future<void> refreshContact(String contactId) async {
+  Future<void> refreshContact(
+    String contactId, {
+    bool silent = false,
+  }) async {
     final contact = await _dbHelper.getContactById(contactId);
     if (contact == null) {
       return;
     }
+    await refreshFromSnapshot(contact, silent: silent);
+  }
+
+  /// Rebuilds reminders using the provided [contact] snapshot.
+  Future<void> refreshFromSnapshot(
+    Contact contact, {
+    bool silent = false,
+  }) async {
     await _refreshForContact(contact);
-    await scheduleReviewPrompts();
+    if (!silent) {
+      await scheduleReviewPrompts();
+    }
   }
 
   /// Cancels every reminder associated with [contactId].

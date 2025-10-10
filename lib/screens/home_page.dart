@@ -11,6 +11,7 @@ import '../models/contact.dart';
 import '../models/interaction.dart';
 import '../models/prayer_request.dart';
 import '../services/contact_search_service.dart';
+import '../services/legacy_import_service.dart';
 import '../services/reminder_coordinator.dart';
 import '../widgets/backup_restore_sheet.dart';
 import '../widgets/export_options_sheet.dart';
@@ -570,12 +571,10 @@ class _HomePageState extends State<HomePage> {
               ))
           .toList();
 
-      for (final contact in restoredContacts) {
-        // insertContact uses ConflictAlgorithm.replace, so existing rows with the
-        // same stable contact id are updated instead of duplicated.
-        await _dbHelper.insertContact(contact);
-        await ReminderCoordinator().syncSignificantDates(contact);
-      }
+      await processLegacyContacts(
+        contacts: restoredContacts,
+        persistContact: (contact) => _dbHelper.insertContact(contact),
+      );
 
       await _fetchContacts();
 
