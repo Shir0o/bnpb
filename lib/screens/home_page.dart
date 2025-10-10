@@ -25,6 +25,50 @@ class HomePage extends StatefulWidget {
   _HomePageState createState() => _HomePageState();
 }
 
+class _SuggestionTile extends StatelessWidget {
+  const _SuggestionTile({
+    required this.contact,
+    required this.onTap,
+    this.match,
+  });
+
+  final Contact contact;
+  final VoidCallback onTap;
+  final ContactMatch? match;
+
+  @override
+  Widget build(BuildContext context) {
+    final displayName = contact.fullName.isNotEmpty
+        ? contact.fullName
+        : (contact.nickname ?? contact.firstName);
+
+    final subtitleParts = <String>[];
+    final description = match?.matchDescription;
+    final snippet = match?.snippet;
+    if (description != null && description.trim().isNotEmpty) {
+      subtitleParts.add(description.trim());
+    }
+    if (snippet != null && snippet.trim().isNotEmpty) {
+      subtitleParts.add(snippet.trim());
+    }
+
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      dense: true,
+      title: Text(displayName),
+      subtitle: subtitleParts.isNotEmpty
+          ? Text(
+              subtitleParts.join(' • '),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            )
+          : null,
+      trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 16),
+      onTap: onTap,
+    );
+  }
+}
+
 class _HomePageState extends State<HomePage> {
   final DBHelper _dbHelper = DBHelper();
   List<Contact> _contacts = [];
@@ -185,6 +229,41 @@ class _HomePageState extends State<HomePage> {
       }
       _filteredContacts = _applyFilters(_contacts);
     });
+  }
+
+  Widget? _buildSearchSuggestions() {
+    final query = _searchController.text.trim();
+    if (query.isEmpty) {
+      return null;
+    }
+
+    final suggestions = _filteredContacts.take(5).toList();
+    if (suggestions.isEmpty) {
+      return null;
+    }
+
+    final theme = Theme.of(context);
+
+    return Card(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (int index = 0; index < suggestions.length; index++) ...[
+            if (index != 0)
+              Divider(
+                height: 1,
+                color: theme.colorScheme.outlineVariant,
+              ),
+            _SuggestionTile(
+              contact: suggestions[index],
+              match: _activeMatches[suggestions[index].id],
+              onTap: () => _navigateToContactDetails(suggestions[index]),
+            ),
+          ],
+        ],
+      ),
+    );
   }
 
   Widget _buildPrayerInsightsCard() {
@@ -548,6 +627,7 @@ class _HomePageState extends State<HomePage> {
     final hasPrayerFilters =
         _prayerCounts.values.any((count) => count > 0);
     final hasFilterOptions = hasPrayerFilters || _availableTags.isNotEmpty;
+    final searchSuggestions = _buildSearchSuggestions();
 
     return Scaffold(
       appBar: AppBar(
@@ -622,6 +702,13 @@ class _HomePageState extends State<HomePage> {
               ),
             ),
           ),
+          if (searchSuggestions != null)
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              sliver: SliverToBoxAdapter(
+                child: searchSuggestions,
+              ),
+            ),
           SliverPadding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
             sliver: SliverToBoxAdapter(
