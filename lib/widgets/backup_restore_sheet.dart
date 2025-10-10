@@ -175,7 +175,7 @@ class _BackupRestoreSheetState extends State<BackupRestoreSheet> {
               onPressed: () =>
                   Navigator.of(context).pop(BackupRestoreSheetResult.legacyImport),
               icon: const Icon(Icons.upload_file_outlined),
-              label: const Text('Import legacy JSON export'),
+              label: const Text('Import JSON export'),
             ),
           ],
         ),
