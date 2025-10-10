@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -2011,15 +2010,8 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
       final matchesLocation =
           (interaction.location ?? '').toLowerCase().contains(query);
       final matchesMedium = mediumLabel.toLowerCase().contains(query);
-      final matchesAttachments = interaction.attachments.any((attachment) {
-        final value = (attachment.label ?? attachment.uri).toLowerCase();
-        return value.contains(query);
-      });
 
-      return matchesSummary ||
-          matchesLocation ||
-          matchesMedium ||
-          matchesAttachments;
+      return matchesSummary || matchesLocation || matchesMedium;
     }).toList();
   }
 
@@ -2032,7 +2024,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
         TextField(
           controller: _interactionSearchController,
           decoration: InputDecoration(
-            hintText: 'Search by summary, medium, location, or attachment',
+            hintText: 'Search by summary, medium, or location',
             prefixIcon: const Icon(Icons.search),
             suffixIcon: _interactionQuery.isNotEmpty
                 ? IconButton(
@@ -2280,31 +2272,6 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
               ],
             ),
           ],
-          if (interaction.attachments.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: interaction.attachments
-                  .map(
-                    (attachment) => _buildInfoPill(
-                      icon: attachment.source == AttachmentSource.local
-                          ? Icons.insert_drive_file_outlined
-                          : Icons.cloud_outlined,
-                      label: attachment.label ??
-                          attachment.uri.split('/').last,
-                      onTap: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(attachment.uri),
-                          ),
-                        );
-                      },
-                    ),
-                  )
-                  .toList(),
-            ),
-          ],
         ],
       ),
     );
@@ -2420,8 +2387,6 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
   DateTime? _followUpAt;
   String _medium = 'in_person';
   bool _markForPrayer = false;
-  List<AttachmentReference> _attachments = [];
-
   bool _speechInitialized = false;
   bool _hasSpeechCapability = false;
   bool _isListening = false;
@@ -2479,11 +2444,6 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
     _followUpAt = initial?.followUpAt;
     _medium = initial?.medium ?? 'in_person';
     _markForPrayer = initial?.markForPrayer ?? false;
-    _attachments = initial != null
-        ? initial.attachments
-            .map((attachment) => attachment.copyWith())
-            .toList()
-        : [];
     _speechBaseText = _summaryController.text.trim();
     _summaryController.addListener(_updateSaveEnabled);
     _durationController.addListener(_updateSaveEnabled);
@@ -2549,100 +2509,6 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
         time.hour,
         time.minute,
       );
-    });
-  }
-
-  Future<void> _addFileAttachment() async {
-    final result = await FilePicker.platform.pickFiles();
-    final file = result?.files.single;
-    final path = file?.path;
-    if (path == null) return;
-    setState(() {
-      _attachments = List<AttachmentReference>.from(_attachments)
-        ..add(
-          AttachmentReference(
-            uri: path,
-            source: AttachmentSource.local,
-            label: file?.name,
-          ),
-        );
-    });
-  }
-
-  Future<void> _addLinkAttachment() async {
-    final linkController = TextEditingController();
-    final labelController = TextEditingController();
-    final link = await showDialog<String>(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Add Link'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: linkController,
-                decoration: const InputDecoration(
-                  labelText: 'URL',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: labelController,
-                decoration: const InputDecoration(
-                  labelText: 'Label (optional)',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                final url = linkController.text.trim();
-                if (url.isEmpty) {
-                  Navigator.pop(context);
-                  return;
-                }
-                final label = labelController.text.trim();
-                Navigator.pop(
-                  context,
-                  jsonEncode({
-                    'uri': url,
-                    'label': label.isEmpty ? null : label,
-                  }),
-                );
-              },
-              child: const Text('Add'),
-            ),
-          ],
-        );
-      },
-    );
-
-    if (link == null) return;
-    final decoded = jsonDecode(link) as Map<String, dynamic>;
-    setState(() {
-      _attachments = List<AttachmentReference>.from(_attachments)
-        ..add(
-          AttachmentReference(
-            uri: decoded['uri'] as String,
-            source: AttachmentSource.cloud,
-            label: decoded['label'] as String?,
-          ),
-        );
-    });
-  }
-
-  void _removeAttachment(AttachmentReference attachment) {
-    setState(() {
-      _attachments = List<AttachmentReference>.from(_attachments)
-        ..removeWhere((item) => item.uri == attachment.uri);
     });
   }
 
@@ -2814,7 +2680,6 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
       location: _locationController.text.trim().isEmpty
           ? null
           : _locationController.text.trim(),
-      attachments: List<AttachmentReference>.from(_attachments),
       markForPrayer: _markForPrayer,
       followUpAt: _followUpAt,
       durationMinutes: durationMinutes,
@@ -3108,54 +2973,6 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
                     ),
                   ],
                 ),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                'Attachments',
-                style: Theme.of(context).textTheme.titleSmall,
-              ),
-              const SizedBox(height: 8),
-              if (_attachments.isEmpty)
-                const Text(
-                  'Add quick notes, files, or shared links.',
-                  style: TextStyle(color: Colors.grey),
-                )
-              else
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: _attachments
-                      .map(
-                        (attachment) => InputChip(
-                          label: Text(
-                            attachment.label ??
-                                attachment.uri.split('/').last,
-                          ),
-                          avatar: Icon(
-                            attachment.source == AttachmentSource.local
-                                ? Icons.insert_drive_file_outlined
-                                : Icons.cloud_outlined,
-                          ),
-                          onDeleted: () => _removeAttachment(attachment),
-                        ),
-                      )
-                      .toList(),
-                ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  OutlinedButton.icon(
-                    onPressed: _addFileAttachment,
-                    icon: const Icon(Icons.attach_file),
-                    label: const Text('Device file'),
-                  ),
-                  const SizedBox(width: 12),
-                  OutlinedButton.icon(
-                    onPressed: _addLinkAttachment,
-                    icon: const Icon(Icons.link),
-                    label: const Text('Add link'),
-                  ),
-                ],
               ),
               const SizedBox(height: 24),
               SizedBox(
