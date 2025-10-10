@@ -456,22 +456,22 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
   }
 
   void _showPrayerRequestSheet({PrayerRequest? request}) {
-    showModalBottomSheet<String>(
+    final descriptionController =
+        TextEditingController(text: request?.description ?? '');
+    final reflectionController =
+        TextEditingController(text: request?.reflectionNotes ?? '');
+    final categoryController =
+        TextEditingController(text: request?.category ?? '');
+    DateTime requestedAt = request?.requestedAt ?? DateTime.now();
+    DateTime? answeredAt = request?.answeredAt;
+    PrayerRequestStatus status =
+        request?.status ?? PrayerRequestStatus.pending;
+    int? interactionId = request?.interactionId;
+
+    final sheetFuture = showModalBottomSheet<String>(
       context: context,
       isScrollControlled: true,
       builder: (context) {
-        final descriptionController =
-            TextEditingController(text: request?.description ?? '');
-        final reflectionController =
-            TextEditingController(text: request?.reflectionNotes ?? '');
-        final categoryController =
-            TextEditingController(text: request?.category ?? '');
-        DateTime requestedAt = request?.requestedAt ?? DateTime.now();
-        DateTime? answeredAt = request?.answeredAt;
-        PrayerRequestStatus status =
-            request?.status ?? PrayerRequestStatus.pending;
-        int? interactionId = request?.interactionId;
-
         return StatefulBuilder(
           builder: (context, setSheetState) {
             Future<void> pickRequestedDate() async {
@@ -725,7 +725,9 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
           },
         );
       },
-    ).then((result) {
+    );
+
+    sheetFuture.then((result) {
       if (result == null) return;
       // Refresh to surface the newly created or updated prayer immediately.
       _refreshPrayerRequests();
@@ -736,6 +738,12 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(message)),
       );
+    });
+
+    sheetFuture.whenComplete(() {
+      descriptionController.dispose();
+      reflectionController.dispose();
+      categoryController.dispose();
     });
   }
 
