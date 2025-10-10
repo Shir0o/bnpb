@@ -2272,21 +2272,22 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
                   ],
                 ),
               ),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.edit_outlined),
-                    tooltip: 'Edit interaction',
-                    onPressed: () => _showEditInteractionSheet(interaction),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.delete_outline),
-                    tooltip: 'Delete interaction',
-                    onPressed: () => _deleteInteraction(interaction),
-                  ),
-                ],
-              ),
+              if (_isEditing)
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.edit_outlined),
+                      tooltip: 'Edit interaction',
+                      onPressed: () => _showEditInteractionSheet(interaction),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.delete_outline),
+                      tooltip: 'Delete interaction',
+                      onPressed: () => _deleteInteraction(interaction),
+                    ),
+                  ],
+                ),
             ],
           ),
           if (metadataPills.isNotEmpty) ...[
