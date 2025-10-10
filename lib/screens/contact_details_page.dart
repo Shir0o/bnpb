@@ -11,6 +11,7 @@ import '../models/prayer_request.dart';
 import '../models/relationship.dart';
 import '../services/backup_service.dart';
 import '../services/reminder_coordinator.dart';
+import '../widgets/log_prayer_request_sheet.dart';
 import '../widgets/people_card.dart';
 
 class ContactDetailsPage extends StatefulWidget {
@@ -455,296 +456,46 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
     );
   }
 
-  void _showPrayerRequestSheet({PrayerRequest? request}) {
-    final descriptionController =
-        TextEditingController(text: request?.description ?? '');
-    final reflectionController =
-        TextEditingController(text: request?.reflectionNotes ?? '');
-    final categoryController =
-        TextEditingController(text: request?.category ?? '');
-    DateTime requestedAt = request?.requestedAt ?? DateTime.now();
-    DateTime? answeredAt = request?.answeredAt;
-    PrayerRequestStatus status =
-        request?.status ?? PrayerRequestStatus.pending;
-    int? interactionId = request?.interactionId;
+  Future<void> _showPrayerRequestSheet({PrayerRequest? request}) async {
+    final contactSnapshot = _buildContactFromState();
+    bool didSave = false;
 
-    final sheetFuture = showModalBottomSheet<String>(
+    final result = await showModalBottomSheet<String>(
       context: context,
       isScrollControlled: true,
       builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setSheetState) {
-            Future<void> pickRequestedDate() async {
-              final selected = await showDatePicker(
-                context: context,
-                initialDate: requestedAt,
-                firstDate: DateTime(2000),
-                lastDate: DateTime(2100),
-              );
-              if (selected == null) return;
-              setSheetState(() {
-                requestedAt = DateTime(
-                  selected.year,
-                  selected.month,
-                  selected.day,
-                );
-              });
+        return LogPrayerRequestSheet(
+          initialRequest: request,
+          availableContacts: [contactSnapshot],
+          initialContact: contactSnapshot,
+          loadInteractions: (contactId) async {
+            if (contactId == contactSnapshot.id) {
+              return List<Interaction>.from(_interactions);
             }
-
-            Future<void> pickAnsweredDate() async {
-              final initial = answeredAt ?? DateTime.now();
-              final selected = await showDatePicker(
-                context: context,
-                initialDate: initial,
-                firstDate: requestedAt,
-                lastDate: DateTime(2100),
-              );
-              if (selected == null) return;
-              setSheetState(() {
-                answeredAt = DateTime(
-                  selected.year,
-                  selected.month,
-                  selected.day,
-                );
-              });
-            }
-
-            void updateStatus(PrayerRequestStatus newStatus) {
-              setSheetState(() {
-                status = newStatus;
-                if (status == PrayerRequestStatus.answered) {
-                  answeredAt ??= DateTime.now();
-                } else if (status == PrayerRequestStatus.pending) {
-                  answeredAt = null;
-                }
-              });
-            }
-
-            Future<void> save() async {
-              final description = descriptionController.text.trim();
-              if (description.isEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Write a short prayer description first.'),
-                  ),
-                );
-                return;
-              }
-
-              final cleanedCategory = categoryController.text.trim();
-              final cleanedReflection = reflectionController.text.trim();
-
-              final payload = PrayerRequest(
-                id: request?.id,
-                contactId: widget.contact.id,
-                interactionId: interactionId,
-                description: description,
-                status: status,
-                requestedAt: requestedAt,
-                answeredAt: status == PrayerRequestStatus.answered
-                    ? (answeredAt ?? DateTime.now())
-                    : null,
-                category: cleanedCategory.isEmpty ? null : cleanedCategory,
-                reflectionNotes:
-                    cleanedReflection.isEmpty ? null : cleanedReflection,
-              );
-
-              PrayerRequest savedRequest;
-              if (request == null) {
-                savedRequest = await DBHelper().insertPrayerRequest(payload);
-              } else {
-                await DBHelper().updatePrayerRequest(payload);
-                savedRequest = payload;
-              }
-
-              final contactSnapshot = _buildContactFromState();
-              await ReminderCoordinator()
-                  .syncPrayerRequestReminder(contactSnapshot, savedRequest);
-
-              if (!mounted) return;
-              Navigator.pop(context, request == null ? 'created' : 'updated');
-            }
-
-            return Padding(
-              padding: EdgeInsets.only(
-                left: 16,
-                right: 16,
-                top: 24,
-                bottom: MediaQuery.of(context).viewInsets.bottom + 24,
-              ),
-              child: SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          request == null
-                              ? 'New prayer request'
-                              : 'Edit prayer request',
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.close),
-                          onPressed: () => Navigator.pop(context),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    TextField(
-                      controller: descriptionController,
-                      decoration: const InputDecoration(
-                        labelText: 'Request',
-                        border: OutlineInputBorder(),
-                      ),
-                      minLines: 2,
-                      maxLines: 4,
-                      textCapitalization: TextCapitalization.sentences,
-                    ),
-                    const SizedBox(height: 16),
-                    SegmentedButton<PrayerRequestStatus>(
-                      segments: PrayerRequestStatus.values
-                          .map(
-                            (option) => ButtonSegment<PrayerRequestStatus>(
-                              value: option,
-                              label: Text(option.label),
-                              icon: Icon(_statusIcon(option)),
-                            ),
-                          )
-                          .toList(),
-                      selected: {status},
-                      onSelectionChanged: (selection) {
-                        if (selection.isEmpty) return;
-                        updateStatus(selection.first);
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      leading: const Icon(Icons.calendar_month_outlined),
-                      title: const Text('Requested on'),
-                      subtitle: Text(_formatDate(requestedAt)),
-                      onTap: pickRequestedDate,
-                    ),
-                    if (status == PrayerRequestStatus.answered) ...[
-                      ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        leading: const Icon(Icons.celebration_outlined),
-                        title: const Text('Answered on'),
-                        subtitle: Text(
-                          answeredAt != null
-                              ? _formatDate(answeredAt!)
-                              : 'Set an answer date',
-                        ),
-                        trailing: Wrap(
-                          spacing: 4,
-                          children: [
-                            IconButton(
-                              icon: const Icon(Icons.today_outlined),
-                              tooltip: 'Use today',
-                              onPressed: () {
-                                setSheetState(() {
-                                  answeredAt = DateTime.now();
-                                });
-                              },
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.edit_outlined),
-                              onPressed: pickAnsweredDate,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                    const SizedBox(height: 12),
-                    DropdownButtonFormField<int?>(
-                      decoration: const InputDecoration(
-                        labelText: 'Linked interaction (optional)',
-                        border: OutlineInputBorder(),
-                      ),
-                      value: interactionId,
-                      isExpanded: true,
-                      items: [
-                        const DropdownMenuItem<int?>(
-                          value: null,
-                          child: Text('No linked interaction'),
-                        ),
-                        ..._interactions
-                            .where((interaction) => interaction.id != null)
-                            .map(
-                              (interaction) => DropdownMenuItem<int?>(
-                                value: interaction.id,
-                                child: Text(
-                                  '${_formatDate(interaction.occurredAt)} • ${interaction.summary}',
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            )
-                            .toList(),
-                      ],
-                      onChanged: (value) {
-                        setSheetState(() {
-                          interactionId = value;
-                        });
-                      },
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: categoryController,
-                      decoration: const InputDecoration(
-                        labelText: 'Category (optional)',
-                        border: OutlineInputBorder(),
-                      ),
-                      textCapitalization: TextCapitalization.words,
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: reflectionController,
-                      decoration: const InputDecoration(
-                        labelText: 'Reflection / praise notes',
-                        border: OutlineInputBorder(),
-                      ),
-                      minLines: 2,
-                      maxLines: 4,
-                      textCapitalization: TextCapitalization.sentences,
-                    ),
-                    const SizedBox(height: 24),
-                    SizedBox(
-                      width: double.infinity,
-                      child: FilledButton.icon(
-                        onPressed: save,
-                        icon: const Icon(Icons.check_circle_outline),
-                        label: Text(request == null ? 'Save request' : 'Update request'),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
+            return DBHelper().getInteractionsForContact(contactId);
+          },
+          onSaved: (_) {
+            didSave = true;
           },
         );
       },
     );
 
-    sheetFuture.then((result) {
-      if (result == null) return;
-      // Refresh to surface the newly created or updated prayer immediately.
-      _refreshPrayerRequests();
-      if (!mounted) return;
-      final message = result == 'created'
-          ? 'Prayer request added.'
-          : 'Prayer request updated.';
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message)),
-      );
-    });
+    if (!mounted) return;
 
-    sheetFuture.whenComplete(() {
-      descriptionController.dispose();
-      reflectionController.dispose();
-      categoryController.dispose();
-    });
+    if (didSave) {
+      await _refreshPrayerRequests();
+    }
+
+    if (result == null) {
+      return;
+    }
+
+    final message =
+        result == 'created' ? 'Prayer request added.' : 'Prayer request updated.';
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
   }
 
   void _confirmPrayerDelete(PrayerRequest request) {
