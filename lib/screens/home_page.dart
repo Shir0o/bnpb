@@ -607,6 +607,16 @@ class _HomePageState extends State<HomePage> {
                     borderRadius: BorderRadius.circular(16.0),
                   ),
                   prefixIcon: const Icon(Icons.search),
+                  suffixIcon: _searchController.text.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.clear),
+                          tooltip: 'Clear search query',
+                          onPressed: () {
+                            _searchController.clear();
+                            _filterContacts();
+                          },
+                        )
+                      : null,
                   hintText: 'Search contacts...',
                 ),
               ),
