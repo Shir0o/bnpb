@@ -423,9 +423,9 @@ class _HomePageState extends State<HomePage> {
       return Padding(
         padding: const EdgeInsets.only(bottom: 12),
         child: ExpansionTile(
+          tilePadding: EdgeInsets.zero,
           title: Text(location),
-          childrenPadding:
-              const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          childrenPadding: const EdgeInsets.only(top: 8),
           children: contactsInLocation.map((contact) {
             final match = _activeMatches[contact.id];
             return Padding(
@@ -732,7 +732,7 @@ class _HomePageState extends State<HomePage> {
             )
           else
             SliverPadding(
-              padding: const EdgeInsets.only(bottom: 24),
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
               sliver: SliverList(
                 delegate: SliverChildBuilderDelegate(
                   (context, index) => groupedContactSections[index],
