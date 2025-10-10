@@ -842,6 +842,21 @@ class DBHelper {
         .toList();
   }
 
+  Future<List<Interaction>> getPrayerFocusInteractions({int limit = 10}) async {
+    final db = await database;
+    final rows = await db.query(
+      'interactions',
+      where: 'markForPrayer = ?',
+      whereArgs: const [1],
+      orderBy: 'occurredAt DESC',
+      limit: limit,
+    );
+
+    return rows
+        .map((row) => Interaction.fromMap(Map<String, dynamic>.from(row)))
+        .toList();
+  }
+
   Future<Map<PrayerRequestStatus, int>> getPrayerRequestCounts() async {
     final db = await database;
     final rows = await db.rawQuery('''

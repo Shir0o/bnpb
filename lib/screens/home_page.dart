@@ -8,6 +8,7 @@ import 'package:intl/intl.dart';
 
 import '../db/db_helper.dart';
 import '../models/contact.dart';
+import '../models/interaction.dart';
 import '../models/prayer_request.dart';
 import '../services/contact_search_service.dart';
 import '../services/reminder_coordinator.dart';
@@ -83,6 +84,7 @@ class _HomePageState extends State<HomePage> {
   };
   List<PrayerRequest> _pendingPrayerReminders = [];
   List<PrayerRequest> _recentAnsweredPrayers = [];
+  List<Interaction> _prayerFocusInteractions = [];
   PrayerRequestStatus? _selectedPrayerStatusFilter;
   bool _isLoadingPrayerInsights = false;
   Map<String, ContactMatch> _activeMatches = {};
@@ -149,6 +151,8 @@ class _HomePageState extends State<HomePage> {
       _isLoadingPrayerInsights = true;
     });
 
+    const prayerFocusLimit = 5;
+
     final counts = await _dbHelper.getPrayerRequestCounts();
     final pending = await _dbHelper.getPrayerRequests(
       status: PrayerRequestStatus.pending,
@@ -159,6 +163,8 @@ class _HomePageState extends State<HomePage> {
       limit: 3,
       latestAnsweredFirst: true,
     );
+    final prayerFocusInteractions =
+        await _dbHelper.getPrayerFocusInteractions(limit: prayerFocusLimit);
 
     if (!mounted) return;
     setState(() {
@@ -168,6 +174,7 @@ class _HomePageState extends State<HomePage> {
       };
       _pendingPrayerReminders = pending;
       _recentAnsweredPrayers = answered;
+      _prayerFocusInteractions = prayerFocusInteractions;
       _isLoadingPrayerInsights = false;
     });
   }
@@ -383,6 +390,29 @@ class _HomePageState extends State<HomePage> {
                       }
                     },
                   ),
+                );
+              }),
+            ],
+            if (_prayerFocusInteractions.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Text('Prayer focus interactions',
+                  style: theme.textTheme.titleSmall),
+              const SizedBox(height: 8),
+              ..._prayerFocusInteractions.map((interaction) {
+                final contact = _contactLookup[interaction.contactId];
+                final contactName =
+                    _displayNameForContactId(_contactLookup, interaction.contactId);
+                return ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  dense: true,
+                  leading: const Icon(Icons.self_improvement_outlined),
+                  title: Text(interaction.summary),
+                  subtitle: Text(
+                    '${_formatDate(interaction.occurredAt)} • $contactName',
+                  ),
+                  onTap: contact != null
+                      ? () => _navigateToContactDetails(contact)
+                      : null,
                 );
               }),
             ],
