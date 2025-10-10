@@ -72,6 +72,38 @@ class _SuggestionTile extends StatelessWidget {
   }
 }
 
+/// Displays the empty prayer insights call-to-action when no requests exist.
+class PrayerInsightsEmptyState extends StatelessWidget {
+  const PrayerInsightsEmptyState({
+    super.key,
+    required this.onAddRequest,
+  });
+
+  final VoidCallback onAddRequest;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Log prayer requests from a contact to receive reminders and celebrate answered prayers here.',
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: theme.colorScheme.outline,
+          ),
+        ),
+        const SizedBox(height: 12),
+        FilledButton(
+          onPressed: onAddRequest,
+          child: const Text('Add a prayer request'),
+        ),
+      ],
+    );
+  }
+}
+
 class _HomePageState extends State<HomePage> {
   final DBHelper _dbHelper = DBHelper();
   List<Contact> _contacts = [];
@@ -329,11 +361,8 @@ class _HomePageState extends State<HomePage> {
             ),
             if (!hasAnyPrayer && !_isLoadingPrayerInsights) ...[
               const SizedBox(height: 12),
-              Text(
-                'Log prayer requests from a contact to receive reminders and celebrate answered prayers here.',
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.outline,
-                ),
+              PrayerInsightsEmptyState(
+                onAddRequest: _openPrayerRequestsPage,
               ),
             ],
             if (_pendingPrayerReminders.isNotEmpty) ...[
