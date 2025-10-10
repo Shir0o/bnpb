@@ -726,6 +726,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
       },
     ).then((result) {
       if (result == null) return;
+      // Refresh to surface the newly created or updated prayer immediately.
       _refreshPrayerRequests();
       if (!mounted) return;
       final message = result == 'created'
@@ -1369,6 +1370,13 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
 
     addSection(_buildViewMeetingNotesCard(contact));
     addSection(_buildViewRecognitionCard(contact));
+    addSection(
+      _buildCard(
+        children: [
+          _buildPrayerSection(),
+        ],
+      ),
+    );
     addSection(_buildViewTagsCard(contact));
     return sections;
   }
@@ -1740,39 +1748,59 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
     final theme = Theme.of(context);
     final requests = _filteredPrayerRequests;
     final filters = <PrayerRequestStatus?>[null, ...PrayerRequestStatus.values];
+    final hasPrayers = _prayerRequests.isNotEmpty;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: filters.map((status) {
-            final isSelected = status == null
-                ? _selectedPrayerStatus == null
-                : _selectedPrayerStatus == status;
-            final count = status == null
-                ? _prayerRequests.length
-                : _countPrayerRequestsFor(status);
-            final label = status == null
-                ? 'All ($count)'
-                : '${status.label} ($count)';
-            return ChoiceChip(
-              label: Text(label),
-              selected: isSelected,
-              onSelected: (selected) {
-                setState(() {
-                  if (status == null) {
-                    _selectedPrayerStatus = null;
-                  } else {
-                    _selectedPrayerStatus = selected ? status : null;
-                  }
-                });
-              },
-            );
-          }).toList(),
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                'Prayer support',
+                style: theme.textTheme.titleMedium,
+              ),
+            ),
+            if (hasPrayers)
+              FilledButton.icon(
+                onPressed: () => _showPrayerRequestSheet(),
+                icon: const Icon(Icons.add_circle_outline),
+                label: const Text('Log prayer'),
+              ),
+          ],
         ),
         const SizedBox(height: 12),
+        if (hasPrayers) ...[
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: filters.map((status) {
+              final isSelected = status == null
+                  ? _selectedPrayerStatus == null
+                  : _selectedPrayerStatus == status;
+              final count = status == null
+                  ? _prayerRequests.length
+                  : _countPrayerRequestsFor(status);
+              final label = status == null
+                  ? 'All ($count)'
+                  : '${status.label} ($count)';
+              return ChoiceChip(
+                label: Text(label),
+                selected: isSelected,
+                onSelected: (selected) {
+                  setState(() {
+                    if (status == null) {
+                      _selectedPrayerStatus = null;
+                    } else {
+                      _selectedPrayerStatus = selected ? status : null;
+                    }
+                  });
+                },
+              );
+            }).toList(),
+          ),
+          const SizedBox(height: 12),
+        ],
         if (_isLoadingPrayers)
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 16),
@@ -1791,6 +1819,17 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
               ),
             ),
           ),
+        if (!_isLoadingPrayers && requests.isEmpty && !hasPrayers) ...[
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: () => _showPrayerRequestSheet(),
+              icon: const Icon(Icons.add_circle_outline),
+              label: const Text('Log prayer'),
+            ),
+          ),
+        ],
         if (!_isLoadingPrayers && requests.isNotEmpty)
           Column(
             children: requests
