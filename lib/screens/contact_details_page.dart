@@ -664,6 +664,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
                         border: OutlineInputBorder(),
                       ),
                       value: interactionId,
+                      isExpanded: true,
                       items: [
                         const DropdownMenuItem<int?>(
                           value: null,
