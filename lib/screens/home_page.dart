@@ -467,9 +467,6 @@ class _HomePageState extends State<HomePage> {
         return LogPrayerRequestSheet(
           availableContacts: List<Contact>.from(_contacts),
           initialContact: initialContact,
-          loadInteractions: (contactId) {
-            return DBHelper().getInteractionsForContact(contactId);
-          },
           onSaved: (_) {
             didSave = true;
           },

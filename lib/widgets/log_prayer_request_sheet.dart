@@ -3,7 +3,6 @@ import 'package:intl/intl.dart';
 
 import '../db/db_helper.dart';
 import '../models/contact.dart';
-import '../models/interaction.dart';
 import '../models/prayer_request.dart';
 import '../services/reminder_coordinator.dart';
 
@@ -14,7 +13,6 @@ class LogPrayerRequestSheet extends StatefulWidget {
     this.initialRequest,
     required this.availableContacts,
     this.initialContact,
-    required this.loadInteractions,
     required this.onSaved,
   });
 
@@ -26,9 +24,6 @@ class LogPrayerRequestSheet extends StatefulWidget {
 
   /// Contact to preselect when launching the sheet.
   final Contact? initialContact;
-
-  /// Lazy loader for interaction options tied to a contact id.
-  final Future<List<Interaction>> Function(String contactId) loadInteractions;
 
   /// Callback triggered after the request is persisted.
   final ValueChanged<PrayerRequest> onSaved;
@@ -44,10 +39,7 @@ class _LogPrayerRequestSheetState extends State<LogPrayerRequestSheet> {
   late DateTime _requestedAt;
   DateTime? _answeredAt;
   late PrayerRequestStatus _status;
-  int? _interactionId;
   String? _selectedContactId;
-  List<Interaction> _interactions = const [];
-  bool _isLoadingInteractions = false;
   bool _isSaving = false;
 
   @override
@@ -64,8 +56,6 @@ class _LogPrayerRequestSheetState extends State<LogPrayerRequestSheet> {
     _requestedAt = widget.initialRequest?.requestedAt ?? DateTime.now();
     _answeredAt = widget.initialRequest?.answeredAt;
     _status = widget.initialRequest?.status ?? PrayerRequestStatus.pending;
-    _interactionId = widget.initialRequest?.interactionId;
-
     final presetContactId = widget.initialContact?.id ??
         widget.initialRequest?.contactId ??
         (widget.availableContacts.length == 1
@@ -74,9 +64,6 @@ class _LogPrayerRequestSheetState extends State<LogPrayerRequestSheet> {
     if (presetContactId != null &&
         widget.availableContacts.any((contact) => contact.id == presetContactId)) {
       _selectedContactId = presetContactId;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _loadInteractionsForContact(presetContactId);
-      });
     }
   }
 
@@ -87,41 +74,6 @@ class _LogPrayerRequestSheetState extends State<LogPrayerRequestSheet> {
     _categoryController.dispose();
     super.dispose();
   }
-
-  Future<void> _loadInteractionsForContact(String contactId) async {
-    setState(() {
-      _isLoadingInteractions = true;
-    });
-
-    try {
-      final fetched = await widget.loadInteractions(contactId);
-      if (!mounted || _selectedContactId != contactId) {
-        return;
-      }
-      final sorted = List<Interaction>.from(fetched)
-        ..sort((a, b) => b.occurredAt.compareTo(a.occurredAt));
-      setState(() {
-        _interactions = sorted;
-        if (!_interactions.any((interaction) => interaction.id == _interactionId)) {
-          _interactionId = null;
-        }
-        _isLoadingInteractions = false;
-      });
-    } catch (error) {
-      if (!mounted || _selectedContactId != contactId) {
-        return;
-      }
-      setState(() {
-        _interactions = const [];
-        _interactionId = null;
-        _isLoadingInteractions = false;
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to load interactions: $error')),
-      );
-    }
-  }
-
   Future<void> _pickRequestedDate() async {
     final selected = await showDatePicker(
       context: context,
@@ -196,7 +148,6 @@ class _LogPrayerRequestSheetState extends State<LogPrayerRequestSheet> {
     final payload = PrayerRequest(
       id: widget.initialRequest?.id,
       contactId: selectedContact.id,
-      interactionId: _interactionId,
       description: description,
       status: _status,
       requestedAt: _requestedAt,
@@ -299,15 +250,7 @@ class _LogPrayerRequestSheetState extends State<LogPrayerRequestSheet> {
                   : (value) {
                       setState(() {
                         _selectedContactId = value;
-                        _interactionId = null;
                       });
-                      if (value != null) {
-                        _loadInteractionsForContact(value);
-                      } else {
-                        setState(() {
-                          _interactions = const [];
-                        });
-                      }
                     },
               items: widget.availableContacts
                   .map(
@@ -386,42 +329,6 @@ class _LogPrayerRequestSheetState extends State<LogPrayerRequestSheet> {
                 ),
               ),
             ],
-            if (_isLoadingInteractions) ...[
-              const SizedBox(height: 12),
-              const LinearProgressIndicator(),
-            ],
-            const SizedBox(height: 12),
-            DropdownButtonFormField<int?>(
-              decoration: const InputDecoration(
-                labelText: 'Linked interaction (optional)',
-                border: OutlineInputBorder(),
-              ),
-              value: _interactionId,
-              isExpanded: true,
-              items: [
-                const DropdownMenuItem<int?>(
-                  value: null,
-                  child: Text('No linked interaction'),
-                ),
-                ..._interactions
-                    .where((interaction) => interaction.id != null)
-                    .map(
-                      (interaction) => DropdownMenuItem<int?>(
-                        value: interaction.id,
-                        child: Text(
-                          '${_formatDate(interaction.occurredAt)} • ${interaction.summary}',
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    )
-                    .toList(),
-              ],
-              onChanged: (value) {
-                setState(() {
-                  _interactionId = value;
-                });
-              },
-            ),
             const SizedBox(height: 12),
             TextField(
               controller: _categoryController,
@@ -435,7 +342,7 @@ class _LogPrayerRequestSheetState extends State<LogPrayerRequestSheet> {
             TextField(
               controller: _reflectionController,
               decoration: const InputDecoration(
-                labelText: 'Reflection / praise notes',
+                labelText: 'Notes',
                 border: OutlineInputBorder(),
               ),
               minLines: 2,

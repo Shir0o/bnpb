@@ -468,12 +468,6 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
           initialRequest: request,
           availableContacts: [contactSnapshot],
           initialContact: contactSnapshot,
-          loadInteractions: (contactId) async {
-            if (contactId == contactSnapshot.id) {
-              return List<Interaction>.from(_interactions);
-            }
-            return DBHelper().getInteractionsForContact(contactId);
-          },
           onSaved: (_) {
             didSave = true;
           },
