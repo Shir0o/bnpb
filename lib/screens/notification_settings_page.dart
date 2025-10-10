@@ -133,7 +133,10 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
           padding: const EdgeInsets.only(bottom: 24),
           children: [
             if (_isUpdating || _isPurging)
-              const LinearProgressIndicator(minHeight: 2),
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16),
+                child: LinearProgressIndicator(minHeight: 2),
+              ),
             Padding(
               padding: const EdgeInsets.all(16),
               child: Text(
