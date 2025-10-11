@@ -7,11 +7,9 @@ import 'package:speech_to_text/speech_to_text.dart';
 import '../db/db_helper.dart';
 import '../models/contact.dart';
 import '../models/interaction.dart';
-import '../models/prayer_request.dart';
 import '../models/relationship.dart';
 import '../services/backup_service.dart';
 import '../services/reminder_coordinator.dart';
-import '../widgets/log_prayer_request_sheet.dart';
 import '../widgets/people_card.dart';
 
 class ContactDetailsPage extends StatefulWidget {
@@ -75,9 +73,6 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
   bool _isLoadingReferenceData = false;
   List<Relationship> _relationships = [];
   bool _isLoadingRelationships = false;
-  List<PrayerRequest> _prayerRequests = [];
-  bool _isLoadingPrayers = false;
-  PrayerRequestStatus? _selectedPrayerStatus = PrayerRequestStatus.pending;
   Map<int, Interaction> _interactionLookup = {};
 
   @override
@@ -90,12 +85,6 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
       for (final interaction in _interactions)
         if (interaction.id != null) interaction.id!: interaction,
     };
-    _prayerRequests = List<PrayerRequest>.from(contact.prayerRequests)
-      ..sort((a, b) => b.requestedAt.compareTo(a.requestedAt));
-    _selectedPrayerStatus = _prayerRequests.any(
-            (request) => request.status == PrayerRequestStatus.pending)
-        ? PrayerRequestStatus.pending
-        : null;
     _applyContactData(contact);
 
     _interactionSearchController.addListener(() {
@@ -106,7 +95,6 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
 
     _loadReferenceData();
     _refreshInteractions();
-    _refreshPrayerRequests();
   }
 
   @override
@@ -173,26 +161,6 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
           if (interaction.id != null) interaction.id!: interaction,
       };
       _isLoadingInteractions = false;
-    });
-  }
-
-  Future<void> _refreshPrayerRequests() async {
-    setState(() {
-      _isLoadingPrayers = true;
-    });
-
-    final requests =
-        await DBHelper().getPrayerRequestsForContact(widget.contact.id);
-
-    if (!mounted) return;
-    setState(() {
-      _prayerRequests = requests
-        ..sort((a, b) => b.requestedAt.compareTo(a.requestedAt));
-      if (_selectedPrayerStatus != null &&
-          !_prayerRequests.any((request) => request.status == _selectedPrayerStatus)) {
-        _selectedPrayerStatus = null;
-      }
-      _isLoadingPrayers = false;
     });
   }
 
@@ -354,63 +322,6 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
     return null;
   }
 
-  List<PrayerRequest> get _filteredPrayerRequests {
-    final filter = _selectedPrayerStatus;
-    final sorted = List<PrayerRequest>.from(_prayerRequests)
-      ..sort((a, b) => b.requestedAt.compareTo(a.requestedAt));
-    if (filter == null) {
-      return sorted;
-    }
-    return sorted.where((request) => request.status == filter).toList();
-  }
-
-  int _countPrayerRequestsFor(PrayerRequestStatus status) {
-    return _prayerRequests
-        .where((request) => request.status == status)
-        .length;
-  }
-
-  Color _statusBackgroundColor(
-    PrayerRequestStatus status,
-    ThemeData theme,
-  ) {
-    final scheme = theme.colorScheme;
-    switch (status) {
-      case PrayerRequestStatus.pending:
-        return scheme.tertiaryContainer;
-      case PrayerRequestStatus.answered:
-        return scheme.secondaryContainer;
-      case PrayerRequestStatus.archived:
-        return scheme.surfaceVariant;
-    }
-  }
-
-  Color _statusForegroundColor(
-    PrayerRequestStatus status,
-    ThemeData theme,
-  ) {
-    final scheme = theme.colorScheme;
-    switch (status) {
-      case PrayerRequestStatus.pending:
-        return scheme.onTertiaryContainer;
-      case PrayerRequestStatus.answered:
-        return scheme.onSecondaryContainer;
-      case PrayerRequestStatus.archived:
-        return scheme.onSurfaceVariant;
-    }
-  }
-
-  IconData _statusIcon(PrayerRequestStatus status) {
-    switch (status) {
-      case PrayerRequestStatus.pending:
-        return Icons.hourglass_top_outlined;
-      case PrayerRequestStatus.answered:
-        return Icons.volunteer_activism_outlined;
-      case PrayerRequestStatus.archived:
-        return Icons.inventory_2_outlined;
-    }
-  }
-
   String _formatDate(DateTime date) {
     return DateFormat.yMMMd().format(date);
   }
@@ -420,124 +331,6 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
       return null;
     }
     return _interactionLookup[interactionId]?.summary;
-  }
-
-  Future<void> _updatePrayerStatus(
-    PrayerRequest request,
-    PrayerRequestStatus status,
-  ) async {
-    final updated = request.copyWith(
-      status: status,
-      answeredAt: status == PrayerRequestStatus.answered
-          ? (request.answeredAt ?? DateTime.now())
-          : status == PrayerRequestStatus.pending
-              ? null
-              : request.answeredAt,
-    );
-
-    await DBHelper().updatePrayerRequest(updated);
-    await _refreshPrayerRequests();
-
-    if (!mounted) return;
-
-    final message = () {
-      switch (status) {
-        case PrayerRequestStatus.pending:
-          return 'Prayer request reopened.';
-        case PrayerRequestStatus.answered:
-          return 'Prayer marked as answered. Celebrate!';
-        case PrayerRequestStatus.archived:
-          return 'Prayer request archived.';
-      }
-    }();
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
-  }
-
-  Future<void> _showPrayerRequestSheet({PrayerRequest? request}) async {
-    final contactSnapshot = _buildContactFromState();
-    bool didSave = false;
-
-    final result = await showModalBottomSheet<String>(
-      context: context,
-      isScrollControlled: true,
-      builder: (context) {
-        return LogPrayerRequestSheet(
-          initialRequest: request,
-          availableContacts: [contactSnapshot],
-          initialContact: contactSnapshot,
-          onSaved: (_) {
-            didSave = true;
-          },
-        );
-      },
-    );
-
-    if (!mounted) return;
-
-    if (didSave) {
-      await _refreshPrayerRequests();
-    }
-
-    if (result == null) {
-      return;
-    }
-
-    final message =
-        result == 'created' ? 'Prayer request added.' : 'Prayer request updated.';
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
-  }
-
-  void _confirmPrayerDelete(PrayerRequest request) {
-    if (request.id == null) {
-      return;
-    }
-
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Delete prayer request'),
-          content: const Text(
-            'This will remove the prayer from the contact\'s timeline. Continue?',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () async {
-                Navigator.pop(context);
-                await _deletePrayerRequest(request);
-              },
-              style: FilledButton.styleFrom(
-                backgroundColor: Theme.of(context).colorScheme.error,
-              ),
-              child: const Text('Delete'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  Future<void> _deletePrayerRequest(PrayerRequest request) async {
-    if (request.id == null) {
-      return;
-    }
-    await DBHelper().deletePrayerRequest(request.id!);
-    await ReminderCoordinator().cancelPrayerRequestReminder(request);
-    await _refreshPrayerRequests();
-
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Prayer request removed.')),
-    );
   }
 
   Contact _buildContactFromState({List<Interaction>? interactionsOverride}) {
@@ -1124,13 +917,6 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
 
     addSection(_buildViewMeetingNotesCard(contact));
     addSection(_buildViewRecognitionCard(contact));
-    addSection(
-      _buildCard(
-        children: [
-          _buildPrayerSection(),
-        ],
-      ),
-    );
     addSection(_buildViewTagsCard(contact));
     return sections;
   }
@@ -1495,270 +1281,6 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
         const SizedBox(height: 12),
         _buildInteractionSection(),
       ],
-    );
-  }
-
-  Widget _buildPrayerSection() {
-    final theme = Theme.of(context);
-    final requests = _filteredPrayerRequests;
-    final filters = <PrayerRequestStatus?>[null, ...PrayerRequestStatus.values];
-    final hasPrayers = _prayerRequests.isNotEmpty;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                'Prayer support',
-                style: theme.textTheme.titleMedium,
-              ),
-            ),
-            if (hasPrayers)
-              FilledButton.icon(
-                onPressed: () => _showPrayerRequestSheet(),
-                icon: const Icon(Icons.add_circle_outline),
-                label: const Text('Log prayer'),
-              ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        if (hasPrayers) ...[
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: filters.map((status) {
-              final isSelected = status == null
-                  ? _selectedPrayerStatus == null
-                  : _selectedPrayerStatus == status;
-              final count = status == null
-                  ? _prayerRequests.length
-                  : _countPrayerRequestsFor(status);
-              final label = status == null
-                  ? 'All ($count)'
-                  : '${status.label} ($count)';
-              return ChoiceChip(
-                label: Text(label),
-                selected: isSelected,
-                onSelected: (selected) {
-                  setState(() {
-                    if (status == null) {
-                      _selectedPrayerStatus = null;
-                    } else {
-                      _selectedPrayerStatus = selected ? status : null;
-                    }
-                  });
-                },
-              );
-            }).toList(),
-          ),
-          const SizedBox(height: 12),
-        ],
-        if (_isLoadingPrayers)
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 16),
-            child: Center(child: CircularProgressIndicator()),
-          ),
-        if (!_isLoadingPrayers && requests.isEmpty)
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 12),
-            child: Text(
-              _prayerRequests.isEmpty
-                  ? 'Log a prayer to start tracking how you are supporting this contact.'
-                  : 'No prayers match this filter right now.',
-              textAlign: TextAlign.center,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.outline,
-              ),
-            ),
-          ),
-        if (!_isLoadingPrayers && requests.isEmpty && !hasPrayers) ...[
-          const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton.icon(
-              onPressed: () => _showPrayerRequestSheet(),
-              icon: const Icon(Icons.add_circle_outline),
-              label: const Text('Log prayer'),
-            ),
-          ),
-        ],
-        if (!_isLoadingPrayers && requests.isNotEmpty)
-          Column(
-            children: requests
-                .map((request) => _buildPrayerRequestTile(request))
-                .toList(),
-          ),
-      ],
-    );
-  }
-
-  Widget _buildPrayerRequestTile(PrayerRequest request) {
-    final theme = Theme.of(context);
-    final metadataChips = <Widget>[
-      Chip(
-        avatar: Icon(
-          _statusIcon(request.status),
-          size: 18,
-          color: _statusForegroundColor(request.status, theme),
-        ),
-        backgroundColor: _statusBackgroundColor(request.status, theme),
-        label: Text(
-          request.status.label,
-          style: theme.textTheme.bodyMedium?.copyWith(
-            color: _statusForegroundColor(request.status, theme),
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ),
-      Chip(
-        avatar: const Icon(Icons.calendar_today_outlined, size: 18),
-        label: Text('Requested ${_formatDate(request.requestedAt)}'),
-      ),
-    ];
-
-    if (request.answeredAt != null) {
-      metadataChips.add(
-        Chip(
-          avatar: const Icon(Icons.celebration_outlined, size: 18),
-          label: Text('Answered ${_formatDate(request.answeredAt!)}'),
-        ),
-      );
-    }
-
-    if ((request.category ?? '').isNotEmpty) {
-      metadataChips.add(
-        Chip(
-          avatar: const Icon(Icons.label_outline, size: 18),
-          label: Text(request.category!),
-        ),
-      );
-    }
-
-    final linkedSummary = _interactionSummaryFor(request.interactionId);
-    if (linkedSummary != null) {
-      metadataChips.add(
-        InputChip(
-          avatar: const Icon(Icons.timeline_outlined, size: 18),
-          label: Text(linkedSummary),
-          onPressed: () {
-            final interaction = _interactionLookup[request.interactionId];
-            if (interaction == null) return;
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                  '${_formatDate(interaction.occurredAt)} • ${interaction.summary}',
-                ),
-              ),
-            );
-          },
-        ),
-      );
-    }
-
-    final actionButtons = <Widget>[
-      if (request.status != PrayerRequestStatus.answered)
-        TextButton.icon(
-          onPressed: () =>
-              _updatePrayerStatus(request, PrayerRequestStatus.answered),
-          icon: const Icon(Icons.check_circle_outline),
-          label: const Text('Mark answered'),
-        ),
-      if (request.status != PrayerRequestStatus.pending)
-        TextButton.icon(
-          onPressed: () =>
-              _updatePrayerStatus(request, PrayerRequestStatus.pending),
-          icon: const Icon(Icons.restart_alt_outlined),
-          label: const Text('Reopen'),
-        ),
-      if (request.status != PrayerRequestStatus.archived)
-        TextButton.icon(
-          onPressed: () =>
-              _updatePrayerStatus(request, PrayerRequestStatus.archived),
-          icon: const Icon(Icons.archive_outlined),
-          label: const Text('Archive'),
-        ),
-      TextButton.icon(
-        onPressed: () => _showPrayerRequestSheet(request: request),
-        icon: const Icon(Icons.edit_outlined),
-        label: const Text('Edit'),
-      ),
-    ];
-
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      color: theme.colorScheme.surfaceVariant.withOpacity(0.35),
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Text(
-                    request.description,
-                    style: theme.textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-                PopupMenuButton<String>(
-                  onSelected: (value) {
-                    switch (value) {
-                      case 'edit':
-                        _showPrayerRequestSheet(request: request);
-                        break;
-                      case 'delete':
-                        _confirmPrayerDelete(request);
-                        break;
-                    }
-                  },
-                  itemBuilder: (context) => [
-                    const PopupMenuItem(
-                      value: 'edit',
-                      child: Text('Edit'),
-                    ),
-                    const PopupMenuItem(
-                      value: 'delete',
-                      child: Text('Delete'),
-                    ),
-                  ],
-                  icon: const Icon(Icons.more_vert),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            if (metadataChips.isNotEmpty)
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: metadataChips,
-              ),
-            if ((request.reflectionNotes ?? '').isNotEmpty) ...[
-              const SizedBox(height: 8),
-              Text(
-                request.reflectionNotes!,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  fontStyle: FontStyle.italic,
-                ),
-              ),
-            ],
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: actionButtons,
-            ),
-          ],
-        ),
-      ),
     );
   }
 
