@@ -371,6 +371,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
     final maxY = values.reduce(math.max);
     final double yInterval =
         (maxY == 0 ? 1 : math.max(1, maxY / 4)).toDouble();
+    final labelStep = math.min(timeline.length, math.max(1, (timeline.length / 6).ceil()));
 
     return Card(
       child: Padding(
@@ -430,9 +431,13 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                     bottomTitles: AxisTitles(
                       sideTitles: SideTitles(
                         showTitles: true,
+                        reservedSize: 44,
                         getTitlesWidget: (value, meta) {
                           final index = value.toInt();
                           if (index < 0 || index >= timeline.length) {
+                            return const SizedBox.shrink();
+                          }
+                          if (index % labelStep != 0 && index != 0 && index != timeline.length - 1) {
                             return const SizedBox.shrink();
                           }
                           final date = timeline[index].date;
