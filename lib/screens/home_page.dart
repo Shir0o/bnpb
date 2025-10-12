@@ -16,9 +16,9 @@ import '../services/reminder_coordinator.dart';
 import '../widgets/backup_restore_sheet.dart';
 import '../widgets/export_options_sheet.dart';
 import '../widgets/people_card.dart';
-import '../widgets/log_prayer_request_sheet.dart';
 import 'contact_details_page.dart';
 import 'met_at_lookup_page.dart';
+import 'prayer_diary_page.dart';
 import 'prayer_requests_page.dart';
 import 'relationship_explorer_page.dart';
 
@@ -448,49 +448,6 @@ class _HomePageState extends State<HomePage> {
     return DateFormat.yMMMd().format(date);
   }
 
-  Future<void> _openLogPrayerRequestSheet({Contact? initialContact}) async {
-    if (_contacts.isEmpty) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Add a contact before logging a prayer request.'),
-        ),
-      );
-      return;
-    }
-
-    bool didSave = false;
-    final result = await showModalBottomSheet<String>(
-      context: context,
-      isScrollControlled: true,
-      builder: (context) {
-        return LogPrayerRequestSheet(
-          availableContacts: List<Contact>.from(_contacts),
-          initialContact: initialContact,
-          onSaved: (_) {
-            didSave = true;
-          },
-        );
-      },
-    );
-
-    if (!mounted || !didSave) {
-      return;
-    }
-
-    await _fetchContacts();
-
-    if (!mounted) {
-      return;
-    }
-
-    final message =
-        result == 'updated' ? 'Prayer request updated.' : 'Prayer request added.';
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
-  }
-
   void _openPrayerRequestsPage() {
     Navigator.of(context).push(
       MaterialPageRoute(
@@ -752,8 +709,21 @@ class _HomePageState extends State<HomePage> {
         actions: [
           IconButton(
             icon: const Icon(Icons.self_improvement_outlined),
-            tooltip: 'Log prayer',
-            onPressed: () => _openLogPrayerRequestSheet(),
+            tooltip: 'Prayer diary',
+            onPressed: () {
+              Navigator.of(context)
+                  .push(
+                MaterialPageRoute(
+                  builder: (context) => const PrayerDiaryPage(),
+                ),
+              )
+                  .then((_) {
+                if (!mounted) {
+                  return;
+                }
+                unawaited(_fetchContacts());
+              });
+            },
           ),
           IconButton(
             icon: const Icon(Icons.travel_explore_outlined),
