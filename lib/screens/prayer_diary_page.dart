@@ -233,11 +233,98 @@ class _PrayerDiaryPageState extends State<PrayerDiaryPage> {
       ),
       title: Text(request.description),
       subtitle: Text(details),
-      trailing: Chip(
-        label: Text(request.status.label),
+      trailing: PopupMenuButton<PrayerRequestStatus>(
+        tooltip: 'Update status',
+        onSelected: (status) => _updateRequestStatus(request, status),
+        itemBuilder: (context) {
+          return PrayerRequestStatus.values.map((status) {
+            return CheckedPopupMenuItem<PrayerRequestStatus>(
+              value: status,
+              checked: status == request.status,
+              child: Row(
+                children: [
+                  Icon(
+                    _iconForStatus(status),
+                    color: _iconColorForStatus(theme, status),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(status.label),
+                ],
+              ),
+            );
+          }).toList();
+        },
+        child: Chip(
+          label: Text(request.status.label),
+        ),
       ),
       onTap: () => _openPrayerRequestDetails(request),
     );
+  }
+
+  Future<void> _updateRequestStatus(
+    PrayerRequest request,
+    PrayerRequestStatus status,
+  ) async {
+    if (request.status == status) {
+      return;
+    }
+
+    DateTime? answeredAt;
+    switch (status) {
+      case PrayerRequestStatus.pending:
+        answeredAt = null;
+        break;
+      case PrayerRequestStatus.answered:
+        answeredAt = request.answeredAt ?? DateTime.now();
+        break;
+      case PrayerRequestStatus.archived:
+        answeredAt = request.answeredAt;
+        break;
+    }
+
+    final updated = request.copyWith(
+      status: status,
+      answeredAt: answeredAt,
+    );
+
+    final previousRequests = List<PrayerRequest>.from(_requests);
+    setState(() {
+      _requests = _requests
+          .map((entry) => entry.id == request.id ? updated : entry)
+          .toList();
+    });
+
+    try {
+      await _dbHelper.updatePrayerRequest(updated);
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(_statusChangeMessage(status))),
+      );
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _requests = previousRequests;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to update status: $error')),
+      );
+    }
+  }
+
+  String _statusChangeMessage(PrayerRequestStatus status) {
+    switch (status) {
+      case PrayerRequestStatus.pending:
+        return 'Prayer request marked as pending.';
+      case PrayerRequestStatus.answered:
+        return 'Prayer request marked as answered.';
+      case PrayerRequestStatus.archived:
+        return 'Prayer request archived.';
+    }
   }
 
   IconData _iconForStatus(PrayerRequestStatus status) {
