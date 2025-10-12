@@ -4,8 +4,7 @@ import 'package:intl/intl.dart';
 import '../db/db_helper.dart';
 import '../models/contact.dart';
 import '../models/prayer_request.dart';
-import '../services/reminder_coordinator.dart';
-import 'contact_details_page.dart';
+import 'prayer_request_details_page.dart';
 
 /// Displays a full list of prayer requests with filtering and refresh support.
 class PrayerRequestsPage extends StatefulWidget {
@@ -75,22 +74,6 @@ class _PrayerRequestsPageState extends State<PrayerRequestsPage> {
       setState(() {
         _isLoading = false;
       });
-    }
-  }
-
-  Future<void> _deleteContact(String contactId) async {
-    try {
-      await _dbHelper.deleteContact(contactId);
-      await ReminderCoordinator().cancelAllForContact(contactId);
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Contact deleted successfully.')),
-      );
-    } catch (error) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to delete contact: $error')),
-      );
     }
   }
 
@@ -226,7 +209,7 @@ class _PrayerRequestsPageState extends State<PrayerRequestsPage> {
         subtitle: Text(
           '${_formatDate(request.requestedAt)} • $contactName',
         ),
-        onTap: () => _openContactDetails(request.contactId),
+        onTap: () => _openPrayerRequestDetails(request),
       ),
     );
   }
@@ -261,7 +244,7 @@ class _PrayerRequestsPageState extends State<PrayerRequestsPage> {
               color: theme.colorScheme.onSecondaryContainer,
             ),
           ),
-          onTap: () => _openContactDetails(request.contactId),
+          onTap: () => _openPrayerRequestDetails(request),
         ),
       ),
     );
@@ -284,33 +267,34 @@ class _PrayerRequestsPageState extends State<PrayerRequestsPage> {
         subtitle: Text(
           '${_formatDate(request.requestedAt)} • $contactName',
         ),
-        onTap: () => _openContactDetails(request.contactId),
+        onTap: () => _openPrayerRequestDetails(request),
       ),
     );
   }
 
-  void _openContactDetails(String contactId) {
-    final contact = _contactLookup[contactId];
-    if (contact == null) return;
+  Future<void> _openPrayerRequestDetails(PrayerRequest request) async {
+    final contact = _contactLookup[request.contactId];
+    if (contact == null) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Contact details unavailable for this request.'),
+        ),
+      );
+      return;
+    }
 
-    Navigator.of(context)
-        .push(
+    await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (context) => ContactDetailsPage(
+        builder: (context) => PrayerRequestDetailsPage(
+          request: request,
           contact: contact,
-          onDelete: () => _deleteContact(contact.id),
         ),
       ),
-    )
-        .then((result) async {
-      if (!mounted) return;
-      if (result is Contact) {
-        setState(() {
-          _contactLookup[result.id] = result;
-        });
-      }
-      await _refreshRequests();
-    });
+    );
+
+    if (!mounted) return;
+    await _refreshRequests();
   }
 
   String _displayNameForContact(String contactId) {
