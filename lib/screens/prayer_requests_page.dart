@@ -4,7 +4,6 @@ import 'package:intl/intl.dart';
 import '../db/db_helper.dart';
 import '../models/contact.dart';
 import '../models/prayer_request.dart';
-import 'prayer_request_details_page.dart';
 
 /// Displays a full list of prayer requests with filtering and refresh support.
 class PrayerRequestsPage extends StatefulWidget {
@@ -209,7 +208,6 @@ class _PrayerRequestsPageState extends State<PrayerRequestsPage> {
         subtitle: Text(
           '${_formatDate(request.requestedAt)} • $contactName',
         ),
-        onTap: () => _openPrayerRequestDetails(request),
       ),
     );
   }
@@ -244,7 +242,6 @@ class _PrayerRequestsPageState extends State<PrayerRequestsPage> {
               color: theme.colorScheme.onSecondaryContainer,
             ),
           ),
-          onTap: () => _openPrayerRequestDetails(request),
         ),
       ),
     );
@@ -267,34 +264,8 @@ class _PrayerRequestsPageState extends State<PrayerRequestsPage> {
         subtitle: Text(
           '${_formatDate(request.requestedAt)} • $contactName',
         ),
-        onTap: () => _openPrayerRequestDetails(request),
       ),
     );
-  }
-
-  Future<void> _openPrayerRequestDetails(PrayerRequest request) async {
-    final contact = _contactLookup[request.contactId];
-    if (contact == null) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Contact details unavailable for this request.'),
-        ),
-      );
-      return;
-    }
-
-    await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => PrayerRequestDetailsPage(
-          request: request,
-          contact: contact,
-        ),
-      ),
-    );
-
-    if (!mounted) return;
-    await _refreshRequests();
   }
 
   String _displayNameForContact(String contactId) {
