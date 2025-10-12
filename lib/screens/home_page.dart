@@ -19,6 +19,7 @@ import '../widgets/people_card.dart';
 import 'contact_details_page.dart';
 import 'met_at_lookup_page.dart';
 import 'prayer_diary_page.dart';
+import 'prayer_request_details_page.dart';
 import 'prayer_requests_page.dart';
 import 'relationship_explorer_page.dart';
 
@@ -365,12 +366,7 @@ class _HomePageState extends State<HomePage> {
                   subtitle: Text(
                     '${_formatDate(request.requestedAt)} • $contactName',
                   ),
-                  onTap: () {
-                    final contact = _contactLookup[request.contactId];
-                    if (contact != null) {
-                      _navigateToContactDetails(contact);
-                    }
-                  },
+                  onTap: () => _openPrayerRequestDetails(request),
                 );
               }),
             ],
@@ -405,12 +401,7 @@ class _HomePageState extends State<HomePage> {
                         color: theme.colorScheme.onSecondaryContainer,
                       ),
                     ),
-                    onTap: () {
-                      final contact = _contactLookup[request.contactId];
-                      if (contact != null) {
-                        _navigateToContactDetails(contact);
-                      }
-                    },
+                    onTap: () => _openPrayerRequestDetails(request),
                   ),
                 );
               }),
@@ -446,6 +437,34 @@ class _HomePageState extends State<HomePage> {
 
   String _formatDate(DateTime date) {
     return DateFormat.yMMMd().format(date);
+  }
+
+  Future<void> _openPrayerRequestDetails(PrayerRequest request) async {
+    final contact = _contactLookup[request.contactId];
+    if (contact == null) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Contact details unavailable for this request.'),
+        ),
+      );
+      return;
+    }
+
+    final didUpdate = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (context) => PrayerRequestDetailsPage(
+          request: request,
+          contact: contact,
+        ),
+      ),
+    );
+
+    if (!mounted) return;
+
+    if (didUpdate == true) {
+      await _fetchContacts();
+    }
   }
 
   void _openPrayerRequestsPage() {
