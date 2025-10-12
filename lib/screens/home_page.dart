@@ -106,7 +106,6 @@ class _HomePageState extends State<HomePage> {
   List<PrayerRequest> _pendingPrayerReminders = [];
   List<PrayerRequest> _recentAnsweredPrayers = [];
   List<Interaction> _prayerFocusInteractions = [];
-  PrayerRequestStatus? _selectedPrayerStatusFilter;
   bool _isLoadingPrayerInsights = false;
   Map<String, ContactMatch> _activeMatches = {};
   final Set<String> _expandedLocations = <String>{};
@@ -216,20 +215,11 @@ class _HomePageState extends State<HomePage> {
       baseList = matches.map((match) => match.contact).toList();
     }
 
-    return baseList.where((contact) {
-      final matchesTag = _selectedTagFilter == null ||
-          contact.tags.contains(_selectedTagFilter);
-
-      final matchesPrayerStatus = () {
-        if (_selectedPrayerStatusFilter == null) {
-          return true;
-        }
-        return contact.prayerRequests
-            .any((request) => request.status == _selectedPrayerStatusFilter);
-      }();
-
-      return matchesTag && matchesPrayerStatus;
-    }).toList();
+    return baseList
+        .where((contact) =>
+            _selectedTagFilter == null ||
+            contact.tags.contains(_selectedTagFilter))
+        .toList();
   }
 
   void _filterContacts() {
@@ -244,17 +234,6 @@ class _HomePageState extends State<HomePage> {
         _selectedTagFilter = null;
       } else {
         _selectedTagFilter = tag;
-      }
-      _filteredContacts = _applyFilters(_contacts);
-    });
-  }
-
-  void _togglePrayerStatusFilter(PrayerRequestStatus status) {
-    setState(() {
-      if (_selectedPrayerStatusFilter == status) {
-        _selectedPrayerStatusFilter = null;
-      } else {
-        _selectedPrayerStatusFilter = status;
       }
       _filteredContacts = _applyFilters(_contacts);
     });
@@ -300,15 +279,6 @@ class _HomePageState extends State<HomePage> {
     final hasAnyPrayer =
         _prayerCounts.values.any((count) => count != 0);
 
-    final statusChips = PrayerRequestStatus.values.map((status) {
-      final count = _prayerCounts[status] ?? 0;
-      return FilterChip(
-        label: Text('${status.label} ($count)'),
-        selected: _selectedPrayerStatusFilter == status,
-        onSelected: (_) => _togglePrayerStatusFilter(status),
-      );
-    }).toList();
-
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(
@@ -342,15 +312,8 @@ class _HomePageState extends State<HomePage> {
               ],
             ),
             const SizedBox(height: 12),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: statusChips,
-            ),
-            if (!hasAnyPrayer && !_isLoadingPrayerInsights) ...[
-              const SizedBox(height: 12),
+            if (!hasAnyPrayer && !_isLoadingPrayerInsights)
               const PrayerInsightsEmptyState(),
-            ],
             if (_pendingPrayerReminders.isNotEmpty) ...[
               const SizedBox(height: 12),
               Text('Needs prayer', style: theme.textTheme.titleSmall),
@@ -470,9 +433,7 @@ class _HomePageState extends State<HomePage> {
   void _openPrayerRequestsPage() {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (context) => PrayerRequestsPage(
-          initialStatus: _selectedPrayerStatusFilter,
-        ),
+        builder: (context) => const PrayerRequestsPage(),
       ),
     );
   }
@@ -717,9 +678,7 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     final groupedContactSections = _buildGroupedContactsList();
-    final hasPrayerFilters =
-        _prayerCounts.values.any((count) => count > 0);
-    final hasFilterOptions = hasPrayerFilters || _availableTags.isNotEmpty;
+    final hasFilterOptions = _availableTags.isNotEmpty;
     final searchSuggestions = _buildSearchSuggestions();
 
     return Scaffold(
@@ -857,53 +816,31 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildFilterSection() {
+    if (_availableTags.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (_prayerCounts.values.any((count) => count > 0)) ...[
-          const Text(
-            'Filter by prayer status',
-            style: TextStyle(fontWeight: FontWeight.w600),
-          ),
-          const SizedBox(height: 4),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: PrayerRequestStatus.values
-                .map(
-                  (status) => FilterChip(
-                    label: Text(
-                      '${status.label} (${_prayerCounts[status] ?? 0})',
-                    ),
-                    selected: _selectedPrayerStatusFilter == status,
-                    onSelected: (_) => _togglePrayerStatusFilter(status),
-                  ),
-                )
-                .toList(),
-          ),
-          if (_availableTags.isNotEmpty)
-            const SizedBox(height: 12),
-        ],
-        if (_availableTags.isNotEmpty) ...[
-          const Text(
-            'Filter by tags',
-            style: TextStyle(fontWeight: FontWeight.w600),
-          ),
-          const SizedBox(height: 4),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: _availableTags
-                .map(
-                  (tag) => FilterChip(
-                    label: Text(tag),
-                    selected: _selectedTagFilter == tag,
-                    onSelected: (_) => _toggleTagFilter(tag),
-                  ),
-                )
-                .toList(),
-          ),
-        ],
+        const Text(
+          'Filter by tags',
+          style: TextStyle(fontWeight: FontWeight.w600),
+        ),
+        const SizedBox(height: 4),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: _availableTags
+              .map(
+                (tag) => FilterChip(
+                  label: Text(tag),
+                  selected: _selectedTagFilter == tag,
+                  onSelected: (_) => _toggleTagFilter(tag),
+                ),
+              )
+              .toList(),
+        ),
       ],
     );
   }
