@@ -4,9 +4,8 @@ import 'package:intl/intl.dart';
 import '../db/db_helper.dart';
 import '../models/contact.dart';
 import '../models/prayer_request.dart';
-import '../services/reminder_coordinator.dart';
 import '../widgets/log_prayer_request_sheet.dart';
-import 'contact_details_page.dart';
+import 'prayer_request_details_page.dart';
 
 /// Displays a chronological list of recorded prayers.
 class PrayerDiaryPage extends StatefulWidget {
@@ -113,60 +112,34 @@ class _PrayerDiaryPageState extends State<PrayerDiaryPage> {
     );
   }
 
-  Future<void> _deleteContact(String contactId) async {
-    try {
-      await _dbHelper.deleteContact(contactId);
-      await ReminderCoordinator().cancelAllForContact(contactId);
-      if (!mounted) {
-        return;
-      }
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Contact deleted successfully.')),
-      );
-    } catch (error) {
-      if (!mounted) {
-        return;
-      }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to delete contact: $error')),
-      );
-    }
-  }
-
-  void _openContactDetails(String contactId) {
-    final contact = _contactLookup[contactId];
+  Future<void> _openPrayerRequestDetails(PrayerRequest request) async {
+    final contact = _contactLookup[request.contactId];
     if (contact == null) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Contact details unavailable for this request.'),
+        ),
+      );
       return;
     }
 
-    Navigator.of(context)
-        .push(
+    final didUpdate = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
-        builder: (context) => ContactDetailsPage(
+        builder: (context) => PrayerRequestDetailsPage(
+          request: request,
           contact: contact,
-          onDelete: () => _deleteContact(contact.id),
         ),
       ),
-    )
-        .then((result) async {
-      if (!mounted) {
-        return;
-      }
-      if (result is Contact) {
-        setState(() {
-          final existingIndex =
-              _contacts.indexWhere((entry) => entry.id == result.id);
-          if (existingIndex >= 0) {
-            _contacts[existingIndex] = result;
-          } else {
-            _contacts.add(result);
-          }
-          _contactLookup[result.id] = result;
-        });
-      }
+    );
+
+    if (!mounted) return;
+
+    if (didUpdate == true) {
       await _loadRequests();
-    });
+    }
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -247,7 +220,6 @@ class _PrayerDiaryPageState extends State<PrayerDiaryPage> {
   Widget _buildPrayerTile(PrayerRequest request) {
     final theme = Theme.of(context);
     final contactName = _displayNameForContact(request.contactId);
-    final hasContact = _contactLookup.containsKey(request.contactId);
     final details = [
       _formatDate(request.answeredAt ?? request.requestedAt),
       contactName,
@@ -264,7 +236,7 @@ class _PrayerDiaryPageState extends State<PrayerDiaryPage> {
       trailing: Chip(
         label: Text(request.status.label),
       ),
-      onTap: hasContact ? () => _openContactDetails(request.contactId) : null,
+      onTap: () => _openPrayerRequestDetails(request),
     );
   }
 
