@@ -238,6 +238,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                     bottomTitles: AxisTitles(
                       sideTitles: SideTitles(
                         showTitles: true,
+                        reservedSize: 72,
                         getTitlesWidget: (value, meta) {
                           final index = value.toInt();
                           if (index < 0 || index >= entries.length) {
@@ -245,10 +246,19 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                           }
                           return Padding(
                             padding: const EdgeInsets.only(top: 6),
-                            child: Text(
-                              entries[index].contactName,
-                              style: Theme.of(context).textTheme.bodySmall,
-                              overflow: TextOverflow.ellipsis,
+                            child: Transform.rotate(
+                              angle: -math.pi / 4,
+                              child: SizedBox(
+                                width: 80,
+                                child: Text(
+                                  entries[index].contactName,
+                                  style:
+                                      Theme.of(context).textTheme.bodySmall,
+                                  maxLines: 1,
+                                  textAlign: TextAlign.right,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
                             ),
                           );
                         },
