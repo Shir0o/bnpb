@@ -20,7 +20,6 @@ import 'contact_details_page.dart';
 import 'met_at_lookup_page.dart';
 import 'prayer_diary_page.dart';
 import 'prayer_request_details_page.dart';
-import 'prayer_requests_page.dart';
 import 'relationship_explorer_page.dart';
 
 class HomePage extends StatefulWidget {
@@ -298,17 +297,13 @@ class _HomePageState extends State<HomePage> {
                   ),
                 ),
                 if (_isLoadingPrayerInsights) ...[
+                  const SizedBox(width: 8),
                   const SizedBox(
                     width: 20,
                     height: 20,
                     child: CircularProgressIndicator(strokeWidth: 2),
                   ),
-                  const SizedBox(width: 8),
                 ],
-                TextButton(
-                  onPressed: _openPrayerRequestsPage,
-                  child: const Text('View all'),
-                ),
               ],
             ),
             const SizedBox(height: 12),
@@ -428,14 +423,6 @@ class _HomePageState extends State<HomePage> {
     if (didUpdate == true) {
       await _fetchContacts();
     }
-  }
-
-  void _openPrayerRequestsPage() {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => const PrayerRequestsPage(),
-      ),
-    );
   }
 
   /// Groups the given list of contacts by their location.
