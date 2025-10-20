@@ -2105,226 +2105,243 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
         await _stopListening();
         return true;
       },
-      child: Padding(
-        padding: EdgeInsets.only(
-          left: 16,
-          right: 16,
-          bottom: MediaQuery.of(context).viewInsets.bottom + 24,
-          top: 24,
-        ),
-        child: SingleChildScrollView(
-          child: Form(
-            key: _formKey,
-            autovalidateMode: _autovalidateMode,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                  Text(
-                    isEditing ? 'Edit interaction' : 'Log interaction',
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.close),
-                    onPressed: () async {
-                      _sheetActive = false;
-                      await _stopListening();
-                      if (mounted) {
-                        Navigator.of(context).pop();
-                      }
-                    },
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _summaryController,
-                decoration: InputDecoration(
-                  labelText: 'Summary *',
-                  border: const OutlineInputBorder(),
-                  helperText: _isListening ? 'Listening...' : null,
-                  suffixIcon: IconButton(
-                    icon: Icon(
-                      _isListening ? Icons.mic : Icons.mic_none,
-                      color: _isListening
-                          ? Theme.of(context).colorScheme.primary
-                          : null,
-                    ),
-                    onPressed: _toggleVoiceInput,
-                    tooltip:
-                        _isListening ? 'Stop voice capture' : 'Use voice to text',
-                  ),
-                ),
-                textCapitalization: TextCapitalization.sentences,
-                maxLines: 2,
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Add a short summary first.';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<String>(
-                value: _medium,
-                decoration: const InputDecoration(
-                  labelText: 'Medium',
-                  border: OutlineInputBorder(),
-                ),
-                items: const [
-                  DropdownMenuItem(
-                    value: 'in_person',
-                    child: Text('In-person'),
-                  ),
-                  DropdownMenuItem(
-                    value: 'call',
-                    child: Text('Call'),
-                  ),
-                  DropdownMenuItem(
-                    value: 'message',
-                    child: Text('Message'),
-                  ),
-                  DropdownMenuItem(
-                    value: 'online',
-                    child: Text('Online Meeting'),
-                  ),
-                  DropdownMenuItem(
-                    value: 'other',
-                    child: Text('Other'),
-                  ),
-                ],
-                onChanged: (value) {
-                  if (value == null) return;
-                  setState(() {
-                    _medium = value;
-                  });
-                },
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _locationController,
-                textCapitalization: TextCapitalization.sentences,
-                decoration: const InputDecoration(
-                  labelText: 'Location (optional)',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _durationController,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(
-                  labelText: 'Duration (minutes, optional)',
-                  border: OutlineInputBorder(),
-                ),
-                validator: (value) {
-                  final text = value?.trim() ?? '';
-                  if (text.isEmpty) {
-                    return null;
-                  }
-                  final parsed = int.tryParse(text);
-                  if (parsed == null) {
-                    return 'Duration must be a number of minutes.';
-                  }
-                  if (parsed < 0) {
-                    return 'Duration cannot be negative.';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _categoryController,
-                textCapitalization: TextCapitalization.sentences,
-                decoration: const InputDecoration(
-                  labelText: 'Category (optional)',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 12),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                title: const Text('Occurred at'),
-                subtitle: Text(
-                  DateFormat.yMMMd().add_jm().format(_occurredAt),
-                ),
-                trailing: const Icon(Icons.edit_outlined),
-                onTap: _pickDateTime,
-              ),
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: const Text('Mark for prayer'),
-                value: _markForPrayer,
-                onChanged: (value) {
-                  setState(() {
-                    _markForPrayer = value;
-                  });
-                },
-              ),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                title: const Text('Follow-up reminder'),
-                subtitle: Text(
-                  _followUpAt != null
-                      ? DateFormat.yMMMd().add_jm().format(_followUpAt!)
-                      : 'None',
-                ),
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (_followUpAt != null)
-                      IconButton(
-                        icon: const Icon(Icons.close),
-                        onPressed: () {
-                          setState(() {
-                            _followUpAt = null;
-                          });
-                        },
-                      ),
-                    IconButton(
-                      icon: const Icon(Icons.calendar_month_outlined),
-                      onPressed: _pickFollowUp,
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 24),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed:
-                      _isSaveEnabled && !_isSavingInteraction ? _saveInteraction : null,
-                  child: _isSavingInteraction
-                      ? SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              Theme.of(context)
-                                  .colorScheme
-                                  .onPrimary,
-                            ),
-                          ),
-                        )
-                      : Row(
-                          mainAxisSize: MainAxisSize.min,
-                          mainAxisAlignment: MainAxisAlignment.center,
+      child: SafeArea(
+        top: false,
+        child: AnimatedPadding(
+          padding: EdgeInsets.only(
+            left: 16,
+            right: 16,
+            bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+            top: 24,
+          ),
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeOut,
+          child: Column(
+            children: [
+              Flexible(
+                child: SingleChildScrollView(
+                  keyboardDismissBehavior:
+                      ScrollViewKeyboardDismissBehavior.onDrag,
+                  child: Form(
+                    key: _formKey,
+                    autovalidateMode: _autovalidateMode,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            const Icon(Icons.check),
-                            const SizedBox(width: 8),
-                            Text(isEditing ? 'Update' : 'Save'),
+                            Text(
+                              isEditing ? 'Edit interaction' : 'Log interaction',
+                              style: Theme.of(context).textTheme.titleMedium,
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.close),
+                              onPressed: () async {
+                                _sheetActive = false;
+                                await _stopListening();
+                                if (mounted) {
+                                  Navigator.of(context).pop();
+                                }
+                              },
+                            ),
                           ],
                         ),
+                        const SizedBox(height: 16),
+                        TextFormField(
+                          controller: _summaryController,
+                          decoration: InputDecoration(
+                            labelText: 'Summary *',
+                            border: const OutlineInputBorder(),
+                            helperText: _isListening ? 'Listening...' : null,
+                            suffixIcon: IconButton(
+                              icon: Icon(
+                                _isListening ? Icons.mic : Icons.mic_none,
+                                color: _isListening
+                                    ? Theme.of(context).colorScheme.primary
+                                    : null,
+                              ),
+                              onPressed: _toggleVoiceInput,
+                              tooltip: _isListening
+                                  ? 'Stop voice capture'
+                                  : 'Use voice to text',
+                            ),
+                          ),
+                          textCapitalization: TextCapitalization.sentences,
+                          maxLines: 2,
+                          validator: (value) {
+                            if (value == null || value.trim().isEmpty) {
+                              return 'Add a short summary first.';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 12),
+                        DropdownButtonFormField<String>(
+                          value: _medium,
+                          decoration: const InputDecoration(
+                            labelText: 'Medium',
+                            border: OutlineInputBorder(),
+                          ),
+                          items: const [
+                            DropdownMenuItem(
+                              value: 'in_person',
+                              child: Text('In-person'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'call',
+                              child: Text('Call'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'message',
+                              child: Text('Message'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'online',
+                              child: Text('Online Meeting'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'other',
+                              child: Text('Other'),
+                            ),
+                          ],
+                          onChanged: (value) {
+                            if (value == null) return;
+                            setState(() {
+                              _medium = value;
+                            });
+                          },
+                        ),
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: _locationController,
+                          textCapitalization: TextCapitalization.sentences,
+                          decoration: const InputDecoration(
+                            labelText: 'Location (optional)',
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        TextFormField(
+                          controller: _durationController,
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(
+                            labelText: 'Duration (minutes, optional)',
+                            border: OutlineInputBorder(),
+                          ),
+                          validator: (value) {
+                            final text = value?.trim() ?? '';
+                            if (text.isEmpty) {
+                              return null;
+                            }
+                            final parsed = int.tryParse(text);
+                            if (parsed == null) {
+                              return 'Duration must be a number of minutes.';
+                            }
+                            if (parsed < 0) {
+                              return 'Duration cannot be negative.';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: _categoryController,
+                          textCapitalization: TextCapitalization.sentences,
+                          decoration: const InputDecoration(
+                            labelText: 'Category (optional)',
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          title: const Text('Occurred at'),
+                          subtitle: Text(
+                            DateFormat.yMMMd().add_jm().format(_occurredAt),
+                          ),
+                          trailing: const Icon(Icons.edit_outlined),
+                          onTap: _pickDateTime,
+                        ),
+                        SwitchListTile(
+                          contentPadding: EdgeInsets.zero,
+                          title: const Text('Mark for prayer'),
+                          value: _markForPrayer,
+                          onChanged: (value) {
+                            setState(() {
+                              _markForPrayer = value;
+                            });
+                          },
+                        ),
+                        ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          title: const Text('Follow-up reminder'),
+                          subtitle: Text(
+                            _followUpAt != null
+                                ? DateFormat.yMMMd().add_jm().format(_followUpAt!)
+                                : 'None',
+                          ),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (_followUpAt != null)
+                                IconButton(
+                                  icon: const Icon(Icons.close),
+                                  onPressed: () {
+                                    setState(() {
+                                      _followUpAt = null;
+                                    });
+                                  },
+                                ),
+                              IconButton(
+                                icon: const Icon(Icons.calendar_month_outlined),
+                                onPressed: _pickFollowUp,
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              SafeArea(
+                top: false,
+                minimum: const EdgeInsets.only(top: 16, bottom: 16),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: _isSaveEnabled && !_isSavingInteraction
+                        ? _saveInteraction
+                        : null,
+                    child: _isSavingInteraction
+                        ? SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                Theme.of(context).colorScheme.onPrimary,
+                              ),
+                            ),
+                          )
+                        : Row(
+                            mainAxisSize: MainAxisSize.min,
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(Icons.check),
+                              const SizedBox(width: 8),
+                              Text(isEditing ? 'Update' : 'Save'),
+                            ],
+                          ),
+                  ),
                 ),
               ),
             ],
           ),
         ),
       ),
-    ),
     );
   }
 }
