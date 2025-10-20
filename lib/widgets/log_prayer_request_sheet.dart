@@ -211,160 +211,180 @@ class _LogPrayerRequestSheetState extends State<LogPrayerRequestSheet> {
     final canSave =
         !(_selectedContactId == null && !contactLocked) && !_isSaving;
 
-    return Padding(
-      padding: EdgeInsets.only(
-        left: 16,
-        right: 16,
-        top: 24,
-        bottom: mediaQuery.viewInsets.bottom + 24,
-      ),
-      child: SingleChildScrollView(
+    return SafeArea(
+      top: false,
+      child: AnimatedPadding(
+        padding: EdgeInsets.only(
+          left: 16,
+          right: 16,
+          top: 24,
+          bottom: mediaQuery.viewInsets.bottom + 24,
+        ),
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOut,
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  widget.initialRequest == null
-                      ? 'Log a prayer request'
-                      : 'Update prayer request',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-                IconButton(
-                  icon: const Icon(Icons.close),
-                  tooltip: 'Close',
-                  onPressed: () => Navigator.of(context).pop(),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            DropdownButtonFormField<String>(
-              decoration: const InputDecoration(
-                labelText: 'Contact',
-                border: OutlineInputBorder(),
-              ),
-              value: _selectedContactId,
-              onChanged: contactLocked
-                  ? null
-                  : (value) {
-                      setState(() {
-                        _selectedContactId = value;
-                      });
-                    },
-              items: widget.availableContacts
-                  .map(
-                    (contact) => DropdownMenuItem<String>(
-                      value: contact.id,
-                      child: Text(contact.fullName.isNotEmpty
-                          ? contact.fullName
-                          : (contact.nickname ?? contact.firstName)),
-                    ),
-                  )
-                  .toList(),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _descriptionController,
-              decoration: const InputDecoration(
-                labelText: 'Request',
-                border: OutlineInputBorder(),
-              ),
-              minLines: 2,
-              maxLines: 4,
-              textCapitalization: TextCapitalization.sentences,
-            ),
-            const SizedBox(height: 16),
-            SegmentedButton<PrayerRequestStatus>(
-              segments: PrayerRequestStatus.values
-                  .map(
-                    (option) => ButtonSegment<PrayerRequestStatus>(
-                      value: option,
-                      label: Text(option.label),
-                      icon: Icon(_statusIcon(option)),
-                    ),
-                  )
-                  .toList(),
-              selected: {_status},
-              onSelectionChanged: (selection) {
-                if (selection.isEmpty) return;
-                _updateStatus(selection.first);
-              },
-            ),
-            const SizedBox(height: 16),
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: const Icon(Icons.calendar_month_outlined),
-              title: const Text('Requested on'),
-              subtitle: Text(_formatDate(_requestedAt)),
-              onTap: _pickRequestedDate,
-            ),
-            if (_status == PrayerRequestStatus.answered) ...[
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.celebration_outlined),
-                title: const Text('Answered on'),
-                subtitle: Text(
-                  _answeredAt != null
-                      ? _formatDate(_answeredAt!)
-                      : 'Set an answer date',
-                ),
-                trailing: Wrap(
-                  spacing: 4,
+            Flexible(
+              child: SingleChildScrollView(
+                keyboardDismissBehavior:
+                    ScrollViewKeyboardDismissBehavior.onDrag,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    IconButton(
-                      icon: const Icon(Icons.today_outlined),
-                      tooltip: 'Use today',
-                      onPressed: () {
-                        setState(() {
-                          _answeredAt = DateTime.now();
-                        });
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          widget.initialRequest == null
+                              ? 'Log a prayer request'
+                              : 'Update prayer request',
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close),
+                          tooltip: 'Close',
+                          onPressed: () => Navigator.of(context).pop(),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    DropdownButtonFormField<String>(
+                      decoration: const InputDecoration(
+                        labelText: 'Contact',
+                        border: OutlineInputBorder(),
+                      ),
+                      value: _selectedContactId,
+                      onChanged: contactLocked
+                          ? null
+                          : (value) {
+                              setState(() {
+                                _selectedContactId = value;
+                              });
+                            },
+                      items: widget.availableContacts
+                          .map(
+                            (contact) => DropdownMenuItem<String>(
+                              value: contact.id,
+                              child: Text(contact.fullName.isNotEmpty
+                                  ? contact.fullName
+                                  : (contact.nickname ?? contact.firstName)),
+                            ),
+                          )
+                          .toList(),
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: _descriptionController,
+                      decoration: const InputDecoration(
+                        labelText: 'Request',
+                        border: OutlineInputBorder(),
+                      ),
+                      minLines: 2,
+                      maxLines: 4,
+                      textCapitalization: TextCapitalization.sentences,
+                    ),
+                    const SizedBox(height: 16),
+                    SegmentedButton<PrayerRequestStatus>(
+                      segments: PrayerRequestStatus.values
+                          .map(
+                            (option) => ButtonSegment<PrayerRequestStatus>(
+                              value: option,
+                              label: Text(option.label),
+                              icon: Icon(_statusIcon(option)),
+                            ),
+                          )
+                          .toList(),
+                      selected: {_status},
+                      onSelectionChanged: (selection) {
+                        if (selection.isEmpty) return;
+                        _updateStatus(selection.first);
                       },
                     ),
-                    IconButton(
-                      icon: const Icon(Icons.edit_outlined),
-                      onPressed: _pickAnsweredDate,
+                    const SizedBox(height: 16),
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: const Icon(Icons.calendar_month_outlined),
+                      title: const Text('Requested on'),
+                      subtitle: Text(_formatDate(_requestedAt)),
+                      onTap: _pickRequestedDate,
                     ),
+                    if (_status == PrayerRequestStatus.answered) ...[
+                      ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: const Icon(Icons.celebration_outlined),
+                        title: const Text('Answered on'),
+                        subtitle: Text(
+                          _answeredAt != null
+                              ? _formatDate(_answeredAt!)
+                              : 'Set an answer date',
+                        ),
+                        trailing: Wrap(
+                          spacing: 4,
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.today_outlined),
+                              tooltip: 'Use today',
+                              onPressed: () {
+                                setState(() {
+                                  _answeredAt = DateTime.now();
+                                });
+                              },
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.edit_outlined),
+                              onPressed: _pickAnsweredDate,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: _categoryController,
+                      decoration: const InputDecoration(
+                        labelText: 'Category (optional)',
+                        border: OutlineInputBorder(),
+                      ),
+                      textCapitalization: TextCapitalization.words,
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: _reflectionController,
+                      decoration: const InputDecoration(
+                        labelText: 'Notes',
+                        border: OutlineInputBorder(),
+                      ),
+                      minLines: 2,
+                      maxLines: 4,
+                      textCapitalization: TextCapitalization.sentences,
+                    ),
+                    const SizedBox(height: 24),
                   ],
                 ),
               ),
-            ],
-            const SizedBox(height: 12),
-            TextField(
-              controller: _categoryController,
-              decoration: const InputDecoration(
-                labelText: 'Category (optional)',
-                border: OutlineInputBorder(),
-              ),
-              textCapitalization: TextCapitalization.words,
             ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _reflectionController,
-              decoration: const InputDecoration(
-                labelText: 'Notes',
-                border: OutlineInputBorder(),
-              ),
-              minLines: 2,
-              maxLines: 4,
-              textCapitalization: TextCapitalization.sentences,
-            ),
-            const SizedBox(height: 24),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton.icon(
-                onPressed: canSave ? _save : null,
-                icon: _isSaving
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.check_circle_outline),
-                label: Text(
-                  widget.initialRequest == null
-                      ? 'Save request'
-                      : 'Update request',
+            SafeArea(
+              top: false,
+              child: Padding(
+                padding: const EdgeInsets.only(top: 16),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    onPressed: canSave ? _save : null,
+                    icon: _isSaving
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.check_circle_outline),
+                    label: Text(
+                      widget.initialRequest == null
+                          ? 'Save request'
+                          : 'Update request',
+                    ),
+                  ),
                 ),
               ),
             ),
