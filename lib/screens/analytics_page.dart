@@ -322,28 +322,38 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
             const SizedBox(height: 12),
             SizedBox(
               height: 220,
-              child: PieChart(
-                PieChartData(
-                  sectionsSpace: 2,
-                  centerSpaceRadius: 48,
-                  sections: entries.asMap().entries.map((entry) {
-                    final value = _resolveValue(
-                      entry.value.totalMinutes,
-                      entry.value.interactionCount,
-                    );
-                    final percentage =
-                        totalValue == 0 ? 0 : (value / totalValue) * 100;
-                    return PieChartSectionData(
-                      value: value,
-                      title: '${percentage.toStringAsFixed(1)}%',
-                      radius: 90,
-                      titleStyle: Theme.of(context)
-                          .textTheme
-                          .bodyMedium
-                          ?.copyWith(fontWeight: FontWeight.bold),
-                    );
-                  }).toList(),
-                ),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final maxDimension =
+                      math.min(constraints.maxWidth, constraints.maxHeight);
+                  final sectionRadius =
+                      math.max(0, (maxDimension / 2) - 8); // avoid overflow
+                  final centerSpaceRadius = sectionRadius / 2;
+
+                  return PieChart(
+                    PieChartData(
+                      sectionsSpace: 2,
+                      centerSpaceRadius: centerSpaceRadius,
+                      sections: entries.asMap().entries.map((entry) {
+                        final value = _resolveValue(
+                          entry.value.totalMinutes,
+                          entry.value.interactionCount,
+                        );
+                        final percentage =
+                            totalValue == 0 ? 0 : (value / totalValue) * 100;
+                        return PieChartSectionData(
+                          value: value,
+                          title: '${percentage.toStringAsFixed(1)}%',
+                          radius: sectionRadius,
+                          titleStyle: Theme.of(context)
+                              .textTheme
+                              .bodyMedium
+                              ?.copyWith(fontWeight: FontWeight.bold),
+                        );
+                      }).toList(),
+                    ),
+                  );
+                },
               ),
             ),
             const SizedBox(height: 12),
