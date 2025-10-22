@@ -324,10 +324,13 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
               height: 220,
               child: LayoutBuilder(
                 builder: (context, constraints) {
-                  final maxDimension =
-                      math.min(constraints.maxWidth, constraints.maxHeight);
-                  final sectionRadius =
-                      math.max(0, (maxDimension / 2) - 8); // avoid overflow
+                  final biggest = constraints.biggest;
+                  final shortestSide =
+                      math.min(biggest.width, biggest.height);
+                  final sectionRadius = math.max(
+                    0,
+                    (shortestSide / 2) - 8,
+                  ); // avoid overflow
                   final centerSpaceRadius = sectionRadius / 2;
 
                   return PieChart(
