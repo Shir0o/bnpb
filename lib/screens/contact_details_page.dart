@@ -1,5 +1,6 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:speech_to_text/speech_recognition_result.dart';
 import 'package:speech_to_text/speech_to_text.dart';
@@ -1696,6 +1697,7 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
   late final TextEditingController _locationController;
   late final TextEditingController _durationController;
   late final TextEditingController _categoryController;
+  late final TextEditingController _occurredTimeController;
 
   final SpeechToText _speechToText = SpeechToText();
 
@@ -1717,6 +1719,14 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
   bool _calculateSaveEnabled() {
     final summaryFilled = _summaryController.text.trim().isNotEmpty;
     if (!summaryFilled) {
+      return false;
+    }
+
+    final manualTimeError = _applyManualOccurredTime(
+      _occurredTimeController.text,
+      shouldUpdate: false,
+    );
+    if (manualTimeError != null) {
       return false;
     }
 
@@ -1757,6 +1767,9 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
     );
     _categoryController = TextEditingController(text: initial?.category ?? '');
     _occurredAt = initial?.occurredAt ?? DateTime.now();
+    _occurredTimeController = TextEditingController(
+      text: DateFormat.jm().format(_occurredAt),
+    );
     _followUpAt = initial?.followUpAt;
     _medium = initial?.medium ?? 'in_person';
     _markForPrayer = initial?.markForPrayer ?? false;
@@ -1777,6 +1790,7 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
     _locationController.dispose();
     _durationController.dispose();
     _categoryController.dispose();
+    _occurredTimeController.dispose();
     super.dispose();
   }
 
@@ -1802,6 +1816,67 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
         time.minute,
       );
     });
+    _occurredTimeController.text = DateFormat.jm().format(_occurredAt);
+    _updateSaveEnabled();
+  }
+
+  String? _applyManualOccurredTime(
+    String value, {
+    bool shouldUpdate = true,
+  }) {
+    final text = value.trim();
+    if (text.isEmpty) {
+      return 'Enter a time.';
+    }
+
+    DateTime? parsed;
+    try {
+      parsed = DateFormat.jm().parseLoose(text);
+    } catch (_) {
+      try {
+        parsed = DateFormat.Hm().parseLoose(text);
+      } catch (_) {
+        parsed = null;
+      }
+    }
+
+    if (parsed == null) {
+      return 'Enter a valid time (e.g., 3:45 PM).';
+    }
+
+    final normalized = DateTime(
+      _occurredAt.year,
+      _occurredAt.month,
+      _occurredAt.day,
+      parsed.hour,
+      parsed.minute,
+    );
+
+    if (shouldUpdate) {
+      setState(() {
+        _occurredAt = normalized;
+      });
+      final normalizedText = DateFormat.jm().format(normalized);
+      _occurredTimeController.value = TextEditingValue(
+        text: normalizedText,
+        selection: TextSelection.collapsed(offset: normalizedText.length),
+      );
+    }
+
+    return null;
+  }
+
+  void _commitManualOccurredTime([String? value]) {
+    final error = _applyManualOccurredTime(
+      value ?? _occurredTimeController.text,
+    );
+    if (error != null &&
+        _autovalidateMode != AutovalidateMode.onUserInteraction) {
+      setState(() {
+        _autovalidateMode = AutovalidateMode.onUserInteraction;
+      });
+    }
+    _updateSaveEnabled();
   }
 
   Future<void> _pickFollowUp() async {
@@ -2257,10 +2332,42 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
                         ListTile(
                           contentPadding: EdgeInsets.zero,
                           title: const Text('Occurred at'),
-                          subtitle: Text(
-                            DateFormat.yMMMd().add_jm().format(_occurredAt),
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                DateFormat.yMMMd().add_jm().format(_occurredAt),
+                              ),
+                              const SizedBox(height: 8),
+                              TextFormField(
+                                controller: _occurredTimeController,
+                                keyboardType: TextInputType.datetime,
+                                inputFormatters: [
+                                  FilteringTextInputFormatter.allow(
+                                    RegExp(r'[0-9: apmAPM]'),
+                                  ),
+                                ],
+                                decoration: const InputDecoration(
+                                  labelText: 'Time',
+                                  border: OutlineInputBorder(),
+                                ),
+                                onEditingComplete: () {
+                                  _commitManualOccurredTime();
+                                },
+                                onFieldSubmitted: (value) {
+                                  _commitManualOccurredTime(value);
+                                },
+                                validator: (value) => _applyManualOccurredTime(
+                                  value ?? '',
+                                  shouldUpdate: false,
+                                ),
+                              ),
+                            ],
                           ),
-                          trailing: const Icon(Icons.edit_outlined),
+                          trailing: IconButton(
+                            icon: const Icon(Icons.edit_outlined),
+                            onPressed: _pickDateTime,
+                          ),
                           onTap: _pickDateTime,
                         ),
                         SwitchListTile(
