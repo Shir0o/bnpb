@@ -59,6 +59,11 @@ class ExportService {
       description: 'City/region information',
     ),
     ExportField(
+      id: 'dietaryPreference',
+      label: 'Dietary preferences',
+      description: 'Food restrictions or preferences to honor',
+    ),
+    ExportField(
       id: 'tags',
       label: 'Tags',
       description: 'Relationship and grouping tags',
@@ -198,6 +203,8 @@ class ExportService {
         return contact.nickname ?? '';
       case 'location':
         return contact.location ?? '';
+      case 'dietaryPreference':
+        return contact.dietaryPreference ?? '';
       case 'tags':
         return contact.tags.join(', ');
       case 'recognitionKeywords':
@@ -230,6 +237,9 @@ class ExportService {
           break;
         case 'location':
           map['location'] = contact.location;
+          break;
+        case 'dietaryPreference':
+          map['dietaryPreference'] = contact.dietaryPreference;
           break;
         case 'tags':
           map['tags'] = contact.tags;
