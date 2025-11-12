@@ -248,6 +248,14 @@ class PeopleCard extends StatelessWidget {
         ),
       );
     }
+    if ((contact.dietaryPreference ?? '').isNotEmpty) {
+      details.add(
+        _SubtitleChip(
+          icon: Icons.restaurant_menu,
+          label: contact.dietaryPreference!,
+        ),
+      );
+    }
     if (contact.tags.isNotEmpty) {
       details.addAll(
         contact.tags.take(3).map(

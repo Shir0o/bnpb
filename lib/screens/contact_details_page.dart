@@ -33,6 +33,8 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
   final TextEditingController _lastNameController = TextEditingController();
   final TextEditingController _nicknameController = TextEditingController();
   final TextEditingController _locationController = TextEditingController();
+  final TextEditingController _dietaryPreferenceController =
+      TextEditingController();
   final TextEditingController _firstMeetingNotesController =
       TextEditingController();
   final TextEditingController _tagController = TextEditingController();
@@ -106,6 +108,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
     _lastNameController.dispose();
     _nicknameController.dispose();
     _locationController.dispose();
+    _dietaryPreferenceController.dispose();
     _firstMeetingNotesController.dispose();
     _tagController.dispose();
     _keywordController.dispose();
@@ -338,6 +341,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
     final lastNameText = _lastNameController.text.trim();
     final nicknameText = _nicknameController.text.trim();
     final locationText = _locationController.text.trim();
+    final dietaryPreferenceText = _dietaryPreferenceController.text.trim();
     final firstMeetingNotesText = _firstMeetingNotesController.text.trim();
 
     return Contact(
@@ -347,6 +351,8 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
       lastName: lastNameText.isEmpty ? null : lastNameText,
       nickname: nicknameText.isEmpty ? null : nicknameText,
       location: locationText.isEmpty ? null : locationText,
+      dietaryPreference:
+          dietaryPreferenceText.isEmpty ? null : dietaryPreferenceText,
       firstMeetingNotes:
           firstMeetingNotesText.isEmpty ? null : firstMeetingNotesText,
       tags: List<String>.from(_selectedTags),
@@ -364,6 +370,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
     _lastNameController.text = contact.lastName ?? '';
     _nicknameController.text = contact.nickname ?? '';
     _locationController.text = contact.location ?? '';
+    _dietaryPreferenceController.text = contact.dietaryPreference ?? '';
     _firstMeetingNotesController.text = contact.firstMeetingNotes ?? '';
     _selectedTags = List<String>.from(contact.tags);
     _keywords = List<String>.from(contact.recognitionKeywords);
@@ -951,6 +958,11 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
         ),
         const SizedBox(height: 16),
         _buildTextField(
+          controller: _dietaryPreferenceController,
+          label: 'Dietary Preferences or Restrictions (Optional)',
+        ),
+        const SizedBox(height: 16),
+        _buildTextField(
           controller: _firstMeetingNotesController,
           label: 'First Meeting Notes (Optional)',
           maxLines: 3,
@@ -1098,17 +1110,24 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
 
   Widget? _buildViewMeetingNotesCard(Contact contact) {
     final notes = contact.firstMeetingNotes;
-    if (notes == null || notes.isEmpty) {
+    final dietaryPreference = contact.dietaryPreference;
+    final hasNotes = notes != null && notes.isNotEmpty;
+    final hasDietaryPreference =
+        dietaryPreference != null && dietaryPreference.isNotEmpty;
+
+    if (!hasNotes && !hasDietaryPreference) {
       return null;
     }
     return _buildCard(
       children: [
         Text(
-          'Meeting context',
+          'Personal context',
           style: Theme.of(context).textTheme.titleMedium,
         ),
         const SizedBox(height: 12),
-        _buildDetailLine('First meeting notes', notes),
+        if (hasNotes) _buildDetailLine('First meeting notes', notes!),
+        if (hasDietaryPreference)
+          _buildDetailLine('Dietary preferences', dietaryPreference!),
       ],
     );
   }

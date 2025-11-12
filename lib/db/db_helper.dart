@@ -12,7 +12,7 @@ import '../services/security_service.dart';
 import '../constants/storage.dart';
 
 class DBHelper {
-  static const _dbVersion = 9;
+  static const _dbVersion = 10;
 
   static final DBHelper _instance = DBHelper._();
   static Database? _database;
@@ -63,6 +63,7 @@ class DBHelper {
         lastName TEXT NULL,
         nickname TEXT,
         location TEXT,
+        dietaryPreference TEXT,
         keywords TEXT,
         photoCues TEXT,
         reminderCues TEXT
@@ -306,6 +307,12 @@ class DBHelper {
       await db.execute('DROP TABLE IF EXISTS meet_contexts');
       await db.execute('ALTER TABLE meet_contexts_new RENAME TO meet_contexts');
     }
+
+    if (oldVersion < 10) {
+      await db.execute(
+        'ALTER TABLE contacts ADD COLUMN dietaryPreference TEXT',
+      );
+    }
   }
 
   // -------------------------------------------------------------
@@ -333,6 +340,7 @@ class DBHelper {
       'lastName': contact.lastName,
       'nickname': contact.nickname,
       'location': contact.location,
+      'dietaryPreference': contact.dietaryPreference,
       'keywords': jsonEncode(contact.recognitionKeywords),
       'photoCues': jsonEncode(contact.recognitionPhotoUris),
       'reminderCues': jsonEncode(contact.recognitionReminders),
