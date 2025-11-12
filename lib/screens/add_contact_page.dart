@@ -25,8 +25,6 @@ class _AddContactPageState extends State<AddContactPage> {
   final TextEditingController _lastNameController = TextEditingController();
   final TextEditingController _nicknameController = TextEditingController();
   final TextEditingController _locationController = TextEditingController();
-  final TextEditingController _dietaryPreferenceController =
-      TextEditingController();
   final TextEditingController _firstMeetingNotesController =
       TextEditingController();
   final TextEditingController _tagController = TextEditingController();
@@ -56,7 +54,6 @@ class _AddContactPageState extends State<AddContactPage> {
     _lastNameController.dispose();
     _nicknameController.dispose();
     _locationController.dispose();
-    _dietaryPreferenceController.dispose();
     _firstMeetingNotesController.dispose();
     _tagController.dispose();
     _keywordController.dispose();
@@ -99,8 +96,6 @@ class _AddContactPageState extends State<AddContactPage> {
       _addPhotoCueFromInput();
     }
 
-    final dietaryText = _dietaryPreferenceController.text.trim();
-
     final newContact = Contact(
       id: DateTime.now().toIso8601String(),
       firstName: _firstNameController.text.trim(),
@@ -114,7 +109,6 @@ class _AddContactPageState extends State<AddContactPage> {
       location: _locationController.text.trim().isEmpty
           ? null
           : _locationController.text.trim(),
-      dietaryPreference: dietaryText.isEmpty ? null : dietaryText,
       firstMeetingNotes: _firstMeetingNotesController.text.trim().isEmpty
           ? null
           : _firstMeetingNotesController.text.trim(),
@@ -183,7 +177,6 @@ class _AddContactPageState extends State<AddContactPage> {
     _lastNameController.clear();
     _nicknameController.clear();
     _locationController.clear();
-    _dietaryPreferenceController.clear();
     _firstMeetingNotesController.clear();
     _tagController.clear();
     _keywordController.clear();
@@ -404,11 +397,6 @@ class _AddContactPageState extends State<AddContactPage> {
                   _buildTextField(
                     controller: _locationController,
                     label: 'Location (Optional)',
-                  ),
-                  const SizedBox(height: 16),
-                  _buildTextField(
-                    controller: _dietaryPreferenceController,
-                    label: 'Dietary Preferences or Restrictions (Optional)',
                   ),
                 ],
               ),

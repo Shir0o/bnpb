@@ -30,20 +30,18 @@ void main() {
       id: 'contact-1',
       firstName: 'Ada',
       lastName: 'Lovelace',
-      dietaryPreference: 'Vegetarian',
       interactions: [interaction],
     );
 
     final payload = ExportService().buildExportPayload(
       [contact],
-      const ['firstName', 'lastName', 'dietaryPreference'],
+      const ['firstName', 'lastName'],
     );
 
     expect(payload, hasLength(1));
     final contactJson = payload.first;
     expect(contactJson['firstName'], 'Ada');
     expect(contactJson['lastName'], 'Lovelace');
-    expect(contactJson['dietaryPreference'], 'Vegetarian');
     expect(contactJson['interactions'], isA<List>());
 
     final interactions = contactJson['interactions'] as List<dynamic>;

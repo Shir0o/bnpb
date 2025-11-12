@@ -12,8 +12,6 @@ class Contact {
   final String? lastName; // Last name of the contact (optional)
   final String? nickname; // Nickname of the contact (optional)
   final String? location; // Location of the contact (optional)
-  /// Dietary restrictions or preferences shared by the contact.
-  final String? dietaryPreference;
   final String? firstMeetingNotes; // Notes from the first meeting
   final List<String> tags; // Relationship tags
   /// Lightweight descriptors that help recognize the contact quickly.
@@ -34,7 +32,6 @@ class Contact {
     this.lastName,
     this.nickname,
     this.location,
-    this.dietaryPreference,
     this.firstMeetingNotes,
     List<String>? tags,
     List<String>? recognitionKeywords,
@@ -55,7 +52,6 @@ class Contact {
     String? lastName,
     String? nickname,
     String? location,
-    String? dietaryPreference,
     String? firstMeetingNotes,
     List<String>? tags,
     List<String>? recognitionKeywords,
@@ -71,7 +67,6 @@ class Contact {
       lastName: lastName ?? this.lastName,
       nickname: nickname ?? this.nickname,
       location: location ?? this.location,
-      dietaryPreference: dietaryPreference ?? this.dietaryPreference,
       firstMeetingNotes: firstMeetingNotes ?? this.firstMeetingNotes,
       tags: tags ?? this.tags,
       recognitionKeywords:
@@ -95,7 +90,6 @@ class Contact {
       'lastName': lastName,
       'nickname': nickname,
       'location': location,
-      'dietaryPreference': dietaryPreference,
       'firstMeetingNotes': firstMeetingNotes,
       'tags': tags,
       'recognitionKeywords': recognitionKeywords,
@@ -118,7 +112,6 @@ class Contact {
       lastName: map['lastName'] as String?,
       nickname: map['nickname'] as String?,
       location: map['location'] as String?,
-      dietaryPreference: map['dietaryPreference'] as String?,
       firstMeetingNotes: map['firstMeetingNotes'] as String?,
       tags: (map['tags'] as List<dynamic>?)
               ?.map((tag) => tag as String)
