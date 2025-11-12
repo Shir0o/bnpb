@@ -99,15 +99,6 @@ class ContactSearchService {
         );
       }
 
-      if ((contact.dietaryPreference ?? '').isNotEmpty) {
-        segments.add(
-          _SearchField(
-            label: 'Dietary preferences',
-            values: [contact.dietaryPreference!],
-          ),
-        );
-      }
-
       for (final Interaction interaction in contact.interactions) {
         final parts = <String>[];
         if ((interaction.location ?? '').isNotEmpty) {
@@ -172,10 +163,6 @@ class ContactSearchService {
       _SearchField(
         label: 'Location',
         values: [contact.location ?? ''],
-      ),
-      _SearchField(
-        label: 'Dietary preferences',
-        values: [contact.dietaryPreference ?? ''],
       ),
       _SearchField(
         label: 'Tags',

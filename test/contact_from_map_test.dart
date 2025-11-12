@@ -19,14 +19,4 @@ void main() {
     expect(contact.firstName, 'Bob');
     expect(contact.id, 'contact-123');
   });
-
-  test('fromMap captures dietary preference', () {
-    final contact = Contact.fromMap({
-      'id': 'contact-456',
-      'firstName': 'Chris',
-      'dietaryPreference': 'Vegetarian',
-    });
-
-    expect(contact.dietaryPreference, 'Vegetarian');
-  });
 }
