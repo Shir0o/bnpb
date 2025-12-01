@@ -124,6 +124,10 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
           const SizedBox(height: 16),
           _buildTimelineCard(summary),
           const SizedBox(height: 16),
+          _buildAttendanceTrendCard(summary),
+          const SizedBox(height: 16),
+          _buildAttendanceEngagementCard(summary),
+          const SizedBox(height: 16),
           _buildGapCard(summary),
         ],
       ),
@@ -158,6 +162,14 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                     label: 'Minutes invested',
                     value: summary.totalMinutes.toString(),
                     icon: Icons.timer_outlined,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: _MetricTile(
+                    label: 'Avg attendance',
+                    value: _formatPercentage(summary.averageAttendanceRate),
+                    icon: Icons.event_available_outlined,
                   ),
                 ),
               ],
@@ -484,6 +496,184 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
     );
   }
 
+  Widget _buildAttendanceTrendCard(AnalyticsSummary summary) {
+    final sessions = summary.sessionAttendance;
+    if (sessions.isEmpty) {
+      return const _EmptyAnalyticsCard(
+        title: 'Attendance trend',
+        message: 'Track attendance sessions to see participation over time.',
+      );
+    }
+
+    final values = sessions
+        .map((session) => (session.attendanceRate ?? 0) * 100)
+        .toList();
+    final maxY = math.max(100.0, values.reduce(math.max));
+    final yInterval = math.max(10.0, maxY / 5);
+    final labelStep =
+        math.max(1, (sessions.length / 4).ceil());
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Attendance trend',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              height: 240,
+              child: LineChart(
+                LineChartData(
+                  minY: 0,
+                  maxY: maxY,
+                  gridData: FlGridData(show: false),
+                  borderData: FlBorderData(show: false),
+                  lineBarsData: [
+                    LineChartBarData(
+                      isCurved: true,
+                      color: Theme.of(context).colorScheme.primary,
+                      barWidth: 4,
+                      dotData: FlDotData(show: false),
+                      belowBarData: BarAreaData(
+                        show: true,
+                        color: Theme.of(context)
+                            .colorScheme
+                            .primary
+                            .withOpacity(0.15),
+                      ),
+                      spots: sessions.asMap().entries.map((entry) {
+                        final index = entry.key.toDouble();
+                        final value = values[entry.key];
+                        return FlSpot(index, value);
+                      }).toList(),
+                    ),
+                  ],
+                  titlesData: FlTitlesData(
+                    leftTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        reservedSize: 44,
+                        interval: yInterval,
+                        getTitlesWidget: (value, meta) => Text(
+                          value.toStringAsFixed(0),
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ),
+                    ),
+                    rightTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
+                    topTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
+                    bottomTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        reservedSize: 48,
+                        getTitlesWidget: (value, meta) {
+                          final index = value.toInt();
+                          if (index < 0 || index >= sessions.length) {
+                            return const SizedBox.shrink();
+                          }
+                          if (index % labelStep != 0 &&
+                              index != sessions.length - 1) {
+                            return const SizedBox.shrink();
+                          }
+                          final session = sessions[index];
+                          return Padding(
+                            padding: const EdgeInsets.only(top: 6),
+                            child: Text(
+                              DateFormat.Md().format(session.sessionDate),
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAttendanceEngagementCard(AnalyticsSummary summary) {
+    final contacts = summary.contactAttendance;
+    if (contacts.isEmpty) {
+      return const _EmptyAnalyticsCard(
+        title: 'Attendance engagement',
+        message: 'Log attendance entries to see who is most engaged.',
+      );
+    }
+
+    final mostEngaged = contacts.take(3).toList();
+    final excludedIds = mostEngaged.map((contact) => contact.contactId).toSet();
+    final leastEngaged = contacts.reversed
+        .where((contact) => !excludedIds.contains(contact.contactId))
+        .take(3)
+        .toList();
+
+    Widget buildList(String title, List<ContactAttendanceSnapshot> items) {
+      return Expanded(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: Theme.of(context)
+                  .textTheme
+                  .titleSmall
+                  ?.copyWith(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            ...items.map((item) {
+              final subtitle =
+                  '${item.presentCount} of ${item.totalCount} sessions';
+              return ListTile(
+                contentPadding: EdgeInsets.zero,
+                dense: true,
+                leading: const Icon(Icons.person_outline),
+                title: Text(item.contactName),
+                subtitle: Text(subtitle),
+                trailing: Text(_formatPercentage(item.attendanceRate)),
+              );
+            }),
+          ],
+        ),
+      );
+    }
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Attendance engagement',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                buildList('Most engaged', mostEngaged),
+                const SizedBox(width: 16),
+                buildList('Needs attention', leastEngaged),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildGapCard(AnalyticsSummary summary) {
     final gaps = summary.contactGaps.take(6).toList();
     if (gaps.isEmpty) {
@@ -554,6 +744,13 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
       return '${gap.inHours}h';
     }
     return '${math.max(1, gap.inMinutes)}m';
+  }
+
+  String _formatPercentage(double? rate) {
+    if (rate == null) {
+      return '—';
+    }
+    return '${(rate * 100).toStringAsFixed(0)}%';
   }
 
   DateTime? _startForRange(AnalyticsRange range, DateTime now) {
