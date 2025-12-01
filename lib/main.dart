@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import 'screens/add_contact_page.dart';
 import 'screens/analytics_page.dart';
+import 'screens/attendance_page.dart';
 import 'screens/home_page.dart';
 import 'screens/notification_settings_page.dart';
 import 'repositories/notification_preferences_repository.dart';
@@ -73,6 +74,7 @@ class _MainPageState extends State<MainPage> {
     const AnalyticsPage(),
     const AddContactPage(),
     const NotificationSettingsPage(),
+    const AttendancePage(),
   ];
 
   @override
@@ -182,6 +184,11 @@ class _MainPageState extends State<MainPage> {
             icon: Icon(Icons.settings_outlined),
             selectedIcon: Icon(Icons.settings),
             label: 'Settings',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.event_available_outlined),
+            selectedIcon: Icon(Icons.event_available),
+            label: 'Attendance',
           ),
         ],
       ),
