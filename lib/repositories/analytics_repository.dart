@@ -1,4 +1,6 @@
 import '../db/db_helper.dart';
+import '../models/attendance_entry.dart';
+import '../models/attendance_session.dart';
 import '../models/contact.dart';
 import '../models/interaction.dart';
 
@@ -44,6 +46,52 @@ class TimeSeriesPoint {
   final int interactionCount;
 }
 
+/// Attendance rate information for a single session.
+class SessionAttendanceSnapshot {
+  const SessionAttendanceSnapshot({
+    required this.sessionId,
+    required this.sessionTitle,
+    required this.sessionDate,
+    required this.presentCount,
+    required this.totalCount,
+  });
+
+  final int sessionId;
+  final String sessionTitle;
+  final DateTime sessionDate;
+  final int presentCount;
+  final int totalCount;
+
+  double? get attendanceRate {
+    if (totalCount == 0) {
+      return null;
+    }
+    return presentCount / totalCount;
+  }
+}
+
+/// Attendance rate rollup for a contact across sessions.
+class ContactAttendanceSnapshot {
+  const ContactAttendanceSnapshot({
+    required this.contactId,
+    required this.contactName,
+    required this.presentCount,
+    required this.totalCount,
+  });
+
+  final String contactId;
+  final String contactName;
+  final int presentCount;
+  final int totalCount;
+
+  double? get attendanceRate {
+    if (totalCount == 0) {
+      return null;
+    }
+    return presentCount / totalCount;
+  }
+}
+
 /// Summary describing the gap since the last time a contact was reached out to.
 class ContactGap {
   const ContactGap({
@@ -74,6 +122,9 @@ class AnalyticsSummary {
     required this.categoryBreakdown,
     required this.timeline,
     required this.contactGaps,
+    required this.sessionAttendance,
+    required this.contactAttendance,
+    required this.averageAttendanceRate,
   });
 
   final DateTime? rangeStart;
@@ -84,6 +135,9 @@ class AnalyticsSummary {
   final List<CategoryBreakdownEntry> categoryBreakdown;
   final List<TimeSeriesPoint> timeline;
   final List<ContactGap> contactGaps;
+  final List<SessionAttendanceSnapshot> sessionAttendance;
+  final List<ContactAttendanceSnapshot> contactAttendance;
+  final double? averageAttendanceRate;
 }
 
 /// Provides a higher-level analytic view over stored contacts and
@@ -98,12 +152,18 @@ class AnalyticsRepository {
     DateTime? rangeEnd,
   }) async {
     final List<Contact> contacts = await _dbHelper.getContacts();
+    final contactNameById = {
+      for (final contact in contacts) contact.id: contact.fullName,
+    };
+    final sessions = await _dbHelper.getAttendanceSessions();
     final now = DateTime.now();
 
     final contactAccumulators = <String, _ContactAccumulator>{};
     final categoryAccumulators = <String, _CategoryAccumulator>{};
     final timelineAccumulators = <DateTime, _TimelineAccumulator>{};
     final contactGaps = <ContactGap>[];
+    final sessionAttendance = <SessionAttendanceSnapshot>[];
+    final contactAttendance = <String, _ContactAttendanceAccumulator>{};
 
     for (final Contact contact in contacts) {
       final accumulator = contactAccumulators.putIfAbsent(
@@ -161,6 +221,45 @@ class AnalyticsRepository {
       );
     }
 
+    for (final AttendanceSession session in sessions) {
+      if (!_isWithinRange(session.sessionDate, rangeStart, rangeEnd)) {
+        continue;
+      }
+
+      if (session.id == null) {
+        continue;
+      }
+
+      final entries = await _dbHelper.getAttendanceEntries(session.id!);
+      final presentCount = entries
+          .where((entry) => entry.status == AttendanceStatus.present)
+          .length;
+      final totalCount = entries.length;
+
+      sessionAttendance.add(
+        SessionAttendanceSnapshot(
+          sessionId: session.id!,
+          sessionTitle: session.title,
+          sessionDate: session.sessionDate,
+          presentCount: presentCount,
+          totalCount: totalCount,
+        ),
+      );
+
+      for (final entry in entries) {
+        final contactName = contactNameById[entry.contactId] ?? 'Unknown contact';
+        final accumulator = contactAttendance.putIfAbsent(
+          entry.contactId,
+          () => _ContactAttendanceAccumulator(entry.contactId, contactName),
+        );
+
+        accumulator.totalCount += 1;
+        if (entry.status == AttendanceStatus.present) {
+          accumulator.presentCount += 1;
+        }
+      }
+    }
+
     final contactInvestments = contactAccumulators.values
         .map((entry) => entry.toDomain())
         .toList()
@@ -188,6 +287,24 @@ class AnalyticsRepository {
         .toList()
       ..sort((a, b) => a.date.compareTo(b.date));
 
+    final sessionAttendanceSeries = List<SessionAttendanceSnapshot>.from(
+      sessionAttendance,
+    )
+      ..sort((a, b) => a.sessionDate.compareTo(b.sessionDate));
+
+    final contactAttendanceSummary = contactAttendance.values
+        .map((entry) => entry.toDomain())
+        .toList()
+      ..sort((a, b) {
+        final aRate = a.attendanceRate ?? -1;
+        final bRate = b.attendanceRate ?? -1;
+        final comparison = bRate.compareTo(aRate);
+        if (comparison != 0) {
+          return comparison;
+        }
+        return b.presentCount.compareTo(a.presentCount);
+      });
+
     contactGaps.sort((a, b) {
       final aGap = a.gap?.inSeconds.toDouble() ?? double.infinity;
       final bGap = b.gap?.inSeconds.toDouble() ?? double.infinity;
@@ -207,6 +324,18 @@ class AnalyticsRepository {
       (previousValue, element) => previousValue + element.interactionCount,
     );
 
+    final sessionsWithAttendance = sessionAttendanceSeries
+        .where((snapshot) => snapshot.attendanceRate != null)
+        .toList();
+    final averageAttendanceRate = sessionsWithAttendance.isEmpty
+        ? null
+        : sessionsWithAttendance.fold<double>(
+              0,
+              (previousValue, element) =>
+                  previousValue + (element.attendanceRate ?? 0),
+            ) /
+            sessionsWithAttendance.length;
+
     return AnalyticsSummary(
       rangeStart: rangeStart,
       rangeEnd: rangeEnd,
@@ -216,6 +345,9 @@ class AnalyticsRepository {
       categoryBreakdown: categoryBreakdown,
       timeline: timeline,
       contactGaps: contactGaps,
+      sessionAttendance: sessionAttendanceSeries,
+      contactAttendance: contactAttendanceSummary,
+      averageAttendanceRate: averageAttendanceRate,
     );
   }
 
@@ -244,6 +376,24 @@ class _ContactAccumulator {
       contactName: contactName,
       totalMinutes: totalMinutes,
       interactionCount: interactionCount,
+    );
+  }
+}
+
+class _ContactAttendanceAccumulator {
+  _ContactAttendanceAccumulator(this.contactId, this.contactName);
+
+  final String contactId;
+  final String contactName;
+  int presentCount = 0;
+  int totalCount = 0;
+
+  ContactAttendanceSnapshot toDomain() {
+    return ContactAttendanceSnapshot(
+      contactId: contactId,
+      contactName: contactName,
+      presentCount: presentCount,
+      totalCount: totalCount,
     );
   }
 }
