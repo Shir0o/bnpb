@@ -60,7 +60,6 @@ class AttachmentReference {
 class Interaction {
   const Interaction({
     this.id,
-    required this.contactId,
     required this.occurredAt,
     required this.summary,
     required this.medium,
@@ -70,10 +69,11 @@ class Interaction {
     this.followUpAt,
     this.durationMinutes,
     this.category,
+    this.participantIds = const [],
   });
 
   final int? id;
-  final String contactId;
+  final List<String> participantIds;
   final DateTime occurredAt;
   final String summary;
   final String medium;
@@ -86,7 +86,6 @@ class Interaction {
 
   Interaction copyWith({
     int? id,
-    String? contactId,
     DateTime? occurredAt,
     String? summary,
     String? medium,
@@ -96,10 +95,10 @@ class Interaction {
     DateTime? followUpAt,
     int? durationMinutes,
     String? category,
+    List<String>? participantIds,
   }) {
     return Interaction(
       id: id ?? this.id,
-      contactId: contactId ?? this.contactId,
       occurredAt: occurredAt ?? this.occurredAt,
       summary: summary ?? this.summary,
       medium: medium ?? this.medium,
@@ -109,6 +108,7 @@ class Interaction {
       followUpAt: followUpAt ?? this.followUpAt,
       durationMinutes: durationMinutes ?? this.durationMinutes,
       category: category ?? this.category,
+      participantIds: participantIds ?? this.participantIds,
     );
   }
 
@@ -130,7 +130,6 @@ class Interaction {
   /// without additional decoding.
   Map<String, dynamic> toJson({bool includeId = true}) {
     final map = <String, dynamic>{
-      'contactId': contactId,
       'occurredAt': occurredAt.toIso8601String(),
       'summary': summary,
       'medium': medium,
@@ -141,6 +140,7 @@ class Interaction {
       'followUpAt': followUpAt?.toIso8601String(),
       'durationMinutes': durationMinutes,
       'category': category,
+      'participantIds': participantIds,
     };
     if (includeId && id != null) {
       map['id'] = id;
@@ -168,7 +168,6 @@ class Interaction {
 
     return Interaction(
       id: map['id'] as int?,
-      contactId: map['contactId'] as String,
       occurredAt: DateTime.parse(map['occurredAt'] as String),
       summary: map['summary'] as String,
       medium: map['medium'] as String,
@@ -180,7 +179,15 @@ class Interaction {
           : null,
       durationMinutes: _parseOptionalInt(map['durationMinutes']),
       category: _parseOptionalCategory(map['category']),
+      participantIds: _parseParticipantIds(map['participantIds']),
     );
+  }
+
+  static List<String> _parseParticipantIds(dynamic value) {
+    if (value is List) {
+      return value.map((entry) => entry.toString()).toList();
+    }
+    return const [];
   }
 
   static int? _parseOptionalInt(dynamic value) {

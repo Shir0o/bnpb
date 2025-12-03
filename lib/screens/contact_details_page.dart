@@ -2062,9 +2062,13 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
     final categoryText = _categoryController.text.trim();
     final category = categoryText.isEmpty ? null : categoryText;
 
+    final participants = <String>{
+      widget.contact.id,
+      ...widget.initialInteraction?.participantIds ?? const <String>{},
+    };
+
     final interaction = Interaction(
       id: widget.initialInteraction?.id,
-      contactId: widget.contact.id,
       occurredAt: _occurredAt,
       summary: summary,
       medium: _medium,
@@ -2075,6 +2079,7 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
       followUpAt: _followUpAt,
       durationMinutes: durationMinutes,
       category: category,
+      participantIds: participants.toList(),
     );
 
     final bool isEditing = widget.initialInteraction != null;
