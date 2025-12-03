@@ -370,9 +370,19 @@ class _HomePageState extends State<HomePage> {
                   style: theme.textTheme.titleSmall),
               const SizedBox(height: 8),
               ..._prayerFocusInteractions.map((interaction) {
-                final contact = _contactLookup[interaction.contactId];
-                final contactName =
-                    _displayNameForContactId(_contactLookup, interaction.contactId);
+                final primaryContactId =
+                    interaction.participantIds.isNotEmpty
+                        ? interaction.participantIds.first
+                        : null;
+                final contact = primaryContactId != null
+                    ? _contactLookup[primaryContactId]
+                    : null;
+                final contactName = primaryContactId != null
+                    ? _displayNameForContactId(
+                        _contactLookup,
+                        primaryContactId,
+                      )
+                    : 'Unknown contact';
                 return ListTile(
                   contentPadding: EdgeInsets.zero,
                   dense: true,

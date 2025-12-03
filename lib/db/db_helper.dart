@@ -14,7 +14,7 @@ import '../services/security_service.dart';
 import '../constants/storage.dart';
 
 class DBHelper {
-  static const _dbVersion = 10;
+  static const _dbVersion = 11;
 
   static final DBHelper _instance = DBHelper._();
   static Database? _database;
@@ -91,7 +91,6 @@ class DBHelper {
     await db.execute('''
       CREATE TABLE interactions (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        contactId TEXT NOT NULL,
         occurredAt TEXT NOT NULL,
         summary TEXT NOT NULL,
         medium TEXT NOT NULL,
@@ -100,7 +99,16 @@ class DBHelper {
         markForPrayer INTEGER NOT NULL DEFAULT 0,
         followUpAt TEXT,
         durationMinutes INTEGER,
-        category TEXT,
+        category TEXT
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE interaction_participants (
+        interactionId INTEGER NOT NULL,
+        contactId TEXT NOT NULL,
+        PRIMARY KEY(interactionId, contactId),
+        FOREIGN KEY(interactionId) REFERENCES interactions(id) ON DELETE CASCADE,
         FOREIGN KEY(contactId) REFERENCES contacts(id) ON DELETE CASCADE
       )
     ''');
@@ -347,10 +355,56 @@ class DBHelper {
           contactId TEXT NOT NULL,
           status TEXT NOT NULL,
           FOREIGN KEY(sessionId) REFERENCES attendance_sessions(id) ON DELETE CASCADE,
-          FOREIGN KEY(contactId) REFERENCES contacts(id) ON DELETE CASCADE,
-          UNIQUE(sessionId, contactId)
+        FOREIGN KEY(contactId) REFERENCES contacts(id) ON DELETE CASCADE,
+        UNIQUE(sessionId, contactId)
+      )
+    ''');
+    }
+
+    if (oldVersion < 11) {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS interactions_new (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          occurredAt TEXT NOT NULL,
+          summary TEXT NOT NULL,
+          medium TEXT NOT NULL,
+          location TEXT,
+          attachments TEXT,
+          markForPrayer INTEGER NOT NULL DEFAULT 0,
+          followUpAt TEXT,
+          durationMinutes INTEGER,
+          category TEXT
         )
       ''');
+
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS interaction_participants (
+          interactionId INTEGER NOT NULL,
+          contactId TEXT NOT NULL,
+          PRIMARY KEY(interactionId, contactId),
+          FOREIGN KEY(interactionId) REFERENCES interactions_new(id) ON DELETE CASCADE,
+          FOREIGN KEY(contactId) REFERENCES contacts(id) ON DELETE CASCADE
+        )
+      ''');
+
+      await db.execute('''
+        INSERT INTO interactions_new (
+          id, occurredAt, summary, medium, location, attachments,
+          markForPrayer, followUpAt, durationMinutes, category
+        )
+        SELECT
+          id, occurredAt, summary, medium, location, attachments,
+          markForPrayer, followUpAt, durationMinutes, category
+        FROM interactions
+      ''');
+
+      await db.execute('''
+        INSERT OR IGNORE INTO interaction_participants (interactionId, contactId)
+        SELECT id, contactId FROM interactions
+      ''');
+
+      await db.execute('DROP TABLE IF EXISTS interactions');
+      await db.execute('ALTER TABLE interactions_new RENAME TO interactions');
     }
   }
 
@@ -466,25 +520,109 @@ class DBHelper {
     DatabaseExecutor txn,
     Contact contact,
   ) async {
-    await txn.delete(
-      'interactions',
+    final existingRows = await txn.query(
+      'interaction_participants',
+      columns: ['interactionId'],
       where: 'contactId = ?',
       whereArgs: [contact.id],
     );
+    final existingInteractionIds =
+        existingRows.map((row) => row['interactionId'] as int).toSet();
 
-    if (contact.interactions.isEmpty) {
-      return;
+    if (existingInteractionIds.isNotEmpty) {
+      await txn.delete(
+        'interaction_participants',
+        where: 'contactId = ?',
+        whereArgs: [contact.id],
+      );
     }
 
     for (final interaction in contact.interactions) {
+      final participants = {
+        ...interaction.participantIds,
+        contact.id,
+      }.where((id) => id.trim().isNotEmpty).toList();
+
       final interactionMap = interaction.toMap(
         includeId: false,
         encodeAttachments: true,
       );
-      interactionMap['contactId'] = contact.id;
+      interactionMap.remove('participantIds');
 
-      await txn.insert('interactions', interactionMap);
+      int interactionId;
+      if (interaction.id != null) {
+        interactionId = interaction.id!;
+        await txn.update(
+          'interactions',
+          interactionMap,
+          where: 'id = ?',
+          whereArgs: [interactionId],
+        );
+      } else {
+        interactionId = await txn.insert('interactions', interactionMap);
+      }
+
+      await _replaceInteractionParticipants(txn, interactionId, participants);
     }
+
+    await _removeOrphanInteractions(txn);
+  }
+
+  Future<void> _replaceInteractionParticipants(
+    DatabaseExecutor txn,
+    int interactionId,
+    List<String> participantIds,
+  ) async {
+    await txn.delete(
+      'interaction_participants',
+      where: 'interactionId = ?',
+      whereArgs: [interactionId],
+    );
+
+    final uniqueParticipants = participantIds.toSet();
+    for (final participant in uniqueParticipants) {
+      await txn.insert(
+        'interaction_participants',
+        {
+          'interactionId': interactionId,
+          'contactId': participant,
+        },
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+    }
+  }
+
+  Future<void> _removeOrphanInteractions(DatabaseExecutor txn) async {
+    await txn.delete(
+      'interactions',
+      where: 'id NOT IN (SELECT interactionId FROM interaction_participants)',
+    );
+  }
+
+  Future<Map<int, List<String>>> _getParticipantsForInteractions(
+    Database db,
+    Iterable<int> interactionIds,
+  ) async {
+    if (interactionIds.isEmpty) {
+      return {};
+    }
+
+    final placeholders = List.filled(interactionIds.length, '?').join(',');
+    final rows = await db.query(
+      'interaction_participants',
+      where: 'interactionId IN ($placeholders)',
+      whereArgs: interactionIds.toList(),
+    );
+
+    final participantsByInteraction = <int, List<String>>{};
+    for (final row in rows) {
+      final interactionId = row['interactionId'] as int;
+      final participantId = row['contactId'] as String;
+      participantsByInteraction.putIfAbsent(interactionId, () => []);
+      participantsByInteraction[interactionId]!.add(participantId);
+    }
+
+    return participantsByInteraction;
   }
 
   Future<void> _replacePrayerRequests(
@@ -540,20 +678,47 @@ class DBHelper {
       contextsByContact[contactId] = Map<String, dynamic>.from(row);
     }
 
-    final interactionRows = await db.query(
-      'interactions',
-      orderBy: 'occurredAt DESC',
+    final contactIds = maps.map((map) => map['id'] as String).toSet();
+
+    final participantFilterRows = await db.query(
+      'interaction_participants',
+      columns: ['interactionId'],
       where: contactId != null ? 'contactId = ?' : null,
       whereArgs: contactId != null ? [contactId] : null,
     );
+    final interactionIds = participantFilterRows
+        .map((row) => row['interactionId'] as int)
+        .toSet();
+
+    final participantsByInteraction = await _getParticipantsForInteractions(
+      db,
+      interactionIds,
+    );
 
     final interactionsByContact = <String, List<Interaction>>{};
-    for (final row in interactionRows) {
-      final contactId = row['contactId'] as String;
-      interactionsByContact.putIfAbsent(contactId, () => []);
-      interactionsByContact[contactId]!.add(
-        Interaction.fromMap(Map<String, dynamic>.from(row)),
+    if (interactionIds.isNotEmpty) {
+      final placeholders = List.filled(interactionIds.length, '?').join(',');
+      final interactionRows = await db.query(
+        'interactions',
+        orderBy: 'occurredAt DESC',
+        where: 'id IN ($placeholders)',
+        whereArgs: interactionIds.toList(),
       );
+
+      for (final row in interactionRows) {
+        final interactionId = row['id'] as int;
+        final participants =
+            participantsByInteraction[interactionId] ?? const <String>[];
+        final interactionMap = Map<String, dynamic>.from(row);
+        interactionMap['participantIds'] = participants;
+        final interaction = Interaction.fromMap(interactionMap);
+
+        for (final participant in participants) {
+          if (!contactIds.contains(participant)) continue;
+          interactionsByContact.putIfAbsent(participant, () => []);
+          interactionsByContact[participant]!.add(interaction);
+        }
+      }
     }
 
     final prayerRows = await db.query(
@@ -641,21 +806,46 @@ class DBHelper {
 
   Future<Interaction> insertInteraction(Interaction interaction) async {
     final db = await database;
-    final id = await db.insert(
-      'interactions',
-      interaction.toMap(includeId: false),
-    );
-    return interaction.copyWith(id: id);
+    return await db.transaction((txn) async {
+      final interactionMap = interaction.toMap(
+        includeId: false,
+        encodeAttachments: true,
+      );
+      interactionMap.remove('participantIds');
+
+      final id = await txn.insert('interactions', interactionMap);
+      await _replaceInteractionParticipants(
+        txn,
+        id,
+        interaction.participantIds,
+      );
+
+      return interaction.copyWith(id: id);
+    });
   }
 
   Future<void> updateInteraction(Interaction interaction) async {
     final db = await database;
-    await db.update(
-      'interactions',
-      interaction.toMap(includeId: false),
-      where: 'id = ?',
-      whereArgs: [interaction.id],
-    );
+    await db.transaction((txn) async {
+      final interactionMap = interaction.toMap(
+        includeId: false,
+        encodeAttachments: true,
+      );
+      interactionMap.remove('participantIds');
+
+      await txn.update(
+        'interactions',
+        interactionMap,
+        where: 'id = ?',
+        whereArgs: [interaction.id],
+      );
+
+      await _replaceInteractionParticipants(
+        txn,
+        interaction.id!,
+        interaction.participantIds,
+      );
+    });
   }
 
   Future<void> deleteInteraction(int id) async {
@@ -669,16 +859,37 @@ class DBHelper {
 
   Future<List<Interaction>> getInteractionsForContact(String contactId) async {
     final db = await database;
-    final rows = await db.query(
-      'interactions',
+    final participantRows = await db.query(
+      'interaction_participants',
+      columns: ['interactionId'],
       where: 'contactId = ?',
       whereArgs: [contactId],
+    );
+    final interactionIds =
+        participantRows.map((row) => row['interactionId'] as int).toSet();
+    if (interactionIds.isEmpty) {
+      return const [];
+    }
+
+    final participantsByInteraction = await _getParticipantsForInteractions(
+      db,
+      interactionIds,
+    );
+
+    final placeholders = List.filled(interactionIds.length, '?').join(',');
+    final rows = await db.query(
+      'interactions',
+      where: 'id IN ($placeholders)',
+      whereArgs: interactionIds.toList(),
       orderBy: 'occurredAt DESC',
     );
 
-    return rows
-        .map((row) => Interaction.fromMap(Map<String, dynamic>.from(row)))
-        .toList();
+    return rows.map((row) {
+      final interactionMap = Map<String, dynamic>.from(row);
+      interactionMap['participantIds'] =
+          participantsByInteraction[row['id'] as int] ?? const <String>[];
+      return Interaction.fromMap(interactionMap);
+    }).toList();
   }
 
   Future<List<Interaction>> getInteractions({
@@ -687,13 +898,25 @@ class DBHelper {
     String? contactId,
   }) async {
     final db = await database;
+    final interactionIdRows = await db.query(
+      'interaction_participants',
+      columns: ['interactionId'],
+      where: contactId != null ? 'contactId = ?' : null,
+      whereArgs: contactId != null ? [contactId] : null,
+    );
+
+    final interactionIds =
+        interactionIdRows.map((row) => row['interactionId'] as int).toSet();
+    if (interactionIds.isEmpty) {
+      return const [];
+    }
+
     final where = <String>[];
     final whereArgs = <Object?>[];
 
-    if (contactId != null) {
-      where.add('contactId = ?');
-      whereArgs.add(contactId);
-    }
+    final placeholders = List.filled(interactionIds.length, '?').join(',');
+    where.add('id IN ($placeholders)');
+    whereArgs.addAll(interactionIds);
 
     if (start != null) {
       where.add('occurredAt >= ?');
@@ -705,16 +928,24 @@ class DBHelper {
       whereArgs.add(end.toIso8601String());
     }
 
+    final participantsByInteraction = await _getParticipantsForInteractions(
+      db,
+      interactionIds,
+    );
+
     final rows = await db.query(
       'interactions',
-      where: where.isEmpty ? null : where.join(' AND '),
-      whereArgs: where.isEmpty ? null : whereArgs,
+      where: where.join(' AND '),
+      whereArgs: whereArgs,
       orderBy: 'occurredAt DESC',
     );
 
-    return rows
-        .map((row) => Interaction.fromMap(Map<String, dynamic>.from(row)))
-        .toList();
+    return rows.map((row) {
+      final interactionMap = Map<String, dynamic>.from(row);
+      interactionMap['participantIds'] =
+          participantsByInteraction[row['id'] as int] ?? const <String>[];
+      return Interaction.fromMap(interactionMap);
+    }).toList();
   }
 
   Future<bool> interactionExists({
@@ -723,16 +954,18 @@ class DBHelper {
     required String summary,
   }) async {
     final db = await database;
-    final rows = await db.query(
-      'interactions',
-      columns: ['id'],
-      where: 'contactId = ? AND occurredAt = ? AND summary = ?',
-      whereArgs: [
+    final rows = await db.rawQuery(
+      '''
+      SELECT i.id FROM interactions i
+      JOIN interaction_participants ip ON i.id = ip.interactionId
+      WHERE ip.contactId = ? AND i.occurredAt = ? AND i.summary = ?
+      LIMIT 1
+      ''',
+      [
         contactId,
         occurredAt.toIso8601String(),
         summary,
       ],
-      limit: 1,
     );
 
     return rows.isNotEmpty;
@@ -898,9 +1131,19 @@ class DBHelper {
       limit: limit,
     );
 
-    return rows
-        .map((row) => Interaction.fromMap(Map<String, dynamic>.from(row)))
-        .toList();
+    final interactionIds =
+        rows.map((row) => row['id'] as int).toSet();
+    final participantsByInteraction = await _getParticipantsForInteractions(
+      db,
+      interactionIds,
+    );
+
+    return rows.map((row) {
+      final interactionMap = Map<String, dynamic>.from(row);
+      interactionMap['participantIds'] =
+          participantsByInteraction[row['id'] as int] ?? const <String>[];
+      return Interaction.fromMap(interactionMap);
+    }).toList();
   }
 
   Future<Map<PrayerRequestStatus, int>> getPrayerRequestCounts() async {
