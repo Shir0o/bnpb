@@ -13,6 +13,22 @@ import '../services/backup_service.dart';
 import '../services/reminder_coordinator.dart';
 import '../widgets/people_card.dart';
 
+const Map<String, String> _mediumLabels = {
+  'in_person': 'In-person',
+  'call': 'Call',
+  'message': 'Message',
+  'online': 'Online Meeting',
+  'other': 'Other',
+};
+
+const Map<String, IconData> _mediumIcons = {
+  'in_person': Icons.people_outline,
+  'call': Icons.phone_outlined,
+  'message': Icons.chat_bubble_outline,
+  'online': Icons.videocam_outlined,
+  'other': Icons.more_horiz,
+};
+
 class ContactDetailsPage extends StatefulWidget {
   final Contact contact;
   final Future<void> Function() onDelete;
@@ -47,22 +63,6 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
   String _interactionQuery = '';
   bool _isEditing = false;
   Contact? _editingSnapshot;
-
-  static const Map<String, String> _mediumLabels = {
-    'in_person': 'In-person',
-    'call': 'Call',
-    'message': 'Message',
-    'online': 'Online Meeting',
-    'other': 'Other',
-  };
-
-  static const Map<String, IconData> _mediumIcons = {
-    'in_person': Icons.people_outline,
-    'call': Icons.phone_outlined,
-    'message': Icons.chat_bubble_outline,
-    'online': Icons.videocam_outlined,
-    'other': Icons.more_horiz,
-  };
 
   List<String> _selectedTags = [];
   List<String> _keywords = [];
@@ -1471,6 +1471,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
 
     final occurredAtLabel =
         DateFormat.yMMMd().add_jm().format(interaction.occurredAt);
+    final participantBadges = _buildParticipantBadges(interaction);
     final metadataPills = <Widget>[
       _buildInfoPill(icon: mediumIcon, label: mediumLabel),
       if (interaction.durationMinutes != null)
@@ -1485,113 +1486,176 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
         ),
     ];
 
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceVariant.withOpacity(0.4),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: theme.colorScheme.outlineVariant),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+        onTap: interaction.id != null
+            ? () => _openInteractionDetails(interaction)
+            : null,
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surfaceVariant.withOpacity(0.4),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: theme.colorScheme.outlineVariant),
+          ),
+          child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      interaction.summary,
-                      style: theme.textTheme.titleSmall,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      occurredAtLabel,
-                      style: theme.textTheme.bodySmall,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    if (interaction.location != null &&
-                        interaction.location!.isNotEmpty)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 4),
-                        child: Text(
-                          interaction.location!,
-                          style: theme.textTheme.bodySmall,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    if (interaction.category != null &&
-                        interaction.category!.isNotEmpty)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 2),
-                        child: Text(
-                          interaction.category!,
-                          style: theme.textTheme.labelSmall,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-              if (_isEditing)
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.edit_outlined),
-                      tooltip: 'Edit interaction',
-                      onPressed: () => _showEditInteractionSheet(interaction),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.delete_outline),
-                      tooltip: 'Delete interaction',
-                      onPressed: () => _deleteInteraction(interaction),
-                    ),
-                  ],
-                ),
-            ],
-          ),
-          if (metadataPills.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: metadataPills,
-            ),
-          ],
-          if (interaction.followUpAt != null) ...[
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Icon(
-                  Icons.alarm_outlined,
-                  size: 18,
-                  color: theme.colorScheme.primary,
-                ),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    DateFormat.MMMd()
-                        .add_jm()
-                        .format(interaction.followUpAt!),
-                    style: theme.textTheme.labelSmall,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(
+                    mediumIcon,
+                    color: theme.colorScheme.primary,
                   ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: Text(
+                                occurredAtLabel,
+                                style: theme.textTheme.labelSmall?.copyWith(
+                                  color: theme.colorScheme.primary,
+                                ),
+                              ),
+                            ),
+                            Icon(
+                              interaction.markForPrayer
+                                  ? Icons.self_improvement_outlined
+                                  : Icons.event_note_outlined,
+                              size: 16,
+                              color: interaction.markForPrayer
+                                  ? theme.colorScheme.secondary
+                                  : theme.colorScheme.primary,
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          interaction.summary,
+                          style: theme.textTheme.titleSmall,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 4),
+                        if (participantBadges.isNotEmpty) ...[
+                          const SizedBox(height: 8),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: participantBadges,
+                          ),
+                        ],
+                        if (interaction.location != null &&
+                            interaction.location!.isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 4),
+                            child: Text(
+                              interaction.location!,
+                              style: theme.textTheme.bodySmall,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        if (interaction.category != null &&
+                            interaction.category!.isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 2),
+                            child: Text(
+                              interaction.category!,
+                              style: theme.textTheme.labelSmall,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  if (_isEditing)
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.edit_outlined),
+                          tooltip: 'Edit interaction',
+                          onPressed: () => _showEditInteractionSheet(interaction),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.delete_outline),
+                          tooltip: 'Delete interaction',
+                          onPressed: () => _deleteInteraction(interaction),
+                        ),
+                      ],
+                    ),
+                ],
+              ),
+              if (metadataPills.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: metadataPills,
                 ),
               ],
-            ),
-          ],
-        ],
+              if (interaction.followUpAt != null) ...[
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Icon(
+                      Icons.alarm_outlined,
+                      size: 18,
+                      color: theme.colorScheme.primary,
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        DateFormat.MMMd()
+                            .add_jm()
+                            .format(interaction.followUpAt!),
+                        style: theme.textTheme.labelSmall,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ],
+          ),
+        ),
       ),
     );
+  }
+
+  List<Widget> _buildParticipantBadges(Interaction interaction) {
+    if (interaction.participantIds.isEmpty) {
+      return const [];
+    }
+
+    final theme = Theme.of(context);
+    return interaction.participantIds.toSet().map((participantId) {
+      final displayName = _displayNameForContactId(participantId);
+      final name = displayName.isNotEmpty ? displayName : participantId;
+      final initial = name.isNotEmpty ? name[0].toUpperCase() : '?';
+
+      return Chip(
+        avatar: CircleAvatar(
+          backgroundColor: theme.colorScheme.primary.withOpacity(0.12),
+          foregroundColor: theme.colorScheme.primary,
+          child: Text(initial),
+        ),
+        label: Text(name),
+        visualDensity: VisualDensity.compact,
+      );
+    }).toList();
   }
 
   void _showEditInteractionSheet(Interaction interaction) async {
@@ -1618,6 +1682,28 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Interaction updated')),
     );
+  }
+
+  Future<void> _openInteractionDetails(Interaction interaction) async {
+    if (interaction.id == null) {
+      return;
+    }
+
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => InteractionDetailPage(
+          interactionId: interaction.id!,
+          initialInteraction: interaction,
+          contactLookup: _contactLookup,
+        ),
+      ),
+    );
+
+    if (!mounted) {
+      return;
+    }
+
+    await _refreshInteractions();
   }
 
   Widget _buildInfoPill({
@@ -1674,6 +1760,239 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
   }
 }
 
+class InteractionDetailPage extends StatefulWidget {
+  const InteractionDetailPage({
+    super.key,
+    required this.interactionId,
+    required this.initialInteraction,
+    required this.contactLookup,
+  });
+
+  final int interactionId;
+  final Interaction initialInteraction;
+  final Map<String, Contact> contactLookup;
+
+  @override
+  State<InteractionDetailPage> createState() => _InteractionDetailPageState();
+}
+
+class _InteractionDetailPageState extends State<InteractionDetailPage> {
+  late Interaction _interaction;
+  late Map<String, Contact> _contactLookup;
+  bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _interaction = widget.initialInteraction;
+    _contactLookup = Map<String, Contact>.from(widget.contactLookup);
+    _refreshInteraction();
+  }
+
+  Future<void> _refreshInteraction() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    final dbHelper = DBHelper();
+    final contacts = await dbHelper.getContacts();
+    final lookup = {for (final contact in contacts) contact.id: contact};
+    final latestInteraction = await dbHelper.getInteractionById(
+      widget.interactionId,
+    );
+
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _contactLookup = lookup;
+      if (latestInteraction != null) {
+        _interaction = latestInteraction;
+      }
+      _isLoading = false;
+    });
+  }
+
+  Contact? get _primaryContact {
+    for (final participantId in _interaction.participantIds) {
+      final contact = _contactLookup[participantId];
+      if (contact != null) {
+        return contact;
+      }
+    }
+    return _contactLookup.values.isNotEmpty ? _contactLookup.values.first : null;
+  }
+
+  List<Widget> _buildParticipantBadges() {
+    if (_interaction.participantIds.isEmpty) {
+      return const [];
+    }
+
+    final theme = Theme.of(context);
+    return _interaction.participantIds.toSet().map((participantId) {
+      final contact = _contactLookup[participantId];
+      final name = contact?.fullName.isNotEmpty == true
+          ? contact!.fullName
+          : (contact?.nickname?.isNotEmpty == true
+              ? contact!.nickname!
+              : participantId);
+      final initial = name.isNotEmpty ? name[0].toUpperCase() : '?';
+
+      return Chip(
+        avatar: CircleAvatar(
+          backgroundColor: theme.colorScheme.primary.withOpacity(0.12),
+          foregroundColor: theme.colorScheme.primary,
+          child: Text(initial),
+        ),
+        label: Text(name),
+        visualDensity: VisualDensity.compact,
+      );
+    }).toList();
+  }
+
+  Widget _buildDetailTile({
+    required IconData icon,
+    required String title,
+    String? value,
+  }) {
+    if (value == null || value.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return ListTile(
+      leading: Icon(icon),
+      title: Text(title),
+      subtitle: Text(value),
+    );
+  }
+
+  Future<void> _editInteraction() async {
+    final contact = _primaryContact;
+    if (contact == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No contacts available to edit this interaction.'),
+          ),
+        );
+      }
+      return;
+    }
+
+    final updatedInteraction = await showModalBottomSheet<Interaction>(
+      context: context,
+      isScrollControlled: true,
+      isDismissible: false,
+      enableDrag: false,
+      builder: (context) => _LogInteractionSheet(
+        contact: contact,
+        existingInteractions: const [],
+        initialInteraction: _interaction,
+      ),
+    );
+
+    if (!mounted || updatedInteraction == null) {
+      return;
+    }
+
+    await _refreshInteraction();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Interaction updated')),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final participantBadges = _buildParticipantBadges();
+    final mediumLabel = _mediumLabels[_interaction.medium] ?? _interaction.medium;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Interaction details'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.edit_outlined),
+            onPressed: _isLoading ? null : _editInteraction,
+          ),
+        ],
+      ),
+      body: RefreshIndicator(
+        onRefresh: _refreshInteraction,
+        child: ListView(
+          padding: const EdgeInsets.all(16),
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: [
+            if (_isLoading) ...[
+              const LinearProgressIndicator(),
+              const SizedBox(height: 12),
+            ],
+            Text(
+              _interaction.summary,
+              style: theme.textTheme.titleLarge,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              DateFormat.yMMMd().add_jm().format(_interaction.occurredAt),
+              style: theme.textTheme.bodyMedium,
+            ),
+            const SizedBox(height: 16),
+            if (participantBadges.isNotEmpty) ...[
+              Text('Participants', style: theme.textTheme.titleSmall),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: participantBadges,
+              ),
+              const SizedBox(height: 16),
+            ],
+            _buildDetailTile(
+              icon: _mediumIcons[_interaction.medium] ?? Icons.event_note_outlined,
+              title: 'Medium',
+              value: mediumLabel,
+            ),
+            _buildDetailTile(
+              icon: Icons.place_outlined,
+              title: 'Location',
+              value: _interaction.location,
+            ),
+            _buildDetailTile(
+              icon: Icons.category_outlined,
+              title: 'Category',
+              value: _interaction.category,
+            ),
+            _buildDetailTile(
+              icon: Icons.timer_outlined,
+              title: 'Duration',
+              value: _interaction.durationMinutes != null
+                  ? '${_interaction.durationMinutes} minutes'
+                  : null,
+            ),
+            _buildDetailTile(
+              icon: Icons.alarm_outlined,
+              title: 'Follow-up',
+              value: _interaction.followUpAt != null
+                  ? DateFormat.yMMMd().add_jm().format(_interaction.followUpAt!)
+                  : null,
+            ),
+            if (_interaction.markForPrayer)
+              ListTile(
+                leading: Icon(
+                  Icons.self_improvement_outlined,
+                  color: theme.colorScheme.secondary,
+                ),
+                title: const Text('Marked for prayer'),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _LogInteractionSheet extends StatefulWidget {
   const _LogInteractionSheet({
     required this.contact,
@@ -1715,6 +2034,10 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
   bool _isSaveEnabled = false;
   bool _formWasSubmitted = false;
   bool _isSavingInteraction = false;
+  List<Contact> _availableContacts = [];
+  Map<String, Contact> _contactLookup = {};
+  Set<String> _selectedParticipantIds = {};
+  bool _isLoadingContacts = false;
 
   bool _calculateSaveEnabled() {
     final summaryFilled = _summaryController.text.trim().isNotEmpty;
@@ -1751,6 +2074,148 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
     }
   }
 
+  Future<void> _loadContacts() async {
+    setState(() {
+      _isLoadingContacts = true;
+    });
+
+    final contacts = await DBHelper().getContacts();
+    contacts.sort(
+      (a, b) => a.fullName.toLowerCase().compareTo(b.fullName.toLowerCase()),
+    );
+
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _availableContacts = contacts;
+      _contactLookup = {for (final contact in contacts) contact.id: contact};
+      _selectedParticipantIds = {
+        widget.contact.id,
+        ..._selectedParticipantIds,
+        ...(widget.initialInteraction?.participantIds ?? const <String>{}),
+      };
+      _isLoadingContacts = false;
+    });
+  }
+
+  void _toggleParticipant(String contactId) {
+    if (contactId == widget.contact.id) {
+      return;
+    }
+
+    setState(() {
+      if (_selectedParticipantIds.contains(contactId)) {
+        _selectedParticipantIds.remove(contactId);
+      } else {
+        _selectedParticipantIds.add(contactId);
+      }
+    });
+  }
+
+  Widget _buildParticipantChip(
+    Contact contact, {
+    required bool isSelected,
+    required bool isEnabled,
+  }) {
+    final theme = Theme.of(context);
+    final name = contact.fullName.isNotEmpty
+        ? contact.fullName
+        : (contact.nickname?.isNotEmpty == true
+            ? contact.nickname!
+            : contact.id);
+    final initial = name.isNotEmpty ? name[0].toUpperCase() : '?';
+
+    return FilterChip(
+      avatar: CircleAvatar(
+        backgroundColor: theme.colorScheme.primary.withOpacity(0.12),
+        foregroundColor: theme.colorScheme.primary,
+        child: Text(initial),
+      ),
+      label: Text(name),
+      selected: isSelected,
+      onSelected: isEnabled ? (_) => _toggleParticipant(contact.id) : null,
+      visualDensity: VisualDensity.compact,
+    );
+  }
+
+  Widget _buildParticipantsPicker() {
+    if (_isLoadingContacts && _availableContacts.isEmpty) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.symmetric(vertical: 8),
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
+    final chips = <Widget>[];
+    final renderedIds = <String>{};
+
+    final primaryContact = _contactLookup[widget.contact.id] ?? widget.contact;
+    chips.add(
+      _buildParticipantChip(
+        primaryContact,
+        isSelected: true,
+        isEnabled: false,
+      ),
+    );
+    renderedIds.add(widget.contact.id);
+
+    for (final contact in _availableContacts) {
+      if (renderedIds.contains(contact.id)) continue;
+      chips.add(
+        _buildParticipantChip(
+          contact,
+          isSelected: _selectedParticipantIds.contains(contact.id),
+          isEnabled: true,
+        ),
+      );
+      renderedIds.add(contact.id);
+    }
+
+    for (final participantId in _selectedParticipantIds) {
+      if (renderedIds.contains(participantId)) {
+        continue;
+      }
+      chips.add(
+        Chip(
+          label: Text(participantId),
+          visualDensity: VisualDensity.compact,
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Text(
+              'Participants',
+              style: Theme.of(context).textTheme.titleSmall,
+            ),
+            if (_isLoadingContacts) ...[
+              const SizedBox(width: 8),
+              const SizedBox(
+                height: 16,
+                width: 16,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            ],
+          ],
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: chips,
+        ),
+      ],
+    );
+  }
+
   @override
   void initState() {
     super.initState();
@@ -1773,6 +2238,11 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
     _followUpAt = initial?.followUpAt;
     _medium = initial?.medium ?? 'in_person';
     _markForPrayer = initial?.markForPrayer ?? false;
+    _selectedParticipantIds = {
+      widget.contact.id,
+      ...(initial?.participantIds ?? const <String>{}),
+    };
+    _loadContacts();
     _speechBaseText = _summaryController.text.trim();
     _summaryController.addListener(_updateSaveEnabled);
     _durationController.addListener(_updateSaveEnabled);
@@ -2064,7 +2534,7 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
 
     final participants = <String>{
       widget.contact.id,
-      ...widget.initialInteraction?.participantIds ?? const <String>{},
+      ..._selectedParticipantIds,
     };
 
     final interaction = Interaction(
@@ -2292,6 +2762,8 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
                             });
                           },
                         ),
+                        const SizedBox(height: 12),
+                        _buildParticipantsPicker(),
                         const SizedBox(height: 12),
                         TextField(
                           controller: _locationController,

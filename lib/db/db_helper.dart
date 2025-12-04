@@ -948,6 +948,30 @@ class DBHelper {
     }).toList();
   }
 
+  Future<Interaction?> getInteractionById(int interactionId) async {
+    final db = await database;
+    final rows = await db.query(
+      'interactions',
+      where: 'id = ?',
+      whereArgs: [interactionId],
+      limit: 1,
+    );
+
+    if (rows.isEmpty) {
+      return null;
+    }
+
+    final participantsByInteraction = await _getParticipantsForInteractions(
+      db,
+      {interactionId},
+    );
+
+    final interactionMap = Map<String, dynamic>.from(rows.first);
+    interactionMap['participantIds'] =
+        participantsByInteraction[interactionId] ?? const <String>[];
+    return Interaction.fromMap(interactionMap);
+  }
+
   Future<bool> interactionExists({
     required String contactId,
     required DateTime occurredAt,
