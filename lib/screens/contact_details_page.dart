@@ -150,19 +150,33 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
       _isLoadingInteractions = true;
     });
 
-    final interactions =
-        await DBHelper().getInteractionsForContact(widget.contact.id);
+    try {
+      final interactions =
+          await DBHelper().getInteractionsForContact(widget.contact.id);
 
-    if (!mounted) return;
-    setState(() {
-      _interactions = interactions
-        ..sort((a, b) => b.occurredAt.compareTo(a.occurredAt));
-      _interactionLookup = {
-        for (final interaction in _interactions)
-          if (interaction.id != null) interaction.id!: interaction,
-      };
-      _isLoadingInteractions = false;
-    });
+      if (!mounted) return;
+      setState(() {
+        _interactions = List.from(interactions)
+          ..sort((a, b) => b.occurredAt.compareTo(a.occurredAt));
+        _interactionLookup = {
+          for (final interaction in _interactions)
+            if (interaction.id != null) interaction.id!: interaction,
+        };
+        _isLoadingInteractions = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isLoadingInteractions = false;
+      });
+      debugPrint('Error loading interactions: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Unable to load interactions. Please try again.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   void _addTagFromInput() {
