@@ -196,6 +196,14 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
     final double yInterval =
         (maxY == 0 ? 1 : math.max(1, maxY / 4)).toDouble();
 
+    final List<Color> barColors = [
+      Colors.blue,
+      Colors.red,
+      Colors.green,
+      Colors.orange,
+      Colors.purple,
+    ];
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -217,6 +225,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                   barGroups: entries.asMap().entries.map((entry) {
                     final index = entry.key;
                     final value = values[index];
+                    final color = barColors[index % barColors.length];
                     return BarChartGroupData(
                       x: index,
                       barRods: [
@@ -224,7 +233,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                           toY: value,
                           width: 18,
                           borderRadius: BorderRadius.circular(6),
-                          color: Theme.of(context).colorScheme.primary,
+                          color: color,
                         ),
                       ],
                     );
@@ -247,38 +256,40 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                     topTitles: const AxisTitles(
                       sideTitles: SideTitles(showTitles: false),
                     ),
-                    bottomTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        reservedSize: 72,
-                        getTitlesWidget: (value, meta) {
-                          final index = value.toInt();
-                          if (index < 0 || index >= entries.length) {
-                            return const SizedBox.shrink();
-                          }
-                          return Padding(
-                            padding: const EdgeInsets.only(top: 6),
-                            child: Transform.rotate(
-                              angle: -math.pi / 4,
-                              child: SizedBox(
-                                width: 80,
-                                child: Text(
-                                  entries[index].contactName,
-                                  style:
-                                      Theme.of(context).textTheme.bodySmall,
-                                  maxLines: 1,
-                                  textAlign: TextAlign.right,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ),
-                          );
-                        },
-                      ),
+                    bottomTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
                     ),
                   ),
                 ),
               ),
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 16,
+              runSpacing: 8,
+              children: entries.asMap().entries.map((entry) {
+                final index = entry.key;
+                final contact = entry.value;
+                final color = barColors[index % barColors.length];
+                return Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 12,
+                      height: 12,
+                      decoration: BoxDecoration(
+                        color: color,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      contact.contactName,
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                  ],
+                );
+              }).toList(),
             ),
             const SizedBox(height: 12),
             ...entries.map(
@@ -339,8 +350,8 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                   final biggest = constraints.biggest;
                   final shortestSide =
                       math.min(biggest.width, biggest.height);
-                  final sectionRadius = math.max(
-                    0,
+                  final double sectionRadius = math.max(
+                    0.0,
                     (shortestSide / 2) - 8,
                   ); // avoid overflow
                   final centerSpaceRadius = sectionRadius / 2;
