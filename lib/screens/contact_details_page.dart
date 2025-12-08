@@ -12,6 +12,7 @@ import '../models/relationship.dart';
 import '../services/backup_service.dart';
 import '../services/reminder_coordinator.dart';
 import '../widgets/people_card.dart';
+import '../widgets/relationship_dialog.dart';
 
 const Map<String, String> _mediumLabels = {
   'in_person': 'In-person',
@@ -533,6 +534,8 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
     });
   }
 
+
+
   void _showRelationshipDialog({Relationship? relationship}) {
     final isEditing = relationship != null;
     if (isEditing && relationship!.sourceContactId != widget.contact.id) {
@@ -555,121 +558,21 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
       return;
     }
 
-    String? selectedContactId;
-    final dropdownContacts = List<Contact>.from(_availableContacts);
-    if (isEditing) {
-      selectedContactId = relationship!.targetContactId;
-      final fallback = _contactLookup[selectedContactId];
-      if (fallback != null &&
-          dropdownContacts.every((contact) => contact.id != fallback.id)) {
-        dropdownContacts.add(fallback);
-      }
-    } else {
-      selectedContactId =
-          dropdownContacts.isNotEmpty ? dropdownContacts.first.id : null;
-    }
-
-    final typeController =
-        TextEditingController(text: relationship?.type ?? '');
-    final notesController =
-        TextEditingController(text: relationship?.notes ?? '');
-
     showDialog(
       context: context,
       builder: (context) {
-        return AlertDialog(
-          title: Text(isEditing ? 'Edit Relationship' : 'Add Relationship'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              DropdownButtonFormField<String>(
-                value: selectedContactId,
-                decoration: const InputDecoration(
-                  labelText: 'Connected contact',
-                  border: OutlineInputBorder(),
-                ),
-                items: dropdownContacts
-                    .map(
-                      (contact) => DropdownMenuItem<String>(
-                        value: contact.id,
-                        child: Text(
-                          contact.fullName.isNotEmpty
-                              ? contact.fullName
-                              : (contact.nickname ?? 'Unnamed Contact'),
-                        ),
-                      ),
-                    )
-                    .toList(),
-                onChanged: (value) {
-                  selectedContactId = value;
-                },
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: typeController,
-                decoration: const InputDecoration(
-                  labelText: 'Relationship type',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: notesController,
-                maxLines: 3,
-                decoration: const InputDecoration(
-                  labelText: 'Notes (optional)',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-              },
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                final typeText = typeController.text.trim();
-                final targetId = selectedContactId;
-
-                if (typeText.isEmpty || targetId == null) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Please select a contact and type.'),
-                    ),
-                  );
-                  return;
-                }
-
-                final relationshipToSave = Relationship(
-                  id: relationship?.id,
-                  sourceContactId: widget.contact.id,
-                  targetContactId: targetId,
-                  type: typeText,
-                  notes: notesController.text.trim().isEmpty
-                      ? null
-                      : notesController.text.trim(),
-                );
-
-                await DBHelper().upsertRelationship(relationshipToSave);
-                await _refreshRelationships();
-
-                if (!mounted) return;
-                Navigator.pop(context);
-              },
-              child: Text(isEditing ? 'Save' : 'Add'),
-            ),
-          ],
+        return RelationshipDialog(
+          currentContact: widget.contact,
+          availableContacts: _availableContacts,
+          relationship: relationship,
+          onSave: (relationshipToSave) async {
+            await DBHelper().upsertRelationship(relationshipToSave);
+            await _refreshRelationships();
+            if (mounted) Navigator.pop(context);
+          },
         );
       },
-    ).whenComplete(() {
-      typeController.dispose();
-      notesController.dispose();
-    });
+    );
   }
 
   void _confirmDeleteRelationship(Relationship relationship) {
