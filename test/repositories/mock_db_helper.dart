@@ -1,0 +1,154 @@
+import 'package:sqflite_sqlcipher/sqflite.dart';
+import 'package:bnpb/db/db_helper.dart';
+import 'package:bnpb/models/attendance_entry.dart';
+import 'package:bnpb/models/attendance_session.dart';
+import 'package:bnpb/models/contact.dart';
+import 'package:bnpb/models/notification_preference.dart';
+import 'package:bnpb/models/interaction.dart';
+import 'package:bnpb/models/prayer_request.dart';
+import 'package:bnpb/models/relationship.dart';
+
+class MockDBHelper implements DBHelper {
+  @override
+  Future<Database> get database => throw UnimplementedError();
+
+  @override
+  Future<void> close() async {}
+
+  @override
+  Future<void> insertContact(Contact contact) => throw UnimplementedError();
+
+  @override
+  Future<void> upsertContactRowForTest(
+    DatabaseExecutor txn,
+    Contact contact, {
+    required bool isUpdate,
+  }) => throw UnimplementedError();
+
+  @override
+  Future<List<Contact>> getContacts({String? contactId}) => throw UnimplementedError();
+
+  @override
+  Future<Contact?> getContactById(String id) => throw UnimplementedError();
+
+  @override
+  Future<AttendanceSession> insertAttendanceSession(AttendanceSession session) => throw UnimplementedError();
+
+  @override
+  Future<void> deleteAttendanceSession(int sessionId) => throw UnimplementedError();
+
+  @override
+  Future<AttendanceEntry> upsertAttendanceEntry(AttendanceEntry entry) => throw UnimplementedError();
+
+  @override
+  Future<List<AttendanceSession>> getAttendanceSessions({int? sessionId}) => throw UnimplementedError();
+
+  @override
+  Future<List<AttendanceEntry>> getAttendanceEntries(int sessionId) => throw UnimplementedError();
+
+  @override
+  Future<NotificationPreference> upsertNotificationPreference(NotificationPreference preference) => throw UnimplementedError();
+
+  @override
+  Future<NotificationPreference?> getNotificationPreference({
+    required NotificationScopeType scopeType,
+    required String scopeId,
+    required ReminderChannel channel,
+  }) => throw UnimplementedError();
+
+  @override
+  Future<void> deleteNotificationPreference({
+    required NotificationScopeType scopeType,
+    required String scopeId,
+    required ReminderChannel channel,
+  }) => throw UnimplementedError();
+
+  @override
+  Future<List<NotificationPreference>> getNotificationPreferences({
+    NotificationScopeType? scopeType,
+  }) => throw UnimplementedError();
+
+  @override
+  Future<int> deleteContact(String id) => throw UnimplementedError();
+
+  @override
+  Future<void> deleteInteraction(int id) => throw UnimplementedError();
+
+  @override
+  Future<void> deletePrayerRequest(int id) => throw UnimplementedError();
+
+  @override
+  Future<void> deleteRelationship(int id) => throw UnimplementedError();
+
+  @override
+  Future<List<Relationship>> getAllRelationships() => throw UnimplementedError();
+
+  @override
+  Future<List<String>> getAllTags() => throw UnimplementedError();
+
+  @override
+  Future<Interaction?> getInteractionById(int interactionId) => throw UnimplementedError();
+
+  @override
+  Future<List<String>> getInteractionCategories() => throw UnimplementedError();
+
+  @override
+  Future<List<Interaction>> getInteractions({
+    DateTime? start,
+    DateTime? end,
+    String? contactId,
+  }) => throw UnimplementedError();
+
+  @override
+  Future<List<Interaction>> getInteractionsForContact(String contactId) => throw UnimplementedError();
+
+  @override
+  Future<List<String>> getPrayerCategories() => throw UnimplementedError();
+
+  @override
+  Future<List<Interaction>> getPrayerFocusInteractions({int limit = 10}) => throw UnimplementedError();
+
+  @override
+  Future<Map<PrayerRequestStatus, int>> getPrayerRequestCounts() => throw UnimplementedError();
+
+  @override
+  Future<List<PrayerRequest>> getPrayerRequests({
+    PrayerRequestStatus? status,
+    int? limit,
+    bool latestAnsweredFirst = false,
+  }) => throw UnimplementedError();
+
+  @override
+  Future<List<PrayerRequest>> getPrayerRequestsForContact(
+    String contactId, {
+    bool includeArchived = false,
+  }) => throw UnimplementedError();
+
+  @override
+  Future<List<Relationship>> getRelationshipsForContact(String contactId) => throw UnimplementedError();
+
+  @override
+  Future<Interaction> insertInteraction(Interaction interaction) => throw UnimplementedError();
+
+  @override
+  Future<PrayerRequest> insertPrayerRequest(PrayerRequest request) => throw UnimplementedError();
+
+  @override
+  Future<bool> interactionExists({
+    required String contactId,
+    required DateTime occurredAt,
+    required String summary,
+  }) => throw UnimplementedError();
+
+  @override
+  Future<void> updateContact(Contact contact) => throw UnimplementedError();
+
+  @override
+  Future<void> updateInteraction(Interaction interaction) => throw UnimplementedError();
+
+  @override
+  Future<void> updatePrayerRequest(PrayerRequest request) => throw UnimplementedError();
+
+  @override
+  Future<Relationship> upsertRelationship(Relationship relationship) => throw UnimplementedError();
+}

@@ -60,6 +60,8 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
   final TextEditingController _photoCueController = TextEditingController();
 
   List<Interaction> _interactions = [];
+  List<Interaction> _filteredInteractionsCache = [];
+
   bool _isLoadingInteractions = false;
   String _interactionQuery = '';
   bool _isEditing = false;
@@ -89,14 +91,50 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
     };
     _applyContactData(contact);
 
-    _interactionSearchController.addListener(() {
-      setState(() {
-        _interactionQuery = _interactionSearchController.text.trim();
-      });
-    });
+    _interactionSearchController.addListener(_updateFilteredInteractions);
 
     _loadReferenceData();
     _refreshInteractions();
+  }
+
+  void _updateFilteredInteractions() {
+    final query = _interactionSearchController.text.trim().toLowerCase();
+    final sorted = List<Interaction>.from(_interactions)
+      ..sort((a, b) => b.occurredAt.compareTo(a.occurredAt));
+
+    if (query.isEmpty) {
+      if (mounted) {
+        setState(() {
+          _filteredInteractionsCache = sorted;
+          _interactionQuery = query;
+        });
+      } else {
+        _filteredInteractionsCache = sorted;
+        _interactionQuery = query;
+      }
+      return;
+    }
+
+    final filtered = sorted.where((interaction) {
+      final mediumLabel =
+          _mediumLabels[interaction.medium] ?? interaction.medium;
+      final matchesSummary = interaction.summary.toLowerCase().contains(query);
+      final matchesLocation =
+          (interaction.location ?? '').toLowerCase().contains(query);
+      final matchesMedium = mediumLabel.toLowerCase().contains(query);
+
+      return matchesSummary || matchesLocation || matchesMedium;
+    }).toList();
+
+    if (mounted) {
+      setState(() {
+        _filteredInteractionsCache = filtered;
+        _interactionQuery = query;
+      });
+    } else {
+      _filteredInteractionsCache = filtered;
+      _interactionQuery = query;
+    }
   }
 
   @override
@@ -157,13 +195,13 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
 
       if (!mounted) return;
       setState(() {
-        _interactions = List.from(interactions)
-          ..sort((a, b) => b.occurredAt.compareTo(a.occurredAt));
+        _interactions = List.from(interactions);
         _interactionLookup = {
           for (final interaction in _interactions)
             if (interaction.id != null) interaction.id!: interaction,
         };
         _isLoadingInteractions = false;
+        _updateFilteredInteractions();
       });
     } catch (e) {
       if (!mounted) return;
@@ -489,14 +527,14 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
   }
 
   void _applyInteractionListUpdate(List<Interaction> interactions) {
-    final nextInteractions = List<Interaction>.from(interactions)
-      ..sort((a, b) => b.occurredAt.compareTo(a.occurredAt));
+    final nextInteractions = List<Interaction>.from(interactions);
     setState(() {
       _interactions = nextInteractions;
       _interactionLookup = {
         for (final item in nextInteractions)
           if (item.id != null) item.id!: item,
       };
+      _updateFilteredInteractions();
     });
   }
 
@@ -743,8 +781,9 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
     final previewContact = _buildContactFromState();
     final displayName = previewContact.fullName;
 
-    final detailSections =
-        _isEditing ? _buildEditingSections() : _buildReadOnlySections(previewContact);
+    final detailSections = _isEditing
+        ? _buildEditingSections()
+        : _buildReadOnlySections(previewContact);
 
     return Scaffold(
       appBar: AppBar(
@@ -767,22 +806,30 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
           ),
         ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: ListView(
-          children: [
-            PeopleCard(
-              contact: previewContact,
+      body: CustomScrollView(
+        slivers: [
+          SliverPadding(
+            padding: const EdgeInsets.all(16.0),
+            sliver: SliverList(
+              delegate: SliverChildListDelegate(
+                [
+                  PeopleCard(
+                    contact: previewContact,
+                  ),
+                  const SizedBox(height: 16),
+                  ...detailSections,
+                  if (detailSections.isNotEmpty) const SizedBox(height: 16),
+                  _buildRelationshipCard(),
+                  const SizedBox(height: 16),
+                ],
+              ),
             ),
-            const SizedBox(height: 16),
-            ...detailSections,
-            if (detailSections.isNotEmpty) const SizedBox(height: 16),
-            _buildRelationshipCard(),
-            const SizedBox(height: 16),
-            _buildInteractionsCard(),
-            const SizedBox(height: 80),
-          ],
-        ),
+          ),
+          ..._buildInteractionsSlivers(),
+          const SliverToBoxAdapter(
+            child: SizedBox(height: 80),
+          ),
+        ],
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _showQuickAddInteractionSheet,
@@ -790,6 +837,94 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
         label: const Text('Log Interaction'),
       ),
     );
+  }
+
+  List<Widget> _buildInteractionsSlivers() {
+    final theme = Theme.of(context);
+    final title = Text(
+      'Interactions',
+      style: theme.textTheme.titleMedium,
+    );
+
+    // If loading or empty, just show the header card with appropriate content
+    if (_isLoadingInteractions) {
+      return [
+        SliverPadding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          sliver: SliverToBoxAdapter(
+            child: _buildCard(
+              children: [
+                title,
+                const SizedBox(height: 12),
+                const Center(
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(vertical: 24),
+                    child: CircularProgressIndicator(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ];
+    }
+
+    final header = SliverPadding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      sliver: SliverToBoxAdapter(
+        child: _buildCard(
+          children: [
+            title,
+            const SizedBox(height: 12),
+            TextField(
+              controller: _interactionSearchController,
+              decoration: InputDecoration(
+                hintText: 'Search by summary, medium, or location',
+                prefixIcon: const Icon(Icons.search),
+                suffixIcon: _interactionQuery.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear),
+                        onPressed: () => _interactionSearchController.clear(),
+                      )
+                    : null,
+                border: const OutlineInputBorder(),
+              ),
+            ),
+            if (_filteredInteractionsCache.isEmpty) ...[
+              const SizedBox(height: 12),
+              const Text(
+                'No interactions logged yet. Use the button below to record one.',
+                style: TextStyle(fontSize: 14, color: Colors.grey),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+
+    if (_filteredInteractionsCache.isEmpty) {
+      return [header];
+    }
+
+    return [
+      header,
+      SliverPadding(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        sliver: SliverList(
+          delegate: SliverChildBuilderDelegate(
+            (context, index) {
+              final interaction = _filteredInteractionsCache[index];
+              return _buildTimelineTile(
+                interaction: interaction,
+                isFirst: index == 0,
+                isLast: index == _filteredInteractionsCache.length - 1,
+              );
+            },
+            childCount: _filteredInteractionsCache.length,
+          ),
+        ),
+      ),
+    ];
   }
 
   Card _buildCard({required List<Widget> children}) {
@@ -1183,24 +1318,6 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
     );
   }
 
-  Widget _buildInteractionsCard() {
-    return _buildCard(
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                'Interactions',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        _buildInteractionSection(),
-      ],
-    );
-  }
 
   TextField _buildTextField({
     required TextEditingController controller,
@@ -1228,72 +1345,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
     );
   }
 
-  List<Interaction> get _filteredInteractions {
-    final query = _interactionQuery.toLowerCase();
-    final sorted = List<Interaction>.from(_interactions)
-      ..sort((a, b) => b.occurredAt.compareTo(a.occurredAt));
 
-    if (query.isEmpty) {
-      return sorted;
-    }
-
-    return sorted.where((interaction) {
-      final mediumLabel = _mediumLabels[interaction.medium] ?? interaction.medium;
-      final matchesSummary = interaction.summary.toLowerCase().contains(query);
-      final matchesLocation =
-          (interaction.location ?? '').toLowerCase().contains(query);
-      final matchesMedium = mediumLabel.toLowerCase().contains(query);
-
-      return matchesSummary || matchesLocation || matchesMedium;
-    }).toList();
-  }
-
-  Widget _buildInteractionSection() {
-    final filtered = _filteredInteractions;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        TextField(
-          controller: _interactionSearchController,
-          decoration: InputDecoration(
-            hintText: 'Search by summary, medium, or location',
-            prefixIcon: const Icon(Icons.search),
-            suffixIcon: _interactionQuery.isNotEmpty
-                ? IconButton(
-                    icon: const Icon(Icons.clear),
-                    onPressed: () => _interactionSearchController.clear(),
-                  )
-                : null,
-            border: const OutlineInputBorder(),
-          ),
-        ),
-        const SizedBox(height: 12),
-        if (_isLoadingInteractions)
-          const Center(child: Padding(
-            padding: EdgeInsets.symmetric(vertical: 24),
-            child: CircularProgressIndicator(),
-          ))
-        else if (filtered.isEmpty)
-          const Text(
-            'No interactions logged yet. Use the button below to record one.',
-            style: TextStyle(fontSize: 14, color: Colors.grey),
-          )
-        else
-          Column(
-            children: filtered.asMap().entries.map((entry) {
-              final index = entry.key;
-              final interaction = entry.value;
-              return _buildTimelineTile(
-                interaction: interaction,
-                isFirst: index == 0,
-                isLast: index == filtered.length - 1,
-              );
-            }).toList(),
-          ),
-      ],
-    );
-  }
 
   Widget _buildTimelineTile({
     required Interaction interaction,
@@ -2080,8 +2132,14 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
     );
     renderedIds.add(widget.contact.id);
 
+    // Limit visible suggestions to improve performance
+    const int suggestionLimit = 12;
+    int displayedCount = 0;
+
     for (final contact in _availableContacts) {
+      if (displayedCount >= suggestionLimit) break;
       if (renderedIds.contains(contact.id)) continue;
+      
       chips.add(
         _buildParticipantChip(
           contact,
@@ -2090,6 +2148,7 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
         ),
       );
       renderedIds.add(contact.id);
+      displayedCount++;
     }
 
     for (final participantId in _selectedParticipantIds) {
@@ -2103,6 +2162,23 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
         ),
       );
     }
+
+    chips.add(
+      ActionChip(
+        avatar: const Icon(Icons.add, size: 16),
+        label: const Text('Add People'),
+        onPressed: _openParticipantSelector,
+      ),
+    );
+    
+    // Always show an "Add" button to access the full list
+    chips.add(
+      ActionChip(
+        avatar: const Icon(Icons.add, size: 16),
+        label: const Text('Add People'),
+        onPressed: _openParticipantSelector,
+      ),
+    );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -2843,6 +2919,144 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
           ),
         ),
       ),
+    );
+  }
+
+  void _openParticipantSelector() async {
+    final selected = await showDialog<Set<String>>(
+      context: context,
+      builder: (context) => _ParticipantSelectionDialog(
+        availableContacts: _availableContacts,
+        selectedIds: _selectedParticipantIds,
+      ),
+    );
+
+    if (selected != null) {
+      if (!mounted) return;
+      setState(() {
+        _selectedParticipantIds = selected;
+      });
+    }
+  }
+}
+
+class _ParticipantSelectionDialog extends StatefulWidget {
+  final List<Contact> availableContacts;
+  final Set<String> selectedIds;
+
+  const _ParticipantSelectionDialog({
+    super.key,
+    required this.availableContacts,
+    required this.selectedIds,
+  });
+
+  @override
+  State<_ParticipantSelectionDialog> createState() =>
+      _ParticipantSelectionDialogState();
+}
+
+class _ParticipantSelectionDialogState
+    extends State<_ParticipantSelectionDialog> {
+  late Set<String> _currentSelection;
+  late TextEditingController _searchController;
+  String _query = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _currentSelection = Set.from(widget.selectedIds);
+    _searchController = TextEditingController();
+    _searchController.addListener(() {
+      setState(() {
+        _query = _searchController.text.trim().toLowerCase();
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  List<Contact> get _filteredContacts {
+    final available = widget.availableContacts;
+    if (_query.isEmpty) {
+      return available;
+    }
+    return available.where((contact) {
+      return contact.fullName.toLowerCase().contains(_query) ||
+          (contact.nickname?.toLowerCase().contains(_query) ?? false);
+    }).toList();
+  }
+
+  void _toggle(String id) {
+    setState(() {
+      if (_currentSelection.contains(id)) {
+        _currentSelection.remove(id);
+      } else {
+        _currentSelection.add(id);
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final filtered = _filteredContacts;
+    return AlertDialog(
+      title: const Text('Select Participants'),
+      content: SizedBox(
+        width: double.maxFinite,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: _searchController,
+              decoration: const InputDecoration(
+                hintText: 'Search contacts',
+                prefixIcon: Icon(Icons.search),
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Flexible(
+              child: ListView.builder(
+                shrinkWrap: true,
+                itemCount: filtered.length,
+                itemBuilder: (context, index) {
+                  final contact = filtered[index];
+                  final isSelected = _currentSelection.contains(contact.id);
+                  return ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: CircleAvatar(
+                      child: Text(
+                          contact.fullName.isNotEmpty ? contact.fullName[0].toUpperCase() : '?'),
+                    ),
+                    title: Text(contact.fullName),
+                    subtitle: contact.nickname != null && contact.nickname!.isNotEmpty
+                        ? Text(contact.nickname!)
+                        : null,
+                    trailing: isSelected
+                        ? const Icon(Icons.check_circle, color: Colors.blue)
+                        : const Icon(Icons.circle_outlined),
+                    onTap: () => _toggle(contact.id),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        ElevatedButton(
+          onPressed: () => Navigator.pop(context, _currentSelection),
+          child: const Text('Done'),
+        ),
+      ],
     );
   }
 }

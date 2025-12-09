@@ -15,7 +15,6 @@ void main() {
       interactions: [
         Interaction(
           id: 42,
-          contactId: 'contact-legacy',
           occurredAt: DateTime.parse('2024-03-10T12:00:00.000Z'),
           summary: 'Coffee catch-up',
           medium: 'in_person',

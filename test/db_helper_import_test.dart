@@ -16,8 +16,6 @@ void main() {
       firstName: 'Ada',
       interactions: [
         Interaction(
-          id: 42,
-          contactId: 'legacy-contact',
           occurredAt: DateTime.parse('2024-01-15T12:00:00.000Z'),
           summary: 'Coffee chat',
           medium: 'in_person',
@@ -47,8 +45,12 @@ void main() {
         .where((call) => call.table == 'interactions')
         .toList();
     expect(interactionDeletes, hasLength(1));
-    expect(interactionDeletes.first.where, 'contactId = ?');
-    expect(interactionDeletes.first.whereArgs, [contact.id]);
+    expect(interactionDeletes, hasLength(1));
+    expect(
+      interactionDeletes.first.where,
+      'id NOT IN (SELECT interactionId FROM interaction_participants)',
+    );
+    expect(interactionDeletes.first.whereArgs, isNull);
 
     final interactionInserts = fakeTxn.insertCalls
         .where((call) => call.table == 'interactions')
@@ -57,7 +59,6 @@ void main() {
 
     final inserted = interactionInserts.first.values;
     expect(inserted.containsKey('id'), isFalse);
-    expect(inserted['contactId'], contact.id);
     expect(
       inserted['occurredAt'],
       contact.interactions.first.occurredAt.toIso8601String(),
@@ -78,7 +79,7 @@ void main() {
         fakeTxn.callOrder.indexOf('insert:interactions');
     expect(deleteIndex, isNonNegative);
     expect(insertIndex, isNonNegative);
-    expect(deleteIndex, lessThan(insertIndex));
+    expect(insertIndex, lessThan(deleteIndex));
   });
 
   test('Interaction.fromMap accepts markForPrayer in multiple formats', () {
@@ -184,13 +185,7 @@ class _FakeTransaction implements DatabaseExecutor {
     return [];
   }
 
-  @override
-  Future<T> transaction<T>(
-    Future<T> Function(Transaction txn) action, {
-    bool? exclusive,
-  }) {
-    throw UnimplementedError();
-  }
+
 
   @override
   Future<int> rawDelete(String sql, [List<Object?>? arguments]) {
@@ -219,4 +214,38 @@ class _FakeTransaction implements DatabaseExecutor {
   Batch batch() {
     throw UnimplementedError();
   }
+
+  @override
+  Future<void> execute(String sql, [List<Object?>? arguments]) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<QueryCursor> queryCursor(
+    String table, {
+    bool? distinct,
+    List<String>? columns,
+    String? where,
+    List<Object?>? whereArgs,
+    String? groupBy,
+    String? having,
+    String? orderBy,
+    int? limit,
+    int? offset,
+    int? bufferSize,
+  }) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<QueryCursor> rawQueryCursor(
+    String sql,
+    List<Object?>? arguments, {
+    int? bufferSize,
+  }) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Database get database => throw UnimplementedError();
 }
