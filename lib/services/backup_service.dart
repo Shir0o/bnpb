@@ -63,6 +63,9 @@ class BackupService {
   /// Singleton accessor.
   factory BackupService() => _instance;
 
+  @visibleForTesting
+  String? mockDatabasePath;
+
   static const _maxRetainedBackups = 5;
 
   /// Ensures the backup directory exists and returns it.
@@ -80,7 +83,7 @@ class BackupService {
   /// prunes older snapshots beyond the retention threshold.
   Future<File?> exportBackup() async {
     final backupDir = await ensureBackupDirectoryExists();
-    final dbPath = await getDatabasesPath();
+    final dbPath = mockDatabasePath ?? await getDatabasesPath();
     final dbFile = File(p.join(dbPath, StorageConstants.databaseFileName));
 
     if (!await dbFile.exists()) {
