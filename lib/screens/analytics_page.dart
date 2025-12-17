@@ -101,32 +101,46 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
   }
 
   Widget _buildBody() {
+    Widget child;
+
     if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      child = const Center(
+        key: ValueKey('loading'),
+        child: CircularProgressIndicator(),
+      );
+    } else {
+      final summary = _summary;
+      if (summary == null) {
+        child = const Center(
+          key: ValueKey('error'),
+          child: Text('Unable to load analytics.'),
+        );
+      } else {
+        child = RefreshIndicator(
+          key: const ValueKey('content'),
+          onRefresh: _loadSummary,
+          child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.all(16),
+            children: [
+              _buildHeadlineCard(summary),
+              const SizedBox(height: 16),
+              _buildTopContactsCard(summary),
+              const SizedBox(height: 16),
+              _buildCategoryCard(summary),
+              const SizedBox(height: 16),
+              _buildTimelineCard(summary),
+              const SizedBox(height: 16),
+              _buildGapCard(summary),
+            ],
+          ),
+        );
+      }
     }
 
-    final summary = _summary;
-    if (summary == null) {
-      return const Center(child: Text('Unable to load analytics.'));
-    }
-
-    return RefreshIndicator(
-      onRefresh: _loadSummary,
-      child: ListView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(16),
-        children: [
-          _buildHeadlineCard(summary),
-          const SizedBox(height: 16),
-          _buildTopContactsCard(summary),
-          const SizedBox(height: 16),
-          _buildCategoryCard(summary),
-          const SizedBox(height: 16),
-          _buildTimelineCard(summary),
-          const SizedBox(height: 16),
-          _buildGapCard(summary),
-        ],
-      ),
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 300),
+      child: child,
     );
   }
 

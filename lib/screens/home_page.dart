@@ -166,17 +166,27 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver, Ticker
   Map<String, ContactMatch> _activeMatches = {};
   final Set<String> _expandedLocations = <String>{};
 
+  bool _isInitialLoad = true;
   bool _wasKeyboardVisible = false;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _fetchContacts();
+    _performInitialLoad();
     _searchController.addListener(_filterContacts);
     _searchFocusNode.addListener(() {
       setState(() {});
     });
+  }
+
+  Future<void> _performInitialLoad() async {
+    await _fetchContacts();
+    if (mounted) {
+      setState(() {
+        _isInitialLoad = false;
+      });
+    }
   }
 
   @override
@@ -399,102 +409,113 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver, Ticker
                   const SizedBox(
                     width: 20,
                     height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
+                    child: AnimatedSwitcher(
+                        duration: Duration(milliseconds: 200),
+                        child: CircularProgressIndicator(strokeWidth: 2)),
                   ),
                 ],
               ],
             ),
             const SizedBox(height: 12),
-            if (!hasAnyPrayer && !_isLoadingPrayerInsights)
-              const PrayerInsightsEmptyState(),
-            if (_pendingPrayerReminders.isNotEmpty) ...[
-              const SizedBox(height: 12),
-              Text('Needs prayer', style: theme.textTheme.titleSmall),
-              const SizedBox(height: 8),
-              ..._pendingPrayerReminders.map((request) {
-                final contactName =
-                    _displayNameForContactId(_contactLookup, request.contactId);
-                return ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  dense: true,
-                  leading: const Icon(Icons.hourglass_top_outlined),
-                  title: Text(request.description),
-                  subtitle: Text(
-                    '${_formatDate(request.requestedAt)} • $contactName',
-                  ),
-                  onTap: () => _openPrayerRequestDetails(request),
-                );
-              }),
-            ],
-            if (_recentAnsweredPrayers.isNotEmpty) ...[
-              const SizedBox(height: 12),
-              Text('Answered recently', style: theme.textTheme.titleSmall),
-              const SizedBox(height: 8),
-              ..._recentAnsweredPrayers.map((request) {
-                final contactName =
-                    _displayNameForContactId(_contactLookup, request.contactId);
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 8),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.secondaryContainer,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: ListTile(
-                    dense: true,
-                    leading: Icon(
-                      Icons.celebration_outlined,
-                      color: theme.colorScheme.onSecondaryContainer,
-                    ),
-                    title: Text(
-                      request.description,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.colorScheme.onSecondaryContainer,
-                      ),
-                    ),
-                    subtitle: Text(
-                      '${_formatDate(request.answeredAt ?? request.requestedAt)} • $contactName',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSecondaryContainer,
-                      ),
-                    ),
-                    onTap: () => _openPrayerRequestDetails(request),
-                  ),
-                );
-              }),
-            ],
-            if (_prayerFocusInteractions.isNotEmpty) ...[
-              const SizedBox(height: 12),
-              Text('Prayer focus interactions',
-                  style: theme.textTheme.titleSmall),
-              const SizedBox(height: 8),
-              ..._prayerFocusInteractions.map((interaction) {
-                final primaryContactId =
-                    interaction.participantIds.isNotEmpty
-                        ? interaction.participantIds.first
-                        : null;
-                final contact = primaryContactId != null
-                    ? _contactLookup[primaryContactId]
-                    : null;
-                final contactName = primaryContactId != null
-                    ? _displayNameForContactId(
-                        _contactLookup,
-                        primaryContactId,
-                      )
-                    : 'Unknown contact';
-                return ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  dense: true,
-                  leading: const Icon(Icons.self_improvement_outlined),
-                  title: Text(interaction.summary),
-                  subtitle: Text(
-                    '${_formatDate(interaction.occurredAt)} • $contactName',
-                  ),
-                  onTap: contact != null
-                      ? () => _navigateToContactDetails(contact)
-                      : null,
-                );
-              }),
-            ],
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 300),
+              child: Column(
+                key: ValueKey('insights_$_isLoadingPrayerInsights'),
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (!hasAnyPrayer && !_isLoadingPrayerInsights)
+                    const PrayerInsightsEmptyState(),
+                  if (_pendingPrayerReminders.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    Text('Needs prayer', style: theme.textTheme.titleSmall),
+                    const SizedBox(height: 8),
+                    ..._pendingPrayerReminders.map((request) {
+                      final contactName =
+                          _displayNameForContactId(_contactLookup, request.contactId);
+                      return ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        dense: true,
+                        leading: const Icon(Icons.hourglass_top_outlined),
+                        title: Text(request.description),
+                        subtitle: Text(
+                          '${_formatDate(request.requestedAt)} • $contactName',
+                        ),
+                        onTap: () => _openPrayerRequestDetails(request),
+                      );
+                    }),
+                  ],
+                  if (_recentAnsweredPrayers.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    Text('Answered recently', style: theme.textTheme.titleSmall),
+                    const SizedBox(height: 8),
+                    ..._recentAnsweredPrayers.map((request) {
+                      final contactName =
+                          _displayNameForContactId(_contactLookup, request.contactId);
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.secondaryContainer,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: ListTile(
+                          dense: true,
+                          leading: Icon(
+                            Icons.celebration_outlined,
+                            color: theme.colorScheme.onSecondaryContainer,
+                          ),
+                          title: Text(
+                            request.description,
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: theme.colorScheme.onSecondaryContainer,
+                            ),
+                          ),
+                          subtitle: Text(
+                            '${_formatDate(request.answeredAt ?? request.requestedAt)} • $contactName',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onSecondaryContainer,
+                            ),
+                          ),
+                          onTap: () => _openPrayerRequestDetails(request),
+                        ),
+                      );
+                    }),
+                  ],
+                  if (_prayerFocusInteractions.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    Text('Prayer focus interactions',
+                        style: theme.textTheme.titleSmall),
+                    const SizedBox(height: 8),
+                    ..._prayerFocusInteractions.map((interaction) {
+                      final primaryContactId =
+                          interaction.participantIds.isNotEmpty
+                              ? interaction.participantIds.first
+                              : null;
+                      final contact = primaryContactId != null
+                          ? _contactLookup[primaryContactId]
+                          : null;
+                      final contactName = primaryContactId != null
+                          ? _displayNameForContactId(
+                              _contactLookup,
+                              primaryContactId,
+                            )
+                          : 'Unknown contact';
+                      return ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        dense: true,
+                        leading: const Icon(Icons.self_improvement_outlined),
+                        title: Text(interaction.summary),
+                        subtitle: Text(
+                          '${_formatDate(interaction.occurredAt)} • $contactName',
+                        ),
+                        onTap: contact != null
+                            ? () => _navigateToContactDetails(contact)
+                            : null,
+                      );
+                    }),
+                  ],
+                ],
+              ),
+            ),
           ],
         ),
       ),
@@ -798,149 +819,128 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver, Ticker
             icon: const Icon(Icons.self_improvement_outlined),
             tooltip: 'Prayer diary',
             onPressed: () {
-              Navigator.of(context)
-                  .push(
+              Navigator.of(context).push(
                 MaterialPageRoute(
-                  builder: (context) => const PrayerDiaryPage(),
+                  builder: (_) => const PrayerDiaryPage(),
                 ),
-              )
-                  .then((_) {
-                if (!mounted) {
-                  return;
-                }
-                unawaited(_fetchContacts());
-              });
+              );
             },
           ),
           IconButton(
             icon: const Icon(Icons.travel_explore_outlined),
             tooltip: 'Reverse lookup (met at...)',
             onPressed: () {
-              Navigator.of(context)
-                  .push(
+              Navigator.of(context).push(
                 MaterialPageRoute(
                   builder: (context) => MetAtLookupPage(
                     contacts: _contacts,
                   ),
                 ),
-              )
-                  .then((result) {
-                if (result is Contact) {
-                  _navigateToContactDetails(result);
-                }
-              });
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.account_tree_outlined),
-            tooltip: 'Relationship explorer',
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) => const RelationshipExplorerPage(),
-                ),
               );
             },
           ),
-          _AnimatedIconButton(
-            icon: const Icon(Icons.download),
-            onPressed: _openExportSheet,
+          IconButton(
+            icon: const Icon(Icons.backup_outlined),
+            tooltip: 'Backup and Restore',
+            onPressed: _openRestoreSheet,
           ),
           IconButton(
-            icon: const Icon(Icons.restore_outlined),
-            tooltip: 'Restore backups',
-            onPressed: _openRestoreSheet,
+            icon: const Icon(Icons.share_outlined),
+            tooltip: 'Export',
+            onPressed: _openExportSheet,
           ),
         ],
       ),
-      body: CustomScrollView(
-        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-        slivers: [
-          SliverPadding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
-            sliver: SliverToBoxAdapter(
-              child: TextField(
-                controller: _searchController,
-                focusNode: _searchFocusNode,
-                decoration: InputDecoration(
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16.0),
-                  ),
-                  prefixIcon: const Icon(Icons.search),
-                  suffixIcon: _searchController.text.isNotEmpty
-                      ? IconButton(
-                          icon: const Icon(Icons.clear),
-                          tooltip: 'Clear search query',
-                          onPressed: () {
-                            _searchController.clear();
-                            _filterContacts();
-                          },
-                        )
-                      : null,
-                  hintText: 'Search contacts...',
-                ),
-              ),
-            ),
-          ),
-          SliverPadding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
-            sliver: SliverToBoxAdapter(
-              child: AnimatedSize(
-                duration: const Duration(milliseconds: 300),
-                alignment: Alignment.topCenter,
-                curve: Curves.easeOutCubic,
-                child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 200),
-                  transitionBuilder: (Widget child, Animation<double> animation) {
-                    return FadeTransition(
-                      opacity: animation,
-                      child: SlideTransition(
-                        position: Tween<Offset>(
-                          begin: const Offset(0.0, -0.05),
-                          end: Offset.zero,
-                        ).animate(animation),
-                        child: child,
+      body: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 500),
+        switchInCurve: Curves.easeInOut,
+        switchOutCurve: Curves.easeOut,
+        child: _isInitialLoad
+            ? const Center(
+                key: ValueKey('home_loading'),
+                child: CircularProgressIndicator(),
+              )
+            : RefreshIndicator(
+                key: const ValueKey('home_content'),
+                onRefresh: _fetchContacts,
+                child: ListView(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  children: [
+                    TextField(
+                      controller: _searchController,
+                      focusNode: _searchFocusNode,
+                      decoration: InputDecoration(
+                        hintText: 'Search contacts...',
+                        prefixIcon: const Icon(Icons.search),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none,
+                        ),
+                        filled: true,
+                        fillColor: Theme.of(context).colorScheme.secondaryContainer.withOpacity(0.3),
+                        contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
                       ),
-                    );
-                  },
-                  child: searchSuggestions,
+                    ),
+                    const SizedBox(height: 8),
+                    if (searchSuggestions is! SizedBox) ...[
+                      searchSuggestions,
+                    ] else ...[
+                      _buildPrayerInsightsCard(),
+                      if (hasFilterOptions) ...[
+                        const SizedBox(height: 16),
+                        SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Row(
+                            children: [
+                              FilterChip(
+                                label: const Text('All'),
+                                selected: _selectedTagFilter == null,
+                                onSelected: (_) => _toggleTagFilter(''),
+                              ),
+                              const SizedBox(width: 8),
+                              ..._availableTags.map((tag) {
+                                return Padding(
+                                  padding: const EdgeInsets.only(right: 8),
+                                  child: FilterChip(
+                                    label: Text(tag),
+                                    selected: _selectedTagFilter == tag,
+                                    onSelected: (_) => _toggleTagFilter(tag),
+                                  ),
+                                );
+                              }),
+                            ],
+                          ),
+                        ),
+                      ],
+                      const SizedBox(height: 16),
+                      ...groupedContactSections,
+                      if (groupedContactSections.isEmpty)
+                        Center(
+                          child: Padding(
+                            padding: const EdgeInsets.only(top: 48),
+                            child: Column(
+                              children: [
+                                Icon(
+                                  Icons.person_off_outlined,
+                                  size: 48,
+                                  color: Theme.of(context).colorScheme.outline,
+                                ),
+                                const SizedBox(height: 16),
+                                Text(
+                                  'No contacts found',
+                                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                                        color: Theme.of(context).colorScheme.outline,
+                                      ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                    ],
+                    const SizedBox(height: 80),
+                  ],
                 ),
               ),
-            ),
-          ),
-          const SliverToBoxAdapter(child: SizedBox(height: 16)),
-          SliverPadding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
-            sliver: SliverToBoxAdapter(
-              child: _buildPrayerInsightsCard(),
-            ),
-          ),
-          const SliverToBoxAdapter(child: SizedBox(height: 16)),
-          if (hasFilterOptions)
-            SliverPadding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              sliver: SliverToBoxAdapter(
-                child: _buildFilterSection(),
-              ),
-            ),
-          if (hasFilterOptions)
-            const SliverToBoxAdapter(child: SizedBox(height: 16)),
-          if (groupedContactSections.isEmpty)
-            const SliverFillRemaining(
-              hasScrollBody: false,
-              child: Center(child: Text('No contacts available.')),
-            )
-          else
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-              sliver: SliverList(
-                delegate: SliverChildBuilderDelegate(
-                  (context, index) => groupedContactSections[index],
-                  childCount: groupedContactSections.length,
-                ),
-              ),
-            ),
-        ],
       ),
     );
   }
