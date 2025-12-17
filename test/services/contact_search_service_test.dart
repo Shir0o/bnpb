@@ -26,7 +26,7 @@ void main() {
           location: 'New York',
           interactions: [
             Interaction(
-              occurredAt: DateTime.now(),
+              occurredAt: DateTime.now().subtract(const Duration(days: 5)),
               summary: 'Coffee at Starbucks',
               medium: 'in_person',
             ),
@@ -95,6 +95,63 @@ void main() {
     test('empty query returns empty list (context search)', () {
       final results = service.searchMeetingContexts('');
       expect(results, isEmpty);
+    });
+
+    test('getSuggestions returns contacts ranked by recency', () {
+      final now = DateTime.now();
+      final cRecency = [
+        Contact(
+            id: 'old',
+            firstName: 'Old',
+            interactions: [
+              Interaction(
+                  occurredAt: now.subtract(const Duration(days: 10)),
+                  summary: 'old',
+                  medium: 'call')
+            ]),
+        Contact(
+            id: 'new',
+            firstName: 'New',
+            interactions: [
+              Interaction(
+                  occurredAt: now.subtract(const Duration(days: 1)),
+                  summary: 'new',
+                  medium: 'call')
+            ]),
+        Contact(id: 'none', firstName: 'None', interactions: []),
+      ];
+      service.index(cRecency);
+      final suggestions = service.getSuggestions();
+      expect(suggestions.length, 3);
+      expect(suggestions[0].contact.firstName, 'New');
+      expect(suggestions[1].contact.firstName, 'Old');
+      expect(suggestions[2].contact.firstName, 'None');
+      expect(suggestions[0].matchDescription, contains('Last met'));
+    });
+
+    test('getSuggestions breaks ties with frequency', () {
+      final now = DateTime.now();
+      // Both interacting "today", but one has more interactions
+      final cFrequency = [
+        Contact(
+            id: 'frequent',
+            firstName: 'Frequent',
+            interactions: [
+              Interaction(occurredAt: now, summary: '1', medium: 'call'),
+              Interaction(occurredAt: now, summary: '2', medium: 'call'),
+            ]),
+        Contact(
+            id: 'once',
+            firstName: 'Once',
+            interactions: [
+              Interaction(occurredAt: now, summary: '1', medium: 'call'),
+            ]),
+      ];
+      service.index(cFrequency);
+      final suggestions = service.getSuggestions();
+      expect(suggestions.length, 2);
+      expect(suggestions[0].contact.firstName, 'Frequent');
+      expect(suggestions[1].contact.firstName, 'Once');
     });
   });
 }

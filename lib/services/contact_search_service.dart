@@ -244,6 +244,83 @@ class ContactSearchService {
     final suffix = end < trimmed.length ? '…' : '';
     return '$prefix$snippet$suffix';
   }
+
+  /// Returns a list of suggested contacts ranked by recency of interaction, then frequency.
+  List<ContactMatch> getSuggestions({int limit = 10}) {
+    if (_contacts.isEmpty) {
+      return const [];
+    }
+
+    final scoredContacts = _contacts.map((contact) {
+      DateTime? lastInteraction;
+      if (contact.interactions.isNotEmpty) {
+        // Assuming interactions are not guaranteed to be sorted, we find the latest.
+        lastInteraction = contact.interactions
+            .map((i) => i.occurredAt)
+            .reduce((a, b) => a.isAfter(b) ? a : b);
+      }
+
+      return _SuggestionScore(
+        contact: contact,
+        lastInteraction: lastInteraction,
+        interactionCount: contact.interactions.length,
+      );
+    }).toList();
+
+    // Sort by:
+    // 1. Last interaction date (descending)
+    // 2. Interaction count (descending)
+    // 3. Name (ascending) - handled effectively by stable sort if needed, or explicit tie breaker
+    scoredContacts.sort((a, b) {
+      // 1. Recency
+      if (a.lastInteraction != null && b.lastInteraction != null) {
+        final cmp = b.lastInteraction!.compareTo(a.lastInteraction!);
+        if (cmp != 0) return cmp;
+      } else if (a.lastInteraction != null) {
+        return -1; // a comes first
+      } else if (b.lastInteraction != null) {
+        return 1; // b comes first
+      }
+
+      // 2. Frequency
+      final countCmp = b.interactionCount.compareTo(a.interactionCount);
+      if (countCmp != 0) return countCmp;
+
+      // 3. Name (tie-breaker)
+      return a.contact.fullName.compareTo(b.contact.fullName);
+    });
+
+    final formatter = DateFormat.yMMMd();
+
+    return scoredContacts.take(limit).map((s) {
+      String? description;
+      if (s.lastInteraction != null) {
+        description = 'Last met ${formatter.format(s.lastInteraction!)}';
+      } else if (s.interactionCount > 0) {
+        // Should catch cases where interaction might exist but date is null?
+        // Ideally checking interactions.isNotEmpty covers it, but defensively:
+        description = '${s.interactionCount} interactions';
+      }
+
+      return ContactMatch(
+        contact: s.contact,
+        score: 1.0, // Suggestions treated as high relevance
+        matchDescription: description,
+      );
+    }).toList();
+  }
+}
+
+class _SuggestionScore {
+  final Contact contact;
+  final DateTime? lastInteraction;
+  final int interactionCount;
+
+  _SuggestionScore({
+    required this.contact,
+    this.lastInteraction,
+    required this.interactionCount,
+  });
 }
 
 class _SearchField {

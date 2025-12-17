@@ -90,11 +90,12 @@ class PrayerInsightsEmptyState extends StatelessWidget {
   }
 }
 
-class _HomePageState extends State<HomePage> {
+class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   final DBHelper _dbHelper = DBHelper();
   List<Contact> _contacts = [];
   List<Contact> _filteredContacts = [];
   final TextEditingController _searchController = TextEditingController();
+  final FocusNode _searchFocusNode = FocusNode();
   final Map<String, Contact> _contactLookup = {};
   final ContactSearchService _searchService = ContactSearchService();
   List<String> _availableTags = [];
@@ -109,11 +110,30 @@ class _HomePageState extends State<HomePage> {
   Map<String, ContactMatch> _activeMatches = {};
   final Set<String> _expandedLocations = <String>{};
 
+  bool _wasKeyboardVisible = false;
+
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _fetchContacts();
     _searchController.addListener(_filterContacts);
+    _searchFocusNode.addListener(() {
+      setState(() {});
+    });
+  }
+
+  @override
+  void didChangeMetrics() {
+    super.didChangeMetrics();
+    final bottomInset =  WidgetsBinding.instance.platformDispatcher.views.first.viewInsets.bottom;
+    final isKeyboardVisible = bottomInset > 0.0;
+
+    // If keyboard was visible and now is not, and we have focus, un-focus to close suggestions.
+    if (_wasKeyboardVisible && !isKeyboardVisible && _searchFocusNode.hasFocus) {
+      _searchFocusNode.unfocus();
+    }
+    _wasKeyboardVisible = isKeyboardVisible;
   }
 
   Future<void> _fetchContacts() async {
@@ -238,34 +258,56 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
-  Widget? _buildSearchSuggestions() {
+  Widget _buildSearchSuggestions() {
     final query = _searchController.text.trim();
+    
+    // Show suggestions if query is empty BUT search bar is focused
+    // Note: We used to check keyboard visibility here, but it caused issues on initial focus (frame 0).
+    // Instead, we handle "unfocus on keyboard close" via WidgetsBindingObserver.
     if (query.isEmpty) {
-      return null;
+      if (!_searchFocusNode.hasFocus) {
+        return const SizedBox.shrink();
+      }
+      final suggestions = _searchService.getSuggestions();
+      if (suggestions.isEmpty) {
+        return const SizedBox.shrink();
+      }
+      return _buildSuggestionsCard(suggestions, key: const ValueKey('suggestions'));
     }
 
-    final suggestions = _filteredContacts.take(5).toList();
+    final suggestions = _filteredContacts
+        .take(5)
+        .map((c) => ContactMatch(contact: c, score: 0))
+        .toList();
+
     if (suggestions.isEmpty) {
-      return null;
+      return const SizedBox.shrink();
     }
+    
+    return _buildSuggestionsCard(suggestions, key: ValueKey('results_${suggestions.length}'));
+  }
 
+  Widget _buildSuggestionsCard(List<ContactMatch> matches, {Key? key}) {
     final theme = Theme.of(context);
-
+    
     return Card(
+      key: key,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          for (int index = 0; index < suggestions.length; index++) ...[
+          for (int index = 0; index < matches.length; index++) ...[
             if (index != 0)
               Divider(
                 height: 1,
                 color: theme.colorScheme.outlineVariant,
               ),
             _SuggestionTile(
-              contact: suggestions[index],
-              match: _activeMatches[suggestions[index].id],
-              onTap: () => _navigateToContactDetails(suggestions[index]),
+              contact: matches[index].contact,
+              // If it's a search result, use the active match details.
+              // If it's a suggestion (score 1.0 from getSuggestions), use its description.
+              match: _activeMatches[matches[index].contact.id] ?? matches[index],
+              onTap: () => _navigateToContactDetails(matches[index].contact),
             ),
           ],
         ],
@@ -668,7 +710,9 @@ class _HomePageState extends State<HomePage> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _searchController.dispose();
+    _searchFocusNode.dispose();
     super.dispose();
   }
 
@@ -749,6 +793,7 @@ class _HomePageState extends State<HomePage> {
             sliver: SliverToBoxAdapter(
               child: TextField(
                 controller: _searchController,
+                focusNode: _searchFocusNode,
                 decoration: InputDecoration(
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(16.0),
@@ -769,13 +814,33 @@ class _HomePageState extends State<HomePage> {
               ),
             ),
           ),
-          if (searchSuggestions != null)
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-              sliver: SliverToBoxAdapter(
-                child: searchSuggestions,
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+            sliver: SliverToBoxAdapter(
+              child: AnimatedSize(
+                duration: const Duration(milliseconds: 300),
+                alignment: Alignment.topCenter,
+                curve: Curves.easeOutCubic,
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 200),
+                  transitionBuilder: (Widget child, Animation<double> animation) {
+                    return FadeTransition(
+                      opacity: animation,
+                      child: SlideTransition(
+                        position: Tween<Offset>(
+                          begin: const Offset(0.0, -0.05),
+                          end: Offset.zero,
+                        ).animate(animation),
+                        child: child,
+                      ),
+                    );
+                  },
+                  child: searchSuggestions,
+                ),
               ),
             ),
+          ),
+          const SliverToBoxAdapter(child: SizedBox(height: 16)),
           SliverPadding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
             sliver: SliverToBoxAdapter(
