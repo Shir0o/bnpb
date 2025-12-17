@@ -539,6 +539,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
   }
 
   void _showQuickAddInteractionSheet() async {
+    final allContacts = [widget.contact, ..._availableContacts];
     final interaction = await showModalBottomSheet<Interaction>(
       context: context,
       isScrollControlled: true,
@@ -553,6 +554,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
       builder: (context) => _LogInteractionSheet(
         contact: widget.contact,
         existingInteractions: List<Interaction>.from(_interactions),
+        availableContacts: allContacts,
         onInteractionsUpdated: (updated) {
           if (!mounted) return;
           _applyInteractionListUpdate(updated);
@@ -1634,6 +1636,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
   }
 
   void _showEditInteractionSheet(Interaction interaction) async {
+    final allContacts = [widget.contact, ..._availableContacts];
     final updatedInteraction = await showModalBottomSheet<Interaction>(
       context: context,
       isScrollControlled: true,
@@ -1643,6 +1646,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
         contact: widget.contact,
         existingInteractions: List<Interaction>.from(_interactions),
         initialInteraction: interaction,
+        availableContacts: allContacts,
         onInteractionsUpdated: (updated) {
           if (!mounted) return;
           _applyInteractionListUpdate(updated);
@@ -1864,6 +1868,7 @@ class _InteractionDetailPageState extends State<InteractionDetailPage> {
         contact: contact,
         existingInteractions: const [],
         initialInteraction: _interaction,
+        availableContacts: _contactLookup.values.toList(),
       ),
     );
 
@@ -1972,12 +1977,14 @@ class _LogInteractionSheet extends StatefulWidget {
   const _LogInteractionSheet({
     required this.contact,
     required this.existingInteractions,
+    required this.availableContacts,
     this.initialInteraction,
     this.onInteractionsUpdated,
   });
 
   final Contact contact;
   final List<Interaction> existingInteractions;
+  final List<Contact> availableContacts;
   final Interaction? initialInteraction;
   final ValueChanged<List<Interaction>>? onInteractionsUpdated;
 
@@ -2013,7 +2020,6 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
   List<Contact> _availableContacts = [];
   Map<String, Contact> _contactLookup = {};
   Set<String> _selectedParticipantIds = {};
-  bool _isLoadingContacts = false;
 
   bool _calculateSaveEnabled() {
     final summaryFilled = _summaryController.text.trim().isNotEmpty;
@@ -2050,30 +2056,17 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
     }
   }
 
-  Future<void> _loadContacts() async {
-    setState(() {
-      _isLoadingContacts = true;
-    });
-
-    final contacts = await DBHelper().getContacts();
-    contacts.sort(
+  void _initContacts() {
+    _availableContacts = List.from(widget.availableContacts);
+    _availableContacts.sort(
       (a, b) => a.fullName.toLowerCase().compareTo(b.fullName.toLowerCase()),
     );
-
-    if (!mounted) {
-      return;
-    }
-
-    setState(() {
-      _availableContacts = contacts;
-      _contactLookup = {for (final contact in contacts) contact.id: contact};
-      _selectedParticipantIds = {
-        widget.contact.id,
-        ..._selectedParticipantIds,
-        ...(widget.initialInteraction?.participantIds ?? const <String>{}),
-      };
-      _isLoadingContacts = false;
-    });
+    _contactLookup = {for (final contact in _availableContacts) contact.id: contact};
+    _selectedParticipantIds = {
+      widget.contact.id,
+      ..._selectedParticipantIds,
+      ...(widget.initialInteraction?.participantIds ?? const <String>{}),
+    };
   }
 
   void _toggleParticipant(String contactId) {
@@ -2117,15 +2110,6 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
   }
 
   Widget _buildParticipantsPicker() {
-    if (_isLoadingContacts && _availableContacts.isEmpty) {
-      return const Center(
-        child: Padding(
-          padding: EdgeInsets.symmetric(vertical: 8),
-          child: CircularProgressIndicator(),
-        ),
-      );
-    }
-
     final chips = <Widget>[];
     
     // Add primary contact (read-only)
@@ -2243,7 +2227,7 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
       widget.contact.id,
       ...(initial?.participantIds ?? const <String>{}),
     };
-    _loadContacts();
+    _initContacts();
     _speechBaseText = _summaryController.text.trim();
     _summaryController.addListener(_updateSaveEnabled);
     _durationController.addListener(_updateSaveEnabled);
