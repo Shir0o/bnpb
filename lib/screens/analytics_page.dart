@@ -338,10 +338,8 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                   final biggest = constraints.biggest;
                   final shortestSide =
                       math.min(biggest.width, biggest.height);
-                  final double sectionRadius = math.max(
-                    0.0,
-                    (shortestSide / 2) - 8,
-                  ); // avoid overflow
+                  final double maxRadius = (shortestSide / 2) - 8;
+                  final double sectionRadius = math.max(0.0, maxRadius / 1.5);
                   final centerSpaceRadius = sectionRadius / 2;
 
                   return PieChart(
