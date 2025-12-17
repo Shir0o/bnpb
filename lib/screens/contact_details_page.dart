@@ -2798,10 +2798,20 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
                           subtitle: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                DateFormat.yMMMd().add_jm().format(_occurredAt),
+                              Row(
+                                children: [
+                                  Text(
+                                    DateFormat.yMMMd().add_jm().format(_occurredAt),
+                                    style: Theme.of(context).textTheme.bodyLarge,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  IconButton(
+                                    icon: const Icon(Icons.edit_outlined),
+                                    onPressed: _pickDateTime,
+                                    tooltip: 'Change time',
+                                  ),
+                                ],
                               ),
-                              const SizedBox(height: 8),
                               TextFormField(
                                 controller: _occurredTimeController,
                                 keyboardType: TextInputType.datetime,
@@ -2826,10 +2836,6 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
                                 ),
                               ),
                             ],
-                          ),
-                          trailing: IconButton(
-                            icon: const Icon(Icons.edit_outlined),
-                            onPressed: _pickDateTime,
                           ),
                           onTap: _pickDateTime,
                         ),
