@@ -138,7 +138,7 @@ class _ExportOptionsSheetState extends State<ExportOptionsSheet> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
+                    padding: const EdgeInsets.fromLTRB(24, 48, 24, 0),
                     child: Row(
                       children: [
                         Expanded(

@@ -29,6 +29,62 @@ class HomePage extends StatefulWidget {
   _HomePageState createState() => _HomePageState();
 }
 
+class _AnimatedIconButton extends StatefulWidget {
+  const _AnimatedIconButton({
+    required this.icon,
+    required this.onPressed,
+    this.tooltip,
+  });
+
+  final Widget icon;
+  final VoidCallback onPressed;
+  final String? tooltip;
+
+  @override
+  State<_AnimatedIconButton> createState() => _AnimatedIconButtonState();
+}
+
+class _AnimatedIconButtonState extends State<_AnimatedIconButton>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _scaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 150),
+    );
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.9).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _handleTap() {
+    _controller.forward().then((_) => _controller.reverse());
+    widget.onPressed();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ScaleTransition(
+      scale: _scaleAnimation,
+      child: IconButton(
+        icon: widget.icon,
+        tooltip: widget.tooltip,
+        onPressed: _handleTap,
+      ),
+    );
+  }
+}
+
 class _SuggestionTile extends StatelessWidget {
   const _SuggestionTile({
     required this.contact,
@@ -90,7 +146,7 @@ class PrayerInsightsEmptyState extends StatelessWidget {
   }
 }
 
-class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
+class _HomePageState extends State<HomePage> with WidgetsBindingObserver, TickerProviderStateMixin {
   final DBHelper _dbHelper = DBHelper();
   List<Contact> _contacts = [];
   List<Contact> _filteredContacts = [];
@@ -546,11 +602,23 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       return;
     }
 
+    AnimationController? controller;
+    if (mounted) {
+      controller = AnimationController(
+        vsync: this,
+        duration: const Duration(milliseconds: 400),
+        reverseDuration: const Duration(milliseconds: 300),
+      );
+    }
+
     final message = await showModalBottomSheet<String>(
       context: context,
       isScrollControlled: true,
+      transitionAnimationController: controller,
       builder: (context) => ExportOptionsSheet(contacts: _contacts),
     );
+
+    // controller?.dispose(); // Do not dispose; BottomSheet takes ownership.
 
     if (!mounted || message == null) {
       return;
@@ -774,7 +842,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
               );
             },
           ),
-          IconButton(
+          _AnimatedIconButton(
             icon: const Icon(Icons.download),
             onPressed: _openExportSheet,
           ),
