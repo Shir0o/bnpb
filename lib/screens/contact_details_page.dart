@@ -544,6 +544,12 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
       isScrollControlled: true,
       isDismissible: false,
       enableDrag: false,
+      sheetAnimationStyle: AnimationStyle(
+        duration: const Duration(milliseconds: 600),
+        reverseDuration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOutCubicEmphasized,
+        reverseCurve: Curves.easeInOutCubicEmphasized.flipped,
+      ),
       builder: (context) => _LogInteractionSheet(
         contact: widget.contact,
         existingInteractions: List<Interaction>.from(_interactions),
@@ -1997,6 +2003,7 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
   bool _hasSpeechCapability = false;
   bool _isListening = false;
   String _speechBaseText = '';
+  TextEditingController? _participantAutocompleteController;
 
   bool _sheetActive = true;
   AutovalidateMode _autovalidateMode = AutovalidateMode.disabled;
@@ -2120,8 +2127,8 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
     }
 
     final chips = <Widget>[];
-    final renderedIds = <String>{};
-
+    
+    // Add primary contact (read-only)
     final primaryContact = _contactLookup[widget.contact.id] ?? widget.contact;
     chips.add(
       _buildParticipantChip(
@@ -2130,80 +2137,81 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
         isEnabled: false,
       ),
     );
-    renderedIds.add(widget.contact.id);
 
-    // Limit visible suggestions to improve performance
-    const int suggestionLimit = 12;
-    int displayedCount = 0;
-
-    for (final contact in _availableContacts) {
-      if (displayedCount >= suggestionLimit) break;
-      if (renderedIds.contains(contact.id)) continue;
-      
-      chips.add(
-        _buildParticipantChip(
-          contact,
-          isSelected: _selectedParticipantIds.contains(contact.id),
-          isEnabled: true,
-        ),
-      );
-      renderedIds.add(contact.id);
-      displayedCount++;
-    }
-
-    for (final participantId in _selectedParticipantIds) {
-      if (renderedIds.contains(participantId)) {
-        continue;
+    // Add selected contacts
+    for (final id in _selectedParticipantIds) {
+      if (id == widget.contact.id) continue;
+      final contact = _contactLookup[id];
+      if (contact != null) {
+        chips.add(
+          _buildParticipantChip(
+            contact,
+            isSelected: true,
+            isEnabled: true,
+          ),
+        );
+      } else {
+         // Fallback for unknown IDs
+         chips.add(
+           Chip(
+             label: Text(id),
+             onDeleted: () => _toggleParticipant(id),
+           ),
+         );
       }
-      chips.add(
-        Chip(
-          label: Text(participantId),
-          visualDensity: VisualDensity.compact,
-        ),
-      );
     }
-
-    chips.add(
-      ActionChip(
-        avatar: const Icon(Icons.add, size: 16),
-        label: const Text('Add People'),
-        onPressed: _openParticipantSelector,
-      ),
-    );
-    
-    // Always show an "Add" button to access the full list
-    chips.add(
-      ActionChip(
-        avatar: const Icon(Icons.add, size: 16),
-        label: const Text('Add People'),
-        onPressed: _openParticipantSelector,
-      ),
-    );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            Text(
-              'Participants',
-              style: Theme.of(context).textTheme.titleSmall,
-            ),
-            if (_isLoadingContacts) ...[
-              const SizedBox(width: 8),
-              const SizedBox(
-                height: 16,
-                width: 16,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              ),
-            ],
-          ],
+        Text(
+          'Participants',
+          style: Theme.of(context).textTheme.titleSmall,
         ),
         const SizedBox(height: 8),
         Wrap(
           spacing: 8,
           runSpacing: 8,
           children: chips,
+        ),
+        const SizedBox(height: 12),
+        Autocomplete<Contact>(
+          displayStringForOption: (Contact option) => option.fullName,
+          optionsBuilder: (TextEditingValue textEditingValue) {
+            if (textEditingValue.text.isEmpty) {
+              return const Iterable<Contact>.empty();
+            }
+            final query = textEditingValue.text.toLowerCase();
+            return _availableContacts.where((contact) {
+              if (_selectedParticipantIds.contains(contact.id)) {
+                return false;
+              }
+              return contact.fullName.toLowerCase().contains(query) ||
+                  (contact.nickname?.toLowerCase().contains(query) ?? false);
+            });
+          },
+          onSelected: (Contact selection) {
+            _toggleParticipant(selection.id);
+            _participantAutocompleteController?.clear();
+          },
+          fieldViewBuilder: (
+            BuildContext context,
+            TextEditingController textEditingController,
+            FocusNode focusNode,
+            VoidCallback onFieldSubmitted,
+          ) {
+            _participantAutocompleteController = textEditingController;
+            return TextField(
+              controller: textEditingController,
+              focusNode: focusNode,
+              decoration: const InputDecoration(
+                labelText: 'Add participant',
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.person_add_outlined),
+              ),
+              onSubmitted: (_) => onFieldSubmitted(),
+            );
+          },
         ),
       ],
     );
@@ -2650,19 +2658,20 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
       },
       child: SafeArea(
         top: false,
-        child: AnimatedPadding(
-          padding: EdgeInsets.only(
+        child: Padding(
+          padding: const EdgeInsets.only(
             left: 16,
             right: 16,
-            bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+            bottom: 24,
             top: 24,
           ),
-          duration: const Duration(milliseconds: 200),
-          curve: Curves.easeOut,
           child: Column(
             children: [
               Flexible(
                 child: SingleChildScrollView(
+                  padding: EdgeInsets.only(
+                    bottom: MediaQuery.of(context).viewInsets.bottom,
+                  ),
                   keyboardDismissBehavior:
                       ScrollViewKeyboardDismissBehavior.onDrag,
                   child: Form(
