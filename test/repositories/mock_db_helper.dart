@@ -1,7 +1,6 @@
 import 'package:sqflite_sqlcipher/sqflite.dart';
 import 'package:bnpb/db/db_helper.dart';
-import 'package:bnpb/models/attendance_entry.dart';
-import 'package:bnpb/models/attendance_session.dart';
+
 import 'package:bnpb/models/contact.dart';
 import 'package:bnpb/models/notification_preference.dart';
 import 'package:bnpb/models/interaction.dart';
@@ -31,20 +30,7 @@ class MockDBHelper implements DBHelper {
   @override
   Future<Contact?> getContactById(String id) => throw UnimplementedError();
 
-  @override
-  Future<AttendanceSession> insertAttendanceSession(AttendanceSession session) => throw UnimplementedError();
 
-  @override
-  Future<void> deleteAttendanceSession(int sessionId) => throw UnimplementedError();
-
-  @override
-  Future<AttendanceEntry> upsertAttendanceEntry(AttendanceEntry entry) => throw UnimplementedError();
-
-  @override
-  Future<List<AttendanceSession>> getAttendanceSessions({int? sessionId}) => throw UnimplementedError();
-
-  @override
-  Future<List<AttendanceEntry>> getAttendanceEntries(int sessionId) => throw UnimplementedError();
 
   @override
   Future<NotificationPreference> upsertNotificationPreference(NotificationPreference preference) => throw UnimplementedError();

@@ -1,32 +1,18 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:bnpb/models/contact.dart';
 import 'package:bnpb/models/interaction.dart';
-import 'package:bnpb/models/attendance_session.dart';
-import 'package:bnpb/models/attendance_entry.dart';
+
 import 'package:bnpb/repositories/analytics_repository.dart';
 import 'mock_db_helper.dart';
 
 class _TestDBHelper extends MockDBHelper {
   List<Contact> contacts = [];
-  List<AttendanceSession> sessions = [];
-  List<AttendanceEntry> entries = [];
-
   @override
   Future<List<Contact>> getContacts({String? contactId}) async {
     if (contactId != null) {
       return contacts.where((c) => c.id == contactId).toList();
     }
     return contacts;
-  }
-
-  @override
-  Future<List<AttendanceSession>> getAttendanceSessions({int? sessionId}) async {
-    return sessions;
-  }
-
-  @override
-  Future<List<AttendanceEntry>> getAttendanceEntries(int sessionId) async {
-    return entries.where((e) => e.sessionId == sessionId).toList();
   }
 }
 
@@ -77,30 +63,7 @@ void main() {
       );
     });
 
-    test('buildSummary calculates attendance rates', () async {
-      final session = AttendanceSession(
-        id: 1,
-        title: 'Session',
-        sessionDate: DateTime.now(),
-      );
-      dbHelper.sessions.add(session);
-      dbHelper.contacts.addAll([
-        Contact(id: 'c1', firstName: 'A'),
-        Contact(id: 'c2', firstName: 'B'),
-      ]);
-      dbHelper.entries.addAll([
-        AttendanceEntry(sessionId: 1, contactId: 'c1', status: AttendanceStatus.present),
-        AttendanceEntry(sessionId: 1, contactId: 'c2', status: AttendanceStatus.absent),
-      ]);
 
-      final summary = await repository.buildSummary();
-      
-      expect(summary.sessionAttendance.length, 1);
-      final snapshot = summary.sessionAttendance.first;
-      expect(snapshot.presentCount, 1);
-      expect(snapshot.totalCount, 2);
-      expect(snapshot.attendanceRate, 0.5);
-    });
 
     test('buildSummary respects date range', () async {
       final now = DateTime.now();

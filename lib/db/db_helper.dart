@@ -3,8 +3,7 @@ import 'package:meta/meta.dart';
 import 'package:path/path.dart';
 import 'package:sqflite_sqlcipher/sqflite.dart';
 
-import '../models/attendance_entry.dart';
-import '../models/attendance_session.dart';
+
 import '../models/contact.dart';
 import '../models/interaction.dart';
 import '../models/notification_preference.dart';
@@ -157,26 +156,7 @@ class DBHelper {
       ON notification_preferences(scopeType, scopeId, channel)
     ''');
 
-    await db.execute('''
-      CREATE TABLE attendance_sessions (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        title TEXT NOT NULL,
-        sessionDate TEXT NOT NULL,
-        location TEXT
-      )
-    ''');
 
-    await db.execute('''
-      CREATE TABLE attendance_entries (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        sessionId INTEGER NOT NULL,
-        contactId TEXT NOT NULL,
-        status TEXT NOT NULL,
-        FOREIGN KEY(sessionId) REFERENCES attendance_sessions(id) ON DELETE CASCADE,
-        FOREIGN KEY(contactId) REFERENCES contacts(id) ON DELETE CASCADE,
-        UNIQUE(sessionId, contactId)
-      )
-    ''');
   }
 
   Future<void> _migrate(
@@ -1284,88 +1264,5 @@ class DBHelper {
   // ATTENDANCE METHODS
   // -------------------------------------------------------------
 
-  /// Creates a new [AttendanceSession] record.
-  Future<AttendanceSession> insertAttendanceSession(
-    AttendanceSession session,
-  ) async {
-    final db = await database;
-    final id = await db.insert(
-      'attendance_sessions',
-      session.toMap(includeId: false),
-    );
-    return session.copyWith(id: id);
-  }
 
-  /// Deletes an attendance session and its entries.
-  Future<void> deleteAttendanceSession(int sessionId) async {
-    final db = await database;
-    await db.delete(
-      'attendance_sessions',
-      where: 'id = ?',
-      whereArgs: [sessionId],
-    );
-  }
-
-  /// Marks a contact's attendance for the specified session.
-  Future<AttendanceEntry> upsertAttendanceEntry(
-    AttendanceEntry entry,
-  ) async {
-    final db = await database;
-    final existingRows = await db.query(
-      'attendance_entries',
-      where: 'sessionId = ? AND contactId = ?',
-      whereArgs: [entry.sessionId, entry.contactId],
-      limit: 1,
-    );
-
-    if (existingRows.isEmpty) {
-      final id = await db.insert(
-        'attendance_entries',
-        entry.toMap(includeId: false),
-      );
-      return entry.copyWith(id: id);
-    }
-
-    await db.update(
-      'attendance_entries',
-      entry.toMap(includeId: false),
-      where: 'sessionId = ? AND contactId = ?',
-      whereArgs: [entry.sessionId, entry.contactId],
-    );
-
-    final existing = AttendanceEntry.fromMap(
-      Map<String, dynamic>.from(existingRows.first),
-    );
-    return existing.copyWith(status: entry.status);
-  }
-
-  /// Retrieves attendance sessions, optionally filtered by [sessionId].
-  Future<List<AttendanceSession>> getAttendanceSessions({int? sessionId}) async {
-    final db = await database;
-    final rows = await db.query(
-      'attendance_sessions',
-      where: sessionId != null ? 'id = ?' : null,
-      whereArgs: sessionId != null ? [sessionId] : null,
-      orderBy: 'sessionDate DESC',
-    );
-
-    return rows
-        .map((row) => AttendanceSession.fromMap(Map<String, dynamic>.from(row)))
-        .toList();
-  }
-
-  /// Returns entries for a given [sessionId].
-  Future<List<AttendanceEntry>> getAttendanceEntries(int sessionId) async {
-    final db = await database;
-    final rows = await db.query(
-      'attendance_entries',
-      where: 'sessionId = ?',
-      whereArgs: [sessionId],
-      orderBy: 'status DESC, contactId ASC',
-    );
-
-    return rows
-        .map((row) => AttendanceEntry.fromMap(Map<String, dynamic>.from(row)))
-        .toList();
-  }
 }
