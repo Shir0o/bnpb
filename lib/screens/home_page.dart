@@ -15,6 +15,7 @@ import '../services/legacy_import_service.dart';
 import '../services/reminder_coordinator.dart';
 import '../widgets/backup_restore_sheet.dart';
 import '../widgets/export_options_sheet.dart';
+import '../widgets/home_page_skeleton.dart';
 import '../widgets/people_card.dart';
 import 'contact_details_page.dart';
 import 'met_at_lookup_page.dart';
@@ -181,7 +182,13 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver, Ticker
   }
 
   Future<void> _performInitialLoad() async {
-    await _fetchContacts();
+    // Wait for both the data fetch and a minimum delay to ensure the skeleton
+    // is visible long enough to not look like a glitch.
+    await Future.wait([
+      _fetchContacts(),
+      Future.delayed(const Duration(milliseconds: 1500)),
+    ]);
+    
     if (mounted) {
       setState(() {
         _isInitialLoad = false;
@@ -856,10 +863,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver, Ticker
         switchInCurve: Curves.easeInOut,
         switchOutCurve: Curves.easeOut,
         child: _isInitialLoad
-            ? const Center(
-                key: ValueKey('home_loading'),
-                child: CircularProgressIndicator(),
-              )
+            ? const HomePageSkeleton(key: ValueKey('home_skeleton'))
             : RefreshIndicator(
                 key: const ValueKey('home_content'),
                 onRefresh: _fetchContacts,
