@@ -10,7 +10,9 @@ import '../models/contact.dart';
 import '../models/interaction.dart';
 import '../models/relationship.dart';
 import '../services/backup_service.dart';
+import '../services/contact_service.dart';
 import '../services/reminder_coordinator.dart';
+import '../widgets/contact_details_skeleton.dart';
 import '../widgets/people_card.dart';
 import '../widgets/relationship_dialog.dart';
 
@@ -66,6 +68,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
   String _interactionQuery = '';
   bool _isEditing = false;
   Contact? _editingSnapshot;
+  bool _isInitialLoad = true;
 
   List<String> _selectedTags = [];
   List<String> _keywords = [];
@@ -93,8 +96,39 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
 
     _interactionSearchController.addListener(_updateFilteredInteractions);
 
-    _loadReferenceData();
-    _refreshInteractions();
+    _checkCacheAndLoad();
+  }
+
+  void _checkCacheAndLoad() {
+    final service = ContactService();
+    // Always show skeleton first (implied by default _isInitialLoad = true),
+    // but decide how long to keep it.
+    
+    if (service.hasCachedInteractions(widget.contact.id)) {
+      // Cache Hit: Short delay to mask secondary loads (like relationships)
+      // and provide a smooth "pop" transition.
+      _performInitialLoad(minDelay: const Duration(milliseconds: 600));
+    } else {
+      // Cache Miss: Longer delay to ensure skeleton is seen and data fetching completes.
+      _performInitialLoad(minDelay: const Duration(milliseconds: 1500));
+    }
+  }
+
+  Future<void> _performInitialLoad({required Duration minDelay}) async {
+    // Ensure both data fetching AND the minimum delay complete.
+    // We include _loadReferenceData here to ensure relationships are ready 
+    // before the skeleton lifts, avoiding the secondary spinner.
+    await Future.wait([
+      _loadReferenceData(),
+      _refreshInteractions(),
+      Future.delayed(minDelay),
+    ]);
+    
+    if (mounted) {
+      setState(() {
+        _isInitialLoad = false;
+      });
+    }
   }
 
   void _updateFilteredInteractions() {
@@ -184,14 +218,19 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
     });
   }
 
-  Future<void> _refreshInteractions() async {
-    setState(() {
-      _isLoadingInteractions = true;
-    });
+  Future<void> _refreshInteractions({bool forceRefresh = false}) async {
+    // Only show local spinner if NOT in initial load (which has skeleton).
+    if (!_isInitialLoad) {
+      setState(() {
+        _isLoadingInteractions = true;
+      });
+    }
 
     try {
-      final interactions =
-          await DBHelper().getInteractionsForContact(widget.contact.id);
+      final interactions = await ContactService().getInteractions(
+        widget.contact.id,
+        forceRefresh: forceRefresh,
+      );
 
       if (!mounted) return;
       setState(() {
@@ -459,6 +498,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
     try {
       await DBHelper().updateContact(updatedContact);
       await ReminderCoordinator().refreshContact(updatedContact.id);
+      ContactService().invalidateContacts();
       await BackupService().exportBackup();
 
       if (!mounted) return;
@@ -511,6 +551,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
 
     await DBHelper().deleteInteraction(interaction.id!);
     await ReminderCoordinator().cancelInteractionReminder(interaction);
+    ContactService().invalidateInteractions(widget.contact.id);
 
     final nextInteractions = List<Interaction>.from(_interactions)
       ..removeWhere((item) => item.id == interaction.id);
@@ -557,6 +598,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
         availableContacts: allContacts,
         onInteractionsUpdated: (updated) {
           if (!mounted) return;
+          ContactService().invalidateInteractions(widget.contact.id);
           _applyInteractionListUpdate(updated);
         },
       ),
@@ -814,30 +856,38 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
           ),
         ],
       ),
-      body: CustomScrollView(
-        slivers: [
-          SliverPadding(
-            padding: const EdgeInsets.all(16.0),
-            sliver: SliverList(
-              delegate: SliverChildListDelegate(
-                [
-                  PeopleCard(
-                    contact: previewContact,
+      body: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 500),
+        switchInCurve: Curves.easeInOut,
+        switchOutCurve: Curves.easeOut,
+        child: _isInitialLoad
+            ? const ContactDetailsSkeleton(key: ValueKey('skeleton'))
+            : CustomScrollView(
+                key: const ValueKey('content'),
+                slivers: [
+                  SliverPadding(
+                    padding: const EdgeInsets.all(16.0),
+                    sliver: SliverList(
+                      delegate: SliverChildListDelegate(
+                        [
+                          PeopleCard(
+                            contact: previewContact,
+                          ),
+                          const SizedBox(height: 16),
+                          ...detailSections,
+                          if (detailSections.isNotEmpty) const SizedBox(height: 16),
+                          _buildRelationshipCard(),
+                          const SizedBox(height: 16),
+                        ],
+                      ),
+                    ),
                   ),
-                  const SizedBox(height: 16),
-                  ...detailSections,
-                  if (detailSections.isNotEmpty) const SizedBox(height: 16),
-                  _buildRelationshipCard(),
-                  const SizedBox(height: 16),
+                  ..._buildInteractionsSlivers(),
+                  const SliverToBoxAdapter(
+                    child: SizedBox(height: 80),
+                  ),
                 ],
               ),
-            ),
-          ),
-          ..._buildInteractionsSlivers(),
-          const SliverToBoxAdapter(
-            child: SizedBox(height: 80),
-          ),
-        ],
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _showQuickAddInteractionSheet,
@@ -1649,6 +1699,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
         availableContacts: allContacts,
         onInteractionsUpdated: (updated) {
           if (!mounted) return;
+          ContactService().invalidateInteractions(widget.contact.id);
           _applyInteractionListUpdate(updated);
         },
       ),

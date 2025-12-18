@@ -11,6 +11,7 @@ import '../models/contact.dart';
 import '../models/interaction.dart';
 import '../models/prayer_request.dart';
 import '../services/contact_search_service.dart';
+import '../services/contact_service.dart';
 import '../services/legacy_import_service.dart';
 import '../services/reminder_coordinator.dart';
 import '../widgets/backup_restore_sheet.dart';
@@ -182,11 +183,22 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver, Ticker
   }
 
   Future<void> _performInitialLoad() async {
-    // Wait for both the data fetch and a minimum delay to ensure the skeleton
-    // is visible long enough to not look like a glitch.
+    final contactService = ContactService();
+    // Always show skeleton first (implied by default _isInitialLoad = true),
+    // but decide how long to keep it.
+    
+    // Default to the long delay for fresh loads
+    Duration minDelay = const Duration(milliseconds: 1500);
+
+    // If we have cached contacts, reduce the delay to just mask the rendering
+    // and provide a smooth feel, but still show the skeleton briefly.
+    if (contactService.hasCachedContacts) {
+      minDelay = const Duration(milliseconds: 600);
+    }
+
     await Future.wait([
       _fetchContacts(),
-      Future.delayed(const Duration(milliseconds: 1500)),
+      Future.delayed(minDelay),
     ]);
     
     if (mounted) {
@@ -209,8 +221,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver, Ticker
     _wasKeyboardVisible = isKeyboardVisible;
   }
 
-  Future<void> _fetchContacts() async {
-    final contacts = await _dbHelper.getContacts();
+  Future<void> _fetchContacts({bool forceRefresh = false}) async {
+    final contacts = await ContactService().getContacts(forceRefresh: forceRefresh);
     _applyContactsSnapshot(contacts);
 
     await _loadPrayerInsights();
@@ -746,7 +758,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver, Ticker
           const SnackBar(content: Text('Contact deleted successfully.')),
         );
       }
-      unawaited(_fetchContacts());
+      ContactService().invalidateContacts();
+      unawaited(_fetchContacts(forceRefresh: true));
     } catch (error) {
       _applyContactsSnapshot(previousContacts);
       if (!mounted) return;
@@ -772,7 +785,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver, Ticker
           const SnackBar(content: Text('Contact updated successfully.')),
         );
       }
-      unawaited(_fetchContacts());
+      ContactService().invalidateContacts();
+      unawaited(_fetchContacts(forceRefresh: true));
     } catch (error) {
       _applyContactsSnapshot(previousContacts);
       if (!mounted) return;
