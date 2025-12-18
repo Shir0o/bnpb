@@ -76,6 +76,10 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
             child: DropdownButtonHideUnderline(
               child: DropdownButton<AnalyticsRange>(
                 value: _selectedRange,
+                icon: Icon(
+                  Icons.arrow_drop_down,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
                 onChanged: (value) {
                   if (value == null) return;
                   setState(() {

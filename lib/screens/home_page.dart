@@ -881,8 +881,12 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver, Ticker
                           borderSide: BorderSide.none,
                         ),
                         filled: true,
-                        fillColor: Theme.of(context).colorScheme.secondaryContainer.withOpacity(0.3),
-                        contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
+                        fillColor: Theme.of(context)
+                            .colorScheme
+                            .secondaryContainer
+                            .withOpacity(0.3),
+                        contentPadding: const EdgeInsets.symmetric(
+                            vertical: 0, horizontal: 16),
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -927,13 +931,20 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver, Ticker
                                 Icon(
                                   Icons.person_off_outlined,
                                   size: 48,
-                                  color: Theme.of(context).colorScheme.outline,
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .outline,
                                 ),
                                 const SizedBox(height: 16),
                                 Text(
                                   'No contacts found',
-                                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                                        color: Theme.of(context).colorScheme.outline,
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .bodyLarge
+                                      ?.copyWith(
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .outline,
                                       ),
                                 ),
                               ],
