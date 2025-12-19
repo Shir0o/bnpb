@@ -18,6 +18,7 @@ import '../widgets/backup_restore_sheet.dart';
 import '../widgets/export_options_sheet.dart';
 import '../widgets/home_page_skeleton.dart';
 import '../widgets/people_card.dart';
+import '../widgets/prayer_insights_skeleton.dart';
 import 'contact_details_page.dart';
 import 'met_at_lookup_page.dart';
 import 'prayer_diary_page.dart';
@@ -164,11 +165,11 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver, Ticker
   List<PrayerRequest> _pendingPrayerReminders = [];
   List<PrayerRequest> _recentAnsweredPrayers = [];
   List<Interaction> _prayerFocusInteractions = [];
-  bool _isLoadingPrayerInsights = false;
   Map<String, ContactMatch> _activeMatches = {};
   final Set<String> _expandedLocations = <String>{};
 
   bool _isInitialLoad = true;
+  bool _showRefreshSkeleton = false;
   bool _wasKeyboardVisible = false;
 
   @override
@@ -221,11 +222,32 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver, Ticker
     _wasKeyboardVisible = isKeyboardVisible;
   }
 
-  Future<void> _fetchContacts({bool forceRefresh = false}) async {
-    final contacts = await ContactService().getContacts(forceRefresh: forceRefresh);
-    _applyContactsSnapshot(contacts);
+  Future<void> _fetchContacts({bool forceRefresh = false, bool useSkeleton = false}) async {
+    if (useSkeleton) {
+      setState(() {
+        _showRefreshSkeleton = true;
+      });
+    }
 
-    await _loadPrayerInsights();
+    // If using skeleton, enforce minimum delay to prevent flashing
+    final minDelay = useSkeleton
+        ? const Duration(milliseconds: 600)
+        : Duration.zero;
+
+    await Future.wait([
+      (() async {
+        final contacts = await ContactService().getContacts(forceRefresh: forceRefresh);
+        _applyContactsSnapshot(contacts);
+        await _loadPrayerInsights();
+      })(),
+      if (useSkeleton) Future.delayed(minDelay),
+    ]);
+
+    if (mounted && useSkeleton) {
+      setState(() {
+        _showRefreshSkeleton = false;
+      });
+    }
   }
 
   void _applyContactsSnapshot(List<Contact> contacts) {
@@ -272,10 +294,6 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver, Ticker
   }
 
   Future<void> _loadPrayerInsights() async {
-    setState(() {
-      _isLoadingPrayerInsights = true;
-    });
-
     const prayerFocusLimit = 5;
 
     final counts = await _dbHelper.getPrayerRequestCounts();
@@ -300,7 +318,6 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver, Ticker
       _pendingPrayerReminders = pending;
       _recentAnsweredPrayers = answered;
       _prayerFocusInteractions = prayerFocusInteractions;
-      _isLoadingPrayerInsights = false;
     });
   }
 
@@ -423,26 +440,16 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver, Ticker
                     style: theme.textTheme.titleMedium,
                   ),
                 ),
-                if (_isLoadingPrayerInsights) ...[
-                  const SizedBox(width: 8),
-                  const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: AnimatedSwitcher(
-                        duration: Duration(milliseconds: 200),
-                        child: CircularProgressIndicator(strokeWidth: 2)),
-                  ),
-                ],
               ],
             ),
             const SizedBox(height: 12),
             AnimatedSwitcher(
               duration: const Duration(milliseconds: 300),
               child: Column(
-                key: ValueKey('insights_$_isLoadingPrayerInsights'),
+                key: const ValueKey('insights_content'),
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  if (!hasAnyPrayer && !_isLoadingPrayerInsights)
+                  if (!hasAnyPrayer)
                     const PrayerInsightsEmptyState(),
                   if (_pendingPrayerReminders.isNotEmpty) ...[
                     const SizedBox(height: 12),
@@ -797,6 +804,10 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver, Ticker
   }
 
   void _navigateToContactDetails(Contact contact) {
+    setState(() {
+      _showRefreshSkeleton = true;
+    });
+
     Navigator.of(context)
         .push(
       MaterialPageRoute(
@@ -806,15 +817,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver, Ticker
         ),
       ),
     )
-        .then((result) {
-      if (result is Contact) {
-        final previousContacts = List<Contact>.from(_contacts);
-        final optimisticContacts = previousContacts
-            .map((existing) => existing.id == result.id ? result : existing)
-            .toList();
-        _applyContactsSnapshot(optimisticContacts);
-      }
-      unawaited(_fetchContacts());
+        .then((_) {
+      unawaited(_fetchContacts(useSkeleton: true));
     });
   }
 
@@ -876,11 +880,11 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver, Ticker
         duration: const Duration(milliseconds: 500),
         switchInCurve: Curves.easeInOut,
         switchOutCurve: Curves.easeOut,
-        child: _isInitialLoad
+        child: (_isInitialLoad || _showRefreshSkeleton)
             ? const HomePageSkeleton(key: ValueKey('home_skeleton'))
             : RefreshIndicator(
                 key: const ValueKey('home_content'),
-                onRefresh: _fetchContacts,
+                onRefresh: () => _fetchContacts(forceRefresh: true),
                 child: ListView(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   children: [

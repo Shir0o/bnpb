@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'skeleton_loader.dart';
+import 'prayer_insights_skeleton.dart';
 
 class HomePageSkeleton extends StatelessWidget {
   const HomePageSkeleton({super.key});
@@ -19,59 +20,7 @@ class HomePageSkeleton extends StatelessWidget {
           const SizedBox(height: 16),
 
           // Prayer Insights Card
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              border: Border.all(color: Colors.white, width: 2), // Simulate card border
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                 // Title
-                const SkeletonBox(width: 150, height: 20),
-                const SizedBox(height: 12),
-                
-                // Insights items (simulating "Needs prayer" section)
-                const SkeletonBox(width: 100, height: 16),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                     const SkeletonBox(width: 24, height: 24, shape: BoxShape.circle),
-                     const SizedBox(width: 16),
-                     Expanded(
-                       child: Column(
-                         crossAxisAlignment: CrossAxisAlignment.start,
-                         children: [
-                             const SkeletonBox(width: double.infinity, height: 14),
-                             const SizedBox(height: 4),
-                             const SkeletonBox(width: 150, height: 12),
-                         ],
-                       ),
-                     ),
-                  ],
-                ),
-                 const SizedBox(height: 12),
-                // Another item
-                 Row(
-                  children: [
-                     const SkeletonBox(width: 24, height: 24, shape: BoxShape.circle),
-                     const SizedBox(width: 16),
-                     Expanded(
-                       child: Column(
-                         crossAxisAlignment: CrossAxisAlignment.start,
-                         children: [
-                             const SkeletonBox(width: 200, height: 14),
-                             const SizedBox(height: 4),
-                             const SkeletonBox(width: 120, height: 12),
-                         ],
-                       ),
-                     ),
-                  ],
-                ),
-              ],
-            ),
-          ),
+          const PrayerInsightsSkeleton(),
           const SizedBox(height: 16),
 
           // Filter Chips
