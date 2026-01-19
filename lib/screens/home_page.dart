@@ -597,50 +597,6 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver, Ticker
     return grouped;
   }
 
-  List<Widget> _buildGroupedContactsList() {
-    final groupedContacts = _groupContactsByLocation(_filteredContacts);
-
-    return groupedContacts.entries.map((entry) {
-      final location = entry.key;
-      final contactsInLocation = entry.value;
-
-      final isExpanded = _expandedLocations.contains(location);
-
-      return Padding(
-        padding: const EdgeInsets.only(bottom: 12),
-        child: ExpansionTile(
-          tilePadding: EdgeInsets.zero,
-          title: Text(location),
-          childrenPadding: const EdgeInsets.only(top: 8),
-          initiallyExpanded: isExpanded,
-          onExpansionChanged: (isExpanded) {
-            setState(() {
-              if (isExpanded) {
-                _expandedLocations.add(location);
-              } else {
-                _expandedLocations.remove(location);
-              }
-            });
-          },
-          children: isExpanded
-              ? contactsInLocation.map((contact) {
-                  final match = _activeMatches[contact.id];
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: PeopleCard(
-                      contact: contact,
-                      onTap: () => _navigateToContactDetails(contact),
-                      highlightLabel: match?.matchDescription,
-                      highlightText: match?.snippet,
-                    ),
-                  );
-                }).toList()
-              : const <Widget>[],
-        ),
-      );
-    }).toList();
-  }
-
   Future<void> _openExportSheet() async {
     if (_contacts.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -832,9 +788,11 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver, Ticker
 
   @override
   Widget build(BuildContext context) {
-    final groupedContactSections = _buildGroupedContactsList();
+    final groupedContactsMap = _groupContactsByLocation(_filteredContacts);
+    final groupedEntries = groupedContactsMap.entries.toList();
     final hasFilterOptions = _availableTags.isNotEmpty;
     final searchSuggestions = _buildSearchSuggestions();
+    final isShowingSuggestions = searchSuggestions is! SizedBox;
 
     return Scaffold(
       appBar: AppBar(
@@ -885,92 +843,169 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver, Ticker
             : RefreshIndicator(
                 key: const ValueKey('home_content'),
                 onRefresh: () => _fetchContacts(forceRefresh: true),
-                child: ListView(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  children: [
-                    TextField(
-                      controller: _searchController,
-                      focusNode: _searchFocusNode,
-                      decoration: InputDecoration(
-                        hintText: 'Search contacts...',
-                        prefixIcon: const Icon(Icons.search),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide.none,
+                child: CustomScrollView(
+                  slivers: [
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                        child: TextField(
+                          controller: _searchController,
+                          focusNode: _searchFocusNode,
+                          decoration: InputDecoration(
+                            hintText: 'Search contacts...',
+                            prefixIcon: const Icon(Icons.search),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide.none,
+                            ),
+                            filled: true,
+                            fillColor: Theme.of(context)
+                                .colorScheme
+                                .secondaryContainer
+                                .withOpacity(0.3),
+                            contentPadding: const EdgeInsets.symmetric(
+                                vertical: 0, horizontal: 16),
+                          ),
                         ),
-                        filled: true,
-                        fillColor: Theme.of(context)
-                            .colorScheme
-                            .secondaryContainer
-                            .withOpacity(0.3),
-                        contentPadding: const EdgeInsets.symmetric(
-                            vertical: 0, horizontal: 16),
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    if (searchSuggestions is! SizedBox) ...[
-                      searchSuggestions,
-                    ] else ...[
-                      _buildPrayerInsightsCard(),
-                      if (hasFilterOptions) ...[
-                        const SizedBox(height: 16),
-                        SingleChildScrollView(
-                          scrollDirection: Axis.horizontal,
-                          child: Row(
+                    if (isShowingSuggestions)
+                      SliverPadding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        sliver: SliverToBoxAdapter(child: searchSuggestions),
+                      )
+                    else ...[
+                      SliverPadding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        sliver: SliverToBoxAdapter(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              FilterChip(
-                                label: const Text('All'),
-                                selected: _selectedTagFilter == null,
-                                onSelected: (_) => _toggleTagFilter(''),
-                              ),
-                              const SizedBox(width: 8),
-                              ..._availableTags.map((tag) {
-                                return Padding(
-                                  padding: const EdgeInsets.only(right: 8),
-                                  child: FilterChip(
-                                    label: Text(tag),
-                                    selected: _selectedTagFilter == tag,
-                                    onSelected: (_) => _toggleTagFilter(tag),
+                              _buildPrayerInsightsCard(),
+                              if (hasFilterOptions) ...[
+                                const SizedBox(height: 16),
+                                SingleChildScrollView(
+                                  scrollDirection: Axis.horizontal,
+                                  child: Row(
+                                    children: [
+                                      FilterChip(
+                                        label: const Text('All'),
+                                        selected: _selectedTagFilter == null,
+                                        onSelected: (_) => _toggleTagFilter(''),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      ..._availableTags.map((tag) {
+                                        return Padding(
+                                          padding:
+                                              const EdgeInsets.only(right: 8),
+                                          child: FilterChip(
+                                            label: Text(tag),
+                                            selected: _selectedTagFilter == tag,
+                                            onSelected: (_) =>
+                                                _toggleTagFilter(tag),
+                                          ),
+                                        );
+                                      }),
+                                    ],
                                   ),
-                                );
-                              }),
+                                ),
+                              ],
+                              const SizedBox(height: 16),
                             ],
                           ),
                         ),
-                      ],
-                      const SizedBox(height: 16),
-                      ...groupedContactSections,
-                      if (groupedContactSections.isEmpty)
-                        Center(
-                          child: Padding(
-                            padding: const EdgeInsets.only(top: 48),
-                            child: Column(
-                              children: [
-                                Icon(
-                                  Icons.person_off_outlined,
-                                  size: 48,
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .outline,
-                                ),
-                                const SizedBox(height: 16),
-                                Text(
-                                  'No contacts found',
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .bodyLarge
-                                      ?.copyWith(
-                                        color: Theme.of(context)
-                                            .colorScheme
-                                            .outline,
-                                      ),
-                                ),
-                              ],
+                      ),
+                      if (groupedEntries.isNotEmpty)
+                        SliverPadding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          sliver: SliverList(
+                            delegate: SliverChildBuilderDelegate(
+                              (context, index) {
+                                final entry = groupedEntries[index];
+                                final location = entry.key;
+                                final contactsInLocation = entry.value;
+                                final isExpanded =
+                                    _expandedLocations.contains(location);
+
+                                return Padding(
+                                  padding: const EdgeInsets.only(bottom: 12),
+                                  child: ExpansionTile(
+                                    tilePadding: EdgeInsets.zero,
+                                    title: Text(location),
+                                    childrenPadding:
+                                        const EdgeInsets.only(top: 8),
+                                    initiallyExpanded: isExpanded,
+                                    onExpansionChanged: (isExpanded) {
+                                      setState(() {
+                                        if (isExpanded) {
+                                          _expandedLocations.add(location);
+                                        } else {
+                                          _expandedLocations.remove(location);
+                                        }
+                                      });
+                                    },
+                                    children: isExpanded
+                                        ? contactsInLocation.map((contact) {
+                                            final match =
+                                                _activeMatches[contact.id];
+                                            return Padding(
+                                              padding: const EdgeInsets.only(
+                                                  bottom: 12),
+                                              child: PeopleCard(
+                                                contact: contact,
+                                                onTap: () =>
+                                                    _navigateToContactDetails(
+                                                        contact),
+                                                highlightLabel:
+                                                    match?.matchDescription,
+                                                highlightText: match?.snippet,
+                                              ),
+                                            );
+                                          }).toList()
+                                        : const <Widget>[],
+                                  ),
+                                );
+                              },
+                              childCount: groupedEntries.length,
+                            ),
+                          ),
+                        )
+                      else
+                        SliverFillRemaining(
+                          hasScrollBody: false,
+                          child: Center(
+                            child: Padding(
+                              padding: const EdgeInsets.only(bottom: 48),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.person_off_outlined,
+                                    size: 48,
+                                    color:
+                                        Theme.of(context).colorScheme.outline,
+                                  ),
+                                  const SizedBox(height: 16),
+                                  Text(
+                                    'No contacts found',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodyLarge
+                                        ?.copyWith(
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .outline,
+                                        ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ),
                     ],
-                    const SizedBox(height: 80),
+                    const SliverToBoxAdapter(
+                      child: SizedBox(height: 80),
+                    ),
                   ],
                 ),
               ),
