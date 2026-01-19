@@ -24,6 +24,7 @@ import 'met_at_lookup_page.dart';
 import 'prayer_diary_page.dart';
 import 'prayer_request_details_page.dart';
 import 'relationship_explorer_page.dart';
+import 'prayer_lists_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -844,6 +845,15 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver, Ticker
             },
           ),
           IconButton(
+            icon: const Icon(Icons.list_alt),
+            tooltip: 'Prayer Lists',
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (context) => const PrayerListsPage()),
+              );
+            },
+          ),
+          IconButton(
             icon: const Icon(Icons.travel_explore_outlined),
             tooltip: 'Reverse lookup (met at...)',
             onPressed: () {
@@ -857,12 +867,12 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver, Ticker
             },
           ),
           IconButton(
-            icon: const Icon(Icons.backup_outlined),
+            icon: const Icon(Icons.file_upload_outlined),
             tooltip: 'Backup and Restore',
             onPressed: _openRestoreSheet,
           ),
           IconButton(
-            icon: const Icon(Icons.share_outlined),
+            icon: const Icon(Icons.file_download_outlined),
             tooltip: 'Export',
             onPressed: _openExportSheet,
           ),

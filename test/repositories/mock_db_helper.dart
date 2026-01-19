@@ -6,6 +6,7 @@ import 'package:bnpb/models/notification_preference.dart';
 import 'package:bnpb/models/interaction.dart';
 import 'package:bnpb/models/prayer_request.dart';
 import 'package:bnpb/models/relationship.dart';
+import 'package:bnpb/models/prayer_list.dart';
 
 class MockDBHelper implements DBHelper {
   @override
@@ -137,4 +138,25 @@ class MockDBHelper implements DBHelper {
 
   @override
   Future<Relationship> upsertRelationship(Relationship relationship) => throw UnimplementedError();
+
+  @override
+  Future<List<PrayerList>> getPrayerLists() => throw UnimplementedError();
+
+  @override
+  Future<PrayerList?> getPrayerList(String id) => throw UnimplementedError();
+
+  @override
+  Future<void> insertPrayerList(PrayerList list) => throw UnimplementedError();
+
+  @override
+  Future<void> updatePrayerList(PrayerList list) => throw UnimplementedError();
+
+  @override
+  Future<void> deletePrayerList(String id) => throw UnimplementedError();
+
+  @override
+  Future<void> addContactToPrayerList(String listId, String contactId) => throw UnimplementedError();
+
+  @override
+  Future<void> removeContactFromPrayerList(String listId, String contactId) => throw UnimplementedError();
 }

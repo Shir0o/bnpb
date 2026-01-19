@@ -8,12 +8,14 @@ import '../models/contact.dart';
 import '../models/interaction.dart';
 import '../models/notification_preference.dart';
 import '../models/prayer_request.dart';
+import '../models/prayer_list.dart';
+import '../models/prayer_request.dart';
 import '../models/relationship.dart';
 import '../services/security_service.dart';
 import '../constants/storage.dart';
 
 class DBHelper {
-  static const _dbVersion = 11;
+  static const _dbVersion = 12;
 
   static final DBHelper _instance = DBHelper._();
   static Database? _database;
@@ -154,6 +156,26 @@ class DBHelper {
       await db.execute('''
         CREATE UNIQUE INDEX idx_notification_preferences_scope
       ON notification_preferences(scopeType, scopeId, channel)
+    ''');
+
+    await db.execute('''
+      CREATE TABLE prayer_lists (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        description TEXT,
+        color TEXT,
+        displayIndex INTEGER NOT NULL DEFAULT 0
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE prayer_list_members (
+        listId TEXT NOT NULL,
+        contactId TEXT NOT NULL,
+        PRIMARY KEY(listId, contactId),
+        FOREIGN KEY(listId) REFERENCES prayer_lists(id) ON DELETE CASCADE,
+        FOREIGN KEY(contactId) REFERENCES contacts(id) ON DELETE CASCADE
+      )
     ''');
 
 
@@ -386,6 +408,140 @@ class DBHelper {
       await db.execute('DROP TABLE IF EXISTS interactions');
       await db.execute('ALTER TABLE interactions_new RENAME TO interactions');
     }
+
+    if (oldVersion < 12) {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS prayer_lists (
+          id TEXT PRIMARY KEY,
+          name TEXT NOT NULL,
+          description TEXT,
+          color TEXT,
+          displayIndex INTEGER NOT NULL DEFAULT 0
+        )
+      ''');
+
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS prayer_list_members (
+          listId TEXT NOT NULL,
+          contactId TEXT NOT NULL,
+          PRIMARY KEY(listId, contactId),
+          FOREIGN KEY(listId) REFERENCES prayer_lists(id) ON DELETE CASCADE,
+          FOREIGN KEY(contactId) REFERENCES contacts(id) ON DELETE CASCADE
+        )
+      ''');
+    }
+  }
+
+  // -------------------------------------------------------------
+  // PRAYER LIST METHODS
+  // -------------------------------------------------------------
+
+  Future<List<PrayerList>> getPrayerLists() async {
+    final db = await database;
+    final listRows = await db.query(
+      'prayer_lists',
+      orderBy: 'displayIndex ASC, name ASC',
+    );
+
+    final lists = <PrayerList>[];
+    for (final row in listRows) {
+      final listId = row['id'] as String;
+      final memberRows = await db.query(
+        'prayer_list_members',
+        columns: ['contactId'],
+        where: 'listId = ?',
+        whereArgs: [listId],
+      );
+
+      final contactIds =
+          memberRows.map((m) => m['contactId'] as String).toList();
+
+      lists.add(
+        PrayerList.fromMap(row, contactIds: contactIds),
+      );
+    }
+    return lists;
+  }
+
+  Future<PrayerList?> getPrayerList(String id) async {
+    final db = await database;
+    final rows = await db.query(
+      'prayer_lists',
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+
+    if (rows.isEmpty) return null;
+
+    final memberRows = await db.query(
+      'prayer_list_members',
+      columns: ['contactId'],
+      where: 'listId = ?',
+      whereArgs: [id],
+    );
+
+    final contactIds = memberRows.map((m) => m['contactId'] as String).toList();
+
+    return PrayerList.fromMap(rows.first, contactIds: contactIds);
+  }
+
+  Future<void> insertPrayerList(PrayerList list) async {
+    final db = await database;
+    await db.transaction((txn) async {
+      await txn.insert(
+        'prayer_lists',
+        list.toMap(),
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+
+      // Members are expected to be empty on creation typically,
+      // but if provided, we insert them.
+      for (final contactId in list.contactIds) {
+        await txn.insert(
+          'prayer_list_members',
+          {'listId': list.id, 'contactId': contactId},
+          conflictAlgorithm: ConflictAlgorithm.ignore,
+        );
+      }
+    });
+  }
+
+  Future<void> updatePrayerList(PrayerList list) async {
+    final db = await database;
+    await db.update(
+      'prayer_lists',
+      list.toMap(),
+      where: 'id = ?',
+      whereArgs: [list.id],
+    );
+  }
+
+  Future<void> deletePrayerList(String id) async {
+    final db = await database;
+    await db.delete(
+      'prayer_lists',
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
+  Future<void> addContactToPrayerList(String listId, String contactId) async {
+    final db = await database;
+    await db.insert(
+      'prayer_list_members',
+      {'listId': listId, 'contactId': contactId},
+      conflictAlgorithm: ConflictAlgorithm.ignore,
+    );
+  }
+
+  Future<void> removeContactFromPrayerList(
+      String listId, String contactId) async {
+    final db = await database;
+    await db.delete(
+      'prayer_list_members',
+      where: 'listId = ? AND contactId = ?',
+      whereArgs: [listId, contactId],
+    );
   }
 
   // -------------------------------------------------------------
