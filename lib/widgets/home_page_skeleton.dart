@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'skeleton_loader.dart';
 import 'prayer_insights_skeleton.dart';
+import 'contact_item_skeleton.dart';
 
 class HomePageSkeleton extends StatelessWidget {
   const HomePageSkeleton({super.key});
@@ -8,6 +9,7 @@ class HomePageSkeleton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SkeletonLoader(
+      duration: const Duration(seconds: 6),
       child: ListView(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         physics: const NeverScrollableScrollPhysics(), // Disable scrolling on skeleton
@@ -54,31 +56,12 @@ class HomePageSkeleton extends StatelessWidget {
         const SkeletonBox(width: 100, height: 18),
         const SizedBox(height: 12),
         // Contact Items
-        _buildContactItemSkeleton(),
+        const ContactItemSkeleton(),
         const SizedBox(height: 12),
-        _buildContactItemSkeleton(),
+        const ContactItemSkeleton(),
       ],
     );
   }
 
-  Widget _buildContactItemSkeleton() {
-    return Row(
-      children: [
-        // Avatar
-        const SkeletonBox(width: 48, height: 48, shape: BoxShape.circle),
-        const SizedBox(height: 16),
-        // Name and details
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SkeletonBox(width: 180, height: 16),
-              const SizedBox(height: 8),
-              const SkeletonBox(width: 120, height: 14),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
+
 }

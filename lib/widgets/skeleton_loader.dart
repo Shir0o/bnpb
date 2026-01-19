@@ -6,11 +6,13 @@ class SkeletonLoader extends StatefulWidget {
     required this.child,
     this.baseColor,
     this.highlightColor,
+    this.duration = const Duration(seconds: 3),
   });
 
   final Widget child;
   final Color? baseColor;
   final Color? highlightColor;
+  final Duration duration;
 
   @override
   State<SkeletonLoader> createState() => _SkeletonLoaderState();
@@ -25,7 +27,7 @@ class _SkeletonLoaderState extends State<SkeletonLoader>
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 3),
+      duration: widget.duration,
     )..repeat();
   }
 
@@ -98,7 +100,8 @@ class SkeletonBox extends StatelessWidget {
       width: width,
       height: height,
       decoration: BoxDecoration(
-        color: Colors.white, // Color doesn't matter much as it's masked
+        color:
+            Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.5),
         borderRadius: shape == BoxShape.rectangle
             ? (borderRadius ?? BorderRadius.circular(8))
             : null,

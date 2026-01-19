@@ -25,6 +25,11 @@ import 'prayer_diary_page.dart';
 import 'prayer_request_details_page.dart';
 import 'relationship_explorer_page.dart';
 import 'prayer_lists_page.dart';
+import 'relationship_explorer_page.dart';
+import 'prayer_lists_page.dart';
+import '../widgets/smooth_expansion_tile.dart';
+import '../widgets/contact_item_skeleton.dart';
+import '../widgets/skeleton_loader.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -167,7 +172,9 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver, Ticker
   List<PrayerRequest> _recentAnsweredPrayers = [];
   List<Interaction> _prayerFocusInteractions = [];
   Map<String, ContactMatch> _activeMatches = {};
+
   final Set<String> _expandedLocations = <String>{};
+  final Set<String> _loadingLocations = <String>{}; // Track locations currently showing skeleton
 
   bool _isInitialLoad = true;
   bool _showRefreshSkeleton = false;
@@ -973,23 +980,71 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver, Ticker
 
                                 return Padding(
                                   padding: const EdgeInsets.only(bottom: 12),
-                                  child: ExpansionTile(
+                                  child: SmoothExpansionTile(
+                                    key: PageStorageKey<String>(location),
                                     tilePadding: EdgeInsets.zero,
                                     title: Text(location),
                                     childrenPadding:
                                         const EdgeInsets.only(top: 8),
                                     initiallyExpanded: isExpanded,
+                                    duration: const Duration(milliseconds: 400),
+                                    reverseDuration:
+                                        const Duration(milliseconds: 600),
+                                    curve: Curves.fastOutSlowIn,
                                     onExpansionChanged: (isExpanded) {
-                                      setState(() {
-                                        if (isExpanded) {
+                                      if (isExpanded) {
+                                        setState(() {
                                           _expandedLocations.add(location);
-                                        } else {
+                                          _loadingLocations.add(location);
+                                        });
+
+                                        // Simulate network delay
+                                        Future.delayed(
+                                            const Duration(milliseconds: 500),
+                                            () {
+                                          if (mounted) {
+                                            setState(() {
+                                              _loadingLocations.remove(location);
+                                            });
+                                          }
+                                        });
+                                      } else {
+                                        setState(() {
                                           _expandedLocations.remove(location);
-                                        }
-                                      });
+                                          _loadingLocations.remove(location);
+                                        });
+                                      }
                                     },
-                                    children: isExpanded
-                                        ? contactsInLocation.map((contact) {
+                                    children: _loadingLocations.contains(location)
+                                        ? [
+                                            SkeletonLoader(
+                                              child: Column(
+                                                children: const [
+                                                  Padding(
+                                                    padding: EdgeInsets.only(
+                                                        bottom: 12),
+                                                    child: ContactItemSkeleton(),
+                                                  ),
+                                                  Padding(
+                                                    padding: EdgeInsets.only(
+                                                        bottom: 12),
+                                                    child: ContactItemSkeleton(),
+                                                  ),
+                                                  Padding(
+                                                    padding: EdgeInsets.only(
+                                                        bottom: 12),
+                                                    child: ContactItemSkeleton(),
+                                                  ),
+                                                ],
+                                              ),
+                                            )
+                                          ]
+                                        : (isExpanded
+                                                ? contactsInLocation
+                                                : contactsInLocation
+                                                    .take(5)
+                                                    .toList())
+                                            .map((contact) {
                                             final match =
                                                 _activeMatches[contact.id];
                                             return Padding(
@@ -1005,8 +1060,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver, Ticker
                                                 highlightText: match?.snippet,
                                               ),
                                             );
-                                          }).toList()
-                                        : const <Widget>[],
+                                          }).toList(),
                                   ),
                                 );
                               },
