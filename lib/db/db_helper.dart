@@ -717,6 +717,21 @@ class DBHelper {
       );
     }
 
+    final relationshipRows = await db.query(
+      'relationships',
+      where: contactId != null ? 'sourceContactId = ?' : null,
+      whereArgs: contactId != null ? [contactId] : null,
+    );
+
+    final relationshipsByContact = <String, List<Relationship>>{};
+    for (final row in relationshipRows) {
+      final sId = row['sourceContactId'] as String;
+      relationshipsByContact.putIfAbsent(sId, () => []);
+      relationshipsByContact[sId]!.add(
+        Relationship.fromMap(Map<String, dynamic>.from(row)),
+      );
+    }
+
     return maps.map((map) {
       final contactMap = Map<String, dynamic>.from(map);
 
@@ -740,6 +755,10 @@ class DBHelper {
       contactMap['firstMeetingNotes'] = context?['firstMeetingNotes'];
       contactMap['prayerRequests'] = prayersByContact[contactMap['id']]?.map(
                 (request) => request.toMap(),
+              ).toList() ??
+          [];
+      contactMap['relationships'] = relationshipsByContact[contactMap['id']]?.map(
+                (rel) => rel.toMap(),
               ).toList() ??
           [];
 

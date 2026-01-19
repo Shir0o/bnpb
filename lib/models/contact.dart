@@ -4,6 +4,7 @@ import 'package:uuid/uuid.dart';
 
 import 'interaction.dart';
 import 'prayer_request.dart';
+import 'relationship.dart';
 
 class Contact {
   final String id; // Unique identifier for the contact
@@ -24,6 +25,8 @@ class Contact {
   final List<Interaction> interactions;
   /// Prayer requests tracked for this contact.
   final List<PrayerRequest> prayerRequests;
+  /// Relationships where this contact is the source.
+  final List<Relationship> relationships;
 
   Contact({
     required this.id,
@@ -39,12 +42,14 @@ class Contact {
     List<String>? recognitionReminders,
     List<Interaction>? interactions,
     List<PrayerRequest>? prayerRequests,
+    List<Relationship>? relationships,
   })  : tags = tags ?? const [],
         recognitionKeywords = recognitionKeywords ?? const [],
         recognitionPhotoUris = recognitionPhotoUris ?? const [],
         recognitionReminders = recognitionReminders ?? const [],
         interactions = interactions ?? const [],
-        prayerRequests = prayerRequests ?? const [];
+        prayerRequests = prayerRequests ?? const [],
+        relationships = relationships ?? const [];
 
   Contact copyWith({
     String? firstName,
@@ -59,6 +64,7 @@ class Contact {
     List<String>? recognitionReminders,
     List<Interaction>? interactions,
     List<PrayerRequest>? prayerRequests,
+    List<Relationship>? relationships,
   }) {
     return Contact(
       id: id,
@@ -77,6 +83,7 @@ class Contact {
           recognitionReminders ?? this.recognitionReminders,
       interactions: interactions ?? this.interactions,
       prayerRequests: prayerRequests ?? this.prayerRequests,
+      relationships: relationships ?? this.relationships,
     );
   }
 
@@ -98,6 +105,7 @@ class Contact {
       'interactions': interactions.map((entry) => entry.toMap()).toList(),
       'prayerRequests':
           prayerRequests.map((entry) => entry.toMap()).toList(),
+      'relationships': relationships.map((entry) => entry.toMap()).toList(),
     };
   }
 
@@ -128,6 +136,11 @@ class Contact {
       prayerRequests: (map['prayerRequests'] as List<dynamic>?)
               ?.map((entry) =>
                   PrayerRequest.fromMap(Map<String, dynamic>.from(entry)))
+              .toList() ??
+          const [],
+      relationships: (map['relationships'] as List<dynamic>?)
+              ?.map((entry) =>
+                  Relationship.fromMap(Map<String, dynamic>.from(entry)))
               .toList() ??
           const [],
     );

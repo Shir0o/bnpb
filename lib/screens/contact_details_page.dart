@@ -2734,6 +2734,7 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
                             ),
                           ],
                         ),
+                        if (!isEditing) _buildRecentInteractions(),
                         const SizedBox(height: 16),
                         TextFormField(
                           controller: _summaryController,
@@ -2970,6 +2971,85 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
         ),
       ),
     );
+  }
+
+  Widget _buildRecentInteractions() {
+    // 1. Get unique interactions based on signature (summary + medium + location)
+    // 2. Take top 5 recent ones
+    // 3. Display as chips
+    final uniqueSignatures = <String>{};
+    final recentDistinct = <Interaction>[];
+
+    for (final interaction in widget.existingInteractions) {
+      final signature =
+          '${interaction.summary.trim()}|${interaction.medium}|${interaction.location ?? ''}';
+      if (!uniqueSignatures.contains(signature.toLowerCase())) {
+        uniqueSignatures.add(signature.toLowerCase());
+        recentDistinct.add(interaction);
+      }
+      if (recentDistinct.length >= 5) break;
+    }
+
+    if (recentDistinct.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 12),
+        Text(
+          'Recent:',
+          style: Theme.of(context).textTheme.labelSmall,
+        ),
+        const SizedBox(height: 8),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: recentDistinct.map((interaction) {
+              return Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: ActionChip(
+                  label: Text(interaction.summary, overflow: TextOverflow.ellipsis),
+                  avatar: Icon(_mediumIcons[interaction.medium] ?? Icons.chat, size: 16),
+                  onPressed: () {
+                    _fillFromInteraction(interaction);
+                  },
+                ),
+              );
+            }).toList(),
+          ),
+        ),
+        const Divider(height: 24),
+      ],
+    );
+  }
+
+  void _fillFromInteraction(Interaction base) {
+    setState(() {
+      _summaryController.text = base.summary;
+      _medium = base.medium;
+      if (base.location != null) {
+        _locationController.text = base.location!;
+      }
+      if (base.durationMinutes != null) {
+        _durationController.text = base.durationMinutes.toString();
+      }
+      if (base.category != null) {
+        _categoryController.text = base.category!;
+      }
+      
+      _markForPrayer = base.markForPrayer;
+
+      // Reset participants to just base contact + those in the reused interaction
+      _selectedParticipantIds = {
+        widget.contact.id,
+        ...base.participantIds,
+      };
+      
+      // Update validation state
+      _isSaveEnabled = _calculateSaveEnabled();
+    });
   }
 
   void _openParticipantSelector() async {

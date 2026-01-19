@@ -689,10 +689,44 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver, Ticker
               ))
           .toList();
 
-      await processLegacyContacts(
-        contacts: restoredContacts,
-        persistContact: (contact) => _dbHelper.insertContact(contact),
-      );
+      // Pass 1: Insert all contacts first (without interactions)
+      // This ensures all contact IDs exist before we try to link interactions.
+      for (final contact in restoredContacts) {
+        final contactWithoutInteractions = contact.copyWith(interactions: []);
+        await _dbHelper.insertContact(contactWithoutInteractions);
+      }
+
+      // Pass 2: Insert interactions
+      // Now that all contacts exist, we can safely insert interactions knowing
+      // that foreign key constraints on participant IDs will be satisfied.
+      for (final contact in restoredContacts) {
+        for (final interaction in contact.interactions) {
+          // If the interaction has no ID, let the DB assign one.
+          // If it has an ID, we try to preserve it (which insertInteraction handles if relying on toMap).
+          // Note: The participantIds in the interaction object from JSON
+          // already includes the other participants. We need to ensure the current
+          // contact is also in that list if not already (typically `interactions`
+          // in the Contact object implies this contact is a participant).
+          final participants = {
+            ...interaction.participantIds,
+            contact.id,
+          }.toList();
+
+          final fullInteraction = interaction.copyWith(
+            participantIds: participants,
+          );
+
+          await _dbHelper.insertInteraction(fullInteraction);
+        }
+      }
+
+      // Pass 3: Refresh reminders and cues.
+      // This matches what processLegacyContacts used to do.
+      final coordinator = ReminderCoordinator();
+      for (final contact in restoredContacts) {
+        await coordinator.refreshFromSnapshot(contact, silent: true);
+      }
+      await coordinator.scheduleReviewPrompts();
 
       await _fetchContacts();
 

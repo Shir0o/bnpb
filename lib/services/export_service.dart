@@ -210,55 +210,16 @@ class ExportService {
     return '';
   }
 
-  Map<String, dynamic> _jsonValueForFieldSelection(
-    Contact contact,
-    List<String> fields,
-  ) {
-    final map = <String, dynamic>{
-      'id': contact.id,
-    };
-    for (final field in fields) {
-      switch (field) {
-        case 'firstName':
-          map['firstName'] = contact.firstName;
-          break;
-        case 'lastName':
-          map['lastName'] = contact.lastName;
-          break;
-        case 'nickname':
-          map['nickname'] = contact.nickname;
-          break;
-        case 'location':
-          map['location'] = contact.location;
-          break;
-        case 'tags':
-          map['tags'] = contact.tags;
-          break;
-        case 'recognitionKeywords':
-          map['recognitionKeywords'] = contact.recognitionKeywords;
-          break;
-        case 'recognitionReminders':
-          map['recognitionReminders'] = contact.recognitionReminders;
-          break;
-        case 'firstMeetingNotes':
-          map['firstMeetingNotes'] = contact.firstMeetingNotes;
-          break;
-      }
-    }
-    map['interactions'] = contact.interactions
-        .map((interaction) => interaction.toJson())
-        .toList();
-    return map;
-  }
+
 
   @visibleForTesting
   List<Map<String, dynamic>> buildExportPayload(
     List<Contact> contacts,
     List<String> fieldIds,
   ) {
-    return contacts
-        .map((contact) => _jsonValueForFieldSelection(contact, fieldIds))
-        .toList();
+  
+    // Ignore field selection for JSON/Archive export to ensure full data backup.
+    return contacts.map((contact) => contact.toMap()).toList();
   }
 
   Key _deriveKey(String passphrase) {
