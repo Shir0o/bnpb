@@ -15,7 +15,7 @@ import '../services/security_service.dart';
 import '../constants/storage.dart';
 
 class DBHelper {
-  static const _dbVersion = 12;
+  static const _dbVersion = 13;
 
   static final DBHelper _instance = DBHelper._();
   static Database? _database;
@@ -68,7 +68,8 @@ class DBHelper {
         location TEXT,
         keywords TEXT,
         photoCues TEXT,
-        reminderCues TEXT
+        reminderCues TEXT,
+        notes TEXT
       )
     ''');
 
@@ -430,6 +431,10 @@ class DBHelper {
         )
       ''');
     }
+
+    if (oldVersion < 13) {
+      await db.execute('ALTER TABLE contacts ADD COLUMN notes TEXT');
+    }
   }
 
   // -------------------------------------------------------------
@@ -572,6 +577,7 @@ class DBHelper {
       'keywords': jsonEncode(contact.recognitionKeywords),
       'photoCues': jsonEncode(contact.recognitionPhotoUris),
       'reminderCues': jsonEncode(contact.recognitionReminders),
+      'notes': contact.notes,
     };
 
     if (isUpdate) {

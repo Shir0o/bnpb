@@ -14,6 +14,7 @@ class Contact {
   final String? nickname; // Nickname of the contact (optional)
   final String? location; // Location of the contact (optional)
   final String? firstMeetingNotes; // Notes from the first meeting
+  final String? notes; // General notes about the contact
   final List<String> tags; // Relationship tags
   /// Lightweight descriptors that help recognize the contact quickly.
   final List<String> recognitionKeywords;
@@ -36,6 +37,7 @@ class Contact {
     this.nickname,
     this.location,
     this.firstMeetingNotes,
+    this.notes,
     List<String>? tags,
     List<String>? recognitionKeywords,
     List<String>? recognitionPhotoUris,
@@ -58,6 +60,7 @@ class Contact {
     String? nickname,
     String? location,
     String? firstMeetingNotes,
+    String? notes,
     List<String>? tags,
     List<String>? recognitionKeywords,
     List<String>? recognitionPhotoUris,
@@ -74,6 +77,7 @@ class Contact {
       nickname: nickname ?? this.nickname,
       location: location ?? this.location,
       firstMeetingNotes: firstMeetingNotes ?? this.firstMeetingNotes,
+      notes: notes ?? this.notes,
       tags: tags ?? this.tags,
       recognitionKeywords:
           recognitionKeywords ?? this.recognitionKeywords,
@@ -98,6 +102,7 @@ class Contact {
       'nickname': nickname,
       'location': location,
       'firstMeetingNotes': firstMeetingNotes,
+      'notes': notes,
       'tags': tags,
       'recognitionKeywords': recognitionKeywords,
       'recognitionPhotoUris': recognitionPhotoUris,
@@ -121,6 +126,7 @@ class Contact {
       nickname: map['nickname'] as String?,
       location: map['location'] as String?,
       firstMeetingNotes: map['firstMeetingNotes'] as String?,
+      notes: map['notes'] as String?,
       tags: (map['tags'] as List<dynamic>?)
               ?.map((tag) => tag as String)
               .toList() ??

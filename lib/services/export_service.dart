@@ -78,6 +78,11 @@ class ExportService {
       label: 'First meeting notes',
       description: 'Context from the very first interaction',
     ),
+    ExportField(
+      id: 'notes',
+      label: 'Notes',
+      description: 'General notes',
+    ),
   ];
 
   /// Generates a CSV file for the selected contacts and fields.
@@ -206,6 +211,8 @@ class ExportService {
         return contact.recognitionReminders.join(', ');
       case 'firstMeetingNotes':
         return contact.firstMeetingNotes ?? '';
+      case 'notes':
+        return contact.notes ?? '';
     }
     return '';
   }

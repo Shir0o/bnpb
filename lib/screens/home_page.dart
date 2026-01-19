@@ -190,12 +190,12 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver, Ticker
     // but decide how long to keep it.
     
     // Default to the long delay for fresh loads
-    Duration minDelay = const Duration(milliseconds: 1500);
+    Duration minDelay = const Duration(milliseconds: 750);
 
     // If we have cached contacts, reduce the delay to just mask the rendering
     // and provide a smooth feel, but still show the skeleton briefly.
     if (contactService.hasCachedContacts) {
-      minDelay = const Duration(milliseconds: 600);
+      minDelay = const Duration(milliseconds: 300);
     }
 
     await Future.wait([
@@ -232,7 +232,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver, Ticker
 
     // If using skeleton, enforce minimum delay to prevent flashing
     final minDelay = useSkeleton
-        ? const Duration(milliseconds: 600)
+        ? const Duration(milliseconds: 300)
         : Duration.zero;
 
     await Future.wait([

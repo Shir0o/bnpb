@@ -54,6 +54,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
   final TextEditingController _locationController = TextEditingController();
   final TextEditingController _firstMeetingNotesController =
       TextEditingController();
+  final TextEditingController _notesController = TextEditingController();
   final TextEditingController _tagController = TextEditingController();
   final TextEditingController _interactionSearchController =
       TextEditingController();
@@ -107,10 +108,10 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
     if (service.hasCachedInteractions(widget.contact.id)) {
       // Cache Hit: Short delay to mask secondary loads (like relationships)
       // and provide a smooth "pop" transition.
-      _performInitialLoad(minDelay: const Duration(milliseconds: 600));
+      _performInitialLoad(minDelay: const Duration(milliseconds: 300));
     } else {
       // Cache Miss: Longer delay to ensure skeleton is seen and data fetching completes.
-      _performInitialLoad(minDelay: const Duration(milliseconds: 1500));
+      _performInitialLoad(minDelay: const Duration(milliseconds: 750));
     }
   }
 
@@ -180,6 +181,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
     _nicknameController.dispose();
     _locationController.dispose();
     _firstMeetingNotesController.dispose();
+    _notesController.dispose();
     _tagController.dispose();
     _keywordController.dispose();
     _reminderController.dispose();
@@ -431,6 +433,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
     final nicknameText = _nicknameController.text.trim();
     final locationText = _locationController.text.trim();
     final firstMeetingNotesText = _firstMeetingNotesController.text.trim();
+    final notesText = _notesController.text.trim();
 
     return Contact(
       id: widget.contact.id,
@@ -441,6 +444,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
       location: locationText.isEmpty ? null : locationText,
       firstMeetingNotes:
           firstMeetingNotesText.isEmpty ? null : firstMeetingNotesText,
+      notes: notesText.isEmpty ? null : notesText,
       tags: List<String>.from(_selectedTags),
       recognitionKeywords: List<String>.from(_keywords),
       recognitionPhotoUris: List<String>.from(_photoCues),
@@ -457,6 +461,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
     _nicknameController.text = contact.nickname ?? '';
     _locationController.text = contact.location ?? '';
     _firstMeetingNotesController.text = contact.firstMeetingNotes ?? '';
+    _notesController.text = contact.notes ?? '';
     _selectedTags = List<String>.from(contact.tags);
     _keywords = List<String>.from(contact.recognitionKeywords);
     _reminderCues = List<String>.from(contact.recognitionReminders);
@@ -1026,9 +1031,10 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
       sections.add(widget);
     }
 
-    addSection(_buildViewMeetingNotesCard(contact));
-    addSection(_buildViewRecognitionCard(contact));
     addSection(_buildViewTagsCard(contact));
+    addSection(_buildViewMeetingNotesCard(contact));
+    addSection(_buildViewNotesCard(contact));
+    addSection(_buildViewRecognitionCard(contact));
     return sections;
   }
 
@@ -1064,6 +1070,12 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
           controller: _firstMeetingNotesController,
           label: 'First Meeting Notes (Optional)',
           maxLines: 3,
+        ),
+        const SizedBox(height: 16),
+        _buildTextField(
+          controller: _notesController,
+          label: 'Notes (Optional)',
+          maxLines: 5,
         ),
       ],
     );
@@ -1219,6 +1231,26 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
         ),
         const SizedBox(height: 12),
         _buildDetailLine('First meeting notes', notes),
+      ],
+    );
+  }
+
+  Widget? _buildViewNotesCard(Contact contact) {
+    final notes = contact.notes;
+    if (notes == null || notes.isEmpty) {
+      return null;
+    }
+    return _buildCard(
+      children: [
+        Text(
+          'Notes',
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
+        const SizedBox(height: 12),
+        Text(
+          notes,
+          style: Theme.of(context).textTheme.bodyMedium,
+        ),
       ],
     );
   }
