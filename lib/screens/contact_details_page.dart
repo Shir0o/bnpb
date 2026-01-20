@@ -2730,277 +2730,275 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
         child: Scaffold(
           backgroundColor: Colors.transparent,
           appBar: AppBar(
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          leading: IconButton(
-            icon: const Icon(Icons.close),
-            onPressed: () async {
-              _sheetActive = false;
-              await _stopListening();
-              if (context.mounted) {
-                Navigator.of(context).pop();
-              }
-            },
-          ),
-          centerTitle: true,
-          title: Text(
-            isEditing ? 'Edit interaction' : 'Log interaction',
-            style: theme.textTheme.titleMedium,
-          ),
-          actions: [
-            Padding(
-              padding: const EdgeInsets.only(right: 8.0),
-              child: TextButton(
-                onPressed: _isSaveEnabled && !_isSavingInteraction
-                    ? _saveInteraction
-                    : null,
-                child: _isSavingInteraction
-                    ? SizedBox(
-                        height: 16,
-                        width: 16,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                            theme.colorScheme.primary,
-                          ),
-                        ),
-                      )
-                    : Text(
-                        isEditing ? 'Update' : 'Save',
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
-              ),
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            leading: IconButton(
+              icon: const Icon(Icons.close),
+              onPressed: () async {
+                _sheetActive = false;
+                await _stopListening();
+                if (context.mounted) {
+                  Navigator.of(context).pop();
+                }
+              },
             ),
-          ],
-        ),
-        body: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-          // Ensure we can dismiss keyboard easily
-          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-          child: Form(
-                    key: _formKey,
-                    autovalidateMode: _autovalidateMode,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        if (!isEditing) _buildRecentInteractions(),
-                        const SizedBox(height: 16),
-                        TextFormField(
-                          controller: _summaryController,
+            centerTitle: true,
+            title: Text(
+              isEditing ? 'Edit interaction' : 'Log interaction',
+              style: theme.textTheme.titleMedium,
+            ),
+            actions: [
+              Padding(
+                padding: const EdgeInsets.only(right: 8.0),
+                child: TextButton(
+                  onPressed: _isSaveEnabled && !_isSavingInteraction
+                      ? _saveInteraction
+                      : null,
+                  child: _isSavingInteraction
+                      ? SizedBox(
+                          height: 16,
+                          width: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              theme.colorScheme.primary,
+                            ),
+                          ),
+                        )
+                      : Text(
+                          isEditing ? 'Update' : 'Save',
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                ),
+              ),
+            ],
+          ),
+          body: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+            // Ensure we can dismiss keyboard easily
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+            child: Form(
+              key: _formKey,
+              autovalidateMode: _autovalidateMode,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (!isEditing) _buildRecentInteractions(),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: _summaryController,
+                    decoration: InputDecoration(
+                      labelText: 'Summary *',
+                      border: const OutlineInputBorder(),
+                      helperText: _isListening ? 'Listening...' : null,
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          _isListening ? Icons.mic : Icons.mic_none,
+                          color: _isListening
+                              ? Theme.of(context).colorScheme.primary
+                              : null,
+                        ),
+                        onPressed: _toggleVoiceInput,
+                        tooltip: _isListening
+                            ? 'Stop voice capture'
+                            : 'Use voice to text',
+                      ),
+                    ),
+                    textCapitalization: TextCapitalization.sentences,
+                    maxLines: 2,
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return 'Add a short summary first.';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<String>(
+                    key: ValueKey(_medium),
+                    initialValue: _medium,
+                    decoration: const InputDecoration(
+                      labelText: 'Medium',
+                      border: OutlineInputBorder(),
+                    ),
+                    items: const [
+                      DropdownMenuItem(
+                        value: 'in_person',
+                        child: Text('In-person'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'call',
+                        child: Text('Call'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'message',
+                        child: Text('Message'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'online',
+                        child: Text('Online Meeting'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'other',
+                        child: Text('Other'),
+                      ),
+                    ],
+                    onChanged: (value) {
+                      if (value == null) return;
+                      setState(() {
+                        _medium = value;
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  _buildParticipantsPicker(),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _locationController,
+                    textCapitalization: TextCapitalization.sentences,
+                    decoration: const InputDecoration(
+                      labelText: 'Location (optional)',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _durationController,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(
+                      labelText: 'Duration (minutes, optional)',
+                      border: OutlineInputBorder(),
+                    ),
+                    validator: (value) {
+                      final text = value?.trim() ?? '';
+                      if (text.isEmpty) {
+                        return null;
+                      }
+                      final parsed = int.tryParse(text);
+                      if (parsed == null) {
+                        return 'Duration must be a number of minutes.';
+                      }
+                      if (parsed < 0) {
+                        return 'Duration cannot be negative.';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _categoryController,
+                    textCapitalization: TextCapitalization.sentences,
+                    decoration: const InputDecoration(
+                      labelText: 'Category (optional)',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text('Occurred at', style: theme.textTheme.labelLarge),
+                  const SizedBox(height: 8),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        flex: 3,
+                        child: InkWell(
+                          onTap: _pickDate,
+                          borderRadius: BorderRadius.circular(4),
+                          child: InputDecorator(
+                            decoration: const InputDecoration(
+                              labelText: 'Date',
+                              border: OutlineInputBorder(),
+                              suffixIcon: Icon(Icons.calendar_month_outlined),
+                            ),
+                            child: Text(
+                              DateFormat.yMMMd().format(_occurredAt),
+                              style: theme.textTheme.bodyLarge,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        flex: 2,
+                        child: TextFormField(
+                          controller: _occurredTimeController,
+                          keyboardType: TextInputType.datetime,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.allow(
+                              RegExp(r'[0-9: apmAPM]'),
+                            ),
+                          ],
                           decoration: InputDecoration(
-                            labelText: 'Summary *',
+                            labelText: 'Time',
                             border: const OutlineInputBorder(),
-                            helperText: _isListening ? 'Listening...' : null,
                             suffixIcon: IconButton(
-                              icon: Icon(
-                                _isListening ? Icons.mic : Icons.mic_none,
-                                color: _isListening
-                                    ? Theme.of(context).colorScheme.primary
-                                    : null,
-                              ),
-                              onPressed: _toggleVoiceInput,
-                              tooltip: _isListening
-                                  ? 'Stop voice capture'
-                                  : 'Use voice to text',
+                              icon: const Icon(Icons.access_time),
+                              onPressed: _pickTime,
+                              tooltip: 'Pick time',
                             ),
                           ),
-                          textCapitalization: TextCapitalization.sentences,
-                          maxLines: 2,
-                          validator: (value) {
-                            if (value == null || value.trim().isEmpty) {
-                              return 'Add a short summary first.';
-                            }
-                            return null;
+                          onTapOutside: (_) => _commitManualOccurredTime(),
+                          onEditingComplete: () {
+                            _commitManualOccurredTime();
+                            FocusScope.of(context).unfocus();
                           },
-                        ),
-                        const SizedBox(height: 12),
-                        DropdownButtonFormField<String>(
-                          key: ValueKey(_medium),
-                          initialValue: _medium,
-                          decoration: const InputDecoration(
-                            labelText: 'Medium',
-                            border: OutlineInputBorder(),
-                          ),
-                          items: const [
-                            DropdownMenuItem(
-                              value: 'in_person',
-                              child: Text('In-person'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'call',
-                              child: Text('Call'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'message',
-                              child: Text('Message'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'online',
-                              child: Text('Online Meeting'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'other',
-                              child: Text('Other'),
-                            ),
-                          ],
-                          onChanged: (value) {
-                            if (value == null) return;
-                            setState(() {
-                              _medium = value;
-                            });
+                          onFieldSubmitted: (value) {
+                            _commitManualOccurredTime(value);
                           },
-                        ),
-                        const SizedBox(height: 12),
-                        _buildParticipantsPicker(),
-                        const SizedBox(height: 12),
-                        TextField(
-                          controller: _locationController,
-                          textCapitalization: TextCapitalization.sentences,
-                          decoration: const InputDecoration(
-                            labelText: 'Location (optional)',
-                            border: OutlineInputBorder(),
+                          validator: (value) => _applyManualOccurredTime(
+                            value ?? '',
+                            shouldUpdate: false,
                           ),
                         ),
-                        const SizedBox(height: 12),
-                        TextFormField(
-                          controller: _durationController,
-                          keyboardType: TextInputType.number,
-                          decoration: const InputDecoration(
-                            labelText: 'Duration (minutes, optional)',
-                            border: OutlineInputBorder(),
+                      ),
+                    ],
+                  ),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('Mark for prayer'),
+                    value: _markForPrayer,
+                    onChanged: (value) {
+                      setState(() {
+                        _markForPrayer = value;
+                      });
+                    },
+                  ),
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('Follow-up reminder'),
+                    subtitle: Text(
+                      _followUpAt != null
+                          ? DateFormat.yMMMd().add_jm().format(_followUpAt!)
+                          : 'None',
+                    ),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (_followUpAt != null)
+                          IconButton(
+                            icon: const Icon(Icons.close),
+                            onPressed: () {
+                              setState(() {
+                                _followUpAt = null;
+                              });
+                            },
                           ),
-                          validator: (value) {
-                            final text = value?.trim() ?? '';
-                            if (text.isEmpty) {
-                              return null;
-                            }
-                            final parsed = int.tryParse(text);
-                            if (parsed == null) {
-                              return 'Duration must be a number of minutes.';
-                            }
-                            if (parsed < 0) {
-                              return 'Duration cannot be negative.';
-                            }
-                            return null;
-                          },
+                        IconButton(
+                          icon: const Icon(Icons.calendar_month_outlined),
+                          onPressed: _pickFollowUp,
                         ),
-                        const SizedBox(height: 12),
-                        TextField(
-                          controller: _categoryController,
-                          textCapitalization: TextCapitalization.sentences,
-                          decoration: const InputDecoration(
-                            labelText: 'Category (optional)',
-                            border: OutlineInputBorder(),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        Text('Occurred at', style: theme.textTheme.labelLarge),
-                        const SizedBox(height: 8),
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(
-                              flex: 3,
-                              child: InkWell(
-                                onTap: _pickDate,
-                                borderRadius: BorderRadius.circular(4),
-                                child: InputDecorator(
-                                  decoration: const InputDecoration(
-                                    labelText: 'Date',
-                                    border: OutlineInputBorder(),
-                                    suffixIcon: Icon(Icons.calendar_month_outlined),
-                                  ),
-                                  child: Text(
-                                    DateFormat.yMMMd().format(_occurredAt),
-                                    style: theme.textTheme.bodyLarge,
-                                  ),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              flex: 2,
-                              child: TextFormField(
-                                controller: _occurredTimeController,
-                                keyboardType: TextInputType.datetime,
-                                inputFormatters: [
-                                  FilteringTextInputFormatter.allow(
-                                    RegExp(r'[0-9: apmAPM]'),
-                                  ),
-                                ],
-                                decoration: InputDecoration(
-                                  labelText: 'Time',
-                                  border: const OutlineInputBorder(),
-                                  suffixIcon: IconButton(
-                                    icon: const Icon(Icons.access_time),
-                                    onPressed: _pickTime,
-                                    tooltip: 'Pick time',
-                                  ),
-                                ),
-                                onTapOutside: (_) => _commitManualOccurredTime(),
-                                onEditingComplete: () {
-                                  _commitManualOccurredTime();
-                                  FocusScope.of(context).unfocus();
-                                },
-                                onFieldSubmitted: (value) {
-                                  _commitManualOccurredTime(value);
-                                },
-                                validator: (value) => _applyManualOccurredTime(
-                                  value ?? '',
-                                  shouldUpdate: false,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        SwitchListTile(
-                          contentPadding: EdgeInsets.zero,
-                          title: const Text('Mark for prayer'),
-                          value: _markForPrayer,
-                          onChanged: (value) {
-                            setState(() {
-                              _markForPrayer = value;
-                            });
-                          },
-                        ),
-                        ListTile(
-                          contentPadding: EdgeInsets.zero,
-                          title: const Text('Follow-up reminder'),
-                          subtitle: Text(
-                            _followUpAt != null
-                                ? DateFormat.yMMMd()
-                                    .add_jm()
-                                    .format(_followUpAt!)
-                                : 'None',
-                          ),
-                          trailing: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              if (_followUpAt != null)
-                                IconButton(
-                                  icon: const Icon(Icons.close),
-                                  onPressed: () {
-                                    setState(() {
-                                      _followUpAt = null;
-                                    });
-                                  },
-                                ),
-                              IconButton(
-                                icon: const Icon(Icons.calendar_month_outlined),
-                                onPressed: _pickFollowUp,
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 24),
                       ],
                     ),
                   ),
+                  const SizedBox(height: 24),
+                ],
+              ),
+            ),
+          ),
         ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   Widget _buildRecentInteractions() {
     // 1. Get unique interactions based on signature (summary + medium + location)
