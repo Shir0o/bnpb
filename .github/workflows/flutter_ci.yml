@@ -1,0 +1,34 @@
+name: Flutter CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          # You can specify a version if needed, e.g., flutter-version: '3.19.0'
+          # checks pubspec.yaml for sdk version
+
+      - run: flutter pub get
+
+      # Check for formatting issues
+      - run: dart format --output=none --set-exit-if-changed .
+
+      # Analyze the project source for errors and warnings
+      - run: flutter analyze
+
+      # Run tests
+      - run: flutter test
+
+      # Verify it builds (Android)
+      - run: flutter build apk --debug

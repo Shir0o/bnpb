@@ -25,7 +25,7 @@ void main() {
       expect(item['firstName'], 'Alice');
       expect(item['lastName'], 'Smith');
       expect(item['tags'], ['Friend']);
-      expect(item.containsKey('nickname'), false); // Not requested
+      expect(item.containsKey('nickname'), true); // Always included now
       expect(item['id'], 'c1'); // Always included
     });
 

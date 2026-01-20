@@ -114,6 +114,28 @@ class Contact {
     };
   }
 
+  /// Serializes the contact into a pure JSON map (nested objects are Maps, not JSON strings).
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'firstName': firstName,
+      'middleName': middleName,
+      'lastName': lastName,
+      'nickname': nickname,
+      'location': location,
+      'firstMeetingNotes': firstMeetingNotes,
+      'notes': notes,
+      'tags': tags,
+      'recognitionKeywords': recognitionKeywords,
+      'recognitionPhotoUris': recognitionPhotoUris,
+      'recognitionReminders': recognitionReminders,
+      'interactions': interactions.map((entry) => entry.toJson()).toList(),
+      'prayerRequests':
+          prayerRequests.map((entry) => entry.toMap()).toList(),
+      'relationships': relationships.map((entry) => entry.toMap()).toList(),
+    };
+  }
+
   // Creates a Contact object from a Map that already has `interactions` as a List of Maps.
   static Contact fromMap(Map<String, dynamic> map) {
     final contactId = (map['id'] as String?)?.trim();

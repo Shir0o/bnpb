@@ -226,7 +226,7 @@ class ExportService {
   ) {
   
     // Ignore field selection for JSON/Archive export to ensure full data backup.
-    return contacts.map((contact) => contact.toMap()).toList();
+    return contacts.map((contact) => contact.toJson()).toList();
   }
 
   Key _deriveKey(String passphrase) {
