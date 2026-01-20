@@ -161,7 +161,14 @@ class PeopleCard extends StatelessWidget {
                           color: theme.colorScheme.surfaceVariant,
                           child: provider != null
                               ? Image(
-                                  image: provider,
+                                  // Resize image to display size to save memory
+                                  image: ResizeImage(
+                                    provider,
+                                    width: (80 *
+                                            MediaQuery.of(context)
+                                                .devicePixelRatio)
+                                        .toInt(),
+                                  ),
                                   fit: BoxFit.cover,
                                 )
                               : Center(
