@@ -22,11 +22,11 @@ class ContactDetailsSkeleton extends StatelessWidget {
                     borderRadius: BorderRadius.all(Radius.circular(12)),
                   ),
                   const SizedBox(height: 16),
-                  
+
                   // Detail Section (e.g. Meeting Context)
                   const SkeletonBox(
                     width: double.infinity,
-                    height: 100, 
+                    height: 100,
                     borderRadius: BorderRadius.all(Radius.circular(12)),
                   ),
                   const SizedBox(height: 16),
@@ -34,15 +34,15 @@ class ContactDetailsSkeleton extends StatelessWidget {
                   // Detail Section (e.g. Recognition)
                   const SkeletonBox(
                     width: double.infinity,
-                    height: 120, 
+                    height: 120,
                     borderRadius: BorderRadius.all(Radius.circular(12)),
                   ),
-                   const SizedBox(height: 16),
-                   
-                   // Relationships Card
-                   const SkeletonBox(
+                  const SizedBox(height: 16),
+
+                  // Relationships Card
+                  const SkeletonBox(
                     width: double.infinity,
-                    height: 150, 
+                    height: 150,
                     borderRadius: BorderRadius.all(Radius.circular(12)),
                   ),
                   const SizedBox(height: 16),
@@ -52,46 +52,47 @@ class ContactDetailsSkeleton extends StatelessWidget {
           ),
           // Interactions Header
           SliverToBoxAdapter(
-             child: Padding(
-               padding: const EdgeInsets.symmetric(horizontal: 16),
-               child: const SkeletonBox(
-                    width: double.infinity,
-                    height: 120, 
-                    borderRadius: BorderRadius.all(Radius.circular(12)),
-                  ),
-             ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: const SkeletonBox(
+                width: double.infinity,
+                height: 120,
+                borderRadius: BorderRadius.all(Radius.circular(12)),
+              ),
+            ),
           ),
           // Interactions List Items
-           SliverPadding(
+          SliverPadding(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
             sliver: SliverList(
               delegate: SliverChildBuilderDelegate(
                 (context, index) {
-                   return Padding(
-                     padding: const EdgeInsets.only(bottom: 12),
-                     child: Row(
-                       crossAxisAlignment: CrossAxisAlignment.start,
-                       children: [
-                         // Timeline line/dot
-                         const Column(
-                           children: [
-                              SkeletonBox(width: 24, height: 24, shape: BoxShape.circle),
-                              SizedBox(height: 8),
-                              SkeletonBox(width: 2, height: 40),
-                           ],
-                         ),
-                         const SizedBox(width: 12),
-                         // Card
-                         Expanded(
-                           child: const SkeletonBox(
-                             width: double.infinity,
-                             height: 100,
-                             borderRadius: BorderRadius.all(Radius.circular(12)),
-                           ),
-                         ),
-                       ],
-                     ),
-                   );
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Timeline line/dot
+                        const Column(
+                          children: [
+                            SkeletonBox(
+                                width: 24, height: 24, shape: BoxShape.circle),
+                            SizedBox(height: 8),
+                            SkeletonBox(width: 2, height: 40),
+                          ],
+                        ),
+                        const SizedBox(width: 12),
+                        // Card
+                        Expanded(
+                          child: const SkeletonBox(
+                            width: double.infinity,
+                            height: 100,
+                            borderRadius: BorderRadius.all(Radius.circular(12)),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
                 },
                 childCount: 3,
               ),

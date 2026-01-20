@@ -104,7 +104,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
     final service = ContactService();
     // Always show skeleton first (implied by default _isInitialLoad = true),
     // but decide how long to keep it.
-    
+
     if (service.hasCachedInteractions(widget.contact.id)) {
       // Cache Hit: Short delay to mask secondary loads (like relationships)
       // and provide a smooth "pop" transition.
@@ -117,14 +117,14 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
 
   Future<void> _performInitialLoad({required Duration minDelay}) async {
     // Ensure both data fetching AND the minimum delay complete.
-    // We include _loadReferenceData here to ensure relationships are ready 
+    // We include _loadReferenceData here to ensure relationships are ready
     // before the skeleton lifts, avoiding the secondary spinner.
     await Future.wait([
       _loadReferenceData(),
       _refreshInteractions(),
       Future.delayed(minDelay),
     ]);
-    
+
     if (mounted) {
       setState(() {
         _isInitialLoad = false;
@@ -203,14 +203,13 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
 
     setState(() {
       _contactLookup = {for (final contact in contacts) contact.id: contact};
-      _availableContacts = contacts
-          .where((contact) => contact.id != widget.contact.id)
-          .toList()
-        ..sort(
-          (a, b) => a.fullName.toLowerCase().compareTo(
-                b.fullName.toLowerCase(),
-              ),
-        );
+      _availableContacts =
+          contacts.where((contact) => contact.id != widget.contact.id).toList()
+            ..sort(
+              (a, b) => a.fullName.toLowerCase().compareTo(
+                    b.fullName.toLowerCase(),
+                  ),
+            );
       final mergedTags = {...tags, ..._selectedTags};
       _availableTags = mergedTags.toList()
         ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
@@ -614,7 +613,6 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
     }
   }
 
-
   Future<void> _refreshRelationships() async {
     setState(() {
       _isLoadingRelationships = true;
@@ -626,8 +624,6 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
       _isLoadingRelationships = false;
     });
   }
-
-
 
   void _showRelationshipDialog({Relationship? relationship}) {
     final isEditing = relationship != null;
@@ -719,12 +715,12 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
 
   Widget _buildRelationshipCard() {
     final outgoing = _relationships
-        .where((relationship) =>
-            relationship.sourceContactId == widget.contact.id)
+        .where(
+            (relationship) => relationship.sourceContactId == widget.contact.id)
         .toList();
     final incoming = _relationships
-        .where((relationship) =>
-            relationship.targetContactId == widget.contact.id)
+        .where(
+            (relationship) => relationship.targetContactId == widget.contact.id)
         .toList();
 
     return _buildCard(
@@ -822,8 +818,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
                 IconButton(
                   icon: const Icon(Icons.delete_outline),
                   tooltip: 'Remove relationship',
-                  onPressed: () =>
-                      _confirmDeleteRelationship(relationship),
+                  onPressed: () => _confirmDeleteRelationship(relationship),
                 ),
               ],
             )
@@ -880,7 +875,8 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
                           ),
                           const SizedBox(height: 16),
                           ...detailSections,
-                          if (detailSections.isNotEmpty) const SizedBox(height: 16),
+                          if (detailSections.isNotEmpty)
+                            const SizedBox(height: 16),
                           _buildRelationshipCard(),
                           const SizedBox(height: 16),
                         ],
@@ -1408,7 +1404,6 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
     );
   }
 
-
   TextField _buildTextField({
     required TextEditingController controller,
     required String label,
@@ -1434,8 +1429,6 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
       ),
     );
   }
-
-
 
   Widget _buildTimelineTile({
     required Interaction interaction,
@@ -1645,7 +1638,8 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
                         IconButton(
                           icon: const Icon(Icons.edit_outlined),
                           tooltip: 'Edit interaction',
-                          onPressed: () => _showEditInteractionSheet(interaction),
+                          onPressed: () =>
+                              _showEditInteractionSheet(interaction),
                         ),
                         IconButton(
                           icon: const Icon(Icons.delete_outline),
@@ -1883,7 +1877,9 @@ class _InteractionDetailPageState extends State<InteractionDetailPage> {
         return contact;
       }
     }
-    return _contactLookup.values.isNotEmpty ? _contactLookup.values.first : null;
+    return _contactLookup.values.isNotEmpty
+        ? _contactLookup.values.first
+        : null;
   }
 
   List<Widget> _buildParticipantBadges() {
@@ -1970,7 +1966,8 @@ class _InteractionDetailPageState extends State<InteractionDetailPage> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final participantBadges = _buildParticipantBadges();
-    final mediumLabel = _mediumLabels[_interaction.medium] ?? _interaction.medium;
+    final mediumLabel =
+        _mediumLabels[_interaction.medium] ?? _interaction.medium;
 
     return Scaffold(
       appBar: AppBar(
@@ -2013,7 +2010,8 @@ class _InteractionDetailPageState extends State<InteractionDetailPage> {
               const SizedBox(height: 16),
             ],
             _buildDetailTile(
-              icon: _mediumIcons[_interaction.medium] ?? Icons.event_note_outlined,
+              icon: _mediumIcons[_interaction.medium] ??
+                  Icons.event_note_outlined,
               title: 'Medium',
               value: mediumLabel,
             ),
@@ -2144,7 +2142,9 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
     _availableContacts.sort(
       (a, b) => a.fullName.toLowerCase().compareTo(b.fullName.toLowerCase()),
     );
-    _contactLookup = {for (final contact in _availableContacts) contact.id: contact};
+    _contactLookup = {
+      for (final contact in _availableContacts) contact.id: contact
+    };
     _selectedParticipantIds = {
       widget.contact.id,
       ..._selectedParticipantIds,
@@ -2194,7 +2194,7 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
 
   Widget _buildParticipantsPicker() {
     final chips = <Widget>[];
-    
+
     // Add primary contact (read-only)
     final primaryContact = _contactLookup[widget.contact.id] ?? widget.contact;
     chips.add(
@@ -2218,13 +2218,13 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
           ),
         );
       } else {
-         // Fallback for unknown IDs
-         chips.add(
-           Chip(
-             label: Text(id),
-             onDeleted: () => _toggleParticipant(id),
-           ),
-         );
+        // Fallback for unknown IDs
+        chips.add(
+          Chip(
+            label: Text(id),
+            onDeleted: () => _toggleParticipant(id),
+          ),
+        );
       }
     }
 
@@ -2494,7 +2494,8 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
           if (_sheetActive && mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
-                content: Text('Speech recognition is unavailable on this device.'),
+                content:
+                    Text('Speech recognition is unavailable on this device.'),
               ),
             );
           }
@@ -2656,7 +2657,8 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
 
       await BackupService().exportBackup();
 
-      final committedInteractions = List<Interaction>.from(optimisticInteractions);
+      final committedInteractions =
+          List<Interaction>.from(optimisticInteractions);
       if (!isEditing) {
         final pendingIndex = committedInteractions.indexWhere(
           (item) => identical(item, interaction),
@@ -2681,9 +2683,8 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(isEditing
-              ? 'Interaction updated'
-              : 'Interaction logged'),
+          content:
+              Text(isEditing ? 'Interaction updated' : 'Interaction logged'),
         ),
       );
 
@@ -2751,7 +2752,9 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
-                              isEditing ? 'Edit interaction' : 'Log interaction',
+                              isEditing
+                                  ? 'Edit interaction'
+                                  : 'Log interaction',
                               style: Theme.of(context).textTheme.titleMedium,
                             ),
                             IconButton(
@@ -2885,8 +2888,11 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
                               Row(
                                 children: [
                                   Text(
-                                    DateFormat.yMMMd().add_jm().format(_occurredAt),
-                                    style: Theme.of(context).textTheme.bodyLarge,
+                                    DateFormat.yMMMd()
+                                        .add_jm()
+                                        .format(_occurredAt),
+                                    style:
+                                        Theme.of(context).textTheme.bodyLarge,
                                   ),
                                   const SizedBox(width: 8),
                                   IconButton(
@@ -2938,7 +2944,9 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
                           title: const Text('Follow-up reminder'),
                           subtitle: Text(
                             _followUpAt != null
-                                ? DateFormat.yMMMd().add_jm().format(_followUpAt!)
+                                ? DateFormat.yMMMd()
+                                    .add_jm()
+                                    .format(_followUpAt!)
                                 : 'None',
                           ),
                           trailing: Row(
@@ -3042,8 +3050,10 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
               return Padding(
                 padding: const EdgeInsets.only(right: 8),
                 child: ActionChip(
-                  label: Text(interaction.summary, overflow: TextOverflow.ellipsis),
-                  avatar: Icon(_mediumIcons[interaction.medium] ?? Icons.chat, size: 16),
+                  label: Text(interaction.summary,
+                      overflow: TextOverflow.ellipsis),
+                  avatar: Icon(_mediumIcons[interaction.medium] ?? Icons.chat,
+                      size: 16),
                   onPressed: () {
                     _fillFromInteraction(interaction);
                   },
@@ -3070,7 +3080,7 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
       if (base.category != null) {
         _categoryController.text = base.category!;
       }
-      
+
       _markForPrayer = base.markForPrayer;
 
       // Reset participants to just base contact + those in the reused interaction
@@ -3078,7 +3088,7 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
         widget.contact.id,
         ...base.participantIds,
       };
-      
+
       // Update validation state
       _isSaveEnabled = _calculateSaveEnabled();
     });
@@ -3191,13 +3201,15 @@ class _ParticipantSelectionDialogState
                   return ListTile(
                     contentPadding: EdgeInsets.zero,
                     leading: CircleAvatar(
-                      child: Text(
-                          contact.fullName.isNotEmpty ? contact.fullName[0].toUpperCase() : '?'),
+                      child: Text(contact.fullName.isNotEmpty
+                          ? contact.fullName[0].toUpperCase()
+                          : '?'),
                     ),
                     title: Text(contact.fullName),
-                    subtitle: contact.nickname != null && contact.nickname!.isNotEmpty
-                        ? Text(contact.nickname!)
-                        : null,
+                    subtitle:
+                        contact.nickname != null && contact.nickname!.isNotEmpty
+                            ? Text(contact.nickname!)
+                            : null,
                     trailing: isSelected
                         ? const Icon(Icons.check_circle, color: Colors.blue)
                         : const Icon(Icons.circle_outlined),

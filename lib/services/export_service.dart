@@ -94,7 +94,9 @@ class ExportService {
     rows.add(fieldIds.map(_labelForField).toList());
 
     for (final contact in contacts) {
-      rows.add(fieldIds.map((field) => _stringValueForField(contact, field)).toList());
+      rows.add(fieldIds
+          .map((field) => _stringValueForField(contact, field))
+          .toList());
     }
 
     final csvContent = const ListToCsvConverter().convert(rows);
@@ -217,14 +219,11 @@ class ExportService {
     return '';
   }
 
-
-
   @visibleForTesting
   List<Map<String, dynamic>> buildExportPayload(
     List<Contact> contacts,
     List<String> fieldIds,
   ) {
-  
     // Ignore field selection for JSON/Archive export to ensure full data backup.
     return contacts.map((contact) => contact.toJson()).toList();
   }

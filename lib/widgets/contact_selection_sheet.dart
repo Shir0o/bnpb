@@ -47,9 +47,9 @@ class _ContactSelectionSheetState extends State<ContactSelectionSheet> {
     final contacts = await _dbHelper.getContacts();
     // Sort by name by default
     contacts.sort((a, b) => a.fullName.compareTo(b.fullName));
-    
+
     _searchService.index(contacts);
-    
+
     if (mounted) {
       setState(() {
         _allContacts = contacts;
@@ -82,13 +82,15 @@ class _ContactSelectionSheetState extends State<ContactSelectionSheet> {
     final theme = Theme.of(context);
     final isSearching = _searchController.text.isNotEmpty;
     // If not searching, show all (except already members if desired? No, user might want to see them disabled or filter them out.
-    // The requirement is usually to pick *new* people. 
+    // The requirement is usually to pick *new* people.
     // The parent passes `alreadySelectedIds`. We can filter them out completely or show them as disabled selected.
-    // Let's filter them out from the "available to pick" list to avoid clutter, 
+    // Let's filter them out from the "available to pick" list to avoid clutter,
     // or keep them but show as checked and disabled?
     // Filtering out is usually cleaner for "Add" flows.
-    
-    final displayList = _searchResults.where((match) => !widget.alreadySelectedIds.contains(match.contact.id)).toList();
+
+    final displayList = _searchResults
+        .where((match) => !widget.alreadySelectedIds.contains(match.contact.id))
+        .toList();
 
     return Container(
       height: MediaQuery.of(context).size.height * 0.9,
@@ -123,7 +125,7 @@ class _ContactSelectionSheetState extends State<ContactSelectionSheet> {
               ],
             ),
           ),
-          
+
           // Search Bar
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
@@ -134,17 +136,19 @@ class _ContactSelectionSheetState extends State<ContactSelectionSheet> {
                 hintText: 'Search contacts...',
                 prefixIcon: const Icon(Icons.search),
                 filled: true,
-                fillColor: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                fillColor: theme.colorScheme.surfaceContainerHighest
+                    .withValues(alpha: 0.3),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                   borderSide: BorderSide.none,
                 ),
-                contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
+                contentPadding:
+                    const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
               ),
             ),
           ),
           const SizedBox(height: 8),
-          
+
           // List
           Expanded(
             child: _isLoading
@@ -152,7 +156,9 @@ class _ContactSelectionSheetState extends State<ContactSelectionSheet> {
                 : displayList.isEmpty
                     ? Center(
                         child: Text(
-                          isSearching ? 'No matching contacts found' : 'No contacts to add',
+                          isSearching
+                              ? 'No matching contacts found'
+                              : 'No contacts to add',
                           style: theme.textTheme.bodyLarge?.copyWith(
                             color: theme.colorScheme.outline,
                           ),
@@ -164,17 +170,23 @@ class _ContactSelectionSheetState extends State<ContactSelectionSheet> {
                           final match = displayList[index];
                           final contact = match.contact;
                           final isSelected = _selectedIds.contains(contact.id);
-                          
+
                           return ListTile(
                             leading: CircleAvatar(
-                              backgroundColor: theme.colorScheme.primaryContainer,
-                              foregroundColor: theme.colorScheme.onPrimaryContainer,
-                              child: Text(contact.firstName.isNotEmpty ? contact.firstName[0].toUpperCase() : '?'),
+                              backgroundColor:
+                                  theme.colorScheme.primaryContainer,
+                              foregroundColor:
+                                  theme.colorScheme.onPrimaryContainer,
+                              child: Text(contact.firstName.isNotEmpty
+                                  ? contact.firstName[0].toUpperCase()
+                                  : '?'),
                             ),
                             title: Text(contact.fullName),
-                            subtitle: match.snippet != null 
-                              ? Text(match.snippet!) 
-                              : (contact.location?.isNotEmpty == true ? Text(contact.location!) : null),
+                            subtitle: match.snippet != null
+                                ? Text(match.snippet!)
+                                : (contact.location?.isNotEmpty == true
+                                    ? Text(contact.location!)
+                                    : null),
                             trailing: Checkbox(
                               value: isSelected,
                               onChanged: (_) => _toggleSelection(contact.id),

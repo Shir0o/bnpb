@@ -82,8 +82,8 @@ class _ExportOptionsSheetState extends State<ExportOptionsSheet> {
     }
 
     await _performExport(
-      generator: (fields) =>
-          _exportService.exportEncryptedArchive(widget.contacts, fields, passphrase),
+      generator: (fields) => _exportService.exportEncryptedArchive(
+          widget.contacts, fields, passphrase),
       description:
           'BNPB encrypted archive. Keep the passphrase safe to decrypt later.',
       successMessage: 'Encrypted archive created and shared.',
@@ -219,7 +219,8 @@ class _ExportOptionsSheetState extends State<ExportOptionsSheet> {
                                     Expanded(
                                       child: OutlinedButton.icon(
                                         onPressed: _exportCsv,
-                                        icon: const Icon(Icons.table_chart_outlined),
+                                        icon: const Icon(
+                                            Icons.table_chart_outlined),
                                         label: const Text('Export CSV'),
                                       ),
                                     ),
@@ -227,8 +228,8 @@ class _ExportOptionsSheetState extends State<ExportOptionsSheet> {
                                     Expanded(
                                       child: OutlinedButton.icon(
                                         onPressed: _exportPdf,
-                                        icon:
-                                            const Icon(Icons.picture_as_pdf_outlined),
+                                        icon: const Icon(
+                                            Icons.picture_as_pdf_outlined),
                                         label: const Text('Export PDF'),
                                       ),
                                     ),

@@ -73,10 +73,8 @@ void main() {
     expect(encoded['source'], AttachmentSource.local.name);
     expect(encoded['label'], 'Conversation notes');
 
-    final deleteIndex =
-        fakeTxn.callOrder.indexOf('delete:interactions');
-    final insertIndex =
-        fakeTxn.callOrder.indexOf('insert:interactions');
+    final deleteIndex = fakeTxn.callOrder.indexOf('delete:interactions');
+    final insertIndex = fakeTxn.callOrder.indexOf('insert:interactions');
     expect(deleteIndex, isNonNegative);
     expect(insertIndex, isNonNegative);
     expect(insertIndex, lessThan(deleteIndex));
@@ -184,8 +182,6 @@ class _FakeTransaction implements DatabaseExecutor {
   }) async {
     return [];
   }
-
-
 
   @override
   Future<int> rawDelete(String sql, [List<Object?>? arguments]) {

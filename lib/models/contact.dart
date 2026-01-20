@@ -18,14 +18,19 @@ class Contact {
   final List<String> tags; // Relationship tags
   /// Lightweight descriptors that help recognize the contact quickly.
   final List<String> recognitionKeywords;
+
   /// URIs (web links or storage references) that visually identify the contact.
   final List<String> recognitionPhotoUris;
+
   /// Gentle reminders tied to this contact (birthdays, follow-ups, etc.).
   final List<String> recognitionReminders;
+
   /// Recorded interactions for the contact (e.g., meetings, calls).
   final List<Interaction> interactions;
+
   /// Prayer requests tracked for this contact.
   final List<PrayerRequest> prayerRequests;
+
   /// Relationships where this contact is the source.
   final List<Relationship> relationships;
 
@@ -79,12 +84,9 @@ class Contact {
       firstMeetingNotes: firstMeetingNotes ?? this.firstMeetingNotes,
       notes: notes ?? this.notes,
       tags: tags ?? this.tags,
-      recognitionKeywords:
-          recognitionKeywords ?? this.recognitionKeywords,
-      recognitionPhotoUris:
-          recognitionPhotoUris ?? this.recognitionPhotoUris,
-      recognitionReminders:
-          recognitionReminders ?? this.recognitionReminders,
+      recognitionKeywords: recognitionKeywords ?? this.recognitionKeywords,
+      recognitionPhotoUris: recognitionPhotoUris ?? this.recognitionPhotoUris,
+      recognitionReminders: recognitionReminders ?? this.recognitionReminders,
       interactions: interactions ?? this.interactions,
       prayerRequests: prayerRequests ?? this.prayerRequests,
       relationships: relationships ?? this.relationships,
@@ -108,8 +110,7 @@ class Contact {
       'recognitionPhotoUris': recognitionPhotoUris,
       'recognitionReminders': recognitionReminders,
       'interactions': interactions.map((entry) => entry.toMap()).toList(),
-      'prayerRequests':
-          prayerRequests.map((entry) => entry.toMap()).toList(),
+      'prayerRequests': prayerRequests.map((entry) => entry.toMap()).toList(),
       'relationships': relationships.map((entry) => entry.toMap()).toList(),
     };
   }
@@ -130,8 +131,7 @@ class Contact {
       'recognitionPhotoUris': recognitionPhotoUris,
       'recognitionReminders': recognitionReminders,
       'interactions': interactions.map((entry) => entry.toJson()).toList(),
-      'prayerRequests':
-          prayerRequests.map((entry) => entry.toMap()).toList(),
+      'prayerRequests': prayerRequests.map((entry) => entry.toMap()).toList(),
       'relationships': relationships.map((entry) => entry.toMap()).toList(),
     };
   }
@@ -140,8 +140,9 @@ class Contact {
   static Contact fromMap(Map<String, dynamic> map) {
     final contactId = (map['id'] as String?)?.trim();
     return Contact(
-      id:
-          contactId != null && contactId.isNotEmpty ? contactId : const Uuid().v4(),
+      id: contactId != null && contactId.isNotEmpty
+          ? contactId
+          : const Uuid().v4(),
       firstName: map['firstName'] as String,
       middleName: (map['middleName'] ?? '') as String,
       lastName: map['lastName'] as String?,

@@ -3,7 +3,6 @@ import 'package:meta/meta.dart';
 import 'package:path/path.dart';
 import 'package:sqflite_sqlcipher/sqflite.dart';
 
-
 import '../models/contact.dart';
 import '../models/interaction.dart';
 import '../models/notification_preference.dart';
@@ -154,7 +153,7 @@ class DBHelper {
       )
     ''');
 
-      await db.execute('''
+    await db.execute('''
         CREATE UNIQUE INDEX idx_notification_preferences_scope
       ON notification_preferences(scopeType, scopeId, channel)
     ''');
@@ -178,8 +177,6 @@ class DBHelper {
         FOREIGN KEY(contactId) REFERENCES contacts(id) ON DELETE CASCADE
       )
     ''');
-
-
   }
 
   Future<void> _migrate(
@@ -251,8 +248,8 @@ class DBHelper {
           );
           final summary = (entryMap['detail'] ?? '').toString();
           if (summary.isEmpty) continue;
-          final occurredAt = entryMap['date'] as String? ??
-              DateTime.now().toIso8601String();
+          final occurredAt =
+              entryMap['date'] as String? ?? DateTime.now().toIso8601String();
 
           await db.insert('interactions', {
             'contactId': contactId,
@@ -780,9 +777,7 @@ class DBHelper {
     for (final request in contact.prayerRequests) {
       await txn.insert(
         'prayer_requests',
-        request
-            .copyWith(contactId: contact.id)
-            .toMap(includeId: false),
+        request.copyWith(contactId: contact.id).toMap(includeId: false),
       );
     }
   }
@@ -828,9 +823,8 @@ class DBHelper {
       where: contactId != null ? 'contactId = ?' : null,
       whereArgs: contactId != null ? [contactId] : null,
     );
-    final interactionIds = participantFilterRows
-        .map((row) => row['interactionId'] as int)
-        .toSet();
+    final interactionIds =
+        participantFilterRows.map((row) => row['interactionId'] as int).toSet();
 
     final participantsByInteraction = await _getParticipantsForInteractions(
       db,
@@ -907,21 +901,27 @@ class DBHelper {
       contactMap.remove('photoCues');
       contactMap.remove('reminderCues');
 
-      contactMap['interactions'] = interactionsByContact[contactMap['id']]?.map(
+      contactMap['interactions'] = interactionsByContact[contactMap['id']]
+              ?.map(
                 (interaction) => interaction.toMap(),
-              ).toList() ??
+              )
+              .toList() ??
           [];
 
       contactMap['tags'] = tagsByContact[contactMap['id']] ?? [];
       final context = contextsByContact[contactMap['id']];
       contactMap['firstMeetingNotes'] = context?['firstMeetingNotes'];
-      contactMap['prayerRequests'] = prayersByContact[contactMap['id']]?.map(
+      contactMap['prayerRequests'] = prayersByContact[contactMap['id']]
+              ?.map(
                 (request) => request.toMap(),
-              ).toList() ??
+              )
+              .toList() ??
           [];
-      contactMap['relationships'] = relationshipsByContact[contactMap['id']]?.map(
+      contactMap['relationships'] = relationshipsByContact[contactMap['id']]
+              ?.map(
                 (rel) => rel.toMap(),
-              ).toList() ??
+              )
+              .toList() ??
           [];
 
       return Contact.fromMap(contactMap);
@@ -1214,7 +1214,8 @@ class DBHelper {
     );
   }
 
-  Future<List<Relationship>> getRelationshipsForContact(String contactId) async {
+  Future<List<Relationship>> getRelationshipsForContact(
+      String contactId) async {
     final db = await database;
     final rows = await db.query(
       'relationships',
@@ -1316,8 +1317,7 @@ class DBHelper {
       limit: limit,
     );
 
-    final interactionIds =
-        rows.map((row) => row['id'] as int).toSet();
+    final interactionIds = rows.map((row) => row['id'] as int).toSet();
     final participantsByInteraction = await _getParticipantsForInteractions(
       db,
       interactionIds,
@@ -1344,8 +1344,7 @@ class DBHelper {
     };
 
     for (final row in rows) {
-      final status =
-          PrayerRequestStatusX.fromStorage(row['status'] as String?);
+      final status = PrayerRequestStatusX.fromStorage(row['status'] as String?);
       counts[status] = (row['total'] as int?) ?? 0;
     }
 
@@ -1444,6 +1443,4 @@ class DBHelper {
   // -------------------------------------------------------------
   // ATTENDANCE METHODS
   // -------------------------------------------------------------
-
-
 }

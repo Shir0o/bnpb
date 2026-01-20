@@ -373,10 +373,9 @@ class _AddContactPageState extends State<AddContactPage> {
                   _buildTextField(
                     controller: _firstNameController,
                     label: 'First Name',
-                    validator: (value) =>
-                        value == null || value.trim().isEmpty
-                            ? 'Enter first name'
-                            : null,
+                    validator: (value) => value == null || value.trim().isEmpty
+                        ? 'Enter first name'
+                        : null,
                   ),
                   const SizedBox(height: 16),
                   _buildTextField(
@@ -456,8 +455,7 @@ class _AddContactPageState extends State<AddContactPage> {
                                     : cue,
                               ),
                               avatar: CircleAvatar(
-                                backgroundImage:
-                                    _buildImageProviderForCue(cue),
+                                backgroundImage: _buildImageProviderForCue(cue),
                                 child: _buildImageProviderForCue(cue) == null
                                     ? const Icon(Icons.photo_outlined)
                                     : null,
@@ -557,8 +555,9 @@ class _AddContactPageState extends State<AddContactPage> {
               ),
               const SizedBox(height: 24),
               ElevatedButton(
-                onPressed:
-                    _isLoadingReferenceData || _isSavingContact ? null : _saveContact,
+                onPressed: _isLoadingReferenceData || _isSavingContact
+                    ? null
+                    : _saveContact,
                 child: _isSavingContact
                     ? const SizedBox(
                         height: 20,
@@ -616,5 +615,4 @@ class _AddContactPageState extends State<AddContactPage> {
       ),
     );
   }
-
 }

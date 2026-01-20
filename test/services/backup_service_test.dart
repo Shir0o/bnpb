@@ -30,7 +30,7 @@ void main() {
 
     // Mock path_provider to return the temp dir
     PathProviderPlatform.instance = MockPathProviderPlatform(tempDir.path);
-    
+
     // Configure BackupService to use our test db path
     BackupService().mockDatabasePath = dbPath;
   });
@@ -59,7 +59,7 @@ void main() {
     if (await dbFile.exists()) {
       await dbFile.delete();
     }
-    
+
     final result = await service.exportBackup();
     expect(result, isNull);
   });
@@ -81,7 +81,8 @@ void main() {
     expect(backup.path, endsWith('.db'));
 
     // Verify it is in the backup directory
-    final backupDir = Directory(p.join(tempDir.path, StorageConstants.backupDirectory));
+    final backupDir =
+        Directory(p.join(tempDir.path, StorageConstants.backupDirectory));
     expect(p.isWithin(backupDir.path, backup.path), isTrue);
   });
 
@@ -91,7 +92,7 @@ void main() {
 
     final file1 = File(p.join(backupDir.path, 'backup_1.db'));
     final file2 = File(p.join(backupDir.path, 'backup_2.db'));
-    
+
     await file1.create();
     await file2.create();
 

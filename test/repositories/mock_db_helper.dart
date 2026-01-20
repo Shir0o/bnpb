@@ -23,37 +23,42 @@ class MockDBHelper implements DBHelper {
     DatabaseExecutor txn,
     Contact contact, {
     required bool isUpdate,
-  }) => throw UnimplementedError();
+  }) =>
+      throw UnimplementedError();
 
   @override
-  Future<List<Contact>> getContacts({String? contactId}) => throw UnimplementedError();
+  Future<List<Contact>> getContacts({String? contactId}) =>
+      throw UnimplementedError();
 
   @override
   Future<Contact?> getContactById(String id) => throw UnimplementedError();
 
-
-
   @override
-  Future<NotificationPreference> upsertNotificationPreference(NotificationPreference preference) => throw UnimplementedError();
+  Future<NotificationPreference> upsertNotificationPreference(
+          NotificationPreference preference) =>
+      throw UnimplementedError();
 
   @override
   Future<NotificationPreference?> getNotificationPreference({
     required NotificationScopeType scopeType,
     required String scopeId,
     required ReminderChannel channel,
-  }) => throw UnimplementedError();
+  }) =>
+      throw UnimplementedError();
 
   @override
   Future<void> deleteNotificationPreference({
     required NotificationScopeType scopeType,
     required String scopeId,
     required ReminderChannel channel,
-  }) => throw UnimplementedError();
+  }) =>
+      throw UnimplementedError();
 
   @override
   Future<List<NotificationPreference>> getNotificationPreferences({
     NotificationScopeType? scopeType,
-  }) => throw UnimplementedError();
+  }) =>
+      throw UnimplementedError();
 
   @override
   Future<int> deleteContact(String id) => throw UnimplementedError();
@@ -68,13 +73,15 @@ class MockDBHelper implements DBHelper {
   Future<void> deleteRelationship(int id) => throw UnimplementedError();
 
   @override
-  Future<List<Relationship>> getAllRelationships() => throw UnimplementedError();
+  Future<List<Relationship>> getAllRelationships() =>
+      throw UnimplementedError();
 
   @override
   Future<List<String>> getAllTags() => throw UnimplementedError();
 
   @override
-  Future<Interaction?> getInteractionById(int interactionId) => throw UnimplementedError();
+  Future<Interaction?> getInteractionById(int interactionId) =>
+      throw UnimplementedError();
 
   @override
   Future<List<String>> getInteractionCategories() => throw UnimplementedError();
@@ -84,60 +91,73 @@ class MockDBHelper implements DBHelper {
     DateTime? start,
     DateTime? end,
     String? contactId,
-  }) => throw UnimplementedError();
+  }) =>
+      throw UnimplementedError();
 
   @override
-  Future<List<Interaction>> getInteractionsForContact(String contactId) => throw UnimplementedError();
+  Future<List<Interaction>> getInteractionsForContact(String contactId) =>
+      throw UnimplementedError();
 
   @override
   Future<List<String>> getPrayerCategories() => throw UnimplementedError();
 
   @override
-  Future<List<Interaction>> getPrayerFocusInteractions({int limit = 10}) => throw UnimplementedError();
+  Future<List<Interaction>> getPrayerFocusInteractions({int limit = 10}) =>
+      throw UnimplementedError();
 
   @override
-  Future<Map<PrayerRequestStatus, int>> getPrayerRequestCounts() => throw UnimplementedError();
+  Future<Map<PrayerRequestStatus, int>> getPrayerRequestCounts() =>
+      throw UnimplementedError();
 
   @override
   Future<List<PrayerRequest>> getPrayerRequests({
     PrayerRequestStatus? status,
     int? limit,
     bool latestAnsweredFirst = false,
-  }) => throw UnimplementedError();
+  }) =>
+      throw UnimplementedError();
 
   @override
   Future<List<PrayerRequest>> getPrayerRequestsForContact(
     String contactId, {
     bool includeArchived = false,
-  }) => throw UnimplementedError();
+  }) =>
+      throw UnimplementedError();
 
   @override
-  Future<List<Relationship>> getRelationshipsForContact(String contactId) => throw UnimplementedError();
+  Future<List<Relationship>> getRelationshipsForContact(String contactId) =>
+      throw UnimplementedError();
 
   @override
-  Future<Interaction> insertInteraction(Interaction interaction) => throw UnimplementedError();
+  Future<Interaction> insertInteraction(Interaction interaction) =>
+      throw UnimplementedError();
 
   @override
-  Future<PrayerRequest> insertPrayerRequest(PrayerRequest request) => throw UnimplementedError();
+  Future<PrayerRequest> insertPrayerRequest(PrayerRequest request) =>
+      throw UnimplementedError();
 
   @override
   Future<bool> interactionExists({
     required String contactId,
     required DateTime occurredAt,
     required String summary,
-  }) => throw UnimplementedError();
+  }) =>
+      throw UnimplementedError();
 
   @override
   Future<void> updateContact(Contact contact) => throw UnimplementedError();
 
   @override
-  Future<void> updateInteraction(Interaction interaction) => throw UnimplementedError();
+  Future<void> updateInteraction(Interaction interaction) =>
+      throw UnimplementedError();
 
   @override
-  Future<void> updatePrayerRequest(PrayerRequest request) => throw UnimplementedError();
+  Future<void> updatePrayerRequest(PrayerRequest request) =>
+      throw UnimplementedError();
 
   @override
-  Future<Relationship> upsertRelationship(Relationship relationship) => throw UnimplementedError();
+  Future<Relationship> upsertRelationship(Relationship relationship) =>
+      throw UnimplementedError();
 
   @override
   Future<List<PrayerList>> getPrayerLists() => throw UnimplementedError();
@@ -155,8 +175,10 @@ class MockDBHelper implements DBHelper {
   Future<void> deletePrayerList(String id) => throw UnimplementedError();
 
   @override
-  Future<void> addContactToPrayerList(String listId, String contactId) => throw UnimplementedError();
+  Future<void> addContactToPrayerList(String listId, String contactId) =>
+      throw UnimplementedError();
 
   @override
-  Future<void> removeContactFromPrayerList(String listId, String contactId) => throw UnimplementedError();
+  Future<void> removeContactFromPrayerList(String listId, String contactId) =>
+      throw UnimplementedError();
 }

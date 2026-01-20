@@ -32,7 +32,8 @@ void main() {
     );
   }
 
-  testWidgets('Dialog defaults to Parent and shows correct sentence', (tester) async {
+  testWidgets('Dialog defaults to Parent and shows correct sentence',
+      (tester) async {
     Relationship? savedRelationship;
     await tester.pumpWidget(createDialog(
       onSave: (r) => savedRelationship = r,
@@ -51,7 +52,7 @@ void main() {
     // selectedContactId = widget.availableContacts.first.id (Bob)
     // selectedRole = 'Parent'
     // Text: '${getTargetName()} is the $role of ${getSourceName()}'
-    
+
     expect(find.text('Bob Jones is the Parent of Alice Smith'), findsOneWidget);
 
     // Verify Save
@@ -73,7 +74,8 @@ void main() {
     expect(find.text('Bob Jones is the Child of Alice Smith'), findsOneWidget);
   });
 
-  testWidgets('Selecting Other shows text field and updates text', (tester) async {
+  testWidgets('Selecting Other shows text field and updates text',
+      (tester) async {
     await tester.pumpWidget(createDialog(
       onSave: (_) {},
     ));
@@ -84,12 +86,13 @@ void main() {
 
     expect(find.byType(TextField), findsNWidgets(2)); // Custom Type + Notes
 
-    await tester.enterText(find.widgetWithText(TextField, 'Custom relationship type'), 'Mentor');
+    await tester.enterText(
+        find.widgetWithText(TextField, 'Custom relationship type'), 'Mentor');
     await tester.pump();
 
     expect(find.text('Bob Jones is the Mentor of Alice Smith'), findsOneWidget);
   });
-  
+
   testWidgets('Editing existing relationship pre-fills data', (tester) async {
     final existing = Relationship(
       id: 100,
@@ -106,18 +109,19 @@ void main() {
     ));
 
     expect(find.text('Edit Relationship'), findsOneWidget);
-    expect(find.text('Bob Jones is the Sibling of Alice Smith'), findsOneWidget);
+    expect(
+        find.text('Bob Jones is the Sibling of Alice Smith'), findsOneWidget);
     expect(find.text('Some notes'), findsOneWidget);
-    
+
     // Check Child chip is NOT selected, Sibling IS selected
     // Visual check hard, logical check:
-    
+
     // Change to Spouse
     await tester.tap(find.text('Spouse'));
     await tester.pump();
-    
+
     expect(find.text('Bob Jones is the Spouse of Alice Smith'), findsOneWidget);
-    
+
     await tester.tap(find.text('Save'));
     expect(savedRelationship!.type, 'Spouse');
     expect(savedRelationship!.id, 100);

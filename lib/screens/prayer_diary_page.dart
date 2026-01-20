@@ -46,7 +46,8 @@ class _PrayerDiaryPageState extends State<PrayerDiaryPage> {
       final requests = results[0] as List<PrayerRequest>;
       final contacts = List<Contact>.from(results[1] as List<Contact>)
         ..sort(
-          (a, b) => a.fullName.toLowerCase().compareTo(b.fullName.toLowerCase()),
+          (a, b) =>
+              a.fullName.toLowerCase().compareTo(b.fullName.toLowerCase()),
         );
 
       setState(() {
@@ -105,8 +106,9 @@ class _PrayerDiaryPageState extends State<PrayerDiaryPage> {
       return;
     }
 
-    final message =
-        result == 'updated' ? 'Prayer request updated.' : 'Prayer request added.';
+    final message = result == 'updated'
+        ? 'Prayer request updated.'
+        : 'Prayer request added.';
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message)),
     );
@@ -139,7 +141,6 @@ class _PrayerDiaryPageState extends State<PrayerDiaryPage> {
       await _loadRequests();
     }
   }
-
 
   @override
   Widget build(BuildContext context) {

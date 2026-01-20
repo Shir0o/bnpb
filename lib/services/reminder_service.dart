@@ -68,9 +68,8 @@ class ReminderService {
   }
 
   Future<void> _requestPlatformPermissions() async {
-    final androidImpl = _plugin
-        .resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin>();
+    final androidImpl = _plugin.resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin>();
     await androidImpl?.requestNotificationsPermission();
 
     if (await _shouldRequestExactAlarmPermission()) {
@@ -433,9 +432,8 @@ class ReminderService {
     if (!await _shouldRequestExactAlarmPermission()) {
       return true;
     }
-    final androidImpl = _plugin
-        .resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin>();
+    final androidImpl = _plugin.resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin>();
     final result = await androidImpl?.requestExactAlarmsPermission();
     return result ?? true;
   }

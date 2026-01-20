@@ -7,7 +7,7 @@ import 'package:bnpb/models/prayer_request.dart';
 void main() {
   group('Contact', () {
     const contactId = 'contact-123';
-    
+
     test('props are correctly assigned via constructor', () {
       final contact = Contact(
         id: contactId,
@@ -28,13 +28,18 @@ void main() {
       final c1 = Contact(id: '1', firstName: 'John', lastName: 'Doe');
       expect(c1.fullName, 'John Doe');
 
-      final c2 = Contact(id: '2', firstName: 'Jane', middleName: 'Marie', lastName: 'Smith');
+      final c2 = Contact(
+          id: '2', firstName: 'Jane', middleName: 'Marie', lastName: 'Smith');
       expect(c2.fullName, 'Jane Marie Smith');
 
       final c3 = Contact(id: '3', firstName: 'Cher');
       expect(c3.fullName, 'Cher');
 
-      final c4 = Contact(id: '4', firstName: '', nickname: 'JDoe'); // Edge case if firstName is empty but required in type system?
+      final c4 = Contact(
+          id: '4',
+          firstName: '',
+          nickname:
+              'JDoe'); // Edge case if firstName is empty but required in type system?
       // In constructor firstName is required String.
       // But let's check if we pass empty string.
       final c5 = Contact(id: '5', firstName: '', nickname: 'The Boss');
@@ -83,13 +88,13 @@ void main() {
             ),
           ],
           prayerRequests: [
-             PrayerRequest(
-               id: 201,
-               contactId: '1',
-               description: 'Health',
-               status: PrayerRequestStatus.pending,
-               requestedAt: DateTime(2023, 1, 2),
-             ),
+            PrayerRequest(
+              id: 201,
+              contactId: '1',
+              description: 'Health',
+              status: PrayerRequestStatus.pending,
+              requestedAt: DateTime(2023, 1, 2),
+            ),
           ],
         );
 

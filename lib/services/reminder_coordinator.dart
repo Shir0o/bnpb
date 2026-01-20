@@ -313,9 +313,8 @@ class ReminderCoordinator {
     );
 
     final now = DateTime.now();
-    final staleContacts = contacts
-        .where((contact) => _isContactStale(contact, now))
-        .toList();
+    final staleContacts =
+        contacts.where((contact) => _isContactStale(contact, now)).toList();
 
     if (staleContacts.isEmpty) {
       return;
@@ -334,7 +333,8 @@ class ReminderCoordinator {
       scheduledFor = now.add(const Duration(hours: 1));
     }
 
-    final previewNames = staleContacts.take(3).map((contact) => contact.fullName).toList();
+    final previewNames =
+        staleContacts.take(3).map((contact) => contact.fullName).toList();
     var body = staleContacts.length == 1
         ? '${staleContacts.first.fullName} is due for a check-in.'
         : '${staleContacts.length} people could use a fresh check-in.';
@@ -485,9 +485,8 @@ class ReminderCoordinator {
   }
 
   int _daysInMonth(int year, int month) {
-    final firstDayNextMonth = (month == 12)
-        ? DateTime(year + 1, 1, 1)
-        : DateTime(year, month + 1, 1);
+    final firstDayNextMonth =
+        (month == 12) ? DateTime(year + 1, 1, 1) : DateTime(year, month + 1, 1);
     return firstDayNextMonth.subtract(const Duration(days: 1)).day;
   }
 
@@ -555,7 +554,8 @@ DateTime _nextWeeklyAnchor(
     daysUntil = 7;
   }
   final targetDate = startOfDay.add(Duration(days: daysUntil));
-  return DateTime(targetDate.year, targetDate.month, targetDate.day, hour, minute);
+  return DateTime(
+      targetDate.year, targetDate.month, targetDate.day, hour, minute);
 }
 
 DateTime _nextMonthlyAnchor(
@@ -570,10 +570,10 @@ DateTime _nextMonthlyAnchor(
 
 final RegExp _fullDatePattern = RegExp(r'^(\d{4})[-/](\d{2})[-/](\d{2})');
 final RegExp _monthDayPattern = RegExp(r'^(\d{2})[-/](\d{2})');
-final RegExp _textualMonthPattern =
-    RegExp(r'^(January|February|March|April|May|June|July|August|September|'
-        r'October|November|December)\s+(\d{1,2})',
-        caseSensitive: false);
+final RegExp _textualMonthPattern = RegExp(
+    r'^(January|February|March|April|May|June|July|August|September|'
+    r'October|November|December)\s+(\d{1,2})',
+    caseSensitive: false);
 
 const Map<String, int> _monthLookup = {
   'jan': 1,

@@ -133,8 +133,9 @@ class _PrayerRequestDetailsPageState extends State<PrayerRequestDetailsPage> {
     });
 
     if (result != null) {
-      final message =
-          result == 'updated' ? 'Prayer request updated.' : 'Prayer request saved.';
+      final message = result == 'updated'
+          ? 'Prayer request updated.'
+          : 'Prayer request saved.';
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(message)),
       );

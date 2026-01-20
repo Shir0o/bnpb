@@ -155,7 +155,8 @@ class PrayerInsightsEmptyState extends StatelessWidget {
   }
 }
 
-class _HomePageState extends State<HomePage> with WidgetsBindingObserver, TickerProviderStateMixin {
+class _HomePageState extends State<HomePage>
+    with WidgetsBindingObserver, TickerProviderStateMixin {
   final DBHelper _dbHelper = DBHelper();
   List<Contact> _contacts = [];
   List<Contact> _filteredContacts = [];
@@ -174,7 +175,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver, Ticker
   Map<String, ContactMatch> _activeMatches = {};
 
   final Set<String> _expandedLocations = <String>{};
-  final Set<String> _loadingLocations = <String>{}; // Track locations currently showing skeleton
+  final Set<String> _loadingLocations =
+      <String>{}; // Track locations currently showing skeleton
 
   bool _isInitialLoad = true;
   bool _showRefreshSkeleton = false;
@@ -195,7 +197,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver, Ticker
     final contactService = ContactService();
     // Always show skeleton first (implied by default _isInitialLoad = true),
     // but decide how long to keep it.
-    
+
     // Default to the long delay for fresh loads
     Duration minDelay = const Duration(milliseconds: 750);
 
@@ -209,7 +211,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver, Ticker
       _fetchContacts(),
       Future.delayed(minDelay),
     ]);
-    
+
     if (mounted) {
       setState(() {
         _isInitialLoad = false;
@@ -220,17 +222,21 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver, Ticker
   @override
   void didChangeMetrics() {
     super.didChangeMetrics();
-    final bottomInset =  WidgetsBinding.instance.platformDispatcher.views.first.viewInsets.bottom;
+    final bottomInset = WidgetsBinding
+        .instance.platformDispatcher.views.first.viewInsets.bottom;
     final isKeyboardVisible = bottomInset > 0.0;
 
     // If keyboard was visible and now is not, and we have focus, un-focus to close suggestions.
-    if (_wasKeyboardVisible && !isKeyboardVisible && _searchFocusNode.hasFocus) {
+    if (_wasKeyboardVisible &&
+        !isKeyboardVisible &&
+        _searchFocusNode.hasFocus) {
       _searchFocusNode.unfocus();
     }
     _wasKeyboardVisible = isKeyboardVisible;
   }
 
-  Future<void> _fetchContacts({bool forceRefresh = false, bool useSkeleton = false}) async {
+  Future<void> _fetchContacts(
+      {bool forceRefresh = false, bool useSkeleton = false}) async {
     if (useSkeleton) {
       setState(() {
         _showRefreshSkeleton = true;
@@ -238,13 +244,13 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver, Ticker
     }
 
     // If using skeleton, enforce minimum delay to prevent flashing
-    final minDelay = useSkeleton
-        ? const Duration(milliseconds: 300)
-        : Duration.zero;
+    final minDelay =
+        useSkeleton ? const Duration(milliseconds: 300) : Duration.zero;
 
     await Future.wait([
       (() async {
-        final contacts = await ContactService().getContacts(forceRefresh: forceRefresh);
+        final contacts =
+            await ContactService().getContacts(forceRefresh: forceRefresh);
         _applyContactsSnapshot(contacts);
         await _loadPrayerInsights();
       })(),
@@ -370,7 +376,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver, Ticker
 
   Widget _buildSearchSuggestions() {
     final query = _searchController.text.trim();
-    
+
     // Show suggestions if query is empty BUT search bar is focused
     // Note: We used to check keyboard visibility here, but it caused issues on initial focus (frame 0).
     // Instead, we handle "unfocus on keyboard close" via WidgetsBindingObserver.
@@ -382,7 +388,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver, Ticker
       if (suggestions.isEmpty) {
         return const SizedBox.shrink();
       }
-      return _buildSuggestionsCard(suggestions, key: const ValueKey('suggestions'));
+      return _buildSuggestionsCard(suggestions,
+          key: const ValueKey('suggestions'));
     }
 
     final suggestions = _filteredContacts
@@ -393,13 +400,14 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver, Ticker
     if (suggestions.isEmpty) {
       return const SizedBox.shrink();
     }
-    
-    return _buildSuggestionsCard(suggestions, key: ValueKey('results_${suggestions.length}'));
+
+    return _buildSuggestionsCard(suggestions,
+        key: ValueKey('results_${suggestions.length}'));
   }
 
   Widget _buildSuggestionsCard(List<ContactMatch> matches, {Key? key}) {
     final theme = Theme.of(context);
-    
+
     return Card(
       key: key,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -416,7 +424,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver, Ticker
               contact: matches[index].contact,
               // If it's a search result, use the active match details.
               // If it's a suggestion (score 1.0 from getSuggestions), use its description.
-              match: _activeMatches[matches[index].contact.id] ?? matches[index],
+              match:
+                  _activeMatches[matches[index].contact.id] ?? matches[index],
               onTap: () => _navigateToContactDetails(matches[index].contact),
             ),
           ],
@@ -427,8 +436,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver, Ticker
 
   Widget _buildPrayerInsightsCard() {
     final theme = Theme.of(context);
-    final hasAnyPrayer =
-        _prayerCounts.values.any((count) => count != 0);
+    final hasAnyPrayer = _prayerCounts.values.any((count) => count != 0);
 
     return Card(
       elevation: 2,
@@ -457,15 +465,14 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver, Ticker
                 key: const ValueKey('insights_content'),
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  if (!hasAnyPrayer)
-                    const PrayerInsightsEmptyState(),
+                  if (!hasAnyPrayer) const PrayerInsightsEmptyState(),
                   if (_pendingPrayerReminders.isNotEmpty) ...[
                     const SizedBox(height: 12),
                     Text('Needs prayer', style: theme.textTheme.titleSmall),
                     const SizedBox(height: 8),
                     ..._pendingPrayerReminders.map((request) {
-                      final contactName =
-                          _displayNameForContactId(_contactLookup, request.contactId);
+                      final contactName = _displayNameForContactId(
+                          _contactLookup, request.contactId);
                       return ListTile(
                         contentPadding: EdgeInsets.zero,
                         dense: true,
@@ -480,11 +487,12 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver, Ticker
                   ],
                   if (_recentAnsweredPrayers.isNotEmpty) ...[
                     const SizedBox(height: 12),
-                    Text('Answered recently', style: theme.textTheme.titleSmall),
+                    Text('Answered recently',
+                        style: theme.textTheme.titleSmall),
                     const SizedBox(height: 8),
                     ..._recentAnsweredPrayers.map((request) {
-                      final contactName =
-                          _displayNameForContactId(_contactLookup, request.contactId);
+                      final contactName = _displayNameForContactId(
+                          _contactLookup, request.contactId);
                       return Container(
                         margin: const EdgeInsets.only(bottom: 8),
                         decoration: BoxDecoration(
@@ -856,7 +864,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver, Ticker
             tooltip: 'Prayer Lists',
             onPressed: () {
               Navigator.of(context).push(
-                MaterialPageRoute(builder: (context) => const PrayerListsPage()),
+                MaterialPageRoute(
+                    builder: (context) => const PrayerListsPage()),
               );
             },
           ),
@@ -1004,7 +1013,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver, Ticker
                                             () {
                                           if (mounted) {
                                             setState(() {
-                                              _loadingLocations.remove(location);
+                                              _loadingLocations
+                                                  .remove(location);
                                             });
                                           }
                                         });
@@ -1015,7 +1025,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver, Ticker
                                         });
                                       }
                                     },
-                                    children: _loadingLocations.contains(location)
+                                    children: _loadingLocations
+                                            .contains(location)
                                         ? [
                                             SkeletonLoader(
                                               child: Column(
@@ -1023,17 +1034,20 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver, Ticker
                                                   Padding(
                                                     padding: EdgeInsets.only(
                                                         bottom: 12),
-                                                    child: ContactItemSkeleton(),
+                                                    child:
+                                                        ContactItemSkeleton(),
                                                   ),
                                                   Padding(
                                                     padding: EdgeInsets.only(
                                                         bottom: 12),
-                                                    child: ContactItemSkeleton(),
+                                                    child:
+                                                        ContactItemSkeleton(),
                                                   ),
                                                   Padding(
                                                     padding: EdgeInsets.only(
                                                         bottom: 12),
-                                                    child: ContactItemSkeleton(),
+                                                    child:
+                                                        ContactItemSkeleton(),
                                                   ),
                                                 ],
                                               ),

@@ -62,7 +62,8 @@ class _LogPrayerRequestSheetState extends State<LogPrayerRequestSheet> {
             ? widget.availableContacts.first.id
             : null);
     if (presetContactId != null &&
-        widget.availableContacts.any((contact) => contact.id == presetContactId)) {
+        widget.availableContacts
+            .any((contact) => contact.id == presetContactId)) {
       _selectedContactId = presetContactId;
     }
   }
@@ -74,6 +75,7 @@ class _LogPrayerRequestSheetState extends State<LogPrayerRequestSheet> {
     _categoryController.dispose();
     super.dispose();
   }
+
   Future<void> _pickRequestedDate() async {
     final selected = await showDatePicker(
       context: context,

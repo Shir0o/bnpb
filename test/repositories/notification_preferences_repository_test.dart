@@ -35,7 +35,7 @@ class _TestDBHelper extends MockDBHelper {
           p.scopeId == preference.scopeId &&
           p.channel == preference.channel,
     );
-    
+
     final newPref = preference.id == null
         ? preference.copyWith(id: _idCounter++)
         : preference;
@@ -87,7 +87,7 @@ void main() {
       await repository.ensureDefaults();
       // Should have one for each channel
       expect(dbHelper.prefs.length, ReminderChannel.values.length);
-      
+
       // Setup should be idempotent
       await repository.ensureDefaults();
       expect(dbHelper.prefs.length, ReminderChannel.values.length);

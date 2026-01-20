@@ -38,7 +38,8 @@ void main() {
         summary: 'Test',
         medium: 'phone',
         attachments: [
-          AttachmentReference(uri: 'http://test.com', source: AttachmentSource.cloud),
+          AttachmentReference(
+              uri: 'http://test.com', source: AttachmentSource.cloud),
         ],
       );
 
@@ -75,7 +76,7 @@ void main() {
   });
 }
 
-// Expose private static method for testing if needed, but since it's private 
+// Expose private static method for testing if needed, but since it's private
 // we rely on fromMap testing. Let's test via fromMap directly.
 extension InteractioHelper on Interaction {
   static bool parseMarkForPrayer(dynamic value) {

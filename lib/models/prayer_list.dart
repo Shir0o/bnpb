@@ -45,7 +45,8 @@ class PrayerList {
     };
   }
 
-  static PrayerList fromMap(Map<String, dynamic> map, {List<String>? contactIds}) {
+  static PrayerList fromMap(Map<String, dynamic> map,
+      {List<String>? contactIds}) {
     return PrayerList(
       id: map['id'] as String,
       name: map['name'] as String,

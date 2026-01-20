@@ -165,15 +165,16 @@ class _BackupRestoreSheetState extends State<BackupRestoreSheet> {
                         onTap: () => _handleRestore(backup),
                       );
                     },
-                    separatorBuilder: (context, index) => const Divider(height: 1),
+                    separatorBuilder: (context, index) =>
+                        const Divider(height: 1),
                   );
                 },
               ),
             ),
             const SizedBox(height: 20),
             OutlinedButton.icon(
-              onPressed: () =>
-                  Navigator.of(context).pop(BackupRestoreSheetResult.legacyImport),
+              onPressed: () => Navigator.of(context)
+                  .pop(BackupRestoreSheetResult.legacyImport),
               icon: const Icon(Icons.upload_file_outlined),
               label: const Text('Import JSON export'),
             ),

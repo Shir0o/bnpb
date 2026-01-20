@@ -120,7 +120,8 @@ class _PrayerListsPageState extends State<PrayerListsPage> {
               ? _buildEmptyState()
               : ListView.separated(
                   itemCount: _lists.length,
-                  separatorBuilder: (context, index) => const Divider(height: 1),
+                  separatorBuilder: (context, index) =>
+                      const Divider(height: 1),
                   itemBuilder: (context, index) {
                     final list = _lists[index];
                     return ListTile(

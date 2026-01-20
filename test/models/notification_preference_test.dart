@@ -5,7 +5,8 @@ void main() {
   group('NotificationPreference', () {
     test('ReminderChannel properties return correct defaults', () {
       expect(ReminderChannel.followUp.label, isNotEmpty);
-      expect(ReminderChannel.followUp.defaultLeadTime, const Duration(hours: 1));
+      expect(
+          ReminderChannel.followUp.defaultLeadTime, const Duration(hours: 1));
       expect(ReminderChannel.weeklyReview.defaultLeadTime, Duration.zero);
     });
 

@@ -196,11 +196,11 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
     }
 
     final values = entries
-        .map((entry) => _resolveValue(entry.totalMinutes, entry.interactionCount))
+        .map((entry) =>
+            _resolveValue(entry.totalMinutes, entry.interactionCount))
         .toList();
     final maxY = values.reduce(math.max);
-    final double yInterval =
-        (maxY == 0 ? 1 : math.max(1, maxY / 4)).toDouble();
+    final double yInterval = (maxY == 0 ? 1 : math.max(1, maxY / 4)).toDouble();
 
     final List<Color> barColors = [
       Colors.blue,
@@ -321,9 +321,12 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
   }
 
   Widget _buildCategoryCard(AnalyticsSummary summary) {
-    final entries = summary.categoryBreakdown.where((entry) {
-      return entry.interactionCount > 0;
-    }).take(6).toList();
+    final entries = summary.categoryBreakdown
+        .where((entry) {
+          return entry.interactionCount > 0;
+        })
+        .take(6)
+        .toList();
 
     if (entries.isEmpty) {
       return const _EmptyAnalyticsCard(
@@ -334,8 +337,8 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
 
     final totalValue = entries.fold<double>(
       0,
-      (value, entry) => value +
-          _resolveValue(entry.totalMinutes, entry.interactionCount),
+      (value, entry) =>
+          value + _resolveValue(entry.totalMinutes, entry.interactionCount),
     );
 
     return Card(
@@ -354,8 +357,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
               child: LayoutBuilder(
                 builder: (context, constraints) {
                   final biggest = constraints.biggest;
-                  final shortestSide =
-                      math.min(biggest.width, biggest.height);
+                  final shortestSide = math.min(biggest.width, biggest.height);
                   final double maxRadius = (shortestSide / 2) - 8;
                   final double sectionRadius = math.max(0.0, maxRadius / 1.5);
                   final centerSpaceRadius = sectionRadius / 2;
@@ -416,12 +418,13 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
     }
 
     final values = timeline
-        .map((entry) => _resolveValue(entry.totalMinutes, entry.interactionCount))
+        .map((entry) =>
+            _resolveValue(entry.totalMinutes, entry.interactionCount))
         .toList();
     final maxY = values.reduce(math.max);
-    final double yInterval =
-        (maxY == 0 ? 1 : math.max(1, maxY / 4)).toDouble();
-    final labelStep = math.min(timeline.length, math.max(1, (timeline.length / 6).ceil()));
+    final double yInterval = (maxY == 0 ? 1 : math.max(1, maxY / 4)).toDouble();
+    final labelStep =
+        math.min(timeline.length, math.max(1, (timeline.length / 6).ceil()));
 
     return Card(
       child: Padding(
@@ -450,8 +453,10 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                       dotData: FlDotData(show: false),
                       belowBarData: BarAreaData(
                         show: true,
-                        color:
-                            Theme.of(context).colorScheme.primary.withOpacity(0.15),
+                        color: Theme.of(context)
+                            .colorScheme
+                            .primary
+                            .withOpacity(0.15),
                       ),
                       spots: timeline.asMap().entries.map((entry) {
                         final index = entry.key.toDouble();
@@ -487,7 +492,9 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                           if (index < 0 || index >= timeline.length) {
                             return const SizedBox.shrink();
                           }
-                          if (index % labelStep != 0 && index != 0 && index != timeline.length - 1) {
+                          if (index % labelStep != 0 &&
+                              index != 0 &&
+                              index != timeline.length - 1) {
                             return const SizedBox.shrink();
                           }
                           final date = timeline[index].date;
@@ -510,8 +517,6 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
       ),
     );
   }
-
-
 
   Widget _buildGapCard(AnalyticsSummary summary) {
     final gaps = summary.contactGaps.take(6).toList();

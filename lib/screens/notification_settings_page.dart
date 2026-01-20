@@ -249,15 +249,18 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
               const SizedBox(height: 16),
               FilledButton.icon(
                 onPressed: _isPurging ? null : _promptForPasscode,
-                icon: Icon(_hasPasscode ? Icons.password : Icons.enhanced_encryption),
-                label: Text(_hasPasscode ? 'Update passcode' : 'Create passcode'),
+                icon: Icon(
+                    _hasPasscode ? Icons.password : Icons.enhanced_encryption),
+                label:
+                    Text(_hasPasscode ? 'Update passcode' : 'Create passcode'),
               ),
               if (_hasPasscode)
                 Padding(
                   padding: const EdgeInsets.only(top: 8),
                   child: OutlinedButton.icon(
                     onPressed: _isPurging ? null : _removePasscode,
-                    icon: const Icon(Icons.no_encryption_gmailerrorred_outlined),
+                    icon:
+                        const Icon(Icons.no_encryption_gmailerrorred_outlined),
                     label: const Text('Remove passcode'),
                   ),
                 ),
@@ -285,8 +288,7 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
                 onPressed: _isPurging ? null : _confirmSecurePurge,
                 icon: const Icon(Icons.delete_forever_outlined),
                 style: FilledButton.styleFrom(
-                  backgroundColor:
-                      Theme.of(context).colorScheme.errorContainer,
+                  backgroundColor: Theme.of(context).colorScheme.errorContainer,
                   foregroundColor:
                       Theme.of(context).colorScheme.onErrorContainer,
                 ),
@@ -538,12 +540,14 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
                   TextField(
                     controller: passcodeController,
                     obscureText: true,
-                    decoration: const InputDecoration(labelText: 'New passcode'),
+                    decoration:
+                        const InputDecoration(labelText: 'New passcode'),
                   ),
                   TextField(
                     controller: confirmController,
                     obscureText: true,
-                    decoration: const InputDecoration(labelText: 'Confirm passcode'),
+                    decoration:
+                        const InputDecoration(labelText: 'Confirm passcode'),
                   ),
                   if (error != null)
                     Padding(
@@ -637,7 +641,7 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
       await _refreshSecurityState();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Passcode removed.')), 
+          const SnackBar(content: Text('Passcode removed.')),
         );
       }
     }
@@ -658,7 +662,8 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Biometric authentication is unavailable on this device.'),
+            content:
+                Text('Biometric authentication is unavailable on this device.'),
           ),
         );
       }
@@ -671,9 +676,7 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            value
-                ? 'Biometric unlock enabled.'
-                : 'Biometric unlock disabled.',
+            value ? 'Biometric unlock enabled.' : 'Biometric unlock disabled.',
           ),
         ),
       );
@@ -823,8 +826,7 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
                   channel,
                 );
                 final override = _preferences[key];
-                final fallbackLeadTime =
-                    _fallbackLeadTimeFor(channel: channel);
+                final fallbackLeadTime = _fallbackLeadTimeFor(channel: channel);
                 final enabled = override?.enabled ?? true;
                 final leadTime = override?.leadTime ?? fallbackLeadTime;
                 return _PreferenceControl(
@@ -913,8 +915,7 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
                   channel,
                 );
                 final override = _preferences[key];
-                final fallbackLeadTime =
-                    _fallbackLeadTimeFor(channel: channel);
+                final fallbackLeadTime = _fallbackLeadTimeFor(channel: channel);
                 final enabled = override?.enabled ?? true;
                 final leadTime = override?.leadTime ?? fallbackLeadTime;
                 return _PreferenceControl(
@@ -989,8 +990,7 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
                 leadTime: leadTime,
               ))
           .copyWith(enabled: enabled, leadTime: leadTime);
-      final saved =
-          await _preferencesRepository.savePreference(preference);
+      final saved = await _preferencesRepository.savePreference(preference);
       if (!mounted) {
         return;
       }

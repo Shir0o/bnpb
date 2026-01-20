@@ -35,7 +35,7 @@ class _RelationshipDialogState extends State<RelationshipDialog> {
 
     if (widget.relationship != null) {
       selectedContactId = widget.relationship!.targetContactId;
-       // We assume the parent passed a valid list including the target contact if editing.
+      // We assume the parent passed a valid list including the target contact if editing.
     } else {
       selectedContactId =
           dropdownContacts.isNotEmpty ? dropdownContacts.first.id : null;
@@ -67,8 +67,8 @@ class _RelationshipDialogState extends State<RelationshipDialog> {
   String getTargetName() {
     if (selectedContactId == null) return 'selected contact';
     try {
-      final contact = dropdownContacts
-          .firstWhere((c) => c.id == selectedContactId);
+      final contact =
+          dropdownContacts.firstWhere((c) => c.id == selectedContactId);
       return contact.fullName.isNotEmpty
           ? contact.fullName
           : (contact.nickname ?? 'Selected Contact');
@@ -85,9 +85,7 @@ class _RelationshipDialogState extends State<RelationshipDialog> {
 
   String getRoleDescription() {
     final role = selectedRole == 'Other'
-        ? (otherTypeController.text.isEmpty
-            ? '...'
-            : otherTypeController.text)
+        ? (otherTypeController.text.isEmpty ? '...' : otherTypeController.text)
         : selectedRole;
     return '${getTargetName()} is the $role of ${getSourceName()}';
   }
@@ -172,19 +170,17 @@ class _RelationshipDialogState extends State<RelationshipDialog> {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                   Icon(Icons.info_outline,
+                  Icon(Icons.info_outline,
                       size: 20,
-                      color: Theme.of(context)
-                          .colorScheme
-                          .onSecondaryContainer),
+                      color:
+                          Theme.of(context).colorScheme.onSecondaryContainer),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       getRoleDescription(),
                       style: TextStyle(
-                        color: Theme.of(context)
-                            .colorScheme
-                            .onSecondaryContainer,
+                        color:
+                            Theme.of(context).colorScheme.onSecondaryContainer,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -192,7 +188,7 @@ class _RelationshipDialogState extends State<RelationshipDialog> {
                 ],
               ),
             ),
-             const SizedBox(height: 16),
+            const SizedBox(height: 16),
             TextField(
               controller: notesController,
               maxLines: 2,
@@ -240,12 +236,12 @@ class _RelationshipDialogState extends State<RelationshipDialog> {
             );
 
             widget.onSave(relationshipToSave);
-            // Navigator pop is handled inside onSave or caller? 
-            // Better to let caller handle async ops, but here we invoke and close? 
+            // Navigator pop is handled inside onSave or caller?
+            // Better to let caller handle async ops, but here we invoke and close?
             // In original, it did async save then pop.
             // Let's matching the original behavior: we passed an async callback probably.
-            // But here onSave is synchronous in signature. 
-            // Let's assume onSave returns void/Future. 
+            // But here onSave is synchronous in signature.
+            // Let's assume onSave returns void/Future.
             // The widget should technically be cleaner but for now simple 'onPressed' logic is fine.
           },
           child: Text(isEditing ? 'Save' : 'Add'),

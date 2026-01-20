@@ -9,12 +9,13 @@ class ContactService {
   ContactService._internal();
 
   final DBHelper _dbHelper = DBHelper();
-  
+
   List<Contact>? _cachedContacts;
   final Map<String, List<Interaction>> _cachedInteractions = {};
 
   bool get hasCachedContacts => _cachedContacts != null;
-  bool hasCachedInteractions(String contactId) => _cachedInteractions.containsKey(contactId);
+  bool hasCachedInteractions(String contactId) =>
+      _cachedInteractions.containsKey(contactId);
 
   /// Returns cached contacts if available, otherwise fetches them.
   /// [forceRefresh] will ignore cache and fetch fresh data.
@@ -22,7 +23,7 @@ class ContactService {
     if (_cachedContacts != null && !forceRefresh) {
       return _cachedContacts!;
     }
-    
+
     final contacts = await _dbHelper.getContacts();
     _cachedContacts = contacts;
     return contacts;
@@ -30,7 +31,8 @@ class ContactService {
 
   /// Returns cached interactions for a contact if available, otherwise fetches them.
   /// [forceRefresh] will ignore cache and fetch fresh data.
-  Future<List<Interaction>> getInteractions(String contactId, {bool forceRefresh = false}) async {
+  Future<List<Interaction>> getInteractions(String contactId,
+      {bool forceRefresh = false}) async {
     if (_cachedInteractions.containsKey(contactId) && !forceRefresh) {
       return _cachedInteractions[contactId]!;
     }

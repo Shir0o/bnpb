@@ -12,7 +12,8 @@ class HomePageSkeleton extends StatelessWidget {
       duration: const Duration(seconds: 6),
       child: ListView(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        physics: const NeverScrollableScrollPhysics(), // Disable scrolling on skeleton
+        physics:
+            const NeverScrollableScrollPhysics(), // Disable scrolling on skeleton
         children: [
           // Search Bar
           const SkeletonBox(
@@ -28,11 +29,20 @@ class HomePageSkeleton extends StatelessWidget {
           // Filter Chips
           Row(
             children: [
-              const SkeletonBox(width: 50, height: 32, borderRadius: BorderRadius.all(Radius.circular(8))),
+              const SkeletonBox(
+                  width: 50,
+                  height: 32,
+                  borderRadius: BorderRadius.all(Radius.circular(8))),
               const SizedBox(width: 8),
-              const SkeletonBox(width: 80, height: 32, borderRadius: BorderRadius.all(Radius.circular(8))),
+              const SkeletonBox(
+                  width: 80,
+                  height: 32,
+                  borderRadius: BorderRadius.all(Radius.circular(8))),
               const SizedBox(width: 8),
-              const SkeletonBox(width: 70, height: 32, borderRadius: BorderRadius.all(Radius.circular(8))),
+              const SkeletonBox(
+                  width: 70,
+                  height: 32,
+                  borderRadius: BorderRadius.all(Radius.circular(8))),
             ],
           ),
           const SizedBox(height: 24),
@@ -62,6 +72,4 @@ class HomePageSkeleton extends StatelessWidget {
       ],
     );
   }
-
-
 }

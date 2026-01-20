@@ -47,7 +47,6 @@ class TimeSeriesPoint {
 
 /// Attendance rate information for a single session.
 
-
 /// Summary describing the gap since the last time a contact was reached out to.
 class ContactGap {
   const ContactGap({
@@ -93,7 +92,8 @@ class AnalyticsSummary {
 /// Provides a higher-level analytic view over stored contacts and
 /// interactions, including date range, category, and per-contact summaries.
 class AnalyticsRepository {
-  AnalyticsRepository({DBHelper? dbHelper}) : _dbHelper = dbHelper ?? DBHelper();
+  AnalyticsRepository({DBHelper? dbHelper})
+      : _dbHelper = dbHelper ?? DBHelper();
 
   final DBHelper _dbHelper;
 
@@ -112,7 +112,6 @@ class AnalyticsRepository {
     final timelineAccumulators = <DateTime, _TimelineAccumulator>{};
     final contactGaps = <ContactGap>[];
 
-
     for (final Contact contact in contacts) {
       final accumulator = contactAccumulators.putIfAbsent(
         contact.id,
@@ -124,7 +123,8 @@ class AnalyticsRepository {
       for (final Interaction interaction in contact.interactions) {
         final occurredAt = interaction.occurredAt;
         if (!_isWithinRange(occurredAt, rangeStart, rangeEnd)) {
-          if (latestInteraction == null || occurredAt.isAfter(latestInteraction)) {
+          if (latestInteraction == null ||
+              occurredAt.isAfter(latestInteraction)) {
             latestInteraction = occurredAt;
           }
           continue;
@@ -136,8 +136,9 @@ class AnalyticsRepository {
         accumulator.interactionCount += 1;
 
         final rawCategory = interaction.category?.trim();
-        final categoryKey =
-            (rawCategory == null || rawCategory.isEmpty) ? 'Uncategorized' : rawCategory;
+        final categoryKey = (rawCategory == null || rawCategory.isEmpty)
+            ? 'Uncategorized'
+            : rawCategory;
         final categoryAccumulator = categoryAccumulators.putIfAbsent(
           categoryKey,
           () => _CategoryAccumulator(categoryKey),
@@ -145,7 +146,8 @@ class AnalyticsRepository {
         categoryAccumulator.totalMinutes += durationMinutes;
         categoryAccumulator.interactionCount += 1;
 
-        final bucket = DateTime(occurredAt.year, occurredAt.month, occurredAt.day);
+        final bucket =
+            DateTime(occurredAt.year, occurredAt.month, occurredAt.day);
         final timelineAccumulator = timelineAccumulators.putIfAbsent(
           bucket,
           () => _TimelineAccumulator(bucket),
@@ -153,7 +155,8 @@ class AnalyticsRepository {
         timelineAccumulator.totalMinutes += durationMinutes;
         timelineAccumulator.interactionCount += 1;
 
-        if (latestInteraction == null || occurredAt.isAfter(latestInteraction)) {
+        if (latestInteraction == null ||
+            occurredAt.isAfter(latestInteraction)) {
           latestInteraction = occurredAt;
         }
       }
@@ -164,32 +167,32 @@ class AnalyticsRepository {
           contactName: contact.fullName,
           totalInteractions: contact.interactions.length,
           lastInteractionAt: latestInteraction,
-          gap: latestInteraction != null ? now.difference(latestInteraction) : null,
+          gap: latestInteraction != null
+              ? now.difference(latestInteraction)
+              : null,
         ),
       );
     }
 
-    final contactInvestments = contactAccumulators.values
-        .map((entry) => entry.toDomain())
-        .toList()
-      ..sort((a, b) {
-        final durationCompare = b.totalMinutes.compareTo(a.totalMinutes);
-        if (durationCompare != 0) {
-          return durationCompare;
-        }
-        return b.interactionCount.compareTo(a.interactionCount);
-      });
+    final contactInvestments =
+        contactAccumulators.values.map((entry) => entry.toDomain()).toList()
+          ..sort((a, b) {
+            final durationCompare = b.totalMinutes.compareTo(a.totalMinutes);
+            if (durationCompare != 0) {
+              return durationCompare;
+            }
+            return b.interactionCount.compareTo(a.interactionCount);
+          });
 
-    final categoryBreakdown = categoryAccumulators.values
-        .map((entry) => entry.toDomain())
-        .toList()
-      ..sort((a, b) {
-        final durationCompare = b.totalMinutes.compareTo(a.totalMinutes);
-        if (durationCompare != 0) {
-          return durationCompare;
-        }
-        return b.interactionCount.compareTo(a.interactionCount);
-      });
+    final categoryBreakdown =
+        categoryAccumulators.values.map((entry) => entry.toDomain()).toList()
+          ..sort((a, b) {
+            final durationCompare = b.totalMinutes.compareTo(a.totalMinutes);
+            if (durationCompare != 0) {
+              return durationCompare;
+            }
+            return b.interactionCount.compareTo(a.interactionCount);
+          });
 
     final timeline = timelineAccumulators.values
         .map((entry) => entry.toDomain())
@@ -255,8 +258,6 @@ class _ContactAccumulator {
     );
   }
 }
-
-
 
 class _CategoryAccumulator {
   _CategoryAccumulator(this.category);

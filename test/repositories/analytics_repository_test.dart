@@ -51,19 +51,18 @@ void main() {
       dbHelper.contacts.add(c1);
 
       final summary = await repository.buildSummary();
-      
+
       expect(summary.totalMinutes, 90);
       expect(summary.totalInteractions, 2);
-      
+
       // Category breakdown
       expect(summary.categoryBreakdown.length, 2);
       expect(
-        summary.categoryBreakdown.any((e) => e.category == 'Work' && e.totalMinutes == 30),
+        summary.categoryBreakdown
+            .any((e) => e.category == 'Work' && e.totalMinutes == 30),
         isTrue,
       );
     });
-
-
 
     test('buildSummary respects date range', () async {
       final now = DateTime.now();

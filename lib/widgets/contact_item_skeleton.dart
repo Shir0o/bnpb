@@ -11,7 +11,8 @@ class ContactItemSkeleton extends StatelessWidget {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
       ),
-      color: Colors.transparent, // Let skeleton loader highlighting work or just keep structure
+      color: Colors
+          .transparent, // Let skeleton loader highlighting work or just keep structure
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Row(
@@ -29,7 +30,9 @@ class ContactItemSkeleton extends StatelessWidget {
                   const SizedBox(height: 8),
                   const SkeletonBox(width: 100, height: 14), // Subtitle
                   const SizedBox(height: 12),
-                  const SkeletonBox(width: double.infinity, height: 60), // Interaction/Keyword area
+                  const SkeletonBox(
+                      width: double.infinity,
+                      height: 60), // Interaction/Keyword area
                 ],
               ),
             ),
