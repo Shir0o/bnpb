@@ -1,174 +1,225 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../db/db_helper.dart';
+import '../models/contact.dart';
 import '../models/prayer_list.dart';
-import 'prayer_list_details_page.dart';
+import '../services/contact_service.dart';
+import '../services/reminder_coordinator.dart';
+import '../widgets/contact_selection_sheet.dart';
+import 'contact_details_page.dart';
 
-class PrayerListsPage extends StatefulWidget {
-  const PrayerListsPage({super.key});
+class PrayerListPage extends StatefulWidget {
+  const PrayerListPage({super.key});
 
   @override
-  State<PrayerListsPage> createState() => _PrayerListsPageState();
+  State<PrayerListPage> createState() => _PrayerListPageState();
 }
 
-class _PrayerListsPageState extends State<PrayerListsPage> {
+class _PrayerListPageState extends State<PrayerListPage> {
   final DBHelper _dbHelper = DBHelper();
-  List<PrayerList> _lists = [];
-  bool _isLoading = false;
+  PrayerList? _list;
+  List<Contact> _contacts = [];
+  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _loadLists();
+    _ensureDefaultList();
   }
 
-  Future<void> _loadLists() async {
+  Future<void> _ensureDefaultList() async {
     setState(() => _isLoading = true);
+
+    // Check for existing lists
     final lists = await _dbHelper.getPrayerLists();
+    PrayerList targetList;
+
+    if (lists.isEmpty) {
+      // Create default list if none exists
+      targetList = PrayerList.create(
+        name: 'My Prayer List',
+        description: 'People I am praying for',
+      );
+      await _dbHelper.insertPrayerList(targetList);
+    } else {
+      // Use the first available list
+      targetList = lists.first;
+    }
+
+    // Load contacts for this list
+    await _loadListContacts(targetList);
+  }
+
+  Future<void> _loadListContacts(PrayerList list) async {
+    // Re-fetch list to get up-to-date member IDs if we just grabbed it from a list query
+    // (though getPrayerLists actually returns populates IDs, refreshing specific list is safer)
+    final freshList = await _dbHelper.getPrayerList(list.id);
+    if (freshList == null) return; // Should not happen
+
+    final contacts = <Contact>[];
+    for (final id in freshList.contactIds) {
+      final contact = await _dbHelper.getContactById(id);
+      if (contact != null) {
+        contacts.add(contact);
+      }
+    }
+
     if (mounted) {
       setState(() {
-        _lists = lists;
+        _list = freshList;
+        _contacts = contacts;
         _isLoading = false;
       });
     }
   }
 
-  Future<void> _createList() async {
-    final nameController = TextEditingController();
-    final descriptionController = TextEditingController();
+  Future<void> _addContacts() async {
+    if (_list == null) return;
 
-    final didCreate = await showDialog<bool>(
+    final currentIds = _list?.contactIds.toSet() ?? {};
+
+    final selectedIds = await showModalBottomSheet<List<String>>(
       context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('New Prayer List'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: nameController,
-                decoration: const InputDecoration(
-                  labelText: 'List Name',
-                  hintText: 'e.g. Daily Prayer',
-                ),
-                textCapitalization: TextCapitalization.sentences,
-                autofocus: true,
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: descriptionController,
-                decoration: const InputDecoration(
-                  labelText: 'Description (Optional)',
-                  hintText: 'What is this list for?',
-                ),
-                textCapitalization: TextCapitalization.sentences,
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () async {
-                final name = nameController.text.trim();
-                if (name.isNotEmpty) {
-                  final newList = PrayerList.create(
-                    name: name,
-                    description: descriptionController.text.trim(),
-                  );
-                  await _dbHelper.insertPrayerList(newList);
-                  if (context.mounted) {
-                    Navigator.pop(context, true);
-                  }
-                }
-              },
-              child: const Text('Create'),
-            ),
-          ],
-        );
-      },
+      isScrollControlled: true,
+      builder: (context) => ContactSelectionSheet(
+        alreadySelectedIds: currentIds,
+      ),
     );
 
-    if (didCreate == true) {
-      _loadLists();
+    if (selectedIds != null && selectedIds.isNotEmpty) {
+      for (final id in selectedIds) {
+        await _dbHelper.addContactToPrayerList(_list!.id, id);
+      }
+      await _loadListContacts(_list!);
     }
   }
 
-  Future<void> _openListDetails(PrayerList list) async {
-    await Navigator.of(context).push(
+  Future<void> _removeContact(String contactId) async {
+    if (_list == null) return;
+    await _dbHelper.removeContactFromPrayerList(_list!.id, contactId);
+    await _loadListContacts(_list!);
+  }
+
+  Future<void> _deleteContact(String contactId) async {
+    try {
+      await _dbHelper.deleteContact(contactId);
+      await ReminderCoordinator().cancelAllForContact(contactId);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Contact deleted successfully.')),
+        );
+      }
+      ContactService().invalidateContacts();
+      if (_list != null) {
+        await _loadListContacts(_list!);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to delete contact: $e')),
+        );
+      }
+    }
+  }
+
+  void _navigateToContactDetails(Contact contact) {
+    Navigator.of(context)
+        .push(
       MaterialPageRoute(
-        builder: (context) => PrayerListDetailsPage(listId: list.id),
+        builder: (context) => ContactDetailsPage(
+          contact: contact,
+          onDelete: () => _deleteContact(contact.id),
+        ),
       ),
-    );
-    _loadLists();
+    )
+        .then((_) {
+      // Refresh list in case contact was deleted or changed
+      if (_list != null) {
+        _loadListContacts(_list!);
+      }
+    });
   }
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    // Should be guaranteed by _ensureDefaultList, but handle safely
+    if (_list == null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Prayer List')),
+        body: const Center(child: Text('Unable to load prayer list')),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Prayer Lists'),
+        title: Text(_list!.name),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _createList,
-        tooltip: 'Create new list',
-        child: const Icon(Icons.add),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _addContacts,
+        icon: const Icon(Icons.person_add),
+        label: const Text('Add People'),
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _lists.isEmpty
-              ? _buildEmptyState()
-              : ListView.separated(
-                  itemCount: _lists.length,
-                  separatorBuilder: (context, index) =>
-                      const Divider(height: 1),
-                  itemBuilder: (context, index) {
-                    final list = _lists[index];
-                    return ListTile(
-                      title: Text(list.name),
-                      subtitle: list.description?.isNotEmpty == true
-                          ? Text(list.description!)
-                          : Text(
-                              '${list.contactIds.length} people',
-                              style: Theme.of(context).textTheme.bodySmall,
-                            ),
-                      onTap: () => _openListDetails(list),
-                      trailing: const Icon(Icons.chevron_right),
-                    );
-                  },
-                ),
-    );
-  }
-
-  Widget _buildEmptyState() {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            Icons.list_alt_rounded,
-            size: 64,
-            color: Theme.of(context).colorScheme.outline,
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'No prayer lists yet',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  color: Theme.of(context).colorScheme.outline,
-                ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Create a list to organize people you want to pray for.',
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(context).colorScheme.outline,
-                ),
-          ),
-        ],
-      ),
+      body: _contacts.isEmpty
+          ? Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.playlist_add,
+                    size: 64,
+                    color: Theme.of(context).colorScheme.outline,
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'No contacts in your prayer list yet.',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          color: Theme.of(context).colorScheme.outline,
+                        ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Tap "Add People" to get started.',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: Theme.of(context).colorScheme.outline,
+                        ),
+                  ),
+                ],
+              ),
+            )
+          : ListView.builder(
+              itemCount: _contacts.length,
+              itemBuilder: (context, index) {
+                final contact = _contacts[index];
+                return ListTile(
+                  leading: CircleAvatar(
+                    backgroundColor:
+                        Theme.of(context).colorScheme.primaryContainer,
+                    child: Text(
+                      contact.firstName.isNotEmpty ? contact.firstName[0] : '?',
+                      style: TextStyle(
+                          color:
+                              Theme.of(context).colorScheme.onPrimaryContainer),
+                    ),
+                  ),
+                  title: Text(contact.fullName),
+                  subtitle:
+                      contact.location != null ? Text(contact.location!) : null,
+                  onTap: () => _navigateToContactDetails(contact),
+                  trailing: IconButton(
+                    icon: const Icon(Icons.remove_circle_outline),
+                    onPressed: () => _removeContact(contact.id),
+                    tooltip: 'Remove from list',
+                  ),
+                );
+              },
+            ),
     );
   }
 }

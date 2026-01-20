@@ -780,8 +780,7 @@ class _HomePageState extends State<HomePage>
             tooltip: 'Prayer Lists',
             onPressed: () {
               Navigator.of(context).push(
-                MaterialPageRoute(
-                    builder: (context) => const PrayerListsPage()),
+                MaterialPageRoute(builder: (context) => const PrayerListPage()),
               );
             },
           ),
