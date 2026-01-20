@@ -118,10 +118,6 @@ class SecurityService {
     try {
       final result = await _localAuth.authenticate(
         localizedReason: 'Unlock your private address book',
-        options: const AuthenticationOptions(
-          biometricOnly: true,
-          stickyAuth: true,
-        ),
       );
       return result;
     } on Exception {

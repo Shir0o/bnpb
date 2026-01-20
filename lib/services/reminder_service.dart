@@ -100,7 +100,7 @@ class ReminderService {
     tzdata.initializeTimeZones();
     try {
       final name = await FlutterTimezone.getLocalTimezone();
-      tz.setLocalLocation(tz.getLocation(name));
+      tz.setLocalLocation(tz.getLocation(name.toString()));
     } catch (_) {
       tz.setLocalLocation(tz.getLocation('UTC'));
     }
@@ -163,8 +163,6 @@ class ReminderService {
           macOS: darwinDetails,
         ),
         androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-        uiLocalNotificationDateInterpretation:
-            UILocalNotificationDateInterpretation.absoluteTime,
         payload: payload,
       );
     });

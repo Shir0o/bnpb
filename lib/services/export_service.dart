@@ -167,7 +167,7 @@ class ExportService {
 
     final archive = Archive()
       ..addFile(ArchiveFile('contacts.json', jsonBytes.length, jsonBytes));
-    final zippedBytes = ZipEncoder().encode(archive)!;
+    final zippedBytes = ZipEncoder().encode(archive);
 
     final key = _deriveKey(passphrase);
     final iv = IV.fromSecureRandom(16);

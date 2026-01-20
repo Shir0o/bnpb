@@ -45,6 +45,7 @@ class _ExportOptionsSheetState extends State<ExportOptionsSheet> {
   }
 
   Future<void> _shareFile(File file, String description) async {
+    // ignore: deprecated_member_use
     await Share.shareXFiles([XFile(file.path)], text: description);
   }
 
