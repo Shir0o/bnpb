@@ -567,6 +567,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
     final interaction = await showModalBottomSheet<Interaction>(
       context: context,
       isScrollControlled: true,
+      useSafeArea: true,
       isDismissible: false,
       enableDrag: false,
       sheetAnimationStyle: AnimationStyle(
@@ -1696,6 +1697,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
     final updatedInteraction = await showModalBottomSheet<Interaction>(
       context: context,
       isScrollControlled: true,
+      useSafeArea: true,
       isDismissible: false,
       enableDrag: false,
       builder: (context) => _LogInteractionSheet(
@@ -1921,6 +1923,7 @@ class _InteractionDetailPageState extends State<InteractionDetailPage> {
     final updatedInteraction = await showModalBottomSheet<Interaction>(
       context: context,
       isScrollControlled: true,
+      useSafeArea: true,
       isDismissible: false,
       enableDrag: false,
       builder: (context) => _LogInteractionSheet(
@@ -2312,7 +2315,7 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
     super.dispose();
   }
 
-  Future<void> _pickDateTime() async {
+  Future<void> _pickDate() async {
     final date = await showDatePicker(
       context: context,
       initialDate: _occurredAt,
@@ -2320,16 +2323,30 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
       lastDate: DateTime(2100),
     );
     if (!mounted || date == null) return;
-    final time = await showTimePicker(
-      context: context,
-      initialTime: TimeOfDay.fromDateTime(_occurredAt),
-    );
-    if (time == null) return;
     setState(() {
       _occurredAt = DateTime(
         date.year,
         date.month,
         date.day,
+        _occurredAt.hour,
+        _occurredAt.minute,
+      );
+    });
+    // No need to update time text controller as date doesn't affect time string (JM format)
+    _updateSaveEnabled();
+  }
+
+  Future<void> _pickTime() async {
+    final time = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(_occurredAt),
+    );
+    if (!mounted || time == null) return;
+    setState(() {
+      _occurredAt = DateTime(
+        _occurredAt.year,
+        _occurredAt.month,
+        _occurredAt.day,
         time.hour,
         time.minute,
       );
@@ -2699,6 +2716,10 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
   @override
   Widget build(BuildContext context) {
     final isEditing = widget.initialInteraction != null;
+    final theme = Theme.of(context);
+
+    // Using a Scaffold inside the sheet provides automatic body resizing for keyboard
+    // and a standard AppBar structure for the actions.
     return PopScope(
       canPop: true,
       onPopInvokedWithResult: (didPop, result) async {
@@ -2706,50 +2727,62 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
         await _stopListening();
       },
       child: SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.only(
-            left: 16,
-            right: 16,
-            bottom: 24,
-            top: 48,
+        child: Scaffold(
+          backgroundColor: Colors.transparent,
+          appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.close),
+            onPressed: () async {
+              _sheetActive = false;
+              await _stopListening();
+              if (context.mounted) {
+                Navigator.of(context).pop();
+              }
+            },
           ),
-          child: Column(
-            children: [
-              Flexible(
-                child: SingleChildScrollView(
-                  padding: EdgeInsets.only(
-                    bottom: MediaQuery.of(context).viewInsets.bottom,
-                  ),
-                  keyboardDismissBehavior:
-                      ScrollViewKeyboardDismissBehavior.onDrag,
-                  child: Form(
+          centerTitle: true,
+          title: Text(
+            isEditing ? 'Edit interaction' : 'Log interaction',
+            style: theme.textTheme.titleMedium,
+          ),
+          actions: [
+            Padding(
+              padding: const EdgeInsets.only(right: 8.0),
+              child: TextButton(
+                onPressed: _isSaveEnabled && !_isSavingInteraction
+                    ? _saveInteraction
+                    : null,
+                child: _isSavingInteraction
+                    ? SizedBox(
+                        height: 16,
+                        width: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            theme.colorScheme.primary,
+                          ),
+                        ),
+                      )
+                    : Text(
+                        isEditing ? 'Update' : 'Save',
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+              ),
+            ),
+          ],
+        ),
+        body: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+          // Ensure we can dismiss keyboard easily
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+          child: Form(
                     key: _formKey,
                     autovalidateMode: _autovalidateMode,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              isEditing
-                                  ? 'Edit interaction'
-                                  : 'Log interaction',
-                              style: Theme.of(context).textTheme.titleMedium,
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.close),
-                              onPressed: () async {
-                                _sheetActive = false;
-                                await _stopListening();
-                                if (context.mounted) {
-                                  Navigator.of(context).pop();
-                                }
-                              },
-                            ),
-                          ],
-                        ),
                         if (!isEditing) _buildRecentInteractions(),
                         const SizedBox(height: 16),
                         TextFormField(
@@ -2861,30 +2894,33 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
                           ),
                         ),
                         const SizedBox(height: 12),
-                        ListTile(
-                          contentPadding: EdgeInsets.zero,
-                          title: const Text('Occurred at'),
-                          subtitle: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Text(
-                                    DateFormat.yMMMd()
-                                        .add_jm()
-                                        .format(_occurredAt),
-                                    style:
-                                        Theme.of(context).textTheme.bodyLarge,
+                        Text('Occurred at', style: theme.textTheme.labelLarge),
+                        const SizedBox(height: 8),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              flex: 3,
+                              child: InkWell(
+                                onTap: _pickDate,
+                                borderRadius: BorderRadius.circular(4),
+                                child: InputDecorator(
+                                  decoration: const InputDecoration(
+                                    labelText: 'Date',
+                                    border: OutlineInputBorder(),
+                                    suffixIcon: Icon(Icons.calendar_month_outlined),
                                   ),
-                                  const SizedBox(width: 8),
-                                  IconButton(
-                                    icon: const Icon(Icons.edit_outlined),
-                                    onPressed: _pickDateTime,
-                                    tooltip: 'Change time',
+                                  child: Text(
+                                    DateFormat.yMMMd().format(_occurredAt),
+                                    style: theme.textTheme.bodyLarge,
                                   ),
-                                ],
+                                ),
                               ),
-                              TextFormField(
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              flex: 2,
+                              child: TextFormField(
                                 controller: _occurredTimeController,
                                 keyboardType: TextInputType.datetime,
                                 inputFormatters: [
@@ -2892,12 +2928,19 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
                                     RegExp(r'[0-9: apmAPM]'),
                                   ),
                                 ],
-                                decoration: const InputDecoration(
+                                decoration: InputDecoration(
                                   labelText: 'Time',
-                                  border: OutlineInputBorder(),
+                                  border: const OutlineInputBorder(),
+                                  suffixIcon: IconButton(
+                                    icon: const Icon(Icons.access_time),
+                                    onPressed: _pickTime,
+                                    tooltip: 'Pick time',
+                                  ),
                                 ),
+                                onTapOutside: (_) => _commitManualOccurredTime(),
                                 onEditingComplete: () {
                                   _commitManualOccurredTime();
+                                  FocusScope.of(context).unfocus();
                                 },
                                 onFieldSubmitted: (value) {
                                   _commitManualOccurredTime(value);
@@ -2907,9 +2950,8 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
                                   shouldUpdate: false,
                                 ),
                               ),
-                            ],
-                          ),
-                          onTap: _pickDateTime,
+                            ),
+                          ],
                         ),
                         SwitchListTile(
                           contentPadding: EdgeInsets.zero,
@@ -2954,46 +2996,11 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
                       ],
                     ),
                   ),
-                ),
-              ),
-              SafeArea(
-                top: false,
-                minimum: const EdgeInsets.only(top: 16, bottom: 16),
-                child: SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: _isSaveEnabled && !_isSavingInteraction
-                        ? _saveInteraction
-                        : null,
-                    child: _isSavingInteraction
-                        ? SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(
-                                Theme.of(context).colorScheme.onPrimary,
-                              ),
-                            ),
-                          )
-                        : Row(
-                            mainAxisSize: MainAxisSize.min,
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const Icon(Icons.check),
-                              const SizedBox(width: 8),
-                              Text(isEditing ? 'Update' : 'Save'),
-                            ],
-                          ),
-                  ),
-                ),
-              ),
-            ],
-          ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildRecentInteractions() {
     // 1. Get unique interactions based on signature (summary + medium + location)
