@@ -590,8 +590,6 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
     return '${math.max(1, gap.inMinutes)}m';
   }
 
-
-
   DateTime? _startForRange(AnalyticsRange range, DateTime now) {
     switch (range) {
       case AnalyticsRange.last30Days:
@@ -623,7 +621,10 @@ class _MetricTile extends StatelessWidget {
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
-        color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.6),
+        color: Theme.of(context)
+            .colorScheme
+            .surfaceContainerHighest
+            .withValues(alpha: 0.6),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

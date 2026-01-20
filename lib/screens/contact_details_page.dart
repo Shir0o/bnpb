@@ -409,8 +409,6 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
     return null;
   }
 
-
-
   Contact _buildContactFromState({List<Interaction>? interactionsOverride}) {
     final lastNameText = _lastNameController.text.trim();
     final nicknameText = _nicknameController.text.trim();
@@ -1529,7 +1527,8 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
         child: Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
+            color: theme.colorScheme.surfaceContainerHighest
+                .withValues(alpha: 0.4),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: theme.colorScheme.outlineVariant),
           ),
@@ -3076,8 +3075,6 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
       _isSaveEnabled = _calculateSaveEnabled();
     });
   }
-
-
 }
 
 class _ParticipantSelectionDialog extends StatefulWidget {
@@ -3085,7 +3082,6 @@ class _ParticipantSelectionDialog extends StatefulWidget {
   final Set<String> selectedIds;
 
   const _ParticipantSelectionDialog({
-
     required this.availableContacts,
     required this.selectedIds,
   });

@@ -103,7 +103,6 @@ class AnalyticsRepository {
   }) async {
     final List<Contact> contacts = await _dbHelper.getContacts();
 
-
     final now = DateTime.now();
     final contactAccumulators = <String, _ContactAccumulator>{};
     final categoryAccumulators = <String, _CategoryAccumulator>{};

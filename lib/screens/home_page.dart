@@ -33,8 +33,6 @@ class HomePage extends StatefulWidget {
   State<HomePage> createState() => _HomePageState();
 }
 
-
-
 class _SuggestionTile extends StatelessWidget {
   const _SuggestionTile({
     required this.contact,
@@ -727,7 +725,6 @@ class _HomePageState extends State<HomePage>
     }
   }
 
-
   void _navigateToContactDetails(Contact contact) {
     setState(() {
       _showRefreshSkeleton = true;
@@ -1043,8 +1040,6 @@ class _HomePageState extends State<HomePage>
       ),
     );
   }
-
-
 
   String _displayNameForContactId(
       Map<String, Contact> lookup, String contactId) {

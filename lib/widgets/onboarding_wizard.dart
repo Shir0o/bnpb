@@ -194,7 +194,8 @@ class _OnboardingWizardState extends State<OnboardingWizard> {
                             shape: BoxShape.circle,
                             color: i == _index
                                 ? theme.colorScheme.primary
-                                : theme.colorScheme.outline.withValues(alpha: 0.4),
+                                : theme.colorScheme.outline
+                                    .withValues(alpha: 0.4),
                           ),
                         ),
                       ),
