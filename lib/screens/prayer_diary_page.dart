@@ -60,12 +60,11 @@ class _PrayerDiaryPageState extends State<PrayerDiaryPage> {
           );
       });
     } finally {
-      if (!mounted) {
-        return;
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
       }
-      setState(() {
-        _isLoading = false;
-      });
     }
   }
 

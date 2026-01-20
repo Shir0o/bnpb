@@ -108,11 +108,8 @@ class _OnboardingWizardState extends State<OnboardingWizard> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return WillPopScope(
-      onWillPop: () async {
-        // Prevent accidental dismissal via the system back gesture.
-        return false;
-      },
+    return PopScope(
+      canPop: false,
       child: Dialog(
         insetPadding: const EdgeInsets.all(16),
         clipBehavior: Clip.antiAlias,
@@ -197,7 +194,7 @@ class _OnboardingWizardState extends State<OnboardingWizard> {
                             shape: BoxShape.circle,
                             color: i == _index
                                 ? theme.colorScheme.primary
-                                : theme.colorScheme.outline.withOpacity(0.4),
+                                : theme.colorScheme.outline.withValues(alpha: 0.4),
                           ),
                         ),
                       ),

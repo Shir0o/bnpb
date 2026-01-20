@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import '../db/db_helper.dart';
 import '../models/contact.dart';
 import '../models/prayer_list.dart';
-import '../services/contact_service.dart';
 import '../widgets/contact_selection_sheet.dart';
 
 class PrayerListDetailsPage extends StatefulWidget {

@@ -12,20 +12,15 @@ import '../models/interaction.dart';
 import '../models/prayer_request.dart';
 import '../services/contact_search_service.dart';
 import '../services/contact_service.dart';
-import '../services/legacy_import_service.dart';
 import '../services/reminder_coordinator.dart';
 import '../widgets/backup_restore_sheet.dart';
 import '../widgets/export_options_sheet.dart';
 import '../widgets/home_page_skeleton.dart';
 import '../widgets/people_card.dart';
-import '../widgets/prayer_insights_skeleton.dart';
 import 'contact_details_page.dart';
 import 'met_at_lookup_page.dart';
 import 'prayer_diary_page.dart';
 import 'prayer_request_details_page.dart';
-import 'relationship_explorer_page.dart';
-import 'prayer_lists_page.dart';
-import 'relationship_explorer_page.dart';
 import 'prayer_lists_page.dart';
 import '../widgets/smooth_expansion_tile.dart';
 import '../widgets/contact_item_skeleton.dart';
@@ -35,64 +30,10 @@ class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
   @override
-  _HomePageState createState() => _HomePageState();
+  State<HomePage> createState() => _HomePageState();
 }
 
-class _AnimatedIconButton extends StatefulWidget {
-  const _AnimatedIconButton({
-    required this.icon,
-    required this.onPressed,
-    this.tooltip,
-  });
 
-  final Widget icon;
-  final VoidCallback onPressed;
-  final String? tooltip;
-
-  @override
-  State<_AnimatedIconButton> createState() => _AnimatedIconButtonState();
-}
-
-class _AnimatedIconButtonState extends State<_AnimatedIconButton>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller;
-  late final Animation<double> _scaleAnimation;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 150),
-    );
-    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.9).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    );
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  void _handleTap() {
-    _controller.forward().then((_) => _controller.reverse());
-    widget.onPressed();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return ScaleTransition(
-      scale: _scaleAnimation,
-      child: IconButton(
-        icon: widget.icon,
-        tooltip: widget.tooltip,
-        onPressed: _handleTap,
-      ),
-    );
-  }
-}
 
 class _SuggestionTile extends StatelessWidget {
   const _SuggestionTile({
@@ -681,6 +622,7 @@ class _HomePageState extends State<HomePage>
       );
 
       if (result == null || result.files.isEmpty) {
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('No file selected.')),
         );
@@ -689,6 +631,7 @@ class _HomePageState extends State<HomePage>
 
       final filePath = result.files.single.path;
       if (filePath == null) {
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Invalid file.')),
         );
@@ -746,10 +689,12 @@ class _HomePageState extends State<HomePage>
 
       await _fetchContacts();
 
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Contacts restored successfully!')),
       );
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to restore contacts: $e')),
       );
@@ -782,32 +727,6 @@ class _HomePageState extends State<HomePage>
     }
   }
 
-  Future<void> _updateContact(Contact contact) async {
-    final previousContacts = List<Contact>.from(_contacts);
-    final optimisticContacts = previousContacts
-        .map((existing) => existing.id == contact.id ? contact : existing)
-        .toList();
-
-    _applyContactsSnapshot(optimisticContacts);
-
-    try {
-      await _dbHelper.updateContact(contact);
-      await ReminderCoordinator().refreshContact(contact.id);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Contact updated successfully.')),
-        );
-      }
-      ContactService().invalidateContacts();
-      unawaited(_fetchContacts(forceRefresh: true));
-    } catch (error) {
-      _applyContactsSnapshot(previousContacts);
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to update contact: $error')),
-      );
-    }
-  }
 
   void _navigateToContactDetails(Contact contact) {
     setState(() {
@@ -922,7 +841,7 @@ class _HomePageState extends State<HomePage>
                             fillColor: Theme.of(context)
                                 .colorScheme
                                 .secondaryContainer
-                                .withOpacity(0.3),
+                                .withValues(alpha: 0.3),
                             contentPadding: const EdgeInsets.symmetric(
                                 vertical: 0, horizontal: 16),
                           ),
@@ -1125,35 +1044,7 @@ class _HomePageState extends State<HomePage>
     );
   }
 
-  Widget _buildFilterSection() {
-    if (_availableTags.isEmpty) {
-      return const SizedBox.shrink();
-    }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Filter by tags',
-          style: TextStyle(fontWeight: FontWeight.w600),
-        ),
-        const SizedBox(height: 4),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: _availableTags
-              .map(
-                (tag) => FilterChip(
-                  label: Text(tag),
-                  selected: _selectedTagFilter == tag,
-                  onSelected: (_) => _toggleTagFilter(tag),
-                ),
-              )
-              .toList(),
-        ),
-      ],
-    );
-  }
 
   String _displayNameForContactId(
       Map<String, Contact> lookup, String contactId) {

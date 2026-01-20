@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../db/db_helper.dart';
-import '../models/contact.dart';
 import '../services/contact_search_service.dart';
 
 class ContactSelectionSheet extends StatefulWidget {
@@ -23,7 +22,6 @@ class _ContactSelectionSheetState extends State<ContactSelectionSheet> {
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
 
-  List<Contact> _allContacts = [];
   List<ContactMatch> _searchResults = [];
   final Set<String> _selectedIds = {};
   bool _isLoading = true;
@@ -52,7 +50,6 @@ class _ContactSelectionSheetState extends State<ContactSelectionSheet> {
 
     if (mounted) {
       setState(() {
-        _allContacts = contacts;
         // Initial "search" with empty query returns all contacts (handled by service or logic below)
         _searchResults = _searchService.search('');
         _isLoading = false;

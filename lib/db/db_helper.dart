@@ -8,7 +8,7 @@ import '../models/interaction.dart';
 import '../models/notification_preference.dart';
 import '../models/prayer_request.dart';
 import '../models/prayer_list.dart';
-import '../models/prayer_request.dart';
+
 import '../models/relationship.dart';
 import '../services/security_service.dart';
 import '../constants/storage.dart';

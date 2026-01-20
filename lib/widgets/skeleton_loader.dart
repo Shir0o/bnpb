@@ -103,7 +103,7 @@ class SkeletonBox extends StatelessWidget {
         color: Theme.of(context)
             .colorScheme
             .surfaceContainerHighest
-            .withOpacity(0.5),
+            .withValues(alpha: 0.5),
         borderRadius: shape == BoxShape.rectangle
             ? (borderRadius ?? BorderRadius.circular(8))
             : null,

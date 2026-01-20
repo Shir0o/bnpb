@@ -256,7 +256,7 @@ class _LogPrayerRequestSheetState extends State<LogPrayerRequestSheet> {
                         labelText: 'Contact',
                         border: OutlineInputBorder(),
                       ),
-                      value: _selectedContactId,
+                      initialValue: _selectedContactId,
                       onChanged: contactLocked
                           ? null
                           : (value) {

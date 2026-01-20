@@ -456,7 +456,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                         color: Theme.of(context)
                             .colorScheme
                             .primary
-                            .withOpacity(0.15),
+                            .withValues(alpha: 0.15),
                       ),
                       spots: timeline.asMap().entries.map((entry) {
                         final index = entry.key.toDouble();
@@ -554,7 +554,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                 ),
                 trailing: Text(_formatGap(gap.gap)),
               );
-            }).toList(),
+            }),
           ],
         ),
       ),
@@ -590,12 +590,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
     return '${math.max(1, gap.inMinutes)}m';
   }
 
-  String _formatPercentage(double? rate) {
-    if (rate == null) {
-      return '—';
-    }
-    return '${(rate * 100).toStringAsFixed(0)}%';
-  }
+
 
   DateTime? _startForRange(AnalyticsRange range, DateTime now) {
     switch (range) {
@@ -628,7 +623,7 @@ class _MetricTile extends StatelessWidget {
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
-        color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.6),
+        color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.6),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

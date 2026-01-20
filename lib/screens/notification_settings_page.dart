@@ -400,6 +400,7 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
         }
         if (!granted) {
           await reminderService.updateExactAlarmOptIn(false);
+          if (!context.mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Exact alarm permission was not granted.'),
@@ -410,13 +411,14 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
           _exactAlarmOptIn = granted;
         });
       } catch (error) {
-        if (!mounted) {
+        if (!context.mounted) {
           return;
         }
         await reminderService.updateExactAlarmOptIn(false);
         setState(() {
           _exactAlarmOptIn = false;
         });
+        if (!context.mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Failed to request exact alarm access: $error'),
@@ -436,13 +438,12 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
       try {
         await reminderService.updateExactAlarmOptIn(false);
       } finally {
-        if (!mounted) {
-          return;
+        if (mounted) {
+          setState(() {
+            _exactAlarmOptIn = false;
+            _requestingExactAlarmPermission = false;
+          });
         }
-        setState(() {
-          _exactAlarmOptIn = false;
-          _requestingExactAlarmPermission = false;
-        });
       }
     }
   }

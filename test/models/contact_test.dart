@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:bnpb/models/contact.dart';
 import 'package:bnpb/models/interaction.dart';
@@ -35,11 +34,7 @@ void main() {
       final c3 = Contact(id: '3', firstName: 'Cher');
       expect(c3.fullName, 'Cher');
 
-      final c4 = Contact(
-          id: '4',
-          firstName: '',
-          nickname:
-              'JDoe'); // Edge case if firstName is empty but required in type system?
+      // Edge case if firstName is empty but required in type system?
       // In constructor firstName is required String.
       // But let's check if we pass empty string.
       final c5 = Contact(id: '5', firstName: '', nickname: 'The Boss');

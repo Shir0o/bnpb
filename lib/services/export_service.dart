@@ -123,7 +123,7 @@ class ExportService {
         build: (context) => [
           pw.Text('BNPB contact export', style: pw.TextStyle(fontSize: 18)),
           pw.SizedBox(height: 12),
-          pw.Table.fromTextArray(
+          pw.TableHelper.fromTextArray(
             headers: headers,
             data: data,
             headerStyle: pw.TextStyle(

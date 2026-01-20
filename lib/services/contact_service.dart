@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import '../db/db_helper.dart';
 import '../models/contact.dart';
 import '../models/interaction.dart';

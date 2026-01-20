@@ -36,6 +36,8 @@ dependencies:
   shared_preferences: ^2.2.3
   speech_to_text: ^7.3.0
   uuid: ^4.5.1
+  crypto: ^3.0.7
+  meta: ^1.17.0
 
 dev_dependencies:
   flutter_test:

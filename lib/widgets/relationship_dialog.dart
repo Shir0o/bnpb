@@ -102,7 +102,7 @@ class _RelationshipDialogState extends State<RelationshipDialog> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             DropdownButtonFormField<String>(
-              value: selectedContactId,
+              initialValue: selectedContactId,
               decoration: const InputDecoration(
                 labelText: 'Connected contact',
                 border: OutlineInputBorder(),

@@ -15,7 +15,6 @@ class RelationshipExplorerPage extends StatefulWidget {
 
 class _RelationshipExplorerPageState extends State<RelationshipExplorerPage> {
   final DBHelper _dbHelper = DBHelper();
-  List<Contact> _contacts = [];
   List<Relationship> _relationships = [];
   Map<String, Contact> _contactLookup = {};
   bool _isLoading = true;
@@ -36,7 +35,6 @@ class _RelationshipExplorerPageState extends State<RelationshipExplorerPage> {
 
     if (!mounted) return;
     setState(() {
-      _contacts = contacts;
       _relationships = relationships;
       _contactLookup = {for (final contact in contacts) contact.id: contact};
       _isLoading = false;
@@ -106,7 +104,7 @@ class _RelationshipExplorerPageState extends State<RelationshipExplorerPage> {
                     ],
                   ),
                 );
-              }).toList(),
+              }),
             ],
           ),
         ),

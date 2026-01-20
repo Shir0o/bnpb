@@ -79,7 +79,9 @@ class _PrayerListsPageState extends State<PrayerListsPage> {
                     description: descriptionController.text.trim(),
                   );
                   await _dbHelper.insertPrayerList(newList);
-                  Navigator.pop(context, true);
+                  if (context.mounted) {
+                    Navigator.pop(context, true);
+                  }
                 }
               },
               child: const Text('Create'),

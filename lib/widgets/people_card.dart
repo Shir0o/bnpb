@@ -158,7 +158,7 @@ class PeopleCard extends StatelessWidget {
                         child: Container(
                           width: 80,
                           height: 80,
-                          color: theme.colorScheme.surfaceVariant,
+                          color: theme.colorScheme.surfaceContainerHighest,
                           child: provider != null
                               ? Image(
                                   // Resize image to display size to save memory
@@ -303,7 +303,7 @@ class _SubtitleChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceVariant,
+        color: theme.colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(10),
       ),
       child: Row(

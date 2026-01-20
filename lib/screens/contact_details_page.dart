@@ -81,7 +81,6 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
   bool _isLoadingReferenceData = false;
   List<Relationship> _relationships = [];
   bool _isLoadingRelationships = false;
-  Map<int, Interaction> _interactionLookup = {};
 
   @override
   void initState() {
@@ -89,10 +88,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
     final contact = widget.contact;
     _interactions = List<Interaction>.from(contact.interactions)
       ..sort((a, b) => b.occurredAt.compareTo(a.occurredAt));
-    _interactionLookup = {
-      for (final interaction in _interactions)
-        if (interaction.id != null) interaction.id!: interaction,
-    };
+
     _applyContactData(contact);
 
     _interactionSearchController.addListener(_updateFilteredInteractions);
@@ -236,10 +232,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
       if (!mounted) return;
       setState(() {
         _interactions = List.from(interactions);
-        _interactionLookup = {
-          for (final interaction in _interactions)
-            if (interaction.id != null) interaction.id!: interaction,
-        };
+
         _isLoadingInteractions = false;
         _updateFilteredInteractions();
       });
@@ -416,16 +409,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
     return null;
   }
 
-  String _formatDate(DateTime date) {
-    return DateFormat.yMMMd().format(date);
-  }
 
-  String? _interactionSummaryFor(int? interactionId) {
-    if (interactionId == null) {
-      return null;
-    }
-    return _interactionLookup[interactionId]?.summary;
-  }
 
   Contact _buildContactFromState({List<Interaction>? interactionsOverride}) {
     final lastNameText = _lastNameController.text.trim();
@@ -535,7 +519,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
             ElevatedButton(
               onPressed: () async {
                 await widget.onDelete();
-                if (!mounted) return;
+                if (!dialogContext.mounted) return;
                 Navigator.of(dialogContext).pop();
                 Navigator.of(pageContext).pop();
               },
@@ -575,10 +559,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
     final nextInteractions = List<Interaction>.from(interactions);
     setState(() {
       _interactions = nextInteractions;
-      _interactionLookup = {
-        for (final item in nextInteractions)
-          if (item.id != null) item.id!: item,
-      };
+
       _updateFilteredInteractions();
     });
   }
@@ -627,7 +608,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
 
   void _showRelationshipDialog({Relationship? relationship}) {
     final isEditing = relationship != null;
-    if (isEditing && relationship!.sourceContactId != widget.contact.id) {
+    if (isEditing && relationship.sourceContactId != widget.contact.id) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
@@ -657,7 +638,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
           onSave: (relationshipToSave) async {
             await DBHelper().upsertRelationship(relationshipToSave);
             await _refreshRelationships();
-            if (mounted) Navigator.pop(context);
+            if (context.mounted) Navigator.pop(context);
           },
         );
       },
@@ -686,7 +667,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
               onPressed: () async {
                 await DBHelper().deleteRelationship(relationship.id!);
                 await _refreshRelationships();
-                if (!mounted) return;
+                if (!context.mounted) return;
                 Navigator.pop(context);
               },
               style: ElevatedButton.styleFrom(
@@ -1318,7 +1299,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
               child: Container(
                 width: 72,
                 height: 72,
-                color: theme.colorScheme.surfaceVariant,
+                color: theme.colorScheme.surfaceContainerHighest,
                 child: provider != null
                     ? Image(image: provider, fit: BoxFit.cover)
                     : Center(
@@ -1478,7 +1459,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: indicatorColor.withOpacity(0.28),
+                          color: indicatorColor.withValues(alpha: 0.28),
                           blurRadius: 6,
                           offset: const Offset(0, 3),
                         ),
@@ -1548,7 +1529,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
         child: Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: theme.colorScheme.surfaceVariant.withOpacity(0.4),
+            color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: theme.colorScheme.outlineVariant),
           ),
@@ -1701,7 +1682,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
 
       return Chip(
         avatar: CircleAvatar(
-          backgroundColor: theme.colorScheme.primary.withOpacity(0.12),
+          backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.12),
           foregroundColor: theme.colorScheme.primary,
           child: Text(initial),
         ),
@@ -1775,7 +1756,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
     final pill = Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceVariant.withOpacity(0.5),
+        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(999),
         border: Border.all(color: theme.colorScheme.outlineVariant),
       ),
@@ -1899,7 +1880,7 @@ class _InteractionDetailPageState extends State<InteractionDetailPage> {
 
       return Chip(
         avatar: CircleAvatar(
-          backgroundColor: theme.colorScheme.primary.withOpacity(0.12),
+          backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.12),
           foregroundColor: theme.colorScheme.primary,
           child: Text(initial),
         ),
@@ -2181,7 +2162,7 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
 
     return FilterChip(
       avatar: CircleAvatar(
-        backgroundColor: theme.colorScheme.primary.withOpacity(0.12),
+        backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.12),
         foregroundColor: theme.colorScheme.primary,
         child: Text(initial),
       ),
@@ -2339,7 +2320,7 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
       firstDate: DateTime(2000),
       lastDate: DateTime(2100),
     );
-    if (date == null) return;
+    if (!mounted || date == null) return;
     final time = await showTimePicker(
       context: context,
       initialTime: TimeOfDay.fromDateTime(_occurredAt),
@@ -2424,7 +2405,7 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
       firstDate: DateTime.now().subtract(const Duration(days: 1)),
       lastDate: DateTime(2100),
     );
-    if (date == null) return;
+    if (!mounted || date == null) return;
     final time = await showTimePicker(
       context: context,
       initialTime: TimeOfDay.fromDateTime(_followUpAt ?? DateTime.now()),
@@ -2520,12 +2501,13 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
       return;
     }
 
+    if (!mounted) return;
     FocusScope.of(context).unfocus();
     _speechBaseText = _summaryController.text.trim();
 
     try {
       final started = await _speechToText.listen(
-        listenMode: ListenMode.dictation,
+        listenOptions: SpeechListenOptions(listenMode: ListenMode.dictation),
         onResult: (SpeechRecognitionResult result) {
           if (!_sheetActive || !mounted) {
             return;
@@ -2718,11 +2700,11 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
   @override
   Widget build(BuildContext context) {
     final isEditing = widget.initialInteraction != null;
-    return WillPopScope(
-      onWillPop: () async {
+    return PopScope(
+      canPop: true,
+      onPopInvokedWithResult: (didPop, result) async {
         _sheetActive = false;
         await _stopListening();
-        return true;
       },
       child: SafeArea(
         top: false,
@@ -2762,7 +2744,7 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
                               onPressed: () async {
                                 _sheetActive = false;
                                 await _stopListening();
-                                if (mounted) {
+                                if (context.mounted) {
                                   Navigator.of(context).pop();
                                 }
                               },
@@ -2801,7 +2783,8 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
                         ),
                         const SizedBox(height: 12),
                         DropdownButtonFormField<String>(
-                          value: _medium,
+                          key: ValueKey(_medium),
+                          initialValue: _medium,
                           decoration: const InputDecoration(
                             labelText: 'Medium',
                             border: OutlineInputBorder(),
@@ -3094,22 +3077,7 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
     });
   }
 
-  void _openParticipantSelector() async {
-    final selected = await showDialog<Set<String>>(
-      context: context,
-      builder: (context) => _ParticipantSelectionDialog(
-        availableContacts: _availableContacts,
-        selectedIds: _selectedParticipantIds,
-      ),
-    );
 
-    if (selected != null) {
-      if (!mounted) return;
-      setState(() {
-        _selectedParticipantIds = selected;
-      });
-    }
-  }
 }
 
 class _ParticipantSelectionDialog extends StatefulWidget {
@@ -3117,7 +3085,7 @@ class _ParticipantSelectionDialog extends StatefulWidget {
   final Set<String> selectedIds;
 
   const _ParticipantSelectionDialog({
-    super.key,
+
     required this.availableContacts,
     required this.selectedIds,
   });

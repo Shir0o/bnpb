@@ -115,19 +115,20 @@ class _PrayerRequestDetailsPageState extends State<PrayerRequestDetailsPage> {
     setState(() {
       _request = savedRequest!;
       if (resolvedContact != null) {
+        final nonNullableContact = resolvedContact;
         final existingIndex =
-            _availableContacts.indexWhere((c) => c.id == resolvedContact!.id);
+            _availableContacts.indexWhere((c) => c.id == nonNullableContact.id);
         if (existingIndex >= 0) {
-          _availableContacts[existingIndex] = resolvedContact!;
+          _availableContacts[existingIndex] = nonNullableContact;
         } else {
           _availableContacts = List<Contact>.from(_availableContacts)
-            ..add(resolvedContact!)
+            ..add(nonNullableContact)
             ..sort(
               (a, b) =>
                   a.fullName.toLowerCase().compareTo(b.fullName.toLowerCase()),
             );
         }
-        _contact = resolvedContact!;
+        _contact = nonNullableContact;
       }
       _didUpdate = true;
     });
