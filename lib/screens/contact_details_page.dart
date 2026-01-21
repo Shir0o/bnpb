@@ -409,6 +409,21 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
     return null;
   }
 
+  ImageProvider<Object>? _resizeProvider(
+    ImageProvider<Object>? provider,
+    double displaySize,
+  ) {
+    if (provider == null) return null;
+    // We use a multiplier to ensure we have enough resolution for aspect ratios
+    // where width < height (portrait), preventing blurriness when using BoxFit.cover.
+    // displaySize is the width of the container.
+    final cacheWidth = (displaySize * MediaQuery.of(context).devicePixelRatio * 1.5).toInt();
+    return ResizeImage(
+      provider,
+      width: cacheWidth,
+    );
+  }
+
   Contact _buildContactFromState({List<Interaction>? interactionsOverride}) {
     final lastNameText = _lastNameController.text.trim();
     final nicknameText = _nicknameController.text.trim();
@@ -1099,7 +1114,10 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
                       cue.length > 28 ? '${cue.substring(0, 25)}...' : cue,
                     ),
                     avatar: CircleAvatar(
-                      backgroundImage: _buildImageProviderForCue(cue),
+                      backgroundImage: _resizeProvider(
+                        _buildImageProviderForCue(cue),
+                        40,
+                      ),
                       child: _buildImageProviderForCue(cue) == null
                           ? const Icon(Icons.photo_outlined)
                           : null,
@@ -1300,7 +1318,10 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
                 height: 72,
                 color: theme.colorScheme.surfaceContainerHighest,
                 child: provider != null
-                    ? Image(image: provider, fit: BoxFit.cover)
+                    ? Image(
+                        image: _resizeProvider(provider, 72)!,
+                        fit: BoxFit.cover,
+                      )
                     : Center(
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
