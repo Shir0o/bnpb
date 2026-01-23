@@ -1448,71 +1448,57 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 12),
-      child: IntrinsicHeight(
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            SizedBox(
-              width: 48,
-              child: Column(
-                children: [
-                  if (!isFirst)
-                    Expanded(
-                      child: Center(
-                        child: Container(
-                          width: 2,
-                          color: lineColor,
-                        ),
-                      ),
-                    )
-                  else
-                    const SizedBox(height: 8),
-                  Container(
-                    width: 24,
-                    height: 24,
-                    decoration: BoxDecoration(
-                      color: indicatorColor,
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: theme.colorScheme.surface,
-                        width: 2,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: indicatorColor.withValues(alpha: 0.28),
-                          blurRadius: 6,
-                          offset: const Offset(0, 3),
-                        ),
-                      ],
+      // Optimized: Replaced IntrinsicHeight with CustomPaint to improve scrolling performance.
+      // IntrinsicHeight forces a double layout pass (O(N^2) depth).
+      // By using Row(crossAxisAlignment: stretch), the height is determined by the content card,
+      // and CustomPaint (in the timeline column) stretches to match it, allowing us to draw
+      // the connecting lines to the exact height without expensive pre-calculation.
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SizedBox(
+            width: 48,
+            child: CustomPaint(
+              painter: _TimelinePainter(
+                isFirst: isFirst,
+                isLast: isLast,
+                color: lineColor,
+              ),
+              child: Center(
+                child: Container(
+                  width: 24,
+                  height: 24,
+                  decoration: BoxDecoration(
+                    color: indicatorColor,
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: theme.colorScheme.surface,
+                      width: 2,
                     ),
-                    child: Icon(
-                      interaction.markForPrayer
-                          ? Icons.volunteer_activism
-                          : Icons.event,
-                      size: 16,
-                      color: onIndicatorColor,
-                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: indicatorColor.withValues(alpha: 0.28),
+                        blurRadius: 6,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
                   ),
-                  if (!isLast)
-                    Expanded(
-                      child: Center(
-                        child: Container(
-                          width: 2,
-                          color: lineColor,
-                        ),
-                      ),
-                    )
-                  else
-                    const SizedBox(height: 8),
-                ],
+                  child: Icon(
+                    interaction.markForPrayer
+                        ? Icons.volunteer_activism
+                        : Icons.event,
+                    size: 16,
+                    color: onIndicatorColor,
+                  ),
+                ),
               ),
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _buildInteractionCard(interaction),
-            ),
-          ],
-        ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: _buildInteractionCard(interaction),
+          ),
+        ],
       ),
     );
   }
@@ -3222,5 +3208,51 @@ class _ParticipantSelectionDialogState
         ),
       ],
     );
+  }
+}
+
+class _TimelinePainter extends CustomPainter {
+  final bool isFirst;
+  final bool isLast;
+  final Color color;
+
+  const _TimelinePainter({
+    required this.isFirst,
+    required this.isLast,
+    required this.color,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 2.0
+      ..style = PaintingStyle.stroke;
+
+    final centerX = size.width / 2;
+    final centerY = size.height / 2;
+
+    if (!isFirst) {
+      canvas.drawLine(
+        Offset(centerX, 0),
+        Offset(centerX, centerY),
+        paint,
+      );
+    }
+
+    if (!isLast) {
+      canvas.drawLine(
+        Offset(centerX, centerY),
+        Offset(centerX, size.height),
+        paint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _TimelinePainter oldDelegate) {
+    return oldDelegate.isFirst != isFirst ||
+        oldDelegate.isLast != isLast ||
+        oldDelegate.color != color;
   }
 }
