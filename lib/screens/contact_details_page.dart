@@ -13,6 +13,7 @@ import '../services/backup_service.dart';
 import '../services/contact_service.dart';
 import '../services/reminder_coordinator.dart';
 import '../widgets/contact_details_skeleton.dart';
+import '../widgets/interaction_timeline_tile.dart';
 import '../widgets/people_card.dart';
 import '../widgets/relationship_dialog.dart';
 
@@ -968,10 +969,17 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
           delegate: SliverChildBuilderDelegate(
             (context, index) {
               final interaction = _filteredInteractionsCache[index];
-              return _buildTimelineTile(
+              return InteractionTimelineTile(
                 interaction: interaction,
                 isFirst: index == 0,
                 isLast: index == _filteredInteractionsCache.length - 1,
+                displayNameResolver: _displayNameForContactId,
+                onTap: interaction.id != null
+                    ? () => _openInteractionDetails(interaction)
+                    : null,
+                isEditing: _isEditing,
+                onEdit: () => _showEditInteractionSheet(interaction),
+                onDelete: () => _deleteInteraction(interaction),
               );
             },
             childCount: _filteredInteractionsCache.length,
@@ -1431,287 +1439,6 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
     );
   }
 
-  Widget _buildTimelineTile({
-    required Interaction interaction,
-    required bool isFirst,
-    required bool isLast,
-  }) {
-    final theme = Theme.of(context);
-    final indicatorColor = interaction.markForPrayer
-        ? theme.colorScheme.secondary
-        : theme.colorScheme.primary;
-
-    final onIndicatorColor = interaction.markForPrayer
-        ? theme.colorScheme.onSecondary
-        : theme.colorScheme.onPrimary;
-    final lineColor = theme.colorScheme.outlineVariant;
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 12),
-      child: IntrinsicHeight(
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            SizedBox(
-              width: 48,
-              child: Column(
-                children: [
-                  if (!isFirst)
-                    Expanded(
-                      child: Center(
-                        child: Container(
-                          width: 2,
-                          color: lineColor,
-                        ),
-                      ),
-                    )
-                  else
-                    const SizedBox(height: 8),
-                  Container(
-                    width: 24,
-                    height: 24,
-                    decoration: BoxDecoration(
-                      color: indicatorColor,
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: theme.colorScheme.surface,
-                        width: 2,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: indicatorColor.withValues(alpha: 0.28),
-                          blurRadius: 6,
-                          offset: const Offset(0, 3),
-                        ),
-                      ],
-                    ),
-                    child: Icon(
-                      interaction.markForPrayer
-                          ? Icons.volunteer_activism
-                          : Icons.event,
-                      size: 16,
-                      color: onIndicatorColor,
-                    ),
-                  ),
-                  if (!isLast)
-                    Expanded(
-                      child: Center(
-                        child: Container(
-                          width: 2,
-                          color: lineColor,
-                        ),
-                      ),
-                    )
-                  else
-                    const SizedBox(height: 8),
-                ],
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _buildInteractionCard(interaction),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildInteractionCard(Interaction interaction) {
-    final theme = Theme.of(context);
-    final mediumLabel = _mediumLabels[interaction.medium] ?? interaction.medium;
-    final mediumIcon = _mediumIcons[interaction.medium] ?? Icons.forum_outlined;
-
-    final occurredAtLabel =
-        DateFormat.yMMMd().add_jm().format(interaction.occurredAt);
-    final participantBadges = _buildParticipantBadges(interaction);
-    final metadataPills = <Widget>[
-      _buildInfoPill(icon: mediumIcon, label: mediumLabel),
-      if (interaction.durationMinutes != null)
-        _buildInfoPill(
-          icon: Icons.timer_outlined,
-          label: '${interaction.durationMinutes} min',
-        ),
-      if (interaction.markForPrayer)
-        _buildInfoPill(
-          icon: Icons.self_improvement,
-          label: 'Prayer focus',
-        ),
-    ];
-
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: interaction.id != null
-            ? () => _openInteractionDetails(interaction)
-            : null,
-        child: Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: theme.colorScheme.surfaceContainerHighest
-                .withValues(alpha: 0.4),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: theme.colorScheme.outlineVariant),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(
-                    mediumIcon,
-                    color: theme.colorScheme.primary,
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(
-                              child: Text(
-                                occurredAtLabel,
-                                style: theme.textTheme.labelSmall?.copyWith(
-                                  color: theme.colorScheme.primary,
-                                ),
-                              ),
-                            ),
-                            Icon(
-                              interaction.markForPrayer
-                                  ? Icons.self_improvement_outlined
-                                  : Icons.event_note_outlined,
-                              size: 16,
-                              color: interaction.markForPrayer
-                                  ? theme.colorScheme.secondary
-                                  : theme.colorScheme.primary,
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          interaction.summary,
-                          style: theme.textTheme.titleSmall,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 4),
-                        if (participantBadges.isNotEmpty) ...[
-                          const SizedBox(height: 8),
-                          Wrap(
-                            spacing: 8,
-                            runSpacing: 8,
-                            children: participantBadges,
-                          ),
-                        ],
-                        if (interaction.location != null &&
-                            interaction.location!.isNotEmpty)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 4),
-                            child: Text(
-                              interaction.location!,
-                              style: theme.textTheme.bodySmall,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        if (interaction.category != null &&
-                            interaction.category!.isNotEmpty)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 2),
-                            child: Text(
-                              interaction.category!,
-                              style: theme.textTheme.labelSmall,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                  if (_isEditing)
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.edit_outlined),
-                          tooltip: 'Edit interaction',
-                          onPressed: () =>
-                              _showEditInteractionSheet(interaction),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.delete_outline),
-                          tooltip: 'Delete interaction',
-                          onPressed: () => _deleteInteraction(interaction),
-                        ),
-                      ],
-                    ),
-                ],
-              ),
-              if (metadataPills.isNotEmpty) ...[
-                const SizedBox(height: 12),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: metadataPills,
-                ),
-              ],
-              if (interaction.followUpAt != null) ...[
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Icon(
-                      Icons.alarm_outlined,
-                      size: 18,
-                      color: theme.colorScheme.primary,
-                    ),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Text(
-                        DateFormat.MMMd()
-                            .add_jm()
-                            .format(interaction.followUpAt!),
-                        style: theme.textTheme.labelSmall,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  List<Widget> _buildParticipantBadges(Interaction interaction) {
-    if (interaction.participantIds.isEmpty) {
-      return const [];
-    }
-
-    final theme = Theme.of(context);
-    return interaction.participantIds.toSet().map((participantId) {
-      final displayName = _displayNameForContactId(participantId);
-      final name = displayName.isNotEmpty ? displayName : participantId;
-      final initial = name.isNotEmpty ? name[0].toUpperCase() : '?';
-
-      return Chip(
-        avatar: CircleAvatar(
-          backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.12),
-          foregroundColor: theme.colorScheme.primary,
-          child: Text(initial),
-        ),
-        label: Text(name),
-        visualDensity: VisualDensity.compact,
-      );
-    }).toList();
-  }
 
   void _showEditInteractionSheet(Interaction interaction) async {
     final allContacts = [widget.contact, ..._availableContacts];
@@ -1765,58 +1492,6 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
     await _refreshInteractions();
   }
 
-  Widget _buildInfoPill({
-    required IconData icon,
-    required String label,
-    VoidCallback? onTap,
-  }) {
-    final theme = Theme.of(context);
-    final textStyle = theme.textTheme.labelSmall?.copyWith(
-      color: theme.colorScheme.onSurfaceVariant,
-    );
-
-    final pill = Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: theme.colorScheme.outlineVariant),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            icon,
-            size: 16,
-            color: theme.colorScheme.onSurfaceVariant,
-          ),
-          const SizedBox(width: 6),
-          Flexible(
-            child: Text(
-              label,
-              style: textStyle,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              softWrap: false,
-            ),
-          ),
-        ],
-      ),
-    );
-
-    if (onTap == null) {
-      return pill;
-    }
-
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(999),
-        child: pill,
-      ),
-    );
-  }
 }
 
 class InteractionDetailPage extends StatefulWidget {
