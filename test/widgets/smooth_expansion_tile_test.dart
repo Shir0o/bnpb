@@ -19,36 +19,22 @@ void main() {
 
     // Initially collapsed
     expect(find.text('Test Title'), findsOneWidget);
-    expect(find.byKey(const Key('child1')), findsOneWidget); // Offstage but present in tree
-
-    // Check Offstage status
-    final offstageFinder = find.ancestor(of: find.byKey(const Key('child1')), matching: find.byType(Offstage));
-    final Offstage offstage = tester.widget(offstageFinder);
-    expect(offstage.offstage, isTrue);
+    // Optimized behavior: Child is NOT in the tree initially
+    expect(find.byKey(const Key('child1')), findsNothing);
 
     // Tap to expand
     await tester.tap(find.text('Test Title'));
-    await tester.pump(); // Start animation
-    await tester.pump(const Duration(milliseconds: 200)); // Mid animation
+    await tester.pump(); // Start animation (setState)
 
-    // Should be visible (offstage false)
-    final Offstage offstageExpanded = tester.widget(offstageFinder);
-    expect(offstageExpanded.offstage, isFalse);
+    // Now child should be built
+    expect(find.byKey(const Key('child1')), findsOneWidget);
 
     // Check for RepaintBoundary
-    // We expect NO RepaintBoundary around the child content initially (before optimization)
-    // The child content is inside a Column inside Padding inside TickerMode inside Offstage.
-    // However, _buildChildren wraps 'child' (result) in ClipRect -> Align.
-    // So if RepaintBoundary is added, it will be around 'child'.
+    // The child (Column) is wrapped in RepaintBoundary inside Align inside ClipRect
+    final childFinder = find.byKey(const Key('child1'));
 
-    final alignFinder = find.ancestor(of: offstageFinder, matching: find.byType(Align));
-    expect(alignFinder, findsOneWidget);
-
-    final align = tester.widget<Align>(alignFinder);
-    final childOfAlign = align.child;
-
-    // Verify it IS a RepaintBoundary
-    expect(childOfAlign.runtimeType, RepaintBoundary);
+    final repaintBoundaryFinder = find.ancestor(of: childFinder, matching: find.byType(RepaintBoundary));
+    expect(repaintBoundaryFinder, findsWidgets);
 
     await tester.pumpAndSettle();
   });

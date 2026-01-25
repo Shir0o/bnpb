@@ -58,12 +58,20 @@ class _SmoothExpansionTileState extends State<SmoothExpansionTile>
     if (_isExpanded) {
       _controller.value = 1.0;
     }
+    _controller.addStatusListener(_handleStatusChange);
   }
 
   @override
   void dispose() {
+    _controller.removeStatusListener(_handleStatusChange);
     _controller.dispose();
     super.dispose();
+  }
+
+  void _handleStatusChange(AnimationStatus status) {
+    setState(() {
+      // Rebuild to update 'closed' state when animation finishes.
+    });
   }
 
   void _handleTap() {
@@ -98,7 +106,9 @@ class _SmoothExpansionTileState extends State<SmoothExpansionTile>
             // Wrap child in RepaintBoundary to isolate paint during animation.
             // This prevents the complex child subtree from being repainted every frame
             // when only the clip height changes.
-            child: RepaintBoundary(child: child),
+            child: child != null
+                ? RepaintBoundary(child: child)
+                : const SizedBox.shrink(),
           ),
         ),
       ],
@@ -125,19 +135,15 @@ class _SmoothExpansionTileState extends State<SmoothExpansionTile>
   @override
   Widget build(BuildContext context) {
     final bool closed = !_isExpanded && _controller.isDismissed;
-    final Widget result = Offstage(
-      offstage: closed,
-      child: TickerMode(
-        enabled: !closed,
-        child: Padding(
-          padding: widget.childrenPadding ?? EdgeInsets.zero,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: widget.children,
-          ),
-        ),
-      ),
-    );
+    final Widget? result = closed
+        ? null
+        : Padding(
+            padding: widget.childrenPadding ?? EdgeInsets.zero,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: widget.children,
+            ),
+          );
 
     return AnimatedBuilder(
       animation: _controller.view,
