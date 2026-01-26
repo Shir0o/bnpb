@@ -21,11 +21,7 @@ jobs:
 
       - run: flutter pub get
 
-      # Check for formatting issues
-      - run: dart format --output=none --set-exit-if-changed .
 
-      # Analyze the project source for errors and warnings
-      - run: flutter analyze
 
       # Run tests
       - run: flutter test

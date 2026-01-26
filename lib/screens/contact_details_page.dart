@@ -417,7 +417,8 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
     // We use a multiplier to ensure we have enough resolution for aspect ratios
     // where width < height (portrait), preventing blurriness when using BoxFit.cover.
     // displaySize is the width of the container.
-    final cacheWidth = (displaySize * MediaQuery.of(context).devicePixelRatio * 1.5).toInt();
+    final cacheWidth =
+        (displaySize * MediaQuery.of(context).devicePixelRatio * 1.5).toInt();
     return ResizeImage(
       provider,
       width: cacheWidth,
