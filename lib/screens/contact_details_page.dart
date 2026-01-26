@@ -130,8 +130,8 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
 
   void _updateFilteredInteractions() {
     final query = _interactionSearchController.text.trim().toLowerCase();
-    final sorted = List<Interaction>.from(_interactions)
-      ..sort((a, b) => b.occurredAt.compareTo(a.occurredAt));
+    // _interactions is already sorted by occurredAt desc.
+    final sorted = List<Interaction>.from(_interactions);
 
     if (query.isEmpty) {
       if (mounted) {
