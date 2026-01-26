@@ -360,6 +360,25 @@ class _AddContactPageState extends State<AddContactPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Add Contact'),
+        actions: [
+          if (_isSavingContact)
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16.0),
+              child: Center(
+                child: SizedBox(
+                  height: 20,
+                  width: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+              ),
+            )
+          else
+            IconButton(
+              icon: const Icon(Icons.check),
+              onPressed: _isLoadingReferenceData ? null : _saveContact,
+              tooltip: 'Save Contact',
+            ),
+        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
@@ -552,19 +571,6 @@ class _AddContactPageState extends State<AddContactPage> {
                       ),
                     ),
                 ],
-              ),
-              const SizedBox(height: 24),
-              ElevatedButton(
-                onPressed: _isLoadingReferenceData || _isSavingContact
-                    ? null
-                    : _saveContact,
-                child: _isSavingContact
-                    ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Text('Save Contact'),
               ),
             ],
           ),
