@@ -2082,7 +2082,6 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
   bool _hasSpeechCapability = false;
   bool _isListening = false;
   String _speechBaseText = '';
-  TextEditingController? _participantAutocompleteController;
 
   bool _sheetActive = true;
   AutovalidateMode _autovalidateMode = AutovalidateMode.disabled;
@@ -2141,6 +2140,23 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
       ..._selectedParticipantIds,
       ...(widget.initialInteraction?.participantIds ?? const <String>{}),
     };
+  }
+
+  Future<void> _showParticipantSelectionDialog() async {
+    final result = await showDialog<Set<String>>(
+      context: context,
+      builder: (context) => _ParticipantSelectionDialog(
+        availableContacts:
+            _availableContacts.where((c) => c.id != widget.contact.id).toList(),
+        selectedIds: _selectedParticipantIds,
+      ),
+    );
+
+    if (result != null && mounted) {
+      setState(() {
+        _selectedParticipantIds = result;
+      });
+    }
   }
 
   void _toggleParticipant(String contactId) {
@@ -2233,43 +2249,10 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
           children: chips,
         ),
         const SizedBox(height: 12),
-        Autocomplete<Contact>(
-          displayStringForOption: (Contact option) => option.fullName,
-          optionsBuilder: (TextEditingValue textEditingValue) {
-            if (textEditingValue.text.isEmpty) {
-              return const Iterable<Contact>.empty();
-            }
-            final query = textEditingValue.text.toLowerCase();
-            return _availableContacts.where((contact) {
-              if (_selectedParticipantIds.contains(contact.id)) {
-                return false;
-              }
-              return contact.fullName.toLowerCase().contains(query) ||
-                  (contact.nickname?.toLowerCase().contains(query) ?? false);
-            });
-          },
-          onSelected: (Contact selection) {
-            _toggleParticipant(selection.id);
-            _participantAutocompleteController?.clear();
-          },
-          fieldViewBuilder: (
-            BuildContext context,
-            TextEditingController textEditingController,
-            FocusNode focusNode,
-            VoidCallback onFieldSubmitted,
-          ) {
-            _participantAutocompleteController = textEditingController;
-            return TextField(
-              controller: textEditingController,
-              focusNode: focusNode,
-              decoration: const InputDecoration(
-                labelText: 'Add participant',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.person_add_outlined),
-              ),
-              onSubmitted: (_) => onFieldSubmitted(),
-            );
-          },
+        OutlinedButton.icon(
+          onPressed: _showParticipantSelectionDialog,
+          icon: const Icon(Icons.person_add_outlined),
+          label: const Text('Add participant'),
         ),
       ],
     );
