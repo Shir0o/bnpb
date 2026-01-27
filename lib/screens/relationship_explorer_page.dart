@@ -15,8 +15,8 @@ class RelationshipExplorerPage extends StatefulWidget {
 
 class _RelationshipExplorerPageState extends State<RelationshipExplorerPage> {
   final DBHelper _dbHelper = DBHelper();
-  List<Relationship> _relationships = [];
   Map<String, Contact> _contactLookup = {};
+  List<MapEntry<String, List<Relationship>>> _groupedEntries = [];
   bool _isLoading = true;
 
   @override
@@ -33,10 +33,38 @@ class _RelationshipExplorerPageState extends State<RelationshipExplorerPage> {
     final contacts = await _dbHelper.getContacts();
     final relationships = await _dbHelper.getAllRelationships();
 
+    // Create lookup first for sorting
+    final contactLookup = {for (final contact in contacts) contact.id: contact};
+
+    // Group and sort relationships
+    final groupedByTarget = <String, List<Relationship>>{};
+    for (final relationship in relationships) {
+      groupedByTarget.putIfAbsent(relationship.targetContactId, () => []);
+      groupedByTarget[relationship.targetContactId]!.add(relationship);
+    }
+
+    // Helper to get display name from the local lookup
+    String getDisplayName(String id) {
+      final contact = contactLookup[id];
+      if (contact == null) return 'Unknown contact';
+      if (contact.fullName.isNotEmpty) return contact.fullName;
+      final nickname = contact.nickname ?? '';
+      return nickname.isNotEmpty ? nickname : 'Unknown contact';
+    }
+
+    final groupedEntries = groupedByTarget.entries
+        .where((entry) => entry.value.length > 1)
+        .toList()
+      ..sort(
+        (a, b) => getDisplayName(a.key)
+            .toLowerCase()
+            .compareTo(getDisplayName(b.key).toLowerCase()),
+      );
+
     if (!mounted) return;
     setState(() {
-      _relationships = relationships;
-      _contactLookup = {for (final contact in contacts) contact.id: contact};
+      _contactLookup = contactLookup;
+      _groupedEntries = groupedEntries;
       _isLoading = false;
     });
   }
@@ -56,66 +84,48 @@ class _RelationshipExplorerPageState extends State<RelationshipExplorerPage> {
     return nickname.isNotEmpty ? nickname : 'Unknown contact';
   }
 
-  List<Widget> _buildSharedConnectionCards(BuildContext context) {
-    final groupedByTarget = <String, List<Relationship>>{};
-    for (final relationship in _relationships) {
-      groupedByTarget.putIfAbsent(relationship.targetContactId, () => []);
-      groupedByTarget[relationship.targetContactId]!.add(relationship);
-    }
 
-    final entries = groupedByTarget.entries
-        .where((entry) => entry.value.length > 1)
-        .toList()
-      ..sort(
-        (a, b) => _displayName(a.key)
-            .toLowerCase()
-            .compareTo(_displayName(b.key).toLowerCase()),
-      );
-
-    return entries.map((entry) {
-      final hubName = _displayName(entry.key);
-      return Card(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                hubName,
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              const SizedBox(height: 12),
-              ...entry.value.map((relationship) {
-                final sourceName = _displayName(relationship.sourceContactId);
-                final hasNotes = relationship.notes?.isNotEmpty == true;
-                return ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: const Icon(Icons.group_outlined),
-                  title: Text(sourceName),
-                  subtitle: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Type: ${relationship.type}'),
-                      if (hasNotes)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 4),
-                          child: Text(relationship.notes!),
-                        ),
-                    ],
-                  ),
-                );
-              }),
-            ],
-          ),
+  Widget _buildGroupCard(MapEntry<String, List<Relationship>> entry) {
+    final hubName = _displayName(entry.key);
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              hubName,
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 12),
+            ...entry.value.map((relationship) {
+              final sourceName = _displayName(relationship.sourceContactId);
+              final hasNotes = relationship.notes?.isNotEmpty == true;
+              return ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.group_outlined),
+                title: Text(sourceName),
+                subtitle: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Type: ${relationship.type}'),
+                    if (hasNotes)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text(relationship.notes!),
+                      ),
+                  ],
+                ),
+              );
+            }),
+          ],
         ),
-      );
-    }).toList();
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final sharedCards = _buildSharedConnectionCards(context);
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('Relationship Explorer'),
@@ -124,27 +134,48 @@ class _RelationshipExplorerPageState extends State<RelationshipExplorerPage> {
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(
               onRefresh: _loadData,
-              child: ListView(
+              child: CustomScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.all(16),
-                children: [
-                  Text(
-                    'Shared connections',
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
-                  const SizedBox(height: 12),
-                  if (sharedCards.isEmpty)
-                    Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Text(
-                          'No shared connections yet. Add relationships to discover clusters.',
-                          style: Theme.of(context).textTheme.bodyMedium,
+                slivers: [
+                  SliverPadding(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                    sliver: SliverList(
+                      delegate: SliverChildListDelegate([
+                        Text(
+                          'Shared connections',
+                          style: Theme.of(context).textTheme.titleLarge,
                         ),
-                      ),
-                    )
-                  else
-                    ...sharedCards,
+                        const SizedBox(height: 12),
+                      ]),
+                    ),
+                  ),
+                  SliverPadding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    sliver: _groupedEntries.isEmpty
+                        ? SliverToBoxAdapter(
+                            child: Card(
+                              child: Padding(
+                                padding: const EdgeInsets.all(16),
+                                child: Text(
+                                  'No shared connections yet. Add relationships to discover clusters.',
+                                  style: Theme.of(context).textTheme.bodyMedium,
+                                ),
+                              ),
+                            ),
+                          )
+                        : SliverList(
+                            delegate: SliverChildBuilderDelegate(
+                              (context, index) {
+                                final entry = _groupedEntries[index];
+                                return _buildGroupCard(entry);
+                              },
+                              childCount: _groupedEntries.length,
+                            ),
+                          ),
+                  ),
+                  const SliverToBoxAdapter(
+                    child: SizedBox(height: 16),
+                  ),
                 ],
               ),
             ),
