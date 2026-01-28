@@ -254,10 +254,8 @@ class ContactSearchService {
     final scoredContacts = _contacts.map((contact) {
       DateTime? lastInteraction;
       if (contact.interactions.isNotEmpty) {
-        // Assuming interactions are not guaranteed to be sorted, we find the latest.
-        lastInteraction = contact.interactions
-            .map((i) => i.occurredAt)
-            .reduce((a, b) => a.isAfter(b) ? a : b);
+        // Interactions are guaranteed to be sorted by occurredAt descending.
+        lastInteraction = contact.interactions.first.occurredAt;
       }
 
       return _SuggestionScore(
