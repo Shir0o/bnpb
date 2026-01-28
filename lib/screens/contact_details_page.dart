@@ -86,8 +86,8 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
   void initState() {
     super.initState();
     final contact = widget.contact;
-    _interactions = List<Interaction>.from(contact.interactions)
-      ..sort((a, b) => b.occurredAt.compareTo(a.occurredAt));
+    // Interactions are guaranteed to be sorted by occurredAt descending.
+    _interactions = List<Interaction>.from(contact.interactions);
 
     _applyContactData(contact);
 
