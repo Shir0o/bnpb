@@ -99,6 +99,8 @@ class _HomePageState extends State<HomePage>
   final DBHelper _dbHelper = DBHelper();
   List<Contact> _contacts = [];
   List<Contact> _filteredContacts = [];
+  // Optimization: Cache grouped contacts to avoid O(N) grouping in every build.
+  List<MapEntry<String, List<Contact>>> _groupedFilteredContacts = [];
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
   final Map<String, Contact> _contactLookup = {};
@@ -243,6 +245,8 @@ class _HomePageState extends State<HomePage>
       }
       _availableTags = tags;
       _filteredContacts = _applyFilters(sortedContacts);
+      _groupedFilteredContacts =
+          _groupContactsByLocation(_filteredContacts).entries.toList();
     });
   }
 
@@ -297,8 +301,11 @@ class _HomePageState extends State<HomePage>
   }
 
   void _filterContacts() {
+    final filtered = _applyFilters(_contacts);
+    final grouped = _groupContactsByLocation(filtered).entries.toList();
     setState(() {
-      _filteredContacts = _applyFilters(_contacts);
+      _filteredContacts = filtered;
+      _groupedFilteredContacts = grouped;
     });
   }
 
@@ -310,6 +317,8 @@ class _HomePageState extends State<HomePage>
         _selectedTagFilter = tag;
       }
       _filteredContacts = _applyFilters(_contacts);
+      _groupedFilteredContacts =
+          _groupContactsByLocation(_filteredContacts).entries.toList();
     });
   }
 
@@ -754,8 +763,7 @@ class _HomePageState extends State<HomePage>
 
   @override
   Widget build(BuildContext context) {
-    final groupedContactsMap = _groupContactsByLocation(_filteredContacts);
-    final groupedEntries = groupedContactsMap.entries.toList();
+    final groupedEntries = _groupedFilteredContacts;
     final hasFilterOptions = _availableTags.isNotEmpty;
     final searchSuggestions = _buildSearchSuggestions();
     final isShowingSuggestions = searchSuggestions is! SizedBox;
