@@ -6,6 +6,8 @@ class SmoothExpansionTile extends StatefulWidget {
     super.key,
     required this.title,
     this.children = const <Widget>[],
+    this.itemCount,
+    this.itemBuilder,
     this.initiallyExpanded = false,
     this.onExpansionChanged,
     this.duration = const Duration(milliseconds: 400),
@@ -17,6 +19,8 @@ class SmoothExpansionTile extends StatefulWidget {
 
   final Widget title;
   final List<Widget> children;
+  final int? itemCount;
+  final IndexedWidgetBuilder? itemBuilder;
   final bool initiallyExpanded;
   final ValueChanged<bool>? onExpansionChanged;
   final Duration duration;
@@ -135,15 +139,29 @@ class _SmoothExpansionTileState extends State<SmoothExpansionTile>
   @override
   Widget build(BuildContext context) {
     final bool closed = !_isExpanded && _controller.isDismissed;
-    final Widget? result = closed
-        ? null
-        : Padding(
-            padding: widget.childrenPadding ?? EdgeInsets.zero,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: widget.children,
-            ),
-          );
+    Widget? result;
+
+    if (!closed) {
+      List<Widget> children;
+      if (widget.children.isNotEmpty) {
+        children = widget.children;
+      } else if (widget.itemCount != null && widget.itemBuilder != null) {
+        children = List.generate(
+          widget.itemCount!,
+          (index) => widget.itemBuilder!(context, index),
+        );
+      } else {
+        children = const <Widget>[];
+      }
+
+      result = Padding(
+        padding: widget.childrenPadding ?? EdgeInsets.zero,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: children,
+        ),
+      );
+    }
 
     return AnimatedBuilder(
       animation: _controller.view,

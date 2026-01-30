@@ -956,56 +956,56 @@ class _HomePageState extends State<HomePage>
                                         });
                                       }
                                     },
-                                    children: _loadingLocations
+                                    itemCount: _loadingLocations
                                             .contains(location)
-                                        ? [
-                                            SkeletonLoader(
-                                              child: Column(
-                                                children: const [
-                                                  Padding(
-                                                    padding: EdgeInsets.only(
-                                                        bottom: 12),
-                                                    child:
-                                                        ContactItemSkeleton(),
-                                                  ),
-                                                  Padding(
-                                                    padding: EdgeInsets.only(
-                                                        bottom: 12),
-                                                    child:
-                                                        ContactItemSkeleton(),
-                                                  ),
-                                                  Padding(
-                                                    padding: EdgeInsets.only(
-                                                        bottom: 12),
-                                                    child:
-                                                        ContactItemSkeleton(),
-                                                  ),
-                                                ],
-                                              ),
-                                            )
-                                          ]
+                                        ? 1
                                         : (isExpanded
-                                                ? contactsInLocation
-                                                : contactsInLocation
-                                                    .take(5)
-                                                    .toList())
-                                            .map((contact) {
-                                            final match =
-                                                _activeMatches[contact.id];
-                                            return Padding(
-                                              padding: const EdgeInsets.only(
-                                                  bottom: 12),
-                                              child: PeopleCard(
-                                                contact: contact,
-                                                onTap: () =>
-                                                    _navigateToContactDetails(
-                                                        contact),
-                                                highlightLabel:
-                                                    match?.matchDescription,
-                                                highlightText: match?.snippet,
+                                            ? contactsInLocation.length
+                                            : (contactsInLocation.length > 5
+                                                ? 5
+                                                : contactsInLocation.length)),
+                                    itemBuilder: (context, index) {
+                                      if (_loadingLocations
+                                          .contains(location)) {
+                                        return SkeletonLoader(
+                                          child: Column(
+                                            children: const [
+                                              Padding(
+                                                padding: EdgeInsets.only(
+                                                    bottom: 12),
+                                                child: ContactItemSkeleton(),
                                               ),
-                                            );
-                                          }).toList(),
+                                              Padding(
+                                                padding: EdgeInsets.only(
+                                                    bottom: 12),
+                                                child: ContactItemSkeleton(),
+                                              ),
+                                              Padding(
+                                                padding: EdgeInsets.only(
+                                                    bottom: 12),
+                                                child: ContactItemSkeleton(),
+                                              ),
+                                            ],
+                                          ),
+                                        );
+                                      }
+
+                                      final contact = contactsInLocation[index];
+                                      final match = _activeMatches[contact.id];
+                                      return Padding(
+                                        padding:
+                                            const EdgeInsets.only(bottom: 12),
+                                        child: PeopleCard(
+                                          contact: contact,
+                                          onTap: () =>
+                                              _navigateToContactDetails(
+                                                  contact),
+                                          highlightLabel:
+                                              match?.matchDescription,
+                                          highlightText: match?.snippet,
+                                        ),
+                                      );
+                                    },
                                   ),
                                 );
                               },
