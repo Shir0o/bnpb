@@ -9,3 +9,7 @@ Action: Replace it with `Row(crossAxisAlignment: CrossAxisAlignment.stretch)` an
 2025-02-18 - Optimized Eager Instantiation in ExpansionTiles
 Learning: Passing a pre-built list of widgets to a collapsed expansion tile causes unnecessary instantiation and build overhead on every parent rebuild.
 Action: Use a builder pattern (itemCount/itemBuilder) to lazily generate children only when the tile is expanded.
+
+2025-02-18 - Isolate InkWell Ripple Paints
+Learning: Ripples on `InkWell` trigger a repaint of the nearest `Material` ancestor. If the `InkWell` wraps complex content (like images or text), that entire subtree is repainted on every frame of the splash animation.
+Action: Wrap the child of `InkWell` in a `RepaintBoundary` to cache the complex content as a layer, allowing the ripple to composite over it cheaply.
