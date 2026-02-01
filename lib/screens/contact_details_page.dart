@@ -40,7 +40,13 @@ class ContactDetailsPage extends StatefulWidget {
     super.key,
     required this.contact,
     required this.onDelete,
-  });
+    ContactService? contactService,
+    DBHelper? dbHelper,
+  })  : _contactService = contactService ?? ContactService(),
+        _dbHelper = dbHelper ?? DBHelper();
+
+  final ContactService _contactService;
+  final DBHelper _dbHelper;
 
   @override
   State<ContactDetailsPage> createState() => _ContactDetailsPageState();
@@ -97,7 +103,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
   }
 
   void _checkCacheAndLoad() {
-    final service = ContactService();
+    final service = widget._contactService;
     // Always show skeleton first (implied by default _isInitialLoad = true),
     // but decide how long to keep it.
 
@@ -115,11 +121,15 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
     // Ensure both data fetching AND the minimum delay complete.
     // We include _loadReferenceData here to ensure relationships are ready
     // before the skeleton lifts, avoiding the secondary spinner.
-    await Future.wait([
-      _loadReferenceData(),
-      _refreshInteractions(),
-      Future.delayed(minDelay),
-    ]);
+    try {
+      await Future.wait([
+        _loadReferenceData(),
+        _refreshInteractions(),
+        Future.delayed(minDelay),
+      ]);
+    } catch (e) {
+      debugPrint('Error performing initial load in ContactDetailsPage: $e');
+    }
 
     if (mounted) {
       setState(() {
@@ -191,7 +201,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
       _isLoadingRelationships = true;
     });
 
-    final dbHelper = DBHelper();
+    final dbHelper = widget._dbHelper;
     final contacts = await dbHelper.getContacts();
     final tags = await dbHelper.getAllTags();
     final relationships =
@@ -224,7 +234,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
     }
 
     try {
-      final interactions = await ContactService().getInteractions(
+      final interactions = await widget._contactService.getInteractions(
         widget.contact.id,
         forceRefresh: forceRefresh,
       );
@@ -498,9 +508,9 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
   Future<void> _updateContact() async {
     final updatedContact = _buildContactFromState();
     try {
-      await DBHelper().updateContact(updatedContact);
+      await widget._dbHelper.updateContact(updatedContact);
       await ReminderCoordinator().refreshContact(updatedContact.id);
-      ContactService().invalidateContacts();
+      widget._contactService.invalidateContacts();
       await BackupService().exportBackup();
 
       if (!mounted) return;
@@ -551,9 +561,9 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
   Future<void> _deleteInteraction(Interaction interaction) async {
     if (interaction.id == null) return;
 
-    await DBHelper().deleteInteraction(interaction.id!);
+    await widget._dbHelper.deleteInteraction(interaction.id!);
     await ReminderCoordinator().cancelInteractionReminder(interaction);
-    ContactService().invalidateInteractions(widget.contact.id);
+    widget._contactService.invalidateInteractions(widget.contact.id);
 
     final nextInteractions = List<Interaction>.from(_interactions)
       ..removeWhere((item) => item.id == interaction.id);
@@ -598,7 +608,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
         availableContacts: allContacts,
         onInteractionsUpdated: (updated) {
           if (!mounted) return;
-          ContactService().invalidateInteractions(widget.contact.id);
+          widget._contactService.invalidateInteractions(widget.contact.id);
           _applyInteractionListUpdate(updated);
         },
       ),
@@ -614,7 +624,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
       _isLoadingRelationships = true;
     });
     final relationships =
-        await DBHelper().getRelationshipsForContact(widget.contact.id);
+        await widget._dbHelper.getRelationshipsForContact(widget.contact.id);
     setState(() {
       _relationships = relationships;
       _isLoadingRelationships = false;
@@ -651,7 +661,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
           availableContacts: _availableContacts,
           relationship: relationship,
           onSave: (relationshipToSave) async {
-            await DBHelper().upsertRelationship(relationshipToSave);
+            await widget._dbHelper.upsertRelationship(relationshipToSave);
             await _refreshRelationships();
             if (context.mounted) Navigator.pop(context);
           },
@@ -680,7 +690,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
             ),
             ElevatedButton(
               onPressed: () async {
-                await DBHelper().deleteRelationship(relationship.id!);
+                await widget._dbHelper.deleteRelationship(relationship.id!);
                 await _refreshRelationships();
                 if (!context.mounted) return;
                 Navigator.pop(context);
