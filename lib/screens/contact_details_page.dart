@@ -36,7 +36,7 @@ class ContactDetailsPage extends StatefulWidget {
   final Contact contact;
   final Future<void> Function() onDelete;
 
-  const ContactDetailsPage({
+  ContactDetailsPage({
     super.key,
     required this.contact,
     required this.onDelete,
@@ -1543,144 +1543,147 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
         onTap: interaction.id != null
             ? () => _openInteractionDetails(interaction)
             : null,
-        child: Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: theme.colorScheme.surfaceContainerHighest
-                .withValues(alpha: 0.4),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: theme.colorScheme.outlineVariant),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(
-                    mediumIcon,
-                    color: theme.colorScheme.primary,
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(
-                              child: Text(
-                                occurredAtLabel,
-                                style: theme.textTheme.labelSmall?.copyWith(
-                                  color: theme.colorScheme.primary,
-                                ),
-                              ),
-                            ),
-                            Icon(
-                              interaction.markForPrayer
-                                  ? Icons.self_improvement_outlined
-                                  : Icons.event_note_outlined,
-                              size: 16,
-                              color: interaction.markForPrayer
-                                  ? theme.colorScheme.secondary
-                                  : theme.colorScheme.primary,
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          interaction.summary,
-                          style: theme.textTheme.titleSmall,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 4),
-                        if (participantBadges.isNotEmpty) ...[
-                          const SizedBox(height: 8),
-                          Wrap(
-                            spacing: 8,
-                            runSpacing: 8,
-                            children: participantBadges,
-                          ),
-                        ],
-                        if (interaction.location != null &&
-                            interaction.location!.isNotEmpty)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 4),
-                            child: Text(
-                              interaction.location!,
-                              style: theme.textTheme.bodySmall,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        if (interaction.category != null &&
-                            interaction.category!.isNotEmpty)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 2),
-                            child: Text(
-                              interaction.category!,
-                              style: theme.textTheme.labelSmall,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                  if (_isEditing)
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.edit_outlined),
-                          tooltip: 'Edit interaction',
-                          onPressed: () =>
-                              _showEditInteractionSheet(interaction),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.delete_outline),
-                          tooltip: 'Delete interaction',
-                          onPressed: () => _deleteInteraction(interaction),
-                        ),
-                      ],
-                    ),
-                ],
-              ),
-              if (metadataPills.isNotEmpty) ...[
-                const SizedBox(height: 12),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: metadataPills,
-                ),
-              ],
-              if (interaction.followUpAt != null) ...[
-                const SizedBox(height: 12),
+        // Optimization: Isolate the complex content from the ripple animation to avoid unnecessary repaints.
+        child: RepaintBoundary(
+          child: Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surfaceContainerHighest
+                  .withValues(alpha: 0.4),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: theme.colorScheme.outlineVariant),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
                 Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Icon(
-                      Icons.alarm_outlined,
-                      size: 18,
+                      mediumIcon,
                       color: theme.colorScheme.primary,
                     ),
-                    const SizedBox(width: 6),
+                    const SizedBox(width: 12),
                     Expanded(
-                      child: Text(
-                        DateFormat.MMMd()
-                            .add_jm()
-                            .format(interaction.followUpAt!),
-                        style: theme.textTheme.labelSmall,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  occurredAtLabel,
+                                  style: theme.textTheme.labelSmall?.copyWith(
+                                    color: theme.colorScheme.primary,
+                                  ),
+                                ),
+                              ),
+                              Icon(
+                                interaction.markForPrayer
+                                    ? Icons.self_improvement_outlined
+                                    : Icons.event_note_outlined,
+                                size: 16,
+                                color: interaction.markForPrayer
+                                    ? theme.colorScheme.secondary
+                                    : theme.colorScheme.primary,
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            interaction.summary,
+                            style: theme.textTheme.titleSmall,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 4),
+                          if (participantBadges.isNotEmpty) ...[
+                            const SizedBox(height: 8),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: participantBadges,
+                            ),
+                          ],
+                          if (interaction.location != null &&
+                              interaction.location!.isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 4),
+                              child: Text(
+                                interaction.location!,
+                                style: theme.textTheme.bodySmall,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          if (interaction.category != null &&
+                              interaction.category!.isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 2),
+                              child: Text(
+                                interaction.category!,
+                                style: theme.textTheme.labelSmall,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                        ],
                       ),
                     ),
+                    if (_isEditing)
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.edit_outlined),
+                            tooltip: 'Edit interaction',
+                            onPressed: () =>
+                                _showEditInteractionSheet(interaction),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.delete_outline),
+                            tooltip: 'Delete interaction',
+                            onPressed: () => _deleteInteraction(interaction),
+                          ),
+                        ],
+                      ),
                   ],
                 ),
+                if (metadataPills.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: metadataPills,
+                  ),
+                ],
+                if (interaction.followUpAt != null) ...[
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.alarm_outlined,
+                        size: 18,
+                        color: theme.colorScheme.primary,
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          DateFormat.MMMd()
+                              .add_jm()
+                              .format(interaction.followUpAt!),
+                          style: theme.textTheme.labelSmall,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ],
-            ],
+            ),
           ),
         ),
       ),
