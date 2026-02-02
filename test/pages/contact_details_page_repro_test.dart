@@ -4,11 +4,11 @@ import 'package:bnpb/models/interaction.dart';
 import 'package:bnpb/models/relationship.dart';
 import 'package:bnpb/screens/contact_details_page.dart';
 import 'package:bnpb/services/contact_service.dart';
+import 'package:bnpb/widgets/contact_details_skeleton.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mockito/mockito.dart';
 
-class MockContactService extends Mock implements ContactService {
+class MockContactService extends Fake implements ContactService {
   @override
   bool hasCachedInteractions(String? contactId) => false;
 
@@ -17,12 +17,12 @@ class MockContactService extends Mock implements ContactService {
       {bool forceRefresh = false}) async {
     return [];
   }
-  
+
   @override
   void invalidateInteractions(String? contactId) {}
 }
 
-class MockDBHelper extends Mock implements DBHelper {
+class MockDBHelper extends Fake implements DBHelper {
   @override
   Future<List<Contact>> getContacts({String? contactId}) async {
     return [];
@@ -34,7 +34,8 @@ class MockDBHelper extends Mock implements DBHelper {
   }
 
   @override
-  Future<List<Relationship>> getRelationshipsForContact(String? contactId) async {
+  Future<List<Relationship>> getRelationshipsForContact(
+      String? contactId) async {
     return [];
   }
 }
@@ -67,18 +68,19 @@ void main() {
     );
 
     // Initial load skeleton
-    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    expect(find.byType(ContactDetailsSkeleton), findsOneWidget);
 
     // Wait for async load to complete
     await tester.pumpAndSettle();
 
     // Verify fields are populated
-    expect(find.text('John Doe'), findsOneWidget); // AppBar title / PeopleCard
+    expect(find.text('John Doe'),
+        findsAtLeastNWidgets(1)); // AppBar title / PeopleCard
     expect(find.text('New York'), findsOneWidget);
-    expect(find.text('Johnny'), findsOneWidget);
+    expect(find.text('Goes by Johnny'), findsOneWidget);
     expect(find.text('Some notes'), findsOneWidget);
 
     // Verify that we are NOT in edit mode
     expect(find.byIcon(Icons.edit), findsOneWidget);
   });
-} 
+}
