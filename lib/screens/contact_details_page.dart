@@ -1543,7 +1543,11 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
         onTap: interaction.id != null
             ? () => _openInteractionDetails(interaction)
             : null,
-        child: Container(
+        // Optimization: Isolate the complex content from the InkWell ripple animation.
+        // The ripple is painted on the Material widget, so wrapping the content prevents
+        // it from being repainted on every frame of the splash.
+        child: RepaintBoundary(
+          child: Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: theme.colorScheme.surfaceContainerHighest
@@ -1683,6 +1687,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
               ],
             ),
           ),
+        ),
       ),
     );
   }
