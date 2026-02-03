@@ -1465,7 +1465,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
       // and CustomPaint (in the timeline column) stretches to match it, allowing us to draw
       // the connecting lines to the exact height without expensive pre-calculation.
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
             width: 48,
@@ -1543,9 +1543,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
         onTap: interaction.id != null
             ? () => _openInteractionDetails(interaction)
             : null,
-        // Optimization: Isolate the complex content from the ripple animation to avoid unnecessary repaints.
-        child: RepaintBoundary(
-          child: Container(
+        child: Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: theme.colorScheme.surfaceContainerHighest
@@ -1685,7 +1683,6 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
               ],
             ),
           ),
-        ),
       ),
     );
   }

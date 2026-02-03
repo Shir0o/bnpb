@@ -43,26 +43,28 @@ class _SkeletonLoaderState extends State<SkeletonLoader>
     final base = widget.baseColor ?? theme.colorScheme.surfaceContainerHighest;
     final highlight = widget.highlightColor ?? theme.colorScheme.surface;
 
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (context, child) {
-        return ShaderMask(
-          blendMode: BlendMode.srcATop,
-          shaderCallback: (bounds) {
-            return LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [base, highlight, base],
-              stops: const [0.0, 0.5, 1.0],
-              transform: _SlidingGradientTransform(
-                percent: _controller.value,
-              ),
-            ).createShader(bounds);
-          },
-          child: child,
-        );
-      },
-      child: widget.child,
+    return ExcludeSemantics(
+      child: AnimatedBuilder(
+        animation: _controller,
+        builder: (context, child) {
+          return ShaderMask(
+            blendMode: BlendMode.srcATop,
+            shaderCallback: (bounds) {
+              return LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [base, highlight, base],
+                stops: const [0.0, 0.5, 1.0],
+                transform: _SlidingGradientTransform(
+                  percent: _controller.value,
+                ),
+              ).createShader(bounds);
+            },
+            child: child,
+          );
+        },
+        child: widget.child,
+      ),
     );
   }
 }

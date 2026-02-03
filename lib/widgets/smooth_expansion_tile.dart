@@ -107,12 +107,7 @@ class _SmoothExpansionTileState extends State<SmoothExpansionTile>
         ClipRect(
           child: Align(
             heightFactor: _heightFactor.value,
-            // Wrap child in RepaintBoundary to isolate paint during animation.
-            // This prevents the complex child subtree from being repainted every frame
-            // when only the clip height changes.
-            child: child != null
-                ? RepaintBoundary(child: child)
-                : const SizedBox.shrink(),
+            child: child ?? const SizedBox.shrink(),
           ),
         ),
       ],

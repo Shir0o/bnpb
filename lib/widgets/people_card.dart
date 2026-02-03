@@ -29,9 +29,7 @@ class PeopleCard extends StatelessWidget {
     final latestInteraction = _latestInteraction(contact);
     final subtitleDetails = _buildSubtitleDetails(contact);
 
-    // Optimization: Wrap in RepaintBoundary to isolate ripple animations and internal scrolling from the parent list, reducing unnecessary repaints of siblings.
-    return RepaintBoundary(
-      child: Card(
+    return Card(
         elevation: 1,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
@@ -236,8 +234,7 @@ class PeopleCard extends StatelessWidget {
             ),
           ),
         ),
-      ),
-    );
+      );
   }
 
   String _displayName(Contact contact) {
