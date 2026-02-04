@@ -91,29 +91,6 @@ class _SmoothExpansionTileState extends State<SmoothExpansionTile>
     widget.onExpansionChanged?.call(_isExpanded);
   }
 
-  Widget _buildChildren(BuildContext context, Widget? child) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: <Widget>[
-        ListTile(
-          onTap: _handleTap,
-          contentPadding: widget.tilePadding,
-          title: widget.title,
-          trailing: RotationTransition(
-            turns: _iconTurns,
-            child: const Icon(Icons.expand_more),
-          ),
-        ),
-        ClipRect(
-          child: Align(
-            heightFactor: _heightFactor.value,
-            child: child ?? const SizedBox.shrink(),
-          ),
-        ),
-      ],
-    );
-  }
-
   @override
   void didUpdateWidget(SmoothExpansionTile oldWidget) {
     super.didUpdateWidget(oldWidget);
@@ -158,10 +135,35 @@ class _SmoothExpansionTileState extends State<SmoothExpansionTile>
       );
     }
 
-    return AnimatedBuilder(
-      animation: _controller.view,
-      builder: _buildChildren,
-      child: result,
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: <Widget>[
+        ListTile(
+          onTap: _handleTap,
+          contentPadding: widget.tilePadding,
+          title: widget.title,
+          trailing: RotationTransition(
+            turns: _iconTurns,
+            child: const Icon(Icons.expand_more),
+          ),
+        ),
+        AnimatedBuilder(
+          animation: _controller.view,
+          builder: (context, child) {
+            return ClipRect(
+              child: Align(
+                heightFactor: _heightFactor.value,
+                child: child ?? const SizedBox.shrink(),
+              ),
+            );
+          },
+          // Optimization: Wrap the complex content in a RepaintBoundary.
+          // This ensures that the content layer is painted once and then
+          // composited/clipped during the animation, rather than being
+          // repainted on every frame of the expansion.
+          child: result != null ? RepaintBoundary(child: result) : null,
+        ),
+      ],
     );
   }
 }
