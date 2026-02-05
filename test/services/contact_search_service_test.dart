@@ -42,58 +42,58 @@ void main() {
       service.index(contacts);
     });
 
-    test('search finds matches by name', () {
-      final results = service.search('Alice');
+    test('search finds matches by name', () async {
+      final results = await service.search('Alice');
       expect(results.isNotEmpty, true);
       expect(results.first.contact.firstName, 'Alice');
       expect(results.first.score, greaterThan(0));
     });
 
-    test('search finds matches by nickname', () {
-      final results = service.search('Ali');
+    test('search finds matches by nickname', () async {
+      final results = await service.search('Ali');
       expect(results.isNotEmpty, true);
       expect(results.first.contact.id, 'c1');
     });
 
-    test('search finds matches by location', () {
-      final results = service.search('York');
+    test('search finds matches by location', () async {
+      final results = await service.search('York');
       expect(results.isNotEmpty, true);
       expect(results.first.contact.firstName, 'Bob');
     });
 
-    test('search finds matches in tags', () {
-      final results = service.search('friend');
+    test('search finds matches in tags', () async {
+      final results = await service.search('friend');
       expect(results.isNotEmpty, true);
       expect(results.first.contact.firstName, 'Alice');
     });
 
-    test('search finds matches in interaction summary', () {
-      final results = service.search('Starbucks');
+    test('search finds matches in interaction summary', () async {
+      final results = await service.search('Starbucks');
       expect(results.isNotEmpty, true);
       expect(results.first.contact.firstName, 'Bob');
     });
 
-    test('search finds matches in meeting notes', () {
-      final results = service.search('conference');
+    test('search finds matches in meeting notes', () async {
+      final results = await service.search('conference');
       expect(results.isNotEmpty, true);
       expect(results.first.contact.firstName, 'Carol');
     });
 
-    test('searchMeetingContexts finds matches', () {
-      final results = service.searchMeetingContexts('conference');
+    test('searchMeetingContexts finds matches', () async {
+      final results = await service.searchMeetingContexts('conference');
       expect(results.isNotEmpty, true);
       expect(results.first.contact.id, 'c3');
       expect(results.first.matchDescription, 'First meeting notes');
     });
 
-    test('empty query returns all contacts with 0 score (normal search)', () {
-      final results = service.search('');
+    test('empty query returns all contacts with 0 score (normal search)', () async {
+      final results = await service.search('');
       expect(results.length, 3);
       expect(results.first.score, 0);
     });
 
-    test('empty query returns empty list (context search)', () {
-      final results = service.searchMeetingContexts('');
+    test('empty query returns empty list (context search)', () async {
+      final results = await service.searchMeetingContexts('');
       expect(results, isEmpty);
     });
 

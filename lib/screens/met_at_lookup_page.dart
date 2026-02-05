@@ -33,7 +33,7 @@ class _MetAtLookupPageState extends State<MetAtLookupPage> {
     super.dispose();
   }
 
-  void _onQueryChanged() {
+  Future<void> _onQueryChanged() async {
     final query = _controller.text.trim();
     if (query.isEmpty) {
       setState(() {
@@ -42,7 +42,9 @@ class _MetAtLookupPageState extends State<MetAtLookupPage> {
       return;
     }
 
-    final matches = _searchService.searchMeetingContexts(query);
+    final matches = await _searchService.searchMeetingContexts(query);
+    if (!mounted) return;
+    if (_controller.text.trim() != query) return;
     setState(() {
       _results = matches;
     });
