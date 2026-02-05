@@ -1,5 +1,6 @@
 import 'dart:math';
 
+import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
 
 import '../models/contact.dart';
@@ -28,16 +29,25 @@ class ContactSearchService {
     _contacts = List<Contact>.from(contacts);
   }
 
-  List<ContactMatch> search(String query) {
+  Future<List<ContactMatch>> search(String query) async {
+    return compute(
+      _performSearch,
+      _SearchRequest(contacts: _contacts, query: query),
+    );
+  }
+
+  static List<ContactMatch> _performSearch(_SearchRequest request) {
+    final query = request.query;
+    final contacts = request.contacts;
     final normalizedQuery = _normalize(query);
     if (normalizedQuery.isEmpty) {
-      return _contacts
+      return contacts
           .map((contact) => ContactMatch(contact: contact, score: 0))
           .toList();
     }
 
     final results = <ContactMatch>[];
-    for (final contact in _contacts) {
+    for (final contact in contacts) {
       final fields = _buildGeneralFields(contact);
       final combinedText = fields.expand((field) => field.values).join(' ');
       final combinedScore = _score(normalizedQuery, combinedText);
@@ -78,7 +88,17 @@ class ContactSearchService {
   }
 
   /// Specialized lookup for "met at ..." or meeting context style queries.
-  List<ContactMatch> searchMeetingContexts(String query) {
+  Future<List<ContactMatch>> searchMeetingContexts(String query) async {
+    return compute(
+      _performMeetingContextSearch,
+      _SearchRequest(contacts: _contacts, query: query),
+    );
+  }
+
+  static List<ContactMatch> _performMeetingContextSearch(
+      _SearchRequest request) {
+    final query = request.query;
+    final contacts = request.contacts;
     final normalizedQuery = _normalize(query);
     if (normalizedQuery.isEmpty) {
       return const [];
@@ -87,7 +107,7 @@ class ContactSearchService {
     final matches = <ContactMatch>[];
     final formatter = DateFormat.yMMMd();
 
-    for (final contact in _contacts) {
+    for (final contact in contacts) {
       final segments = <_SearchField>[];
 
       if ((contact.firstMeetingNotes ?? '').isNotEmpty) {
@@ -146,7 +166,7 @@ class ContactSearchService {
     return matches;
   }
 
-  List<_SearchField> _buildGeneralFields(Contact contact) {
+  static List<_SearchField> _buildGeneralFields(Contact contact) {
     final formatter = DateFormat.yMMMd();
     final interactionSummaries = contact.interactions
         .map(
@@ -187,7 +207,7 @@ class ContactSearchService {
     ];
   }
 
-  double _score(String normalizedQuery, String text) {
+  static double _score(String normalizedQuery, String text) {
     final normalizedText = _normalize(text);
     if (normalizedQuery.isEmpty || normalizedText.isEmpty) {
       return 0;
@@ -208,12 +228,12 @@ class ContactSearchService {
     return (2 * intersection) / (queryTrigrams.length + textTrigrams.length);
   }
 
-  String _normalize(String value) {
+  static String _normalize(String value) {
     final lowercase = value.toLowerCase();
     return lowercase.replaceAll(RegExp(r'[^a-z0-9]+'), ' ').trim();
   }
 
-  Set<String> _trigrams(String text) {
+  static Set<String> _trigrams(String text) {
     if (text.length <= 3) {
       return {text};
     }
@@ -225,7 +245,7 @@ class ContactSearchService {
     return grams;
   }
 
-  String? _snippet(String text, String query) {
+  static String? _snippet(String text, String query) {
     final trimmed = text.trim();
     if (trimmed.isEmpty) {
       return null;
@@ -326,4 +346,11 @@ class _SearchField {
 
   final String label;
   final List<String> values;
+}
+
+class _SearchRequest {
+  final List<Contact> contacts;
+  final String query;
+
+  _SearchRequest({required this.contacts, required this.query});
 }

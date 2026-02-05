@@ -49,18 +49,24 @@ class _ContactSelectionSheetState extends State<ContactSelectionSheet> {
     _searchService.index(contacts);
 
     if (mounted) {
-      setState(() {
-        // Initial "search" with empty query returns all contacts (handled by service or logic below)
-        _searchResults = _searchService.search('');
-        _isLoading = false;
-      });
+      final results = await _searchService.search('');
+      if (mounted) {
+        if (_searchController.text.isNotEmpty) return;
+        setState(() {
+          _searchResults = results;
+          _isLoading = false;
+        });
+      }
     }
   }
 
-  void _onSearchChanged() {
+  Future<void> _onSearchChanged() async {
     final query = _searchController.text;
+    final results = await _searchService.search(query);
+    if (!mounted) return;
+    if (_searchController.text != query) return;
     setState(() {
-      _searchResults = _searchService.search(query);
+      _searchResults = results;
     });
   }
 

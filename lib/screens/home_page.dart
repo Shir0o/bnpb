@@ -205,7 +205,7 @@ class _HomePageState extends State<HomePage>
     }
   }
 
-  void _applyContactsSnapshot(List<Contact> contacts) {
+  Future<void> _applyContactsSnapshot(List<Contact> contacts) async {
     if (!mounted) return;
 
     final sortedContacts = List<Contact>.from(contacts)
@@ -244,9 +244,15 @@ class _HomePageState extends State<HomePage>
         _selectedTagFilter = null;
       }
       _availableTags = tags;
-      _filteredContacts = _applyFilters(sortedContacts);
-      _groupedFilteredContacts =
-          _groupContactsByLocation(_filteredContacts).entries.toList();
+    });
+
+    final filtered = await _applyFilters(sortedContacts);
+    if (!mounted) return;
+
+    final grouped = _groupContactsByLocation(filtered).entries.toList();
+    setState(() {
+      _filteredContacts = filtered;
+      _groupedFilteredContacts = grouped;
     });
   }
 
@@ -278,7 +284,7 @@ class _HomePageState extends State<HomePage>
     });
   }
 
-  List<Contact> _applyFilters(List<Contact> source) {
+  Future<List<Contact>> _applyFilters(List<Contact> source) async {
     final query = _searchController.text.trim();
 
     List<Contact> baseList;
@@ -286,7 +292,10 @@ class _HomePageState extends State<HomePage>
       _activeMatches = {};
       baseList = source;
     } else {
-      final matches = _searchService.search(query);
+      final matches = await _searchService.search(query);
+      if (_searchController.text.trim() != query) {
+        return [];
+      }
       _activeMatches = {
         for (final match in matches) match.contact.id: match,
       };
@@ -300,8 +309,17 @@ class _HomePageState extends State<HomePage>
         .toList();
   }
 
-  void _filterContacts() {
-    final filtered = _applyFilters(_contacts);
+  Future<void> _filterContacts() async {
+    final queryBefore = _searchController.text.trim();
+    final filterBefore = _selectedTagFilter;
+
+    final filtered = await _applyFilters(_contacts);
+    if (!mounted) return;
+    if (_searchController.text.trim() != queryBefore ||
+        _selectedTagFilter != filterBefore) {
+      return;
+    }
+
     final grouped = _groupContactsByLocation(filtered).entries.toList();
     setState(() {
       _filteredContacts = filtered;
@@ -309,16 +327,29 @@ class _HomePageState extends State<HomePage>
     });
   }
 
-  void _toggleTagFilter(String tag) {
+  Future<void> _toggleTagFilter(String tag) async {
     setState(() {
       if (_selectedTagFilter == tag) {
         _selectedTagFilter = null;
       } else {
         _selectedTagFilter = tag;
       }
-      _filteredContacts = _applyFilters(_contacts);
-      _groupedFilteredContacts =
-          _groupContactsByLocation(_filteredContacts).entries.toList();
+    });
+
+    final queryBefore = _searchController.text.trim();
+    final filterBefore = _selectedTagFilter;
+
+    final filtered = await _applyFilters(_contacts);
+    if (!mounted) return;
+    if (_searchController.text.trim() != queryBefore ||
+        _selectedTagFilter != filterBefore) {
+      return;
+    }
+
+    final grouped = _groupContactsByLocation(filtered).entries.toList();
+    setState(() {
+      _filteredContacts = filtered;
+      _groupedFilteredContacts = grouped;
     });
   }
 
