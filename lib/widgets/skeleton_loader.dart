@@ -63,7 +63,11 @@ class _SkeletonLoaderState extends State<SkeletonLoader>
             child: child,
           );
         },
-        child: widget.child,
+        // Optimization: Wrap the child in a RepaintBoundary.
+        // This isolates the child's paint layer, preventing the entire subtree
+        // from being repainted on every frame of the shimmer animation.
+        // The ShaderMask will simply composite the cached layer.
+        child: RepaintBoundary(child: widget.child),
       ),
     );
   }
