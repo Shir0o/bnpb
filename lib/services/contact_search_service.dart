@@ -25,32 +25,50 @@ class ContactMatch {
 class ContactSearchService {
   List<Contact> _contacts = const [];
 
+  // Optimization: Cache pre-computed search indices to avoid expensive
+  // date formatting and string concatenation on every search keystroke.
+  List<_IndexedContact>? _cachedGeneralIndex;
+  List<_IndexedContact>? _cachedMeetingIndex;
+
   void index(List<Contact> contacts) {
     _contacts = List<Contact>.from(contacts);
+    _cachedGeneralIndex = null;
+    _cachedMeetingIndex = null;
   }
 
   Future<List<ContactMatch>> search(String query) async {
+    _cachedGeneralIndex ??= await compute(_buildGeneralIndex, _contacts);
     return compute(
       _performSearch,
-      _SearchRequest(contacts: _contacts, query: query),
+      _SearchRequest(indexedContacts: _cachedGeneralIndex!, query: query),
     );
+  }
+
+  static List<_IndexedContact> _buildGeneralIndex(List<Contact> contacts) {
+    return contacts.map((contact) {
+      final fields = _buildGeneralFields(contact);
+      final combinedText = fields.expand((field) => field.values).join(' ');
+      return _IndexedContact(
+        contact: contact,
+        fields: fields,
+        combinedText: combinedText,
+      );
+    }).toList();
   }
 
   static List<ContactMatch> _performSearch(_SearchRequest request) {
     final query = request.query;
-    final contacts = request.contacts;
+    final indexedContacts = request.indexedContacts;
     final normalizedQuery = _normalize(query);
     if (normalizedQuery.isEmpty) {
-      return contacts
-          .map((contact) => ContactMatch(contact: contact, score: 0))
+      return indexedContacts
+          .map((item) => ContactMatch(contact: item.contact, score: 0))
           .toList();
     }
 
     final results = <ContactMatch>[];
-    for (final contact in contacts) {
-      final fields = _buildGeneralFields(contact);
-      final combinedText = fields.expand((field) => field.values).join(' ');
-      final combinedScore = _score(normalizedQuery, combinedText);
+    for (final item in indexedContacts) {
+      final combinedScore = _score(normalizedQuery, item.combinedText);
 
       if (combinedScore <= 0) {
         continue;
@@ -60,7 +78,7 @@ class ContactSearchService {
       String? bestFieldLabel;
       String? bestFieldSnippet;
 
-      for (final field in fields) {
+      for (final field in item.fields) {
         final fieldText = field.values.join(' ');
         if (fieldText.trim().isEmpty) {
           continue;
@@ -75,7 +93,7 @@ class ContactSearchService {
 
       results.add(
         ContactMatch(
-          contact: contact,
+          contact: item.contact,
           score: max(combinedScore, bestFieldScore),
           matchDescription: bestFieldLabel,
           snippet: bestFieldSnippet,
@@ -89,25 +107,17 @@ class ContactSearchService {
 
   /// Specialized lookup for "met at ..." or meeting context style queries.
   Future<List<ContactMatch>> searchMeetingContexts(String query) async {
+    _cachedMeetingIndex ??= await compute(_buildMeetingContextIndex, _contacts);
     return compute(
       _performMeetingContextSearch,
-      _SearchRequest(contacts: _contacts, query: query),
+      _SearchRequest(indexedContacts: _cachedMeetingIndex!, query: query),
     );
   }
 
-  static List<ContactMatch> _performMeetingContextSearch(
-      _SearchRequest request) {
-    final query = request.query;
-    final contacts = request.contacts;
-    final normalizedQuery = _normalize(query);
-    if (normalizedQuery.isEmpty) {
-      return const [];
-    }
-
-    final matches = <ContactMatch>[];
+  static List<_IndexedContact> _buildMeetingContextIndex(
+      List<Contact> contacts) {
     final formatter = DateFormat.yMMMd();
-
-    for (final contact in contacts) {
+    return contacts.map((contact) {
       final segments = <_SearchField>[];
 
       if ((contact.firstMeetingNotes ?? '').isNotEmpty) {
@@ -132,12 +142,30 @@ class ContactSearchService {
           ),
         );
       }
+      return _IndexedContact(
+        contact: contact,
+        fields: segments,
+      );
+    }).toList();
+  }
 
+  static List<ContactMatch> _performMeetingContextSearch(
+      _SearchRequest request) {
+    final query = request.query;
+    final indexedContacts = request.indexedContacts;
+    final normalizedQuery = _normalize(query);
+    if (normalizedQuery.isEmpty) {
+      return const [];
+    }
+
+    final matches = <ContactMatch>[];
+
+    for (final item in indexedContacts) {
       double bestScore = 0;
       String? bestLabel;
       String? bestSnippet;
 
-      for (final field in segments) {
+      for (final field in item.fields) {
         final text = field.values.join(' ');
         if (text.trim().isEmpty) {
           continue;
@@ -153,7 +181,7 @@ class ContactSearchService {
       if (bestScore > 0) {
         matches.add(
           ContactMatch(
-            contact: contact,
+            contact: item.contact,
             score: bestScore,
             matchDescription: bestLabel,
             snippet: bestSnippet,
@@ -348,9 +376,21 @@ class _SearchField {
   final List<String> values;
 }
 
+class _IndexedContact {
+  final Contact contact;
+  final List<_SearchField> fields;
+  final String combinedText;
+
+  _IndexedContact({
+    required this.contact,
+    required this.fields,
+    this.combinedText = '',
+  });
+}
+
 class _SearchRequest {
-  final List<Contact> contacts;
+  final List<_IndexedContact> indexedContacts;
   final String query;
 
-  _SearchRequest({required this.contacts, required this.query});
+  _SearchRequest({required this.indexedContacts, required this.query});
 }
