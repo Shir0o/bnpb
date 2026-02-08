@@ -27,7 +27,10 @@ class MockDBHelper implements DBHelper {
       throw UnimplementedError();
 
   @override
-  Future<List<Contact>> getContacts({String? contactId}) =>
+  Future<List<Contact>> getContacts({
+    String? contactId,
+    List<String>? contactIds,
+  }) =>
       throw UnimplementedError();
 
   @override
