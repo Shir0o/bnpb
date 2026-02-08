@@ -57,9 +57,26 @@ class _PrayerListPageState extends State<PrayerListPage> {
     final freshList = await _dbHelper.getPrayerList(list.id);
     if (freshList == null) return; // Should not happen
 
+    if (freshList.contactIds.isEmpty) {
+      if (mounted) {
+        setState(() {
+          _list = freshList;
+          _contacts = [];
+          _isLoading = false;
+        });
+      }
+      return;
+    }
+
+    final loadedContacts =
+        await _dbHelper.getContacts(contactIds: freshList.contactIds);
+
+    // Optimization: Batch fetch all contacts at once instead of N+1 queries.
+    // Re-assemble in the correct order based on the list definition.
+    final contactMap = {for (final c in loadedContacts) c.id: c};
     final contacts = <Contact>[];
     for (final id in freshList.contactIds) {
-      final contact = await _dbHelper.getContactById(id);
+      final contact = contactMap[id];
       if (contact != null) {
         contacts.add(contact);
       }

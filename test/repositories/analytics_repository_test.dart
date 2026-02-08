@@ -8,9 +8,15 @@ import 'mock_db_helper.dart';
 class _TestDBHelper extends MockDBHelper {
   List<Contact> contacts = [];
   @override
-  Future<List<Contact>> getContacts({String? contactId}) async {
+  Future<List<Contact>> getContacts({
+    String? contactId,
+    List<String>? contactIds,
+  }) async {
     if (contactId != null) {
       return contacts.where((c) => c.id == contactId).toList();
+    }
+    if (contactIds != null) {
+      return contacts.where((c) => contactIds.contains(c.id)).toList();
     }
     return contacts;
   }

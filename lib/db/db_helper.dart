@@ -783,23 +783,51 @@ class DBHelper {
   }
 
   /// Retrieve all contacts alongside their related metadata from companion tables.
-  Future<List<Contact>> getContacts({String? contactId}) async {
+  Future<List<Contact>> getContacts({
+    String? contactId,
+    List<String>? contactIds,
+  }) async {
     final db = await database;
+
+    if (contactIds != null && contactIds.isEmpty && contactId == null) {
+      return [];
+    }
+
+    String? where;
+    List<Object?>? whereArgs;
+
+    if (contactId != null) {
+      where = 'id = ?';
+      whereArgs = [contactId];
+    } else if (contactIds != null && contactIds.isNotEmpty) {
+      final placeholders = List.filled(contactIds.length, '?').join(',');
+      where = 'id IN ($placeholders)';
+      whereArgs = contactIds;
+    }
+
     final maps = await db.query(
       'contacts',
-      where: contactId != null ? 'id = ?' : null,
-      whereArgs: contactId != null ? [contactId] : null,
+      where: where,
+      whereArgs: whereArgs,
     );
+
+    String? contactWhere;
+    if (contactId != null) {
+      contactWhere = 'contactId = ?';
+    } else if (contactIds != null && contactIds.isNotEmpty) {
+      final placeholders = List.filled(contactIds.length, '?').join(',');
+      contactWhere = 'contactId IN ($placeholders)';
+    }
 
     final tagRows = await db.query(
       'contact_tags',
-      where: contactId != null ? 'contactId = ?' : null,
-      whereArgs: contactId != null ? [contactId] : null,
+      where: contactWhere,
+      whereArgs: whereArgs,
     );
     final contextRows = await db.query(
       'meet_contexts',
-      where: contactId != null ? 'contactId = ?' : null,
-      whereArgs: contactId != null ? [contactId] : null,
+      where: contactWhere,
+      whereArgs: whereArgs,
     );
 
     final tagsByContact = <String, List<String>>{};
@@ -815,13 +843,13 @@ class DBHelper {
       contextsByContact[contactId] = Map<String, dynamic>.from(row);
     }
 
-    final contactIds = maps.map((map) => map['id'] as String).toSet();
+    final loadedContactIds = maps.map((map) => map['id'] as String).toSet();
 
     final participantFilterRows = await db.query(
       'interaction_participants',
       columns: ['interactionId'],
-      where: contactId != null ? 'contactId = ?' : null,
-      whereArgs: contactId != null ? [contactId] : null,
+      where: contactWhere,
+      whereArgs: whereArgs,
     );
     final interactionIds =
         participantFilterRows.map((row) => row['interactionId'] as int).toSet();
@@ -850,7 +878,7 @@ class DBHelper {
         final interaction = Interaction.fromMap(interactionMap);
 
         for (final participant in participants) {
-          if (!contactIds.contains(participant)) continue;
+          if (!loadedContactIds.contains(participant)) continue;
           interactionsByContact.putIfAbsent(participant, () => []);
           interactionsByContact[participant]!.add(interaction);
         }
@@ -860,8 +888,8 @@ class DBHelper {
     final prayerRows = await db.query(
       'prayer_requests',
       orderBy: 'requestedAt DESC',
-      where: contactId != null ? 'contactId = ?' : null,
-      whereArgs: contactId != null ? [contactId] : null,
+      where: contactWhere,
+      whereArgs: whereArgs,
     );
 
     final prayersByContact = <String, List<PrayerRequest>>{};
@@ -873,10 +901,18 @@ class DBHelper {
       );
     }
 
+    String? sourceContactWhere;
+    if (contactId != null) {
+      sourceContactWhere = 'sourceContactId = ?';
+    } else if (contactIds != null && contactIds.isNotEmpty) {
+      final placeholders = List.filled(contactIds.length, '?').join(',');
+      sourceContactWhere = 'sourceContactId IN ($placeholders)';
+    }
+
     final relationshipRows = await db.query(
       'relationships',
-      where: contactId != null ? 'sourceContactId = ?' : null,
-      whereArgs: contactId != null ? [contactId] : null,
+      where: sourceContactWhere,
+      whereArgs: whereArgs,
     );
 
     final relationshipsByContact = <String, List<Relationship>>{};
