@@ -184,6 +184,10 @@ class Interaction {
   }
 
   static List<String> _parseParticipantIds(dynamic value) {
+    // Optimization: Return directly if already typed correctly to avoid O(N) copy.
+    if (value is List<String>) {
+      return value;
+    }
     if (value is List) {
       return value.map((entry) => entry.toString()).toList();
     }
