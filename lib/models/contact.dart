@@ -150,10 +150,7 @@ class Contact {
       location: map['location'] as String?,
       firstMeetingNotes: map['firstMeetingNotes'] as String?,
       notes: map['notes'] as String?,
-      tags: (map['tags'] as List<dynamic>?)
-              ?.map((tag) => tag as String)
-              .toList() ??
-          const [],
+      tags: _parseStringList(map['tags']),
       recognitionKeywords: _parseStringList(map['recognitionKeywords']),
       recognitionPhotoUris: _parseStringList(map['recognitionPhotoUris']),
       recognitionReminders: _parseStringList(map['recognitionReminders']),
@@ -184,6 +181,9 @@ class Contact {
   }
 
   static List<String> _parseStringList(dynamic value) {
+    if (value is List<String>) {
+      return value;
+    }
     if (value is List) {
       return value.map((entry) => entry.toString()).toList();
     }
