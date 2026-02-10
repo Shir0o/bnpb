@@ -13,3 +13,7 @@ Action: Use a builder pattern (itemCount/itemBuilder) to lazily generate childre
 2025-02-18 - Isolate InkWell Ripple Paints
 Learning: Ripples on `InkWell` trigger a repaint of the nearest `Material` ancestor. If the `InkWell` wraps complex content (like images or text), that entire subtree is repainted on every frame of the splash animation.
 Action: Wrap the child of `InkWell` in a `RepaintBoundary` to cache the complex content as a layer, allowing the ripple to composite over it cheaply.
+
+2025-02-18 - Avoid RepaintBoundary on Large Lists
+Learning: Wrapping a large list (e.g., in an expanded tile) in a `RepaintBoundary` creates a single massive texture that can exceed GPU max texture size limits and consume excessive memory.
+Action: Remove `RepaintBoundary` from the parent container of large lists. Instead, wrap individual complex list items in `RepaintBoundary` to cache them separately.

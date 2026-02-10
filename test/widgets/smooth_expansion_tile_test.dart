@@ -30,11 +30,13 @@ void main() {
     expect(find.byKey(const Key('child1')), findsOneWidget);
 
     // Check for RepaintBoundary
-    // The child (Column) is wrapped in RepaintBoundary inside Align inside ClipRect
-    final childFinder = find.byKey(const Key('child1'));
+    // We removed the RepaintBoundary from SmoothExpansionTile because it caused memory issues for large lists.
+    // The child should NOT be wrapped in RepaintBoundary by the tile itself.
+    // We check that there is no RepaintBoundary between the Align (animation wrapper) and the content.
+    final alignFinder = find.byType(Align);
+    final repaintBoundaryInAlign = find.descendant(of: alignFinder, matching: find.byType(RepaintBoundary));
 
-    final repaintBoundaryFinder = find.ancestor(of: childFinder, matching: find.byType(RepaintBoundary));
-    expect(repaintBoundaryFinder, findsWidgets);
+    expect(repaintBoundaryInAlign, findsNothing);
 
     await tester.pumpAndSettle();
   });

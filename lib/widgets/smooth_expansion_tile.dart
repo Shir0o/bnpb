@@ -157,11 +157,12 @@ class _SmoothExpansionTileState extends State<SmoothExpansionTile>
               ),
             );
           },
-          // Optimization: Wrap the complex content in a RepaintBoundary.
-          // This ensures that the content layer is painted once and then
-          // composited/clipped during the animation, rather than being
-          // repainted on every frame of the expansion.
-          child: result != null ? RepaintBoundary(child: result) : null,
+          // Optimization: We previously wrapped the content in a RepaintBoundary here,
+          // but for large lists (like 50+ items), this creates a massive texture
+          // that exceeds GPU limits and causes crashes/OOM.
+          // Instead, we rely on individual items (like PeopleCard) to wrap themselves
+          // in RepaintBoundary if needed.
+          child: result,
         ),
       ],
     );

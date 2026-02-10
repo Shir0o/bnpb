@@ -1026,14 +1026,19 @@ class _HomePageState extends State<HomePage>
                                       return Padding(
                                         padding:
                                             const EdgeInsets.only(bottom: 12),
-                                        child: PeopleCard(
-                                          contact: contact,
-                                          onTap: () =>
-                                              _navigateToContactDetails(
-                                                  contact),
-                                          highlightLabel:
-                                              match?.matchDescription,
-                                          highlightText: match?.snippet,
+                                        // Optimization: Wrap each card in a RepaintBoundary.
+                                        // This ensures we have small, manageable textures for each item
+                                        // instead of one giant texture for the whole list (which we removed from SmoothExpansionTile).
+                                        child: RepaintBoundary(
+                                          child: PeopleCard(
+                                            contact: contact,
+                                            onTap: () =>
+                                                _navigateToContactDetails(
+                                                    contact),
+                                            highlightLabel:
+                                                match?.matchDescription,
+                                            highlightText: match?.snippet,
+                                          ),
                                         ),
                                       );
                                     },
