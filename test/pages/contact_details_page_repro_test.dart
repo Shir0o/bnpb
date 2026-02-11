@@ -17,14 +17,14 @@ class MockDBHelper extends Mock implements DBHelper {}
 void main() {
   late MockContactService mockContactService;
   late MockDBHelper mockDBHelper;
-  
+
   // Define fallback values
   final fallbackContact = Contact(
     id: 'fallback',
     firstName: 'Fallback',
     interactions: [],
   );
-  
+
   final fallbackInteraction = Interaction(
     occurredAt: DateTime.now(),
     summary: 'fallback',
@@ -40,10 +40,10 @@ void main() {
   setUp(() async {
     // Initialize date formatting for tests
     await initializeDateFormatting('en_US', null);
-    
+
     mockContactService = MockContactService();
     mockDBHelper = MockDBHelper();
-    
+
     registerFallbackValue(fallbackContact);
     registerFallbackValue(fallbackInteraction);
     registerFallbackValue(fallbackRelationship);
@@ -65,25 +65,27 @@ void main() {
       );
 
       // 2. Setup Stubs with specific arguments to ensure matching
-      
+
       // ContactService Stubs
       when(() => mockContactService.hasCachedInteractions('123'))
           .thenReturn(false);
       when(() => mockContactService.hasCachedInteractions(any()))
           .thenReturn(false);
 
-      when(() => mockContactService.getInteractions('123', forceRefresh: any(named: 'forceRefresh')))
+      when(() => mockContactService.getInteractions('123',
+              forceRefresh: any(named: 'forceRefresh')))
           .thenAnswer((_) async => []);
-      when(() => mockContactService.getInteractions(any(), forceRefresh: any(named: 'forceRefresh')))
+      when(() => mockContactService.getInteractions(any(),
+              forceRefresh: any(named: 'forceRefresh')))
           .thenAnswer((_) async => []);
-          
+
       // DBHelper Stubs
       when(() => mockDBHelper.getContacts()).thenAnswer((_) async => []);
       when(() => mockDBHelper.getContacts(contactId: any(named: 'contactId')))
           .thenAnswer((_) async => []);
-          
+
       when(() => mockDBHelper.getAllTags()).thenAnswer((_) async => []);
-      
+
       when(() => mockDBHelper.getRelationshipsForContact('123'))
           .thenAnswer((_) async => []);
       when(() => mockDBHelper.getRelationshipsForContact(any()))
@@ -105,7 +107,7 @@ void main() {
       debugPrint('STEP: Widget Pumped');
 
       // 4. Verification steps
-      
+
       // Initial load should show loading skeleton, NOT CircularProgressIndicator
       expect(find.byType(ContactDetailsSkeleton), findsOneWidget);
 
@@ -114,9 +116,9 @@ void main() {
       debugPrint('STEP: Widget Settled');
 
       // Verify fields are populated
-      expect(find.text('John Doe'), findsAtLeastNWidgets(1)); 
+      expect(find.text('John Doe'), findsAtLeastNWidgets(1));
       expect(find.text('New York'), findsOneWidget); // Location
-      expect(find.text('Some notes'), findsOneWidget); 
+      expect(find.text('Some notes'), findsOneWidget);
       expect(find.textContaining('Johnny'), findsOneWidget);
 
       // Verify that we are NOT in edit mode (edit icon should be present)

@@ -1002,18 +1002,18 @@ class _HomePageState extends State<HomePage>
                                           child: Column(
                                             children: const [
                                               Padding(
-                                                padding: EdgeInsets.only(
-                                                    bottom: 12),
+                                                padding:
+                                                    EdgeInsets.only(bottom: 12),
                                                 child: ContactItemSkeleton(),
                                               ),
                                               Padding(
-                                                padding: EdgeInsets.only(
-                                                    bottom: 12),
+                                                padding:
+                                                    EdgeInsets.only(bottom: 12),
                                                 child: ContactItemSkeleton(),
                                               ),
                                               Padding(
-                                                padding: EdgeInsets.only(
-                                                    bottom: 12),
+                                                padding:
+                                                    EdgeInsets.only(bottom: 12),
                                                 child: ContactItemSkeleton(),
                                               ),
                                             ],

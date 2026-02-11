@@ -84,7 +84,6 @@ class _RelationshipExplorerPageState extends State<RelationshipExplorerPage> {
     return nickname.isNotEmpty ? nickname : 'Unknown contact';
   }
 
-
   Widget _buildGroupCard(MapEntry<String, List<Relationship>> entry) {
     final hubName = _displayName(entry.key);
     return Card(

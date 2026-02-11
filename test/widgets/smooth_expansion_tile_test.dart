@@ -3,14 +3,16 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:bnpb/widgets/smooth_expansion_tile.dart';
 
 void main() {
-  testWidgets('SmoothExpansionTile renders children and toggles expansion', (WidgetTester tester) async {
+  testWidgets('SmoothExpansionTile renders children and toggles expansion',
+      (WidgetTester tester) async {
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
           body: SmoothExpansionTile(
             title: const Text('Test Title'),
             children: [
-              Container(height: 100, color: Colors.red, key: const Key('child1')),
+              Container(
+                  height: 100, color: Colors.red, key: const Key('child1')),
             ],
           ),
         ),
@@ -33,7 +35,8 @@ void main() {
     // The child (Column) is wrapped in RepaintBoundary inside Align inside ClipRect
     final childFinder = find.byKey(const Key('child1'));
 
-    final repaintBoundaryFinder = find.ancestor(of: childFinder, matching: find.byType(RepaintBoundary));
+    final repaintBoundaryFinder =
+        find.ancestor(of: childFinder, matching: find.byType(RepaintBoundary));
     expect(repaintBoundaryFinder, findsWidgets);
 
     await tester.pumpAndSettle();

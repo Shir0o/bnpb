@@ -86,7 +86,8 @@ void main() {
       expect(results.first.matchDescription, 'First meeting notes');
     });
 
-    test('empty query returns all contacts with 0 score (normal search)', () async {
+    test('empty query returns all contacts with 0 score (normal search)',
+        () async {
       final results = await service.search('');
       expect(results.length, 3);
       expect(results.first.score, 0);
