@@ -223,9 +223,10 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
             const SizedBox(height: 12),
             SizedBox(
               height: 240,
-              child: BarChart(
-                BarChartData(
-                  maxY: maxY == 0 ? 1 : maxY * 1.2,
+              child: RepaintBoundary(
+                child: BarChart(
+                  BarChartData(
+                    maxY: maxY == 0 ? 1 : maxY * 1.2,
                   gridData: FlGridData(show: false),
                   borderData: FlBorderData(show: false),
                   barGroups: entries.asMap().entries.map((entry) {
@@ -264,6 +265,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                     ),
                     bottomTitles: const AxisTitles(
                       sideTitles: SideTitles(showTitles: false),
+                    ),
                     ),
                   ),
                 ),
@@ -362,9 +364,10 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                   final double sectionRadius = math.max(0.0, maxRadius / 1.5);
                   final centerSpaceRadius = sectionRadius / 2;
 
-                  return PieChart(
-                    PieChartData(
-                      sectionsSpace: 2,
+                  return RepaintBoundary(
+                    child: PieChart(
+                      PieChartData(
+                        sectionsSpace: 2,
                       centerSpaceRadius: centerSpaceRadius,
                       sections: entries.asMap().entries.map((entry) {
                         final value = _resolveValue(
@@ -382,7 +385,8 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                               .bodyMedium
                               ?.copyWith(fontWeight: FontWeight.bold),
                         );
-                      }).toList(),
+                        }).toList(),
+                      ),
                     ),
                   );
                 },
@@ -439,9 +443,10 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
             const SizedBox(height: 12),
             SizedBox(
               height: 240,
-              child: LineChart(
-                LineChartData(
-                  minY: 0,
+              child: RepaintBoundary(
+                child: LineChart(
+                  LineChartData(
+                    minY: 0,
                   maxY: maxY == 0 ? 1 : maxY * 1.2,
                   gridData: FlGridData(show: false),
                   borderData: FlBorderData(show: false),
@@ -507,6 +512,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                           );
                         },
                       ),
+                    ),
                     ),
                   ),
                 ),
