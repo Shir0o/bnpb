@@ -845,34 +845,36 @@ class DBHelper {
 
     final loadedContactIds = maps.map((map) => map['id'] as String).toSet();
 
-    final participantFilterRows = await db.query(
-      'interaction_participants',
-      columns: ['interactionId'],
-      where: contactWhere,
-      whereArgs: whereArgs,
-    );
-    final interactionIds =
-        participantFilterRows.map((row) => row['interactionId'] as int).toSet();
-
-    final participantsByInteraction = await _getParticipantsForInteractions(
-      db,
-      interactionIds,
-    );
-
     final interactionsByContact = <String, List<Interaction>>{};
-    if (interactionIds.isNotEmpty) {
-      final placeholders = List.filled(interactionIds.length, '?').join(',');
-      final interactionRows = await db.query(
-        'interactions',
-        orderBy: 'occurredAt DESC',
-        where: 'id IN ($placeholders)',
-        whereArgs: interactionIds.toList(),
+
+    // Optimization: When fetching ALL contacts (contactId == null && contactIds == null),
+    // fetch all interactions in bulk to avoid constructing a massive "WHERE id IN (...)" clause.
+    // This prevents hitting SQLite parameter limits (e.g. 999) and improves performance for large datasets.
+    if (contactId == null && contactIds == null) {
+      final allParticipantRows = await db.query(
+        'interaction_participants',
+        columns: ['interactionId', 'contactId'],
       );
 
-      for (final row in interactionRows) {
+      final participantsByInteraction = <int, List<String>>{};
+      for (final row in allParticipantRows) {
+        final interactionId = row['interactionId'] as int;
+        final participantId = row['contactId'] as String;
+        participantsByInteraction.putIfAbsent(interactionId, () => []);
+        participantsByInteraction[interactionId]!.add(participantId);
+      }
+
+      final allInteractionRows = await db.query(
+        'interactions',
+        orderBy: 'occurredAt DESC',
+      );
+
+      for (final row in allInteractionRows) {
         final interactionId = row['id'] as int;
-        final participants =
-            participantsByInteraction[interactionId] ?? const <String>[];
+        // Skip interactions with no participants (orphans should be cleaned up, but safe to check)
+        final participants = participantsByInteraction[interactionId];
+        if (participants == null || participants.isEmpty) continue;
+
         final interactionMap = Map<String, dynamic>.from(row);
         interactionMap['participantIds'] = participants;
         final interaction = Interaction.fromMap(interactionMap);
@@ -881,6 +883,46 @@ class DBHelper {
           if (!loadedContactIds.contains(participant)) continue;
           interactionsByContact.putIfAbsent(participant, () => []);
           interactionsByContact[participant]!.add(interaction);
+        }
+      }
+    } else {
+      final participantFilterRows = await db.query(
+        'interaction_participants',
+        columns: ['interactionId'],
+        where: contactWhere,
+        whereArgs: whereArgs,
+      );
+      final interactionIds = participantFilterRows
+          .map((row) => row['interactionId'] as int)
+          .toSet();
+
+      final participantsByInteraction = await _getParticipantsForInteractions(
+        db,
+        interactionIds,
+      );
+
+      if (interactionIds.isNotEmpty) {
+        final placeholders = List.filled(interactionIds.length, '?').join(',');
+        final interactionRows = await db.query(
+          'interactions',
+          orderBy: 'occurredAt DESC',
+          where: 'id IN ($placeholders)',
+          whereArgs: interactionIds.toList(),
+        );
+
+        for (final row in interactionRows) {
+          final interactionId = row['id'] as int;
+          final participants =
+              participantsByInteraction[interactionId] ?? const <String>[];
+          final interactionMap = Map<String, dynamic>.from(row);
+          interactionMap['participantIds'] = participants;
+          final interaction = Interaction.fromMap(interactionMap);
+
+          for (final participant in participants) {
+            if (!loadedContactIds.contains(participant)) continue;
+            interactionsByContact.putIfAbsent(participant, () => []);
+            interactionsByContact[participant]!.add(interaction);
+          }
         }
       }
     }
