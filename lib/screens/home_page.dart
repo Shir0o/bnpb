@@ -235,6 +235,11 @@ class _HomePageState extends State<HomePage>
 
     _searchService.index(sortedContacts);
 
+    final filtered = await _applyFilters(sortedContacts);
+    if (!mounted) return;
+
+    final grouped = _groupContactsByLocation(filtered).entries.toList();
+
     setState(() {
       _contacts = sortedContacts;
       _contactLookup
@@ -244,13 +249,6 @@ class _HomePageState extends State<HomePage>
         _selectedTagFilter = null;
       }
       _availableTags = tags;
-    });
-
-    final filtered = await _applyFilters(sortedContacts);
-    if (!mounted) return;
-
-    final grouped = _groupContactsByLocation(filtered).entries.toList();
-    setState(() {
       _filteredContacts = filtered;
       _groupedFilteredContacts = grouped;
     });
@@ -259,20 +257,27 @@ class _HomePageState extends State<HomePage>
   Future<void> _loadPrayerInsights() async {
     const prayerFocusLimit = 5;
 
-    final counts = await _dbHelper.getPrayerRequestCounts();
-    final pending = await _dbHelper.getPrayerRequests(
-      status: PrayerRequestStatus.pending,
-      limit: 3,
-    );
-    final answered = await _dbHelper.getPrayerRequests(
-      status: PrayerRequestStatus.answered,
-      limit: 3,
-      latestAnsweredFirst: true,
-    );
-    final prayerFocusInteractions =
-        await _dbHelper.getPrayerFocusInteractions(limit: prayerFocusLimit);
+    final results = await Future.wait([
+      _dbHelper.getPrayerRequestCounts(),
+      _dbHelper.getPrayerRequests(
+        status: PrayerRequestStatus.pending,
+        limit: 3,
+      ),
+      _dbHelper.getPrayerRequests(
+        status: PrayerRequestStatus.answered,
+        limit: 3,
+        latestAnsweredFirst: true,
+      ),
+      _dbHelper.getPrayerFocusInteractions(limit: prayerFocusLimit),
+    ]);
 
     if (!mounted) return;
+
+    final counts = results[0] as Map<PrayerRequestStatus, int>;
+    final pending = results[1] as List<PrayerRequest>;
+    final answered = results[2] as List<PrayerRequest>;
+    final prayerFocusInteractions = results[3] as List<Interaction>;
+
     setState(() {
       _prayerCounts = {
         for (final status in PrayerRequestStatus.values)
