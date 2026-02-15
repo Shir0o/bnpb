@@ -157,11 +157,7 @@ class _SmoothExpansionTileState extends State<SmoothExpansionTile>
               ),
             );
           },
-          // Optimization: Wrap the complex content in a RepaintBoundary.
-          // This ensures that the content layer is painted once and then
-          // composited/clipped during the animation, rather than being
-          // repainted on every frame of the expansion.
-          child: result != null ? RepaintBoundary(child: result) : null,
+          child: result,
         ),
       ],
     );
