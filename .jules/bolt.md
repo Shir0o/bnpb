@@ -13,3 +13,7 @@ Action: Use a builder pattern (itemCount/itemBuilder) to lazily generate childre
 2025-02-18 - Isolate InkWell Ripple Paints
 Learning: Ripples on `InkWell` trigger a repaint of the nearest `Material` ancestor. If the `InkWell` wraps complex content (like images or text), that entire subtree is repainted on every frame of the splash animation.
 Action: Wrap the child of `InkWell` in a `RepaintBoundary` to cache the complex content as a layer, allowing the ripple to composite over it cheaply.
+
+2025-02-18 - Optimized Contact Parsing
+Learning: Converting DB rows to Maps, then to Objects, then back to Maps for parent objects, and finally back to Objects is a massive waste of CPU and Memory.
+Action: Modified `Contact.fromMap` to accept `List<Interaction>` (and other child lists) directly, bypassing the intermediate Map transformation in `DBHelper`.
