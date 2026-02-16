@@ -34,8 +34,10 @@ class PeopleCard extends StatelessWidget {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
       ),
-      clipBehavior: Clip.antiAlias,
+      // Optimization: Removed Clip.antiAlias to avoid expensive saveLayer calls.
+      // Clipping is handled by InkWell.borderRadius for splashes, and padding for content.
       child: InkWell(
+        borderRadius: BorderRadius.circular(16),
         onTap: onTap,
         // Optimization: Isolate the static content from the InkWell ripple animation.
         // The ripple is painted on the Card (Material), so wrapping the content prevents
