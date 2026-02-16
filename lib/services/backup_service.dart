@@ -120,17 +120,14 @@ class BackupService {
         )
         .toList();
 
-    final snapshots = <BackupSnapshot>[];
-    for (final file in entries) {
+    final snapshots = await Future.wait(entries.map((file) async {
       final stat = await file.stat();
-      snapshots.add(
-        BackupSnapshot(
-          path: file.path,
-          modified: stat.modified,
-          bytes: stat.size,
-        ),
+      return BackupSnapshot(
+        path: file.path,
+        modified: stat.modified,
+        bytes: stat.size,
       );
-    }
+    }));
 
     snapshots.sort((a, b) => b.modified.compareTo(a.modified));
     return snapshots;
