@@ -979,28 +979,18 @@ class DBHelper {
       contactMap.remove('photoCues');
       contactMap.remove('reminderCues');
 
-      contactMap['interactions'] = interactionsByContact[contactMap['id']]
-              ?.map(
-                (interaction) => interaction.toMap(),
-              )
-              .toList() ??
-          [];
+      // Optimization: Pass objects directly to Contact.fromMap to avoid expensive
+      // toMap()/fromMap() cycles. Contact.fromMap handles both List<Interaction> and List<Map>.
+      contactMap['interactions'] =
+          interactionsByContact[contactMap['id']] ?? <Interaction>[];
 
       contactMap['tags'] = tagsByContact[contactMap['id']] ?? [];
       final context = contextsByContact[contactMap['id']];
       contactMap['firstMeetingNotes'] = context?['firstMeetingNotes'];
-      contactMap['prayerRequests'] = prayersByContact[contactMap['id']]
-              ?.map(
-                (request) => request.toMap(),
-              )
-              .toList() ??
-          [];
-      contactMap['relationships'] = relationshipsByContact[contactMap['id']]
-              ?.map(
-                (rel) => rel.toMap(),
-              )
-              .toList() ??
-          [];
+      contactMap['prayerRequests'] =
+          prayersByContact[contactMap['id']] ?? <PrayerRequest>[];
+      contactMap['relationships'] =
+          relationshipsByContact[contactMap['id']] ?? <Relationship>[];
 
       return Contact.fromMap(contactMap);
     }).toList();

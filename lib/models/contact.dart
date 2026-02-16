@@ -154,21 +154,9 @@ class Contact {
       recognitionKeywords: _parseStringList(map['recognitionKeywords']),
       recognitionPhotoUris: _parseStringList(map['recognitionPhotoUris']),
       recognitionReminders: _parseStringList(map['recognitionReminders']),
-      interactions: (map['interactions'] as List<dynamic>?)
-              ?.map((entry) =>
-                  Interaction.fromMap(Map<String, dynamic>.from(entry)))
-              .toList() ??
-          const [],
-      prayerRequests: (map['prayerRequests'] as List<dynamic>?)
-              ?.map((entry) =>
-                  PrayerRequest.fromMap(Map<String, dynamic>.from(entry)))
-              .toList() ??
-          const [],
-      relationships: (map['relationships'] as List<dynamic>?)
-              ?.map((entry) =>
-                  Relationship.fromMap(Map<String, dynamic>.from(entry)))
-              .toList() ??
-          const [],
+      interactions: _parseInteractions(map['interactions']),
+      prayerRequests: _parsePrayerRequests(map['prayerRequests']),
+      relationships: _parseRelationships(map['relationships']),
     );
   }
 
@@ -200,6 +188,45 @@ class Contact {
             .where((entry) => entry.isNotEmpty)
             .toList();
       }
+    }
+    return const [];
+  }
+
+  static List<Interaction> _parseInteractions(dynamic value) {
+    if (value is List<Interaction>) {
+      return value;
+    }
+    if (value is List) {
+      return value.map((entry) {
+        if (entry is Interaction) return entry;
+        return Interaction.fromMap(Map<String, dynamic>.from(entry));
+      }).toList().cast<Interaction>();
+    }
+    return const [];
+  }
+
+  static List<PrayerRequest> _parsePrayerRequests(dynamic value) {
+    if (value is List<PrayerRequest>) {
+      return value;
+    }
+    if (value is List) {
+      return value.map((entry) {
+        if (entry is PrayerRequest) return entry;
+        return PrayerRequest.fromMap(Map<String, dynamic>.from(entry));
+      }).toList().cast<PrayerRequest>();
+    }
+    return const [];
+  }
+
+  static List<Relationship> _parseRelationships(dynamic value) {
+    if (value is List<Relationship>) {
+      return value;
+    }
+    if (value is List) {
+      return value.map((entry) {
+        if (entry is Relationship) return entry;
+        return Relationship.fromMap(Map<String, dynamic>.from(entry));
+      }).toList().cast<Relationship>();
     }
     return const [];
   }
