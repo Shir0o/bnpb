@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:math';
 
 import 'package:crypto/crypto.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:path/path.dart' as p;
@@ -29,17 +30,53 @@ class SecurityService {
   final LocalAuthentication _localAuth = LocalAuthentication();
 
   /// Lazily generates and returns the SQLCipher key used to encrypt the database.
+  /// Lazily generates and returns the SQLCipher key used to encrypt the database.
   Future<String> obtainDatabaseKey() async {
-    final existing = await _secureStorage.read(key: _dbKeyStorageKey);
-    if (existing != null && existing.isNotEmpty) {
-      return existing;
+    try {
+      final existing = await _secureStorage.read(key: _dbKeyStorageKey);
+      if (existing != null && existing.isNotEmpty) {
+        return existing;
+      }
+    } catch (e) {
+      debugPrint('Secure storage read failed, checking fallback: $e');
+    }
+
+    try {
+      final fallback = await _getFallbackKey();
+      if (fallback != null) return fallback;
+    } catch (e) {
+      debugPrint('Fallback read failed: $e');
     }
 
     final random = Random.secure();
     final bytes = List<int>.generate(64, (_) => random.nextInt(256));
     final encoded = base64Encode(bytes);
-    await _secureStorage.write(key: _dbKeyStorageKey, value: encoded);
+
+    try {
+      await _secureStorage.write(key: _dbKeyStorageKey, value: encoded);
+    } catch (e) {
+      debugPrint('Secure storage write failed, saving to fallback: $e');
+      await _saveFallbackKey(encoded);
+    }
     return encoded;
+  }
+
+  Future<String?> _getFallbackKey() async {
+    final dir = await getApplicationSupportDirectory();
+    final file = File(p.join(dir.path, '.db_key'));
+    if (await file.exists()) {
+      return await file.readAsString();
+    }
+    return null;
+  }
+
+  Future<void> _saveFallbackKey(String key) async {
+    final dir = await getApplicationSupportDirectory();
+    if (!await dir.exists()) {
+      await dir.create(recursive: true);
+    }
+    final file = File(p.join(dir.path, '.db_key'));
+    await file.writeAsString(key);
   }
 
   /// Indicates whether a passcode has been configured.

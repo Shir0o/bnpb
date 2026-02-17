@@ -197,10 +197,13 @@ class Contact {
       return value;
     }
     if (value is List) {
-      return value.map((entry) {
-        if (entry is Interaction) return entry;
-        return Interaction.fromMap(Map<String, dynamic>.from(entry));
-      }).toList().cast<Interaction>();
+      return value
+          .map((entry) {
+            if (entry is Interaction) return entry;
+            return Interaction.fromMap(Map<String, dynamic>.from(entry));
+          })
+          .toList()
+          .cast<Interaction>();
     }
     return const [];
   }
@@ -210,10 +213,13 @@ class Contact {
       return value;
     }
     if (value is List) {
-      return value.map((entry) {
-        if (entry is PrayerRequest) return entry;
-        return PrayerRequest.fromMap(Map<String, dynamic>.from(entry));
-      }).toList().cast<PrayerRequest>();
+      return value
+          .map((entry) {
+            if (entry is PrayerRequest) return entry;
+            return PrayerRequest.fromMap(Map<String, dynamic>.from(entry));
+          })
+          .toList()
+          .cast<PrayerRequest>();
     }
     return const [];
   }
@@ -223,10 +229,13 @@ class Contact {
       return value;
     }
     if (value is List) {
-      return value.map((entry) {
-        if (entry is Relationship) return entry;
-        return Relationship.fromMap(Map<String, dynamic>.from(entry));
-      }).toList().cast<Relationship>();
+      return value
+          .map((entry) {
+            if (entry is Relationship) return entry;
+            return Relationship.fromMap(Map<String, dynamic>.from(entry));
+          })
+          .toList()
+          .cast<Relationship>();
     }
     return const [];
   }

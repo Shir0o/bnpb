@@ -227,45 +227,45 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                 child: BarChart(
                   BarChartData(
                     maxY: maxY == 0 ? 1 : maxY * 1.2,
-                  gridData: FlGridData(show: false),
-                  borderData: FlBorderData(show: false),
-                  barGroups: entries.asMap().entries.map((entry) {
-                    final index = entry.key;
-                    final value = values[index];
-                    final color = barColors[index % barColors.length];
-                    return BarChartGroupData(
-                      x: index,
-                      barRods: [
-                        BarChartRodData(
-                          toY: value,
-                          width: 18,
-                          borderRadius: BorderRadius.circular(6),
-                          color: color,
-                        ),
-                      ],
-                    );
-                  }).toList(),
-                  titlesData: FlTitlesData(
-                    leftTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        reservedSize: 40,
-                        interval: yInterval,
-                        getTitlesWidget: (value, meta) => Text(
-                          value.toStringAsFixed(0),
-                          style: Theme.of(context).textTheme.bodySmall,
+                    gridData: FlGridData(show: false),
+                    borderData: FlBorderData(show: false),
+                    barGroups: entries.asMap().entries.map((entry) {
+                      final index = entry.key;
+                      final value = values[index];
+                      final color = barColors[index % barColors.length];
+                      return BarChartGroupData(
+                        x: index,
+                        barRods: [
+                          BarChartRodData(
+                            toY: value,
+                            width: 18,
+                            borderRadius: BorderRadius.circular(6),
+                            color: color,
+                          ),
+                        ],
+                      );
+                    }).toList(),
+                    titlesData: FlTitlesData(
+                      leftTitles: AxisTitles(
+                        sideTitles: SideTitles(
+                          showTitles: true,
+                          reservedSize: 40,
+                          interval: yInterval,
+                          getTitlesWidget: (value, meta) => Text(
+                            value.toStringAsFixed(0),
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
                         ),
                       ),
-                    ),
-                    rightTitles: const AxisTitles(
-                      sideTitles: SideTitles(showTitles: false),
-                    ),
-                    topTitles: const AxisTitles(
-                      sideTitles: SideTitles(showTitles: false),
-                    ),
-                    bottomTitles: const AxisTitles(
-                      sideTitles: SideTitles(showTitles: false),
-                    ),
+                      rightTitles: const AxisTitles(
+                        sideTitles: SideTitles(showTitles: false),
+                      ),
+                      topTitles: const AxisTitles(
+                        sideTitles: SideTitles(showTitles: false),
+                      ),
+                      bottomTitles: const AxisTitles(
+                        sideTitles: SideTitles(showTitles: false),
+                      ),
                     ),
                   ),
                 ),
@@ -368,23 +368,23 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                     child: PieChart(
                       PieChartData(
                         sectionsSpace: 2,
-                      centerSpaceRadius: centerSpaceRadius,
-                      sections: entries.asMap().entries.map((entry) {
-                        final value = _resolveValue(
-                          entry.value.totalMinutes,
-                          entry.value.interactionCount,
-                        );
-                        final percentage =
-                            totalValue == 0 ? 0 : (value / totalValue) * 100;
-                        return PieChartSectionData(
-                          value: value,
-                          title: '${percentage.toStringAsFixed(1)}%',
-                          radius: sectionRadius,
-                          titleStyle: Theme.of(context)
-                              .textTheme
-                              .bodyMedium
-                              ?.copyWith(fontWeight: FontWeight.bold),
-                        );
+                        centerSpaceRadius: centerSpaceRadius,
+                        sections: entries.asMap().entries.map((entry) {
+                          final value = _resolveValue(
+                            entry.value.totalMinutes,
+                            entry.value.interactionCount,
+                          );
+                          final percentage =
+                              totalValue == 0 ? 0 : (value / totalValue) * 100;
+                          return PieChartSectionData(
+                            value: value,
+                            title: '${percentage.toStringAsFixed(1)}%',
+                            radius: sectionRadius,
+                            titleStyle: Theme.of(context)
+                                .textTheme
+                                .bodyMedium
+                                ?.copyWith(fontWeight: FontWeight.bold),
+                          );
                         }).toList(),
                       ),
                     ),
@@ -447,72 +447,72 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                 child: LineChart(
                   LineChartData(
                     minY: 0,
-                  maxY: maxY == 0 ? 1 : maxY * 1.2,
-                  gridData: FlGridData(show: false),
-                  borderData: FlBorderData(show: false),
-                  lineBarsData: [
-                    LineChartBarData(
-                      isCurved: true,
-                      color: Theme.of(context).colorScheme.primary,
-                      barWidth: 4,
-                      dotData: FlDotData(show: false),
-                      belowBarData: BarAreaData(
-                        show: true,
-                        color: Theme.of(context)
-                            .colorScheme
-                            .primary
-                            .withValues(alpha: 0.15),
+                    maxY: maxY == 0 ? 1 : maxY * 1.2,
+                    gridData: FlGridData(show: false),
+                    borderData: FlBorderData(show: false),
+                    lineBarsData: [
+                      LineChartBarData(
+                        isCurved: true,
+                        color: Theme.of(context).colorScheme.primary,
+                        barWidth: 4,
+                        dotData: FlDotData(show: false),
+                        belowBarData: BarAreaData(
+                          show: true,
+                          color: Theme.of(context)
+                              .colorScheme
+                              .primary
+                              .withValues(alpha: 0.15),
+                        ),
+                        spots: timeline.asMap().entries.map((entry) {
+                          final index = entry.key.toDouble();
+                          final value = values[entry.key];
+                          return FlSpot(index, value);
+                        }).toList(),
                       ),
-                      spots: timeline.asMap().entries.map((entry) {
-                        final index = entry.key.toDouble();
-                        final value = values[entry.key];
-                        return FlSpot(index, value);
-                      }).toList(),
-                    ),
-                  ],
-                  titlesData: FlTitlesData(
-                    leftTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        reservedSize: 40,
-                        interval: yInterval,
-                        getTitlesWidget: (value, meta) => Text(
-                          value.toStringAsFixed(0),
-                          style: Theme.of(context).textTheme.bodySmall,
+                    ],
+                    titlesData: FlTitlesData(
+                      leftTitles: AxisTitles(
+                        sideTitles: SideTitles(
+                          showTitles: true,
+                          reservedSize: 40,
+                          interval: yInterval,
+                          getTitlesWidget: (value, meta) => Text(
+                            value.toStringAsFixed(0),
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
                         ),
                       ),
-                    ),
-                    rightTitles: const AxisTitles(
-                      sideTitles: SideTitles(showTitles: false),
-                    ),
-                    topTitles: const AxisTitles(
-                      sideTitles: SideTitles(showTitles: false),
-                    ),
-                    bottomTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        reservedSize: 44,
-                        getTitlesWidget: (value, meta) {
-                          final index = value.toInt();
-                          if (index < 0 || index >= timeline.length) {
-                            return const SizedBox.shrink();
-                          }
-                          if (index % labelStep != 0 &&
-                              index != 0 &&
-                              index != timeline.length - 1) {
-                            return const SizedBox.shrink();
-                          }
-                          final date = timeline[index].date;
-                          return Padding(
-                            padding: const EdgeInsets.only(top: 6),
-                            child: Text(
-                              DateFormat.Md().format(date),
-                              style: Theme.of(context).textTheme.bodySmall,
-                            ),
-                          );
-                        },
+                      rightTitles: const AxisTitles(
+                        sideTitles: SideTitles(showTitles: false),
                       ),
-                    ),
+                      topTitles: const AxisTitles(
+                        sideTitles: SideTitles(showTitles: false),
+                      ),
+                      bottomTitles: AxisTitles(
+                        sideTitles: SideTitles(
+                          showTitles: true,
+                          reservedSize: 44,
+                          getTitlesWidget: (value, meta) {
+                            final index = value.toInt();
+                            if (index < 0 || index >= timeline.length) {
+                              return const SizedBox.shrink();
+                            }
+                            if (index % labelStep != 0 &&
+                                index != 0 &&
+                                index != timeline.length - 1) {
+                              return const SizedBox.shrink();
+                            }
+                            final date = timeline[index].date;
+                            return Padding(
+                              padding: const EdgeInsets.only(top: 6),
+                              child: Text(
+                                DateFormat.Md().format(date),
+                                style: Theme.of(context).textTheme.bodySmall,
+                              ),
+                            );
+                          },
+                        ),
+                      ),
                     ),
                   ),
                 ),

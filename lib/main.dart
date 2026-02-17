@@ -1,3 +1,5 @@
+import 'dart:io';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -5,7 +7,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'screens/add_contact_page.dart';
 import 'screens/analytics_page.dart';
 import 'screens/home_page.dart';
-import 'screens/notification_settings_page.dart';
+import 'screens/settings_page.dart';
+import 'services/sync_service.dart';
 import 'repositories/notification_preferences_repository.dart';
 import 'services/onboarding_service.dart';
 import 'services/reminder_coordinator.dart';
@@ -13,13 +16,104 @@ import 'services/reminder_service.dart';
 import 'widgets/security_gate.dart';
 import 'widgets/onboarding_wizard.dart';
 
+import 'dart:ffi';
+import 'package:sqlite3/open.dart';
+
 Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  await ReminderService().initialize();
-  final preferencesRepository = NotificationPreferencesRepository();
-  await preferencesRepository.ensureDefaults();
-  await ReminderCoordinator().refreshAllContacts();
-  runApp(const MyApp());
+  try {
+    if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+      if (Platform.isMacOS) {
+        open.overrideFor(OperatingSystem.macOS, _openOnMacOS);
+      }
+      sqfliteFfiInit();
+      databaseFactory = databaseFactoryFfi;
+    }
+    WidgetsFlutterBinding.ensureInitialized();
+    await ReminderService().initialize();
+    final preferencesRepository = NotificationPreferencesRepository();
+    await preferencesRepository.ensureDefaults();
+    await ReminderCoordinator().refreshAllContacts();
+    runApp(const MyApp());
+  } catch (error, stackTrace) {
+    debugPrint('Initialization error: $error');
+    debugPrint(stackTrace.toString());
+    runApp(ErrorApp(error: error, stackTrace: stackTrace));
+  }
+}
+
+DynamicLibrary _openOnMacOS() {
+  try {
+    return DynamicLibrary.open('SQLCipher.framework/SQLCipher');
+  } catch (_) {
+    try {
+      return DynamicLibrary.open('libsqlcipher.dylib');
+    } catch (e) {
+      debugPrint('Failed to load SQLCipher: $e');
+      rethrow;
+    }
+  }
+}
+
+class ErrorApp extends StatelessWidget {
+  const ErrorApp({super.key, required this.error, required this.stackTrace});
+
+  final Object error;
+  final StackTrace stackTrace;
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        backgroundColor: Colors.white,
+        body: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Application Failed to Start',
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.red,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Error:',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey[800],
+                  ),
+                ),
+                Text(
+                  error.toString(),
+                  style: const TextStyle(color: Colors.black87),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Stack Trace:',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey[800],
+                  ),
+                ),
+                Text(
+                  stackTrace.toString(),
+                  style: const TextStyle(
+                    fontFamily: 'Courier',
+                    fontSize: 12,
+                    color: Colors.black87,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 /// Root of the application
@@ -64,7 +158,7 @@ class MainPage extends StatefulWidget {
   State<MainPage> createState() => _MainPageState();
 }
 
-class _MainPageState extends State<MainPage> {
+class _MainPageState extends State<MainPage> with WidgetsBindingObserver {
   int _currentIndex = 0;
   final OnboardingService _onboardingService = OnboardingService();
   bool _onboardingEvaluated = false;
@@ -74,12 +168,14 @@ class _MainPageState extends State<MainPage> {
     const HomePage(),
     const AnalyticsPage(),
     const AddContactPage(),
-    const NotificationSettingsPage(),
+    const SettingsPage(),
   ];
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _checkForSyncUpdates();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _maybeShowOnboarding();
     });
@@ -210,5 +306,65 @@ class _MainPageState extends State<MainPage> {
         ),
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive) {
+      SyncService().performBackup();
+    } else if (state == AppLifecycleState.resumed) {
+      _checkForSyncUpdates();
+    }
+  }
+
+  Future<void> _checkForSyncUpdates() async {
+    if (await SyncService().checkForUpdates()) {
+      if (!mounted) return;
+
+      final shouldRestore = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Sync Update Available'),
+          content: const Text(
+              'A newer backup was found in your sync folder. Would you like to restore it? This will overwrite local changes made since the last sync.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Ignore'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Restore'),
+            ),
+          ],
+        ),
+      );
+
+      if (shouldRestore == true) {
+        if (!mounted) return;
+        try {
+          await SyncService().restoreFromLatestBackup();
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Restored from sync')),
+            );
+            setState(() {});
+          }
+        } catch (e) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Restore failed: $e')),
+            );
+          }
+        }
+      }
+    }
   }
 }
