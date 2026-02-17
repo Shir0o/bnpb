@@ -1465,7 +1465,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
       // and CustomPaint (in the timeline column) stretches to match it, allowing us to draw
       // the connecting lines to the exact height without expensive pre-calculation.
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           SizedBox(
             width: 48,
@@ -1475,7 +1475,8 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
                 isLast: isLast,
                 color: lineColor,
               ),
-              child: Center(
+              child: Align(
+                alignment: Alignment.topCenter,
                 child: Container(
                   width: 24,
                   height: 24,
@@ -3229,19 +3230,21 @@ class _TimelinePainter extends CustomPainter {
       ..style = PaintingStyle.stroke;
 
     final centerX = size.width / 2;
-    final centerY = size.height / 2;
+    // Icon is 24x24 and aligned to top center.
+    // Center of the icon is at y = 12.
+    const iconCenterY = 12.0;
 
     if (!isFirst) {
       canvas.drawLine(
         Offset(centerX, 0),
-        Offset(centerX, centerY),
+        Offset(centerX, iconCenterY),
         paint,
       );
     }
 
     if (!isLast) {
       canvas.drawLine(
-        Offset(centerX, centerY),
+        Offset(centerX, iconCenterY),
         Offset(centerX, size.height),
         paint,
       );
