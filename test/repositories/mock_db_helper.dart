@@ -40,7 +40,7 @@ class MockDBHelper implements DBHelper {
       throw UnimplementedError();
 
   @override
-  Future<Contact?> getContactById(String id) => throw UnimplementedError();
+  Future<Contact?> getContactById(String id) async => null;
 
   @override
   Future<NotificationPreference> upsertNotificationPreference(
@@ -180,7 +180,7 @@ class MockDBHelper implements DBHelper {
       throw UnimplementedError();
 
   @override
-  Future<List<PrayerList>> getPrayerLists() => throw UnimplementedError();
+  Future<List<PrayerList>> getPrayerLists() async => [];
 
   @override
   Future<PrayerList?> getPrayerList(String id) => throw UnimplementedError();

@@ -41,6 +41,10 @@ class SyncCoordinator {
     await prefs.setString(_lastExportKey, time.toIso8601String());
   }
 
+  Future<Set<String>> getProcessedFiles() async {
+    return _getProcessedFiles();
+  }
+
   Future<Set<String>> _getProcessedFiles() async {
     final prefs = await SharedPreferences.getInstance();
     return (prefs.getStringList(_processedFilesKey) ?? []).toSet();
@@ -90,6 +94,7 @@ class SyncCoordinator {
       'version': 1,
       'deviceId': await _getDeviceId(),
       'timestamp': now.toIso8601String(),
+      'integrityCheck': 'valid', // Marker for integrity
       'contacts': contacts.map((c) => c.toMap()).toList(),
       'interactions': interactions.map((i) => i.toMap()).toList(),
       'prayerRequests': enrichedPrayers,
@@ -106,9 +111,12 @@ class SyncCoordinator {
     // Use a safe timestamp format for filenames
     final successTimestamp = now.millisecondsSinceEpoch;
     final filename = '${deviceId}_${successTimestamp}_data.json';
-    final file = File(p.join(syncDir.path, filename));
 
-    await file.writeAsString(jsonStr);
+    // Atomic Write: Write to temp file then rename
+    final tempFile = File(p.join(syncDir.path, '$filename.tmp'));
+    await tempFile.writeAsString(jsonStr, flush: true);
+    final finalFile = File(p.join(syncDir.path, filename));
+    await tempFile.rename(finalFile.path);
 
     // Update last export time implies we won't export these again
     // We should strictly use 'now' as the new checkpoint.
@@ -168,11 +176,18 @@ class SyncCoordinator {
     for (final file in files) {
       try {
         final content = await file.readAsString();
-        if (content.isEmpty) continue;
+        if (content.isEmpty) {
+          debugPrint('Skipping empty file: ${file.path}');
+          continue;
+        }
 
         final data = jsonDecode(content);
-        // Validate version?
-        // final version = data['version'];
+
+        // Integrity Check
+        if (data is! Map<String, dynamic> || !data.containsKey('version')) {
+          debugPrint('Skipping invalid JSON file: ${file.path}');
+          continue;
+        }
 
         // Transaction? Ideally yes, but merging calls individual ops
         // We can wrap per file?

@@ -124,21 +124,48 @@ class SyncService {
     try {
       // 1. Download files from Google Drive to temp dir
       final remoteFiles = await _googleDrive.listSyncFiles();
+      final processedFiles = await _coordinator.getProcessedFiles();
+
       for (final file in remoteFiles) {
         if (file.id != null && file.name != null) {
+          // Optimization: Skip files we have already processed
+          if (processedFiles.contains(file.name)) {
+            continue;
+          }
+
           final targetFile = File(p.join(syncTempDir.path, file.name));
           await _googleDrive.downloadFile(file.id!, targetFile);
         }
       }
 
       // 2. Run standard SyncCoordinator logic on temp dir
+      // This will import the downloaded files and mark them as processed.
       await _coordinator.importChanges(syncTempDir);
+
+      // Export new local changes
       await _coordinator.exportChanges(syncTempDir);
 
       // 3. Upload new/updated files back to Google Drive
+      // We only want to upload *newly created* export files from this session.
+      // SyncCoordinator exportChanges creates a new file with timestamp.
+      // We should check which files in temp dir are NOT in remoteFiles?
+      // Or just upload everything that isn't in remoteFiles?
+      // Actually, exportChanges creates a NEW file.
+      // We just need to upload files that differ or are new.
+      // Since filenames are unique (timestamped), we just upload files that we don't see in remote list.
+      // Wait, we downloaded some files. We don't want to re-upload them.
+
       final localFiles = syncTempDir.listSync().whereType<File>();
+      final remoteFileNames = remoteFiles.map((f) => f.name).toSet();
+
       for (final file in localFiles) {
-        await _googleDrive.uploadFile(file, p.basename(file.path));
+        final name = p.basename(file.path);
+        // Upload if it's not in remote files (meaning it's a new export)
+        // OR if we suspect it changed (but our files are immutable append-only logs usually).
+        // Best safety: If name is not in remote, upload.
+        if (!remoteFileNames.contains(name)) {
+          await _googleDrive.uploadFile(file, name);
+        }
       }
 
       // 4. Cleanup temp dir

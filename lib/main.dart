@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'dart:io';
 import 'dart:ffi';
 
@@ -175,14 +176,30 @@ class _MainPageState extends State<MainPage> with WidgetsBindingObserver {
     const SettingsPage(),
   ];
 
+  late final AppLifecycleListener _listener;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _checkForSyncUpdates();
+
+    // Initialize AppLifecycleListener to handle exit requests (MacOS Quit)
+    _listener = AppLifecycleListener(
+      onExitRequested: _onExitRequested,
+    );
+
+    // Initial background sync
+    SyncService().performSync();
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _maybeShowOnboarding();
     });
+  }
+
+  Future<AppExitResponse> _onExitRequested() async {
+    // Perform sync before exiting
+    await SyncService().performSync();
+    return AppExitResponse.exit;
   }
 
   Future<void> _maybeShowOnboarding() async {
@@ -314,6 +331,7 @@ class _MainPageState extends State<MainPage> with WidgetsBindingObserver {
 
   @override
   void dispose() {
+    _listener.dispose();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -322,53 +340,11 @@ class _MainPageState extends State<MainPage> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.inactive) {
-      SyncService().performBackup();
+      // Sync on backgrounding (Mobile)
+      SyncService().performSync();
     } else if (state == AppLifecycleState.resumed) {
-      _checkForSyncUpdates();
-    }
-  }
-
-  Future<void> _checkForSyncUpdates() async {
-    if (await SyncService().checkForUpdates()) {
-      if (!mounted) return;
-
-      final shouldRestore = await showDialog<bool>(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Sync Update Available'),
-          content: const Text(
-              'A newer backup was found in your sync folder. Would you like to restore it? This will overwrite local changes made since the last sync.'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Ignore'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('Restore'),
-            ),
-          ],
-        ),
-      );
-
-      if (shouldRestore == true) {
-        if (!mounted) return;
-        try {
-          await SyncService().restoreFromLatestBackup();
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Restored from sync')),
-            );
-            setState(() {});
-          }
-        } catch (e) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Restore failed: $e')),
-            );
-          }
-        }
-      }
+      // Sync on resume
+      SyncService().performSync();
     }
   }
 }
