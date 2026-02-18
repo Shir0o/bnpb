@@ -3,9 +3,13 @@ import 'package:google_fonts/google_fonts.dart';
 
 import 'dart:async';
 
+import '../../db/db_helper.dart';
 import '../../models/contact.dart';
-import '../../services/contact_service.dart';
+import '../../models/interaction.dart';
+import '../../models/prayer_list.dart';
+import '../../models/prayer_request.dart';
 import '../../services/sync_service.dart';
+import '../../widgets/contact_selection_sheet.dart';
 
 class MacOSActiveContactsView extends StatefulWidget {
   const MacOSActiveContactsView({super.key});
@@ -16,6 +20,8 @@ class MacOSActiveContactsView extends StatefulWidget {
 }
 
 class _MacOSActiveContactsViewState extends State<MacOSActiveContactsView> {
+  final DBHelper _dbHelper = DBHelper();
+  PrayerList? _activeList;
   List<Contact> _contacts = [];
   Contact? _selectedContact;
   bool _isLoading = true;
@@ -24,10 +30,10 @@ class _MacOSActiveContactsViewState extends State<MacOSActiveContactsView> {
   @override
   void initState() {
     super.initState();
-    _fetchContacts();
+    _loadPrayerList();
     _syncSubscription = SyncService().onSyncComplete.listen((_) {
       if (mounted) {
-        _fetchContacts();
+        _loadPrayerList();
       }
     });
   }
@@ -38,17 +44,82 @@ class _MacOSActiveContactsViewState extends State<MacOSActiveContactsView> {
     super.dispose();
   }
 
-  Future<void> _fetchContacts() async {
+  Future<void> _loadPrayerList() async {
     setState(() => _isLoading = true);
-    final contacts = await ContactService().getContacts();
+
+    // 1. Get or create a default Prayer List
+    final lists = await _dbHelper.getPrayerLists();
+    PrayerList targetList;
+
+    if (lists.isEmpty) {
+      targetList = PrayerList.create(
+        name: 'My Prayer List',
+        description: 'People I am praying for',
+      );
+      await _dbHelper.insertPrayerList(targetList);
+    } else {
+      targetList = lists.first;
+    }
+
+    // 2. Load contacts for this list
+    await _loadListContacts(targetList);
+  }
+
+  Future<void> _loadListContacts(PrayerList list) async {
+    // Re-fetch list to ensure we have the latest contact IDs
+    final freshList = await _dbHelper.getPrayerList(list.id);
+    if (freshList == null) return;
+
+    final loadedContacts =
+        await _dbHelper.getContacts(contactIds: freshList.contactIds);
+
+    // Initial selected contact logic
+    Contact? nextSelected = _selectedContact;
+    if (loadedContacts.isNotEmpty && _selectedContact == null) {
+      nextSelected = loadedContacts.first;
+    } else if (loadedContacts.isNotEmpty && _selectedContact != null) {
+      // Refresh the selected contact data if it's in the list
+      final found =
+          loadedContacts.where((c) => c.id == _selectedContact!.id).firstOrNull;
+      if (found != null) {
+        nextSelected = found;
+      } else {
+        // If selected contact was removed, select the first one
+        nextSelected = loadedContacts.first;
+      }
+    } else if (loadedContacts.isEmpty) {
+      nextSelected = null;
+    }
+
     if (mounted) {
       setState(() {
-        _contacts = contacts;
-        if (_contacts.isNotEmpty && _selectedContact == null) {
-          _selectedContact = _contacts.first;
-        }
+        _activeList = freshList;
+        _contacts = loadedContacts;
+        _selectedContact = nextSelected;
         _isLoading = false;
       });
+    }
+  }
+
+  Future<void> _onAddContact() async {
+    if (_activeList == null) return;
+
+    final currentIds = _activeList!.contactIds.toSet();
+
+    final selectedIds = await showModalBottomSheet<List<String>>(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => ContactSelectionSheet(
+        alreadySelectedIds: currentIds,
+        title: 'Add to ${_activeList!.name}',
+      ),
+    );
+
+    if (selectedIds != null && selectedIds.isNotEmpty) {
+      for (final id in selectedIds) {
+        await _dbHelper.addContactToPrayerList(_activeList!.id, id);
+      }
+      await _loadListContacts(_activeList!);
     }
   }
 
@@ -92,23 +163,46 @@ class _MacOSActiveContactsViewState extends State<MacOSActiveContactsView> {
                         color: Colors.grey[500],
                       ),
                     ),
-                    Icon(Icons.filter_list,
-                        size: 18, color: Theme.of(context).primaryColor),
+                    Row(
+                      children: [
+                        IconButton(
+                          onPressed: _onAddContact,
+                          icon: const Icon(Icons.add),
+                          iconSize: 20,
+                          color: Theme.of(context).primaryColor,
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                          tooltip: 'Add Contact',
+                        ),
+                        const SizedBox(width: 12),
+                        Icon(Icons.filter_list,
+                            size: 18, color: Theme.of(context).primaryColor),
+                      ],
+                    ),
                   ],
                 ),
               ),
               // List Items
               Expanded(
-                child: ListView.separated(
-                  itemCount: _contacts.length,
-                  separatorBuilder: (context, index) =>
-                      const Divider(height: 1, color: Color(0xFFF3F4F6)),
-                  itemBuilder: (context, index) {
-                    final contact = _contacts[index];
-                    final isSelected = _selectedContact?.id == contact.id;
-                    return _buildContactTile(contact, isSelected);
-                  },
-                ),
+                child: _contacts.isEmpty
+                    ? Center(
+                        child: Text(
+                          'No active contacts.\nClick + to add.',
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.inter(
+                              color: Colors.grey[400], fontSize: 12),
+                        ),
+                      )
+                    : ListView.separated(
+                        itemCount: _contacts.length,
+                        separatorBuilder: (context, index) =>
+                            const Divider(height: 1, color: Color(0xFFF3F4F6)),
+                        itemBuilder: (context, index) {
+                          final contact = _contacts[index];
+                          final isSelected = _selectedContact?.id == contact.id;
+                          return _buildContactTile(contact, isSelected);
+                        },
+                      ),
               ),
             ],
           ),
@@ -209,6 +303,13 @@ class _MacOSActiveContactsViewState extends State<MacOSActiveContactsView> {
   }
 
   Widget _buildDetailView(Contact contact) {
+    final activeRequests = contact.prayerRequests
+        .where((r) => r.status == PrayerRequestStatus.pending)
+        .toList();
+    // Sort interactions by date desc
+    final recentInteractions = List<Interaction>.from(contact.interactions)
+      ..sort((a, b) => b.occurredAt.compareTo(a.occurredAt));
+
     return Container(
       color: Colors.white,
       child: Column(
@@ -279,7 +380,7 @@ class _MacOSActiveContactsViewState extends State<MacOSActiveContactsView> {
                             if (contact.tags.isNotEmpty)
                               const SizedBox(width: 8),
                             Text(
-                              'Last prayed: Today',
+                              'Last prayed: Today', // Placeholder
                               style: GoogleFonts.inter(
                                 fontSize: 12,
                                 color: const Color(0xFF6B7280),
@@ -307,28 +408,32 @@ class _MacOSActiveContactsViewState extends State<MacOSActiveContactsView> {
                 children: [
                   _buildSectionTitle('Active Requests'),
                   const SizedBox(height: 12),
-                  // Placeholders for requests
-                  _buildRequestItem(
-                    'Surgery scheduled for tomorrow morning. Pray for peace and steady hands for the surgeons.',
-                    true,
-                  ),
-                  _buildRequestItem(
-                    'Recovery process in the coming weeks.',
-                    false,
-                  ),
+                  if (activeRequests.isEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 24),
+                      child: Text(
+                        'No active prayer requests.',
+                        style: GoogleFonts.inter(
+                            color: Colors.grey[400], fontSize: 13),
+                      ),
+                    )
+                  else
+                    ...activeRequests.map((req) => _buildRequestItem(req)),
                   const SizedBox(height: 24),
                   const Divider(),
                   const SizedBox(height: 24),
                   _buildSectionTitle('Recent Sessions'),
                   const SizedBox(height: 16),
-                  _buildSessionItem(
-                    'Today, 8:30 AM',
-                    'Spent 15m in prayer. Felt a strong sense of peace regarding the outcome.',
-                  ),
-                  _buildSessionItem(
-                    'Oct 22, 9:00 PM',
-                    'Brief prayer before bed.',
-                  ),
+                  if (recentInteractions.isEmpty)
+                    Text(
+                      'No recent interactions.',
+                      style: GoogleFonts.inter(
+                          color: Colors.grey[400], fontSize: 13),
+                    )
+                  else
+                    ...recentInteractions
+                        .take(5)
+                        .map((i) => _buildSessionItem(i)),
                 ],
               ),
             ),
@@ -350,7 +455,7 @@ class _MacOSActiveContactsViewState extends State<MacOSActiveContactsView> {
     );
   }
 
-  Widget _buildRequestItem(String text, bool checked) {
+  Widget _buildRequestItem(PrayerRequest request) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
@@ -359,17 +464,15 @@ class _MacOSActiveContactsViewState extends State<MacOSActiveContactsView> {
           Padding(
             padding: const EdgeInsets.only(top: 2),
             child: Icon(
-              checked ? Icons.check_box : Icons.check_box_outline_blank,
+              Icons.check_box_outline_blank,
               size: 18,
-              color: checked
-                  ? Theme.of(context).primaryColor
-                  : const Color(0xFFD1D5DB),
+              color: const Color(0xFFD1D5DB),
             ),
           ),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
-              text,
+              request.description,
               style: GoogleFonts.inter(
                 fontSize: 14,
                 color: const Color(0xFF111827),
@@ -382,7 +485,12 @@ class _MacOSActiveContactsViewState extends State<MacOSActiveContactsView> {
     );
   }
 
-  Widget _buildSessionItem(String date, String notes) {
+  Widget _buildSessionItem(Interaction interaction) {
+    // Basic date formatting without extra package for now
+    final date = interaction.occurredAt;
+    final dateStr =
+        '${date.month}/${date.day} ${date.hour}:${date.minute.toString().padLeft(2, '0')}';
+
     return Padding(
       padding: const EdgeInsets.only(left: 8, bottom: 20),
       child: Container(
@@ -394,7 +502,7 @@ class _MacOSActiveContactsViewState extends State<MacOSActiveContactsView> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              date,
+              dateStr,
               style: GoogleFonts.inter(
                 fontSize: 11,
                 fontWeight: FontWeight.w500,
@@ -403,7 +511,7 @@ class _MacOSActiveContactsViewState extends State<MacOSActiveContactsView> {
             ),
             const SizedBox(height: 4),
             Text(
-              notes,
+              interaction.summary,
               style: GoogleFonts.inter(
                 fontSize: 13,
                 color: const Color(0xFF4B5563),
