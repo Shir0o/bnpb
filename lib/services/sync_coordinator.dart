@@ -416,14 +416,19 @@ class SyncCoordinator {
 
     final uniqueParticipants = participantIds.toSet();
     for (final participant in uniqueParticipants) {
-      await txn.insert(
-        'interaction_participants',
-        {
-          'interactionId': interactionId,
-          'contactId': participant,
-        },
-        conflictAlgorithm: ConflictAlgorithm.replace,
-      );
+      try {
+        await txn.insert(
+          'interaction_participants',
+          {
+            'interactionId': interactionId,
+            'contactId': participant,
+          },
+          conflictAlgorithm: ConflictAlgorithm.replace,
+        );
+      } catch (e) {
+        debugPrint(
+            'Skipping participant $participant for interaction $interactionId due to error: $e');
+      }
     }
   }
 

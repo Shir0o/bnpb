@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import 'dart:async';
+
 import '../../models/contact.dart';
 import '../../services/contact_service.dart';
+import '../../services/sync_service.dart';
 
 class MacOSActiveContactsView extends StatefulWidget {
   const MacOSActiveContactsView({super.key});
@@ -16,11 +19,23 @@ class _MacOSActiveContactsViewState extends State<MacOSActiveContactsView> {
   List<Contact> _contacts = [];
   Contact? _selectedContact;
   bool _isLoading = true;
+  StreamSubscription<void>? _syncSubscription;
 
   @override
   void initState() {
     super.initState();
     _fetchContacts();
+    _syncSubscription = SyncService().onSyncComplete.listen((_) {
+      if (mounted) {
+        _fetchContacts();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _syncSubscription?.cancel();
+    super.dispose();
   }
 
   Future<void> _fetchContacts() async {

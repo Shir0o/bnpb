@@ -93,9 +93,7 @@ class GoogleDriveService {
         "name = '$remoteName' and '$folderId' in parents and trashed = false";
     final existingFiles = await _driveApi!.files.list(q: query);
 
-    final driveFile = drive.File()
-      ..name = remoteName
-      ..parents = folderId != null ? [folderId] : null;
+    final driveFile = drive.File()..name = remoteName;
 
     final media = drive.Media(localFile.openRead(), localFile.lengthSync());
 
@@ -105,6 +103,9 @@ class GoogleDriveService {
           uploadMedia: media);
     } else {
       // Create new file
+      if (folderId != null) {
+        driveFile.parents = [folderId];
+      }
       await _driveApi!.files.create(driveFile, uploadMedia: media);
     }
   }

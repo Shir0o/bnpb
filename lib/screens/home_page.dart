@@ -14,6 +14,7 @@ import '../models/prayer_list.dart';
 import '../services/contact_search_service.dart';
 import '../services/contact_service.dart';
 import '../services/reminder_coordinator.dart';
+import '../services/sync_service.dart';
 import '../widgets/backup_restore_sheet.dart';
 import '../widgets/export_options_sheet.dart';
 import '../widgets/home_page_skeleton.dart';
@@ -123,6 +124,7 @@ class _HomePageState extends State<HomePage>
   bool _isInitialLoad = true;
   bool _showRefreshSkeleton = false;
   bool _wasKeyboardVisible = false;
+  StreamSubscription<void>? _syncSubscription;
 
   @override
   void initState() {
@@ -132,6 +134,11 @@ class _HomePageState extends State<HomePage>
     _searchController.addListener(_filterContacts);
     _searchFocusNode.addListener(() {
       setState(() {});
+    });
+    _syncSubscription = SyncService().onSyncComplete.listen((_) {
+      if (mounted) {
+        _fetchContacts(forceRefresh: true);
+      }
     });
   }
 
@@ -823,6 +830,7 @@ class _HomePageState extends State<HomePage>
     WidgetsBinding.instance.removeObserver(this);
     _searchController.dispose();
     _searchFocusNode.dispose();
+    _syncSubscription?.cancel();
     super.dispose();
   }
 

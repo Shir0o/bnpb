@@ -8,6 +8,8 @@ import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'dart:async';
+
 import '../db/db_helper.dart';
 import 'reminder_coordinator.dart';
 
@@ -23,6 +25,11 @@ class SyncService {
 
   final SyncCoordinator _coordinator = SyncCoordinator(DBHelper());
   final GoogleDriveService _googleDrive = GoogleDriveService();
+
+  final StreamController<void> _syncCompleteController =
+      StreamController<void>.broadcast();
+
+  Stream<void> get onSyncComplete => _syncCompleteController.stream;
 
   Future<void> setSyncDirectory() async {
     final result = await FilePicker.platform.getDirectoryPath(
@@ -69,6 +76,16 @@ class SyncService {
         print('Sync failed: $e');
       }
       // We don't rethrow here to prevent app crashes during background/pause syncs
+    } finally {
+      // Always notify listeners that a sync attempt has finished (success or fail,
+      // though typically we want to refresh on success. But even on fail,
+      // maybe we want to stop a spinner? For now, let's treat it as "sync attempt finished").
+      // Actually, if it failed, data might not have changed.
+      // Let's only notify on success for now, or determining if we should refresh.
+      // If we are in the catch block, we logged it.
+      // If we are here, we might have succeeded or caught an error.
+      // Let's notify. UI can decide to refresh.
+      _syncCompleteController.add(null);
     }
   }
 
@@ -164,6 +181,7 @@ class SyncService {
     }
 
     await ReminderCoordinator().refreshAllContacts();
+    _syncCompleteController.add(null);
   }
 
   Future<DateTime?> getLastBackupTime() async {

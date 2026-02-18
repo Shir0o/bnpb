@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Sync &amp; Settings - Cupertino Native</title>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+            extend: {
+                colors: {
+                "primary": "#0d7cf2",
+                "background-light": "#f5f7f8",
+                "background-dark": "#101922",
+                "macos-gray": "#F5F5F7",
+                "macos-border": "#E5E5E5",
+                },
+                fontFamily: {
+                "display": ["Inter", "system-ui", "sans-serif"],
+                "mono": ["SF Mono", "Menlo", "Monaco", "Courier New", "monospace"],
+                },
+                borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                boxShadow: {
+                    'macos': '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
+                }
+            },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Inter', sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #D1D5DB;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #9CA3AF;
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-[#111418] dark:text-white h-screen flex overflow-hidden">
+<aside class="w-[260px] bg-white/80 dark:bg-[#1c2a38]/80 backdrop-blur-xl border-r border-macos-border dark:border-white/10 flex flex-col pt-10 pb-4 select-none shrink-0 z-20">
+<div class="px-4 mb-6">
+<div class="flex items-center gap-2 opacity-50 mb-4 px-2">
+<span class="text-xs font-semibold uppercase tracking-wider">Library</span>
+</div>
+<nav class="space-y-1">
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-black/5 dark:hover:bg-white/5 transition-colors" href="#">
+<span class="material-symbols-outlined text-[20px]">format_list_bulleted</span>
+                    Prayer List
+                </a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-black/5 dark:hover:bg-white/5 transition-colors" href="#">
+<span class="material-symbols-outlined text-[20px]">book</span>
+                    Prayer Diary
+                </a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-black/5 dark:hover:bg-white/5 transition-colors" href="#">
+<span class="material-symbols-outlined text-[20px]">group</span>
+                    Contacts
+                </a>
+</nav>
+</div>
+<div class="px-4 mt-2">
+<div class="flex items-center gap-2 opacity-50 mb-2 px-2">
+<span class="text-xs font-semibold uppercase tracking-wider">System</span>
+</div>
+<nav class="space-y-1">
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium bg-primary text-white shadow-sm" href="#">
+<span class="material-symbols-outlined text-[20px] fill-current">settings</span>
+                    Sync &amp; Settings
+                </a>
+</nav>
+</div>
+</aside>
+<main class="flex-1 flex flex-col min-w-0 bg-white dark:bg-[#101922]">
+<header class="h-[52px] border-b border-macos-border dark:border-white/10 flex items-center justify-between px-6 bg-white/80 dark:bg-[#101922]/80 backdrop-blur-sm z-10 shrink-0">
+<h1 class="text-lg font-bold tracking-tight">Sync &amp; Settings</h1>
+<div class="flex items-center gap-4">
+<div class="flex items-center gap-2 px-3 py-1.5 rounded bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 text-xs font-medium border border-green-200 dark:border-green-800">
+<span class="material-symbols-outlined text-[16px]">cloud_done</span>
+                    Synced
+                </div>
+</div>
+</header>
+<div class="flex-1 overflow-y-auto p-8 sm:p-12">
+<div class="max-w-2xl mx-auto space-y-10">
+<section>
+<h2 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3 pl-1">Storage Configuration</h2>
+<div class="bg-white dark:bg-[#1c2a38] rounded-xl border border-macos-border dark:border-white/10 shadow-macos overflow-hidden">
+<div class="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-red-50 dark:bg-red-900/10">
+<div class="flex-1 min-w-0">
+<div class="flex items-center gap-2 mb-1">
+<label class="block text-sm font-semibold text-red-900 dark:text-red-200">Backup Location</label>
+<span class="material-symbols-outlined text-[18px] text-red-600 dark:text-red-400">error</span>
+</div>
+<p class="text-xs text-red-700 dark:text-red-300">Path not found or invalid permissions.</p>
+<div class="mt-2 text-xs text-red-800 dark:text-red-200 font-mono opacity-70 truncate">
+                                    /Volumes/ExternalDrive/Backups/PrayerSync/
+                                </div>
+</div>
+<button class="shrink-0 bg-white dark:bg-white/10 hover:bg-red-50 dark:hover:bg-red-900/20 text-red-700 dark:text-red-200 text-sm font-medium py-1.5 px-4 rounded-lg border border-red-200 dark:border-red-800 shadow-sm transition-all active:scale-95">
+                                Fix Path...
+                            </button>
+</div>
+</div>
+</section>
+<section>
+<h2 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3 pl-1">Data Management</h2>
+<div class="bg-white dark:bg-[#1c2a38] rounded-xl border border-macos-border dark:border-white/10 shadow-macos overflow-hidden divide-y divide-macos-border dark:divide-white/10">
+<div class="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+<div class="flex-1">
+<label class="block text-sm font-semibold text-gray-900 dark:text-white">Export Data</label>
+<p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Generate a portable JSON dump of all contacts, prayer requests, and session logs.</p>
+</div>
+<button class="shrink-0 bg-white dark:bg-white/10 hover:bg-gray-50 dark:hover:bg-white/20 text-primary dark:text-blue-400 text-sm font-medium py-1.5 px-4 rounded-lg border border-gray-200 dark:border-white/10 shadow-sm transition-all active:scale-95 flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]">download</span>
+                                Export JSON...
+                            </button>
+</div>
+<div class="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+<div class="flex-1">
+<label class="block text-sm font-semibold text-gray-900 dark:text-white">Import Data</label>
+<p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Restore from a previous backup or migrate from another device.</p>
+</div>
+<button class="shrink-0 bg-white dark:bg-white/10 hover:bg-gray-50 dark:hover:bg-white/20 text-gray-700 dark:text-white text-sm font-medium py-1.5 px-4 rounded-lg border border-gray-200 dark:border-white/10 shadow-sm transition-all active:scale-95">
+                                Import...
+                            </button>
+</div>
+</div>
+</section>
+<section>
+<div class="flex items-center justify-between mb-3 pl-1 pr-1">
+<h2 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Sync Status</h2>
+<div class="flex items-center gap-2">
+<span class="relative flex h-2.5 w-2.5">
+<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+<span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500"></span>
+</span>
+<span class="text-xs font-medium text-green-600 dark:text-green-400">Operational</span>
+</div>
+</div>
+<div class="bg-[#1e1e1e] rounded-xl border border-gray-800 shadow-inner overflow-hidden flex flex-col">
+<div class="px-4 py-2 border-b border-gray-700 bg-[#252526] flex items-center gap-2">
+<span class="material-symbols-outlined text-[14px] text-gray-400">terminal</span>
+<span class="text-xs text-gray-400 font-mono">Activity Log</span>
+</div>
+<div class="h-48 overflow-y-auto p-4 font-mono text-xs space-y-2">
+<div class="flex gap-3 text-gray-400">
+<span class="opacity-50 select-none">[10:45:02]</span>
+<span>Initializing file watcher service...</span>
+</div>
+<div class="flex gap-3 text-gray-400">
+<span class="opacity-50 select-none">[10:45:03]</span>
+<span>Database integrity check passed (CRC32: 8A2F90).</span>
+</div>
+<div class="flex gap-3 text-green-400/90">
+<span class="opacity-50 select-none text-gray-500">[10:48:12]</span>
+<span>Detected change in /Users/alexander/Documents/prayers.db</span>
+</div>
+<div class="flex gap-3 text-blue-400/90">
+<span class="opacity-50 select-none text-gray-500">[10:48:13]</span>
+<span>Syncing 2 modifications to local cache...</span>
+</div>
+<div class="flex gap-3 text-gray-300">
+<span class="opacity-50 select-none text-gray-500">[10:48:14]</span>
+<span>Sync complete. Ready.</span>
+</div>
+</div>
+</div>
+<div class="mt-4 flex gap-6 pl-1">
+<div class="flex items-center gap-2 opacity-100">
+<div class="w-3 h-3 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]"></div>
+<span class="text-xs text-gray-600 dark:text-gray-300">File System</span>
+</div>
+<div class="flex items-center gap-2 opacity-50 grayscale">
+<div class="w-3 h-3 rounded-full bg-yellow-500"></div>
+<span class="text-xs text-gray-600 dark:text-gray-300">Background Task</span>
+</div>
+<div class="flex items-center gap-2 opacity-50 grayscale">
+<div class="w-3 h-3 rounded-full bg-red-500"></div>
+<span class="text-xs text-gray-600 dark:text-gray-300">Network</span>
+</div>
+</div>
+</section>
+</div>
+</div>
+</main>
+
+</body></html>

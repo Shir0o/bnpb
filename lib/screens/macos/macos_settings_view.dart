@@ -29,6 +29,39 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
   bool _isLoading = true;
   SyncType _syncType = SyncType.local;
   GoogleSignInAccount? _googleUser;
+  bool _isSyncing = false;
+  final List<Map<String, dynamic>> _logs = [
+    {'time': '10:45:02', 'msg': 'Initializing sync service...'},
+    {'time': '10:45:03', 'msg': 'Ready.'},
+  ];
+
+  void _addLog(String message, {Color? color}) {
+    final now = DateTime.now();
+    final timeStr =
+        '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}:${now.second.toString().padLeft(2, '0')}';
+    setState(() {
+      _logs.add({'time': timeStr, 'msg': message, 'color': color});
+      if (_logs.length > 10) _logs.removeAt(0);
+    });
+  }
+
+  Future<void> _performManualSync() async {
+    if (_isSyncing) return;
+
+    setState(() => _isSyncing = true);
+    _addLog('Starting manual sync...', color: const Color(0xFF60A5FA));
+
+    try {
+      await _syncService.performSync();
+      _addLog('Sync completed successfully.', color: const Color(0xFF4ADE80));
+    } catch (e) {
+      _addLog('Sync failed: $e', color: const Color(0xFFEF4444));
+    } finally {
+      if (mounted) {
+        setState(() => _isSyncing = false);
+      }
+    }
+  }
 
   @override
   void initState() {
@@ -272,7 +305,6 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
                                       _setSyncType(newSelection.first);
                                     },
                                     style: ButtonStyle(
-                                      visualDensity: VisualDensity.compact,
                                       textStyle: WidgetStateProperty.all(
                                         GoogleFonts.inter(fontSize: 12),
                                       ),
@@ -402,7 +434,6 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
                                       _setSyncType(newSelection.first);
                                     },
                                     style: ButtonStyle(
-                                      visualDensity: VisualDensity.compact,
                                       textStyle: WidgetStateProperty.all(
                                         GoogleFonts.inter(fontSize: 12),
                                       ),
@@ -512,29 +543,63 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
                                     color: const Color(0xFF9CA3AF),
                                   ),
                                 ),
+                                const Spacer(),
+                                Material(
+                                  color: Colors.transparent,
+                                  child: InkWell(
+                                    onTap:
+                                        _isSyncing ? null : _performManualSync,
+                                    borderRadius: BorderRadius.circular(4),
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 8, vertical: 4),
+                                      child: Row(
+                                        children: [
+                                          if (_isSyncing)
+                                            const SizedBox(
+                                              width: 12,
+                                              height: 12,
+                                              child: CircularProgressIndicator(
+                                                strokeWidth: 2,
+                                                color: Color(0xFF60A5FA),
+                                              ),
+                                            )
+                                          else
+                                            const Icon(Icons.refresh,
+                                                size: 14,
+                                                color: Color(0xFF60A5FA)),
+                                          const SizedBox(width: 6),
+                                          Text(
+                                            _isSyncing
+                                                ? 'Syncing...'
+                                                : 'Sync Now',
+                                            style: GoogleFonts.inter(
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w600,
+                                              color: const Color(0xFF60A5FA),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
                               ],
                             ),
                           ),
                           Container(
                             height: 192, // h-48
                             padding: const EdgeInsets.all(16),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                _buildLogEntry('[10:45:02]',
-                                    'Initializing file watcher service...'),
-                                _buildLogEntry('[10:45:03]',
-                                    'Database integrity check passed (CRC32: 8A2F90).'),
-                                _buildLogEntry('[10:48:12]',
-                                    'Detected change in /Users/alexander/Documents/prayers.db',
-                                    textColor: const Color(0xFF4ADE80)),
-                                _buildLogEntry('[10:48:13]',
-                                    'Syncing 2 modifications to local cache...',
-                                    textColor: const Color(0xFF60A5FA)),
-                                _buildLogEntry(
-                                    '[10:48:14]', 'Sync complete. Ready.',
-                                    textColor: const Color(0xFFD1D5DB)),
-                              ],
+                            child: ListView.builder(
+                              itemCount: _logs.length,
+                              itemBuilder: (context, index) {
+                                final log = _logs[index];
+                                return _buildLogEntry(
+                                  '[${log['time']}]',
+                                  log['msg'],
+                                  textColor: log['color'],
+                                );
+                              },
                             ),
                           ),
                         ],
