@@ -144,7 +144,7 @@ class MyApp extends StatelessWidget {
         ),
         useMaterial3: true,
       ),
-      themeMode: ThemeMode.system, // Uses system light/dark mode
+      themeMode: Platform.isMacOS ? ThemeMode.light : ThemeMode.system,
       home: SecurityGate(
         child: Platform.isMacOS
             ? const MacOSShell(child: MacOSActiveContactsView())

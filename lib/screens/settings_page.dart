@@ -1,6 +1,8 @@
+import '../services/google_drive_service.dart';
 import '../services/sync_service.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter/material.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 import '../db/db_helper.dart';
 import '../models/contact.dart';
@@ -45,6 +47,8 @@ class _SettingsPageState extends State<SettingsPage> {
   bool _biometricAvailable = false;
   String? _syncPath;
   DateTime? _lastBackupTime;
+  SyncType _syncType = SyncType.local;
+  GoogleSignInAccount? _googleUser;
 
   @override
   void initState() {
@@ -53,13 +57,11 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Future<void> _load() async {
-    setState(() {
-      _isLoading = true;
-    });
-
     await _preferencesRepository.ensureDefaults();
     _syncPath = await SyncService().getSyncDirectory();
     _lastBackupTime = await SyncService().getLastBackupTime();
+    _syncType = await SyncService().getSyncType();
+    _googleUser = await GoogleDriveService().currentUser;
 
     final contacts = await _dbHelper.getContacts();
     contacts.sort(
@@ -469,68 +471,73 @@ class _SettingsPageState extends State<SettingsPage> {
                 "Sync & Backup",
                 style: Theme.of(context).textTheme.titleMedium,
               ),
-              const SizedBox(height: 8),
-              Text(
-                "Automatically backup your encrypted database to a shared folder.",
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
               const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      _syncPath ?? "Sync folder not set",
-                      style: Theme.of(context).textTheme.bodyMedium,
-                      overflow: TextOverflow.ellipsis,
-                    ),
+              SegmentedButton<SyncType>(
+                segments: const [
+                  ButtonSegment(
+                    value: SyncType.local,
+                    label: Text('Local Folder'),
+                    icon: Icon(Icons.folder_outlined),
                   ),
-                  TextButton(
-                    onPressed: () async {
-                      await SyncService().setSyncDirectory();
-                      _load();
-                    },
-                    child: const Text("Set Location"),
+                  ButtonSegment(
+                    value: SyncType.googleDrive,
+                    label: Text('Google Drive'),
+                    icon: Icon(Icons.cloud_outlined),
                   ),
                 ],
+                selected: {_syncType},
+                onSelectionChanged: (Set<SyncType> newSelection) async {
+                  final newType = newSelection.first;
+                  await SyncService().setSyncType(newType);
+                  _load();
+                },
               ),
-              if (_syncPath != null) ...[
-                const Divider(),
+              const SizedBox(height: 16),
+              if (_syncType == SyncType.local)
+                _buildLocalSyncControls(context)
+              else
+                _buildGoogleSyncControls(context),
+              if ((_syncType == SyncType.local && _syncPath != null) ||
+                  (_syncType == SyncType.googleDrive &&
+                      _googleUser != null)) ...[
+                const Divider(height: 32),
                 Text(
                   _lastBackupTime != null
-                      ? "Last backup: ${DateFormat.yMMMd().add_jm().format(_lastBackupTime!)}"
-                      : "No backups found",
+                      ? "Last sync: ${DateFormat.yMMMd().add_jm().format(_lastBackupTime!)}"
+                      : "No sync data found",
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
                 const SizedBox(height: 8),
                 Row(
                   children: [
                     FilledButton.icon(
-                      onPressed: () async {
-                        await SyncService().performBackup();
-                        _load();
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text("Backup complete")),
-                          );
-                        }
-                      },
-                      icon: const Icon(Icons.backup),
-                      label: const Text("Backup Now"),
-                    ),
-                    const SizedBox(width: 8),
-                    OutlinedButton.icon(
-                      onPressed: () async {
-                        await SyncService().restoreFromLatestBackup();
-                        _load();
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                                content: Text("Restored from backup")),
-                          );
-                        }
-                      },
-                      icon: const Icon(Icons.restore),
-                      label: const Text("Restore"),
+                      onPressed: _isUpdating
+                          ? null
+                          : () async {
+                              setState(() => _isUpdating = true);
+                              try {
+                                await SyncService().performSync();
+                                _load();
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                        content: Text("Sync complete")),
+                                  );
+                                }
+                              } catch (e) {
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text("Sync failed: $e")),
+                                  );
+                                }
+                              } finally {
+                                if (mounted) {
+                                  setState(() => _isUpdating = false);
+                                }
+                              }
+                            },
+                      icon: const Icon(Icons.sync),
+                      label: const Text("Sync Now"),
                     ),
                   ],
                 ),
@@ -539,6 +546,92 @@ class _SettingsPageState extends State<SettingsPage> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildLocalSyncControls(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          "Automatically backup your encrypted database to a shared folder.",
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                _syncPath ?? "Sync folder not set",
+                style: Theme.of(context).textTheme.bodyMedium,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            TextButton(
+              onPressed: () async {
+                await SyncService().setSyncDirectory();
+                _load();
+              },
+              child: const Text("Set Location"),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildGoogleSyncControls(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          "Sync your data directly to an app-specific folder in your Google Drive.",
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
+        const SizedBox(height: 12),
+        if (_googleUser == null)
+          FilledButton.icon(
+            onPressed: () async {
+              final user = await GoogleDriveService().signIn();
+              if (user != null) _load();
+            },
+            icon: const Icon(Icons.login),
+            label: const Text("Sign in with Google"),
+          )
+        else
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 16,
+                backgroundImage: _googleUser!.photoUrl != null
+                    ? NetworkImage(_googleUser!.photoUrl!)
+                    : null,
+                child: _googleUser!.photoUrl == null
+                    ? const Icon(Icons.person, size: 20)
+                    : null,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(_googleUser!.displayName ?? "Google User",
+                        style: Theme.of(context).textTheme.bodyMedium),
+                    Text(_googleUser!.email,
+                        style: Theme.of(context).textTheme.bodySmall),
+                  ],
+                ),
+              ),
+              TextButton(
+                onPressed: () async {
+                  await GoogleDriveService().signOut();
+                  _load();
+                },
+                child: const Text("Sign Out"),
+              ),
+            ],
+          ),
+      ],
     );
   }
 
