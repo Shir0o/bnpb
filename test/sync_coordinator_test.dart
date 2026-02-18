@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:bnpb/models/contact.dart';
 import 'package:bnpb/models/interaction.dart';
+import 'package:bnpb/models/prayer_list.dart';
 import 'package:bnpb/models/prayer_request.dart';
 import 'package:bnpb/services/sync_coordinator.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -15,6 +16,13 @@ class FakeDBHelper extends MockDBHelper {
   final List<Contact> contacts = [];
   final List<Interaction> interactions = [];
   final List<PrayerRequest> prayerRequests = [];
+  // Fix: SyncCoordinator calls getPrayerLists during export
+  final List<PrayerList> prayerLists = [];
+
+  @override
+  Future<List<PrayerList>> getPrayerLists() async {
+    return List.from(prayerLists);
+  }
 
   @override
   Future<List<Contact>> getContactsModifiedSince(DateTime? since) async {
