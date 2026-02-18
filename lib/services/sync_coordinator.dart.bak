@@ -20,7 +20,7 @@ class SyncCoordinator {
 
   SyncCoordinator(this._db);
 
-  Future<String> getDeviceId() async {
+  Future<String> _getDeviceId() async {
     final prefs = await SharedPreferences.getInstance();
     var id = prefs.getString(_deviceIdKey);
     if (id == null) {
@@ -91,8 +91,8 @@ class SyncCoordinator {
 
     // Serialize
     final data = {
-      'version': 2,
-      'deviceId': await getDeviceId(),
+      'version': 1,
+      'deviceId': await _getDeviceId(),
       'timestamp': now.toIso8601String(),
       'integrityCheck': 'valid', // Marker for integrity
       'contacts': contacts.map((c) => c.toMap()).toList(),
@@ -106,7 +106,7 @@ class SyncCoordinator {
     };
 
     final jsonStr = jsonEncode(data);
-    final deviceId = await getDeviceId();
+    final deviceId = await _getDeviceId();
     // Filename: deviceId_timestamp_data.json
     // Use a safe timestamp format for filenames
     final successTimestamp = now.millisecondsSinceEpoch;
@@ -150,7 +150,7 @@ class SyncCoordinator {
       return const SyncResult(exportedCount: 0, importedCount: 0);
     }
 
-    final deviceId = await getDeviceId();
+    final deviceId = await _getDeviceId();
     final processed = await _getProcessedFiles();
 
     final files = syncDir.listSync().whereType<File>().where((f) {
@@ -191,7 +191,7 @@ class SyncCoordinator {
 
         // Transaction? Ideally yes, but merging calls individual ops
         // We can wrap per file?
-        await importSyncData(data);
+        await _mergeData(data);
 
         await _markFileProcessed(p.basename(file.path));
         importCount++;
@@ -225,7 +225,7 @@ class SyncCoordinator {
     return 0;
   }
 
-  Future<void> importSyncData(Map<String, dynamic> data) async {
+  Future<void> _mergeData(Map<String, dynamic> data) async {
     // Merge Contacts
     if (data['contacts'] != null) {
       for (final item in (data['contacts'] as List)) {

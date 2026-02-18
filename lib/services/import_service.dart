@@ -5,6 +5,7 @@ import '../db/db_helper.dart';
 import '../models/contact.dart';
 import '../models/prayer_list.dart';
 import 'reminder_coordinator.dart';
+import 'sync_coordinator.dart';
 
 class ImportService {
   final DBHelper _dbHelper = DBHelper();
@@ -16,6 +17,16 @@ class ImportService {
   Future<int> importJsonExport(File file) async {
     final fileContent = await file.readAsString();
     final dynamic jsonData = jsonDecode(fileContent);
+
+    // Check for Version 2 / Unified Sync Format (flat structure)
+    if (jsonData is Map<String, dynamic> &&
+        (jsonData['version'] == 2 || jsonData.containsKey('interactions'))) {
+      final coordinator = SyncCoordinator(_dbHelper);
+      await coordinator.importSyncData(jsonData);
+      await _reminderCoordinator.refreshAllContacts();
+      final contacts = (jsonData['contacts'] as List?) ?? [];
+      return contacts.length;
+    }
 
     List<Contact> restoredContacts = [];
     List<PrayerList> restoredPrayerLists = [];

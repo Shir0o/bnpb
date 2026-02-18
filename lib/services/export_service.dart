@@ -14,6 +14,9 @@ import 'package:pdf/widgets.dart' as pw;
 
 import '../models/contact.dart';
 import '../models/prayer_list.dart';
+import 'sync_coordinator.dart';
+import '../db/db_helper.dart';
+
 
 /// Supported export field identifiers.
 class ExportField {
@@ -151,7 +154,7 @@ class ExportService {
     List<PrayerList>? prayerLists,
   }) async {
     final payload =
-        buildFullExportPayload(contacts, fieldIds, prayerLists: prayerLists);
+        await buildFullExportPayload(contacts, fieldIds, prayerLists: prayerLists);
 
     final file = await _createTempFile('contacts_export', 'json');
     await file.writeAsString(jsonEncode(payload));
@@ -166,7 +169,7 @@ class ExportService {
     List<PrayerList>? prayerLists,
   }) async {
     final payload =
-        buildFullExportPayload(contacts, fieldIds, prayerLists: prayerLists);
+        await buildFullExportPayload(contacts, fieldIds, prayerLists: prayerLists);
 
     final jsonBytes = utf8.encode(jsonEncode(payload));
 
@@ -235,26 +238,66 @@ class ExportService {
 
   /// Builds the export payload. If [prayerLists] is provided, returns a Map wrapper.
   /// Otherwise returns the List of contacts (legacy format).
-  dynamic buildFullExportPayload(
+  /// Builds the export payload. If [prayerLists] is provided, returns a Map wrapper.
+  /// Otherwise returns the List of contacts (legacy format).
+  ///
+  /// This implementation is updated to produce a Version 2 payload matching the
+  /// Auto Sync format, including flat interactions and prayer requests.
+  Future<dynamic> buildFullExportPayload(
     List<Contact> contacts,
     List<String> fieldIds, {
     List<PrayerList>? prayerLists,
-  }) {
+  }) async {
     final contactList = contacts.map((contact) => contact.toJson()).toList();
 
-    if (prayerLists != null && prayerLists.isNotEmpty) {
-      return {
-        'version': 2,
-        'contacts': contactList,
-        'prayerLists': prayerLists.map((list) {
-          final map = list.toMap();
-          map['contactIds'] = list.contactIds;
-          return map;
-        }).toList(),
-      };
+    // Flatten interactions and prayer requests
+    final flatInteractions = <Map<String, dynamic>>[];
+    final flatPrayerRequests = <Map<String, dynamic>>[];
+
+    for (final contact in contacts) {
+      // Map interaction ID to SyncID for prayer request resolution
+      final interactionMap = <int, String>{};
+
+      for (final interaction in contact.interactions) {
+        flatInteractions.add(interaction.toJson());
+        if (interaction.id != null) {
+          interactionMap[interaction.id!] = interaction.syncId;
+        }
+      }
+
+      for (final prayer in contact.prayerRequests) {
+        final map = prayer.toMap();
+        // Resolve interactionSyncId if linked
+        if (prayer.interactionId != null) {
+          final syncId = interactionMap[prayer.interactionId!];
+          if (syncId != null) {
+            map['interactionSyncId'] = syncId;
+          }
+        }
+        flatPrayerRequests.add(map);
+      }
     }
 
-    return contactList;
+    // Get Device ID (reuse SyncCoordinator logic)
+    // Note: We instantiate SyncCoordinator solely to access getDeviceId.
+    // It's stateless for this purpose (uses SharedPreferences).
+    final syncCoordinator = SyncCoordinator(DBHelper());
+    final deviceId = await syncCoordinator.getDeviceId();
+
+    return {
+      'version': 2,
+      'deviceId': deviceId,
+      'timestamp': DateTime.now().toUtc().toIso8601String(),
+      'integrityCheck': 'valid',
+      'contacts': contactList,
+      'interactions': flatInteractions,
+      'prayerRequests': flatPrayerRequests,
+      'prayerLists': (prayerLists ?? []).map((list) {
+        final map = list.toMap();
+        map['contactIds'] = list.contactIds;
+        return map;
+      }).toList(),
+    };
   }
 
   Key _deriveKey(String passphrase) {
