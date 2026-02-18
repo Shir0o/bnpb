@@ -1,12 +1,17 @@
 import 'dart:io';
-import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+import 'dart:ffi';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+import 'package:sqlite3/open.dart';
 
 import 'screens/add_contact_page.dart';
 import 'screens/analytics_page.dart';
 import 'screens/home_page.dart';
+import 'screens/macos/macos_active_contacts_view.dart';
+import 'screens/macos/macos_shell.dart';
 import 'screens/settings_page.dart';
 import 'services/sync_service.dart';
 import 'repositories/notification_preferences_repository.dart';
@@ -15,9 +20,6 @@ import 'services/reminder_coordinator.dart';
 import 'services/reminder_service.dart';
 import 'widgets/security_gate.dart';
 import 'widgets/onboarding_wizard.dart';
-
-import 'dart:ffi';
-import 'package:sqlite3/open.dart';
 
 Future<void> main() async {
   try {
@@ -143,8 +145,10 @@ class MyApp extends StatelessWidget {
         useMaterial3: true,
       ),
       themeMode: ThemeMode.system, // Uses system light/dark mode
-      home: const SecurityGate(
-        child: MainPage(),
+      home: SecurityGate(
+        child: Platform.isMacOS
+            ? const MacOSShell(child: MacOSActiveContactsView())
+            : const MainPage(),
       ),
     );
   }

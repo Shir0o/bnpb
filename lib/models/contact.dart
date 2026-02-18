@@ -162,10 +162,28 @@ class Contact {
 
   // Combines first, middle, and last names into a single full name
   String get fullName {
-    final parts = [firstName, middleName, if (lastName != null) lastName!]
-        .where((name) => name.isNotEmpty)
-        .toList();
+    final parts = [
+      firstName,
+      if (middleName.isNotEmpty) middleName,
+      if (lastName != null) lastName!
+    ].where((name) => name.isNotEmpty).toList();
     return parts.isNotEmpty ? parts.join(' ') : (nickname ?? '');
+  }
+
+  String get displayName =>
+      fullName.isNotEmpty ? fullName : (nickname ?? 'Unknown');
+
+  String get initials {
+    if (firstName.isNotEmpty && lastName != null && lastName!.isNotEmpty) {
+      return '${firstName[0]}${lastName![0]}'.toUpperCase();
+    }
+    if (firstName.isNotEmpty) {
+      return firstName[0].toUpperCase();
+    }
+    if (nickname != null && nickname!.isNotEmpty) {
+      return nickname![0].toUpperCase();
+    }
+    return '?';
   }
 
   static List<String> _parseStringList(dynamic value) {
