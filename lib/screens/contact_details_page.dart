@@ -1459,59 +1459,59 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 12),
-      // Use IntrinsicHeight to allow the Timeline line (CustomPaint) to stretch
-      // to the height of the content card. This is necessary because SliverList
-      // provides unbounded height constraints, so Row's CrossAxisAlignment.stretch
-      // would otherwise force infinite height.
-      child: IntrinsicHeight(
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            SizedBox(
-              width: 48,
-              child: CustomPaint(
-                painter: _TimelinePainter(
-                  isFirst: isFirst,
-                  isLast: isLast,
-                  color: lineColor,
-                ),
-                child: Align(
-                  alignment: Alignment.topCenter,
-                  child: Container(
-                    width: 24,
-                    height: 24,
-                    decoration: BoxDecoration(
-                      color: indicatorColor,
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: theme.colorScheme.surface,
-                        width: 2,
+      // Optimization: Replaced IntrinsicHeight + Row with Stack.
+      // The interaction card (non-positioned child) determines the height of the Stack.
+      // The timeline (CustomPaint) is Positioned to stretch from top to bottom (top: 0, bottom: 0),
+      // avoiding the expensive speculative layout pass of IntrinsicHeight.
+      child: Stack(
+        children: [
+          Positioned(
+            top: 0,
+            bottom: 0,
+            left: 0,
+            width: 48,
+            child: CustomPaint(
+              painter: _TimelinePainter(
+                isFirst: isFirst,
+                isLast: isLast,
+                color: lineColor,
+              ),
+              child: Align(
+                alignment: Alignment.topCenter,
+                child: Container(
+                  width: 24,
+                  height: 24,
+                  decoration: BoxDecoration(
+                    color: indicatorColor,
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: theme.colorScheme.surface,
+                      width: 2,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: indicatorColor.withValues(alpha: 0.28),
+                        blurRadius: 6,
+                        offset: const Offset(0, 3),
                       ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: indicatorColor.withValues(alpha: 0.28),
-                          blurRadius: 6,
-                          offset: const Offset(0, 3),
-                        ),
-                      ],
-                    ),
-                    child: Icon(
-                      interaction.markForPrayer
-                          ? Icons.volunteer_activism
-                          : Icons.event,
-                      size: 16,
-                      color: onIndicatorColor,
-                    ),
+                    ],
+                  ),
+                  child: Icon(
+                    interaction.markForPrayer
+                        ? Icons.volunteer_activism
+                        : Icons.event,
+                    size: 16,
+                    color: onIndicatorColor,
                   ),
                 ),
               ),
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _buildInteractionCard(interaction),
-            ),
-          ],
-        ),
+          ),
+          Padding(
+            padding: const EdgeInsets.only(left: 60), // 48 + 12 spacing
+            child: _buildInteractionCard(interaction),
+          ),
+        ],
       ),
     );
   }
