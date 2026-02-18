@@ -195,16 +195,26 @@ class _MacOSShellState extends State<MacOSShell> {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
             decoration: BoxDecoration(
-              color: isSelected ? const Color(0xFFE3E3E5) : Colors.transparent,
+              color: isSelected
+                  ? const Color(0xFF0D7CF2)
+                  : Colors.transparent, // bg-primary
               borderRadius: BorderRadius.circular(6),
+              boxShadow: isSelected
+                  ? [
+                      const BoxShadow(
+                        color: Color.fromRGBO(0, 0, 0, 0.05), // shadow-sm
+                        offset: Offset(0, 1),
+                        blurRadius: 2,
+                      )
+                    ]
+                  : null,
             ),
             child: Row(
               children: [
                 Icon(
                   icon,
                   size: 20,
-                  color:
-                      isSelected ? const Color(0xFF0D7CF2) : Colors.grey[600],
+                  color: isSelected ? Colors.white : Colors.grey[600],
                 ),
                 const SizedBox(width: 12),
                 Text(
@@ -212,7 +222,7 @@ class _MacOSShellState extends State<MacOSShell> {
                   style: GoogleFonts.inter(
                     fontSize: 13,
                     fontWeight: FontWeight.w500,
-                    color: isSelected ? Colors.black : Colors.grey[700],
+                    color: isSelected ? Colors.white : Colors.grey[700],
                   ),
                 ),
               ],
