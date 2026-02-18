@@ -10,6 +10,7 @@ import '../../db/db_helper.dart';
 import '../../services/backup_service.dart';
 import '../../services/google_drive_service.dart';
 import '../../services/sync_service.dart';
+import '../../services/import_service.dart';
 import '../../widgets/export_options_sheet.dart';
 
 class MacOSSettingsView extends StatefulWidget {
@@ -136,6 +137,16 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
     if (!await file.exists()) return;
 
     try {
+      final extension = p.extension(path).toLowerCase();
+      if (extension == '.json') {
+        final count = await ImportService().importJsonExport(file);
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('$count contacts imported successfully')),
+        );
+        return;
+      }
+
       // Create a snapshot wrapper for the selected file
       final stat = await file.stat();
       final snapshot = BackupSnapshot(

@@ -763,17 +763,44 @@ class DBHelper {
         // We can't easily import UUID here if not imported at top, but let's assume valid model.
       }
 
-      int interactionId;
+      int interactionId = -1;
+      bool exists = false;
+
+      // 1. Try updating by internal ID if present
       if (interaction.id != null) {
-        interactionId = interaction.id!;
-        await txn.update(
+        final count = await txn.update(
           'interactions',
           interactionMap,
           where: 'id = ?',
-          whereArgs: [interactionId],
+          whereArgs: [interaction.id],
         );
-      } else {
-        interactionId = await txn.insert('interactions', interactionMap);
+        if (count > 0) {
+          interactionId = interaction.id!;
+          exists = true;
+        }
+      }
+
+      if (!exists) {
+        // 2. Try finding by syncId to prevent duplicates
+        final existingRows = await txn.query(
+          'interactions',
+          columns: ['id'],
+          where: 'syncId = ?',
+          whereArgs: [interaction.syncId],
+        );
+
+        if (existingRows.isNotEmpty) {
+          interactionId = existingRows.first['id'] as int;
+          await txn.update(
+            'interactions',
+            interactionMap,
+            where: 'id = ?',
+            whereArgs: [interactionId],
+          );
+        } else {
+          // 3. Insert as new record
+          interactionId = await txn.insert('interactions', interactionMap);
+        }
       }
 
       await _replaceInteractionParticipants(txn, interactionId, participants);

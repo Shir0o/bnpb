@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
@@ -10,7 +9,6 @@ import '../db/db_helper.dart';
 import '../models/contact.dart';
 import '../models/interaction.dart';
 import '../models/prayer_request.dart';
-import '../models/prayer_list.dart';
 import '../services/contact_search_service.dart';
 import '../services/contact_service.dart';
 import '../services/reminder_coordinator.dart';
@@ -19,6 +17,7 @@ import '../widgets/backup_restore_sheet.dart';
 import '../widgets/export_options_sheet.dart';
 import '../widgets/home_page_skeleton.dart';
 import '../widgets/people_card.dart';
+import '../services/import_service.dart';
 import 'contact_details_page.dart';
 import 'met_at_lookup_page.dart';
 import 'prayer_diary_page.dart';
@@ -689,88 +688,12 @@ class _HomePageState extends State<HomePage>
         return;
       }
 
-      final file = File(filePath);
-      final fileContent = await file.readAsString();
-      final dynamic jsonData = jsonDecode(fileContent);
-
-      List<Contact> restoredContacts = [];
-      List<PrayerList> restoredPrayerLists = [];
-
-      if (jsonData is List) {
-        restoredContacts = jsonData
-            .map((contactMap) => Contact.fromMap(
-                  Map<String, dynamic>.from(contactMap as Map),
-                ))
-            .toList();
-      } else if (jsonData is Map) {
-        if (jsonData['contacts'] != null) {
-          restoredContacts = (jsonData['contacts'] as List)
-              .map((contactMap) => Contact.fromMap(
-                    Map<String, dynamic>.from(contactMap as Map),
-                  ))
-              .toList();
-        }
-        if (jsonData['prayerLists'] != null) {
-          restoredPrayerLists =
-              (jsonData['prayerLists'] as List).map((listMap) {
-            final map = Map<String, dynamic>.from(listMap as Map);
-            // Handle 'contactIds' manually if needed, but PrayerList.fromMap expects them in map?
-            // PrayerList.fromMap checks for 'contactIds' key.
-            // ExportService puts them in 'contactIds'.
-            return PrayerList.fromMap(map);
-          }).toList();
-        }
-      }
-
-      // Pass 1: Insert all contacts first (without interactions)
-      // This ensures all contact IDs exist before we try to link interactions.
-      for (final contact in restoredContacts) {
-        final contactWithoutInteractions = contact.copyWith(interactions: []);
-        await _dbHelper.insertContact(contactWithoutInteractions);
-      }
-
-      // Pass 2: Insert interactions
-      // Now that all contacts exist, we can safely insert interactions knowing
-      // that foreign key constraints on participant IDs will be satisfied.
-      for (final contact in restoredContacts) {
-        for (final interaction in contact.interactions) {
-          // If the interaction has no ID, let the DB assign one.
-          // If it has an ID, we try to preserve it (which insertInteraction handles if relying on toMap).
-          // Note: The participantIds in the interaction object from JSON
-          // already includes the other participants. We need to ensure the current
-          // contact is also in that list if not already (typically `interactions`
-          // in the Contact object implies this contact is a participant).
-          final participants = {
-            ...interaction.participantIds,
-            contact.id,
-          }.toList();
-
-          final fullInteraction = interaction.copyWith(
-            participantIds: participants,
-          );
-
-          await _dbHelper.insertInteraction(fullInteraction);
-        }
-      }
-
-      // Pass 2.5: Insert Prayer Lists
-      for (final list in restoredPrayerLists) {
-        await _dbHelper.insertPrayerList(list);
-      }
-
-      // Pass 3: Refresh reminders and cues.
-      // This matches what processLegacyContacts used to do.
-      final coordinator = ReminderCoordinator();
-      for (final contact in restoredContacts) {
-        await coordinator.refreshFromSnapshot(contact, silent: true);
-      }
-      await coordinator.scheduleReviewPrompts();
-
+      final count = await ImportService().importJsonExport(File(filePath));
       await _fetchContacts();
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Contacts restored successfully!')),
+        SnackBar(content: Text('$count contacts restored successfully!')),
       );
     } catch (e) {
       if (!mounted) return;
