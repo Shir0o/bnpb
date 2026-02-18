@@ -10,6 +10,7 @@ import '../db/db_helper.dart';
 import '../models/contact.dart';
 import '../models/interaction.dart';
 import '../models/prayer_request.dart';
+import '../models/prayer_list.dart';
 import '../services/contact_search_service.dart';
 import '../services/contact_service.dart';
 import '../services/reminder_coordinator.dart';
@@ -683,13 +684,36 @@ class _HomePageState extends State<HomePage>
 
       final file = File(filePath);
       final fileContent = await file.readAsString();
-      final List<dynamic> jsonData = jsonDecode(fileContent);
+      final dynamic jsonData = jsonDecode(fileContent);
 
-      final restoredContacts = jsonData
-          .map((contactMap) => Contact.fromMap(
-                Map<String, dynamic>.from(contactMap as Map),
-              ))
-          .toList();
+      List<Contact> restoredContacts = [];
+      List<PrayerList> restoredPrayerLists = [];
+
+      if (jsonData is List) {
+        restoredContacts = jsonData
+            .map((contactMap) => Contact.fromMap(
+                  Map<String, dynamic>.from(contactMap as Map),
+                ))
+            .toList();
+      } else if (jsonData is Map) {
+        if (jsonData['contacts'] != null) {
+          restoredContacts = (jsonData['contacts'] as List)
+              .map((contactMap) => Contact.fromMap(
+                    Map<String, dynamic>.from(contactMap as Map),
+                  ))
+              .toList();
+        }
+        if (jsonData['prayerLists'] != null) {
+          restoredPrayerLists =
+              (jsonData['prayerLists'] as List).map((listMap) {
+            final map = Map<String, dynamic>.from(listMap as Map);
+            // Handle 'contactIds' manually if needed, but PrayerList.fromMap expects them in map?
+            // PrayerList.fromMap checks for 'contactIds' key.
+            // ExportService puts them in 'contactIds'.
+            return PrayerList.fromMap(map);
+          }).toList();
+        }
+      }
 
       // Pass 1: Insert all contacts first (without interactions)
       // This ensures all contact IDs exist before we try to link interactions.
@@ -720,6 +744,11 @@ class _HomePageState extends State<HomePage>
 
           await _dbHelper.insertInteraction(fullInteraction);
         }
+      }
+
+      // Pass 2.5: Insert Prayer Lists
+      for (final list in restoredPrayerLists) {
+        await _dbHelper.insertPrayerList(list);
       }
 
       // Pass 3: Refresh reminders and cues.

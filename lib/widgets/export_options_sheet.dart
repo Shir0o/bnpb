@@ -4,7 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../models/contact.dart';
+
 import '../services/export_service.dart';
+import '../db/db_helper.dart';
 
 /// Bottom sheet that lets users choose fields and format when exporting data.
 class ExportOptionsSheet extends StatefulWidget {
@@ -67,7 +69,11 @@ class _ExportOptionsSheetState extends State<ExportOptionsSheet> {
 
   Future<void> _exportJson() async {
     await _performExport(
-      generator: (fields) => _exportService.exportJson(widget.contacts, fields),
+      generator: (fields) async {
+        final prayerLists = await DBHelper().getPrayerLists();
+        return _exportService.exportJson(widget.contacts, fields,
+            prayerLists: prayerLists);
+      },
       description: 'BNPB JSON export ready to review.',
       successMessage: 'JSON export shared securely.',
     );
@@ -83,8 +89,12 @@ class _ExportOptionsSheetState extends State<ExportOptionsSheet> {
     }
 
     await _performExport(
-      generator: (fields) => _exportService.exportEncryptedArchive(
-          widget.contacts, fields, passphrase),
+      generator: (fields) async {
+        final prayerLists = await DBHelper().getPrayerLists();
+        return _exportService.exportEncryptedArchive(
+            widget.contacts, fields, passphrase,
+            prayerLists: prayerLists);
+      },
       description:
           'BNPB encrypted archive. Keep the passphrase safe to decrypt later.',
       successMessage: 'Encrypted archive created and shared.',

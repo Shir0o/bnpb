@@ -34,6 +34,9 @@ class Contact {
   /// Relationships where this contact is the source.
   final List<Relationship> relationships;
 
+  final DateTime updatedAt;
+  final DateTime? deletedAt;
+
   Contact({
     required this.id,
     required this.firstName,
@@ -50,13 +53,16 @@ class Contact {
     List<Interaction>? interactions,
     List<PrayerRequest>? prayerRequests,
     List<Relationship>? relationships,
+    DateTime? updatedAt,
+    this.deletedAt,
   })  : tags = tags ?? const [],
         recognitionKeywords = recognitionKeywords ?? const [],
         recognitionPhotoUris = recognitionPhotoUris ?? const [],
         recognitionReminders = recognitionReminders ?? const [],
         interactions = interactions ?? const [],
         prayerRequests = prayerRequests ?? const [],
-        relationships = relationships ?? const [];
+        relationships = relationships ?? const [],
+        updatedAt = updatedAt ?? DateTime.now();
 
   Contact copyWith({
     String? firstName,
@@ -73,6 +79,8 @@ class Contact {
     List<Interaction>? interactions,
     List<PrayerRequest>? prayerRequests,
     List<Relationship>? relationships,
+    DateTime? updatedAt,
+    DateTime? deletedAt,
   }) {
     return Contact(
       id: id,
@@ -90,6 +98,8 @@ class Contact {
       interactions: interactions ?? this.interactions,
       prayerRequests: prayerRequests ?? this.prayerRequests,
       relationships: relationships ?? this.relationships,
+      updatedAt: updatedAt ?? this.updatedAt,
+      deletedAt: deletedAt ?? this.deletedAt,
     );
   }
 
@@ -112,6 +122,8 @@ class Contact {
       'interactions': interactions.map((entry) => entry.toMap()).toList(),
       'prayerRequests': prayerRequests.map((entry) => entry.toMap()).toList(),
       'relationships': relationships.map((entry) => entry.toMap()).toList(),
+      'updatedAt': updatedAt.toIso8601String(),
+      'deletedAt': deletedAt?.toIso8601String(),
     };
   }
 
@@ -133,6 +145,8 @@ class Contact {
       'interactions': interactions.map((entry) => entry.toJson()).toList(),
       'prayerRequests': prayerRequests.map((entry) => entry.toMap()).toList(),
       'relationships': relationships.map((entry) => entry.toMap()).toList(),
+      'updatedAt': updatedAt.toIso8601String(),
+      'deletedAt': deletedAt?.toIso8601String(),
     };
   }
 
@@ -157,6 +171,12 @@ class Contact {
       interactions: _parseInteractions(map['interactions']),
       prayerRequests: _parsePrayerRequests(map['prayerRequests']),
       relationships: _parseRelationships(map['relationships']),
+      updatedAt: map['updatedAt'] != null
+          ? DateTime.parse(map['updatedAt'] as String)
+          : DateTime.now(),
+      deletedAt: map['deletedAt'] != null
+          ? DateTime.parse(map['deletedAt'] as String)
+          : null,
     );
   }
 

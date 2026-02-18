@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:uuid/uuid.dart';
 
 /// Represents the lifecycle state for a [PrayerRequest].
 enum PrayerRequestStatus {
@@ -36,10 +37,14 @@ extension PrayerRequestStatusX on PrayerRequestStatus {
 }
 
 /// Captures a prayer request linked to a contact and optionally an interaction.
+///
+/// [syncId] is a unique identifier (UUID) for sync purposes,
+/// separate from the [id] which is the local database primary key.
 @immutable
 class PrayerRequest {
-  const PrayerRequest({
+  PrayerRequest({
     this.id,
+    String? syncId,
     required this.contactId,
     this.interactionId,
     required this.description,
@@ -48,10 +53,16 @@ class PrayerRequest {
     this.answeredAt,
     this.category,
     this.reflectionNotes,
-  });
+    DateTime? updatedAt,
+    this.deletedAt,
+  })  : syncId = syncId ?? const Uuid().v4(),
+        updatedAt = updatedAt ?? DateTime.now();
 
   /// Row identifier when persisted.
   final int? id;
+
+  /// Unique identifier for sync purposes.
+  final String syncId;
 
   /// Contact that owns the prayer request.
   final String contactId;
@@ -77,9 +88,16 @@ class PrayerRequest {
   /// Reflection or gratitude notes once the prayer is answered.
   final String? reflectionNotes;
 
+  /// Last update timestamp for sync.
+  final DateTime updatedAt;
+
+  /// Soft delete timestamp for sync.
+  final DateTime? deletedAt;
+
   /// Returns a copy with selective overrides.
   PrayerRequest copyWith({
     int? id,
+    String? syncId,
     String? contactId,
     int? interactionId,
     String? description,
@@ -88,9 +106,12 @@ class PrayerRequest {
     DateTime? answeredAt,
     String? category,
     String? reflectionNotes,
+    DateTime? updatedAt,
+    DateTime? deletedAt,
   }) {
     return PrayerRequest(
       id: id ?? this.id,
+      syncId: syncId ?? this.syncId,
       contactId: contactId ?? this.contactId,
       interactionId: interactionId ?? this.interactionId,
       description: description ?? this.description,
@@ -99,12 +120,15 @@ class PrayerRequest {
       answeredAt: answeredAt ?? this.answeredAt,
       category: category ?? this.category,
       reflectionNotes: reflectionNotes ?? this.reflectionNotes,
+      updatedAt: updatedAt ?? this.updatedAt,
+      deletedAt: deletedAt ?? this.deletedAt,
     );
   }
 
   /// Serialises the request for persistence.
   Map<String, dynamic> toMap({bool includeId = true}) {
     final map = <String, dynamic>{
+      'syncId': syncId,
       'contactId': contactId,
       'interactionId': interactionId,
       'description': description,
@@ -113,6 +137,8 @@ class PrayerRequest {
       'answeredAt': answeredAt?.toIso8601String(),
       'category': category,
       'reflectionNotes': reflectionNotes,
+      'updatedAt': updatedAt.toIso8601String(),
+      'deletedAt': deletedAt?.toIso8601String(),
     };
     if (includeId && id != null) {
       map['id'] = id;
@@ -124,6 +150,7 @@ class PrayerRequest {
   factory PrayerRequest.fromMap(Map<String, dynamic> map) {
     return PrayerRequest(
       id: map['id'] as int?,
+      syncId: map['syncId'] as String?,
       contactId: map['contactId'] as String,
       interactionId: map['interactionId'] as int?,
       description: map['description'] as String,
@@ -134,6 +161,12 @@ class PrayerRequest {
           : null,
       category: map['category'] as String?,
       reflectionNotes: map['reflectionNotes'] as String?,
+      updatedAt: map['updatedAt'] != null
+          ? DateTime.parse(map['updatedAt'] as String)
+          : null,
+      deletedAt: map['deletedAt'] != null
+          ? DateTime.parse(map['deletedAt'] as String)
+          : null,
     );
   }
 }

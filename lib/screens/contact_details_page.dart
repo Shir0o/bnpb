@@ -1459,58 +1459,59 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 12),
-      // Optimized: Replaced IntrinsicHeight with CustomPaint to improve scrolling performance.
-      // IntrinsicHeight forces a double layout pass (O(N^2) depth).
-      // By using Row(crossAxisAlignment: stretch), the height is determined by the content card,
-      // and CustomPaint (in the timeline column) stretches to match it, allowing us to draw
-      // the connecting lines to the exact height without expensive pre-calculation.
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          SizedBox(
-            width: 48,
-            child: CustomPaint(
-              painter: _TimelinePainter(
-                isFirst: isFirst,
-                isLast: isLast,
-                color: lineColor,
-              ),
-              child: Align(
-                alignment: Alignment.topCenter,
-                child: Container(
-                  width: 24,
-                  height: 24,
-                  decoration: BoxDecoration(
-                    color: indicatorColor,
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: theme.colorScheme.surface,
-                      width: 2,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: indicatorColor.withValues(alpha: 0.28),
-                        blurRadius: 6,
-                        offset: const Offset(0, 3),
+      // Use IntrinsicHeight to allow the Timeline line (CustomPaint) to stretch
+      // to the height of the content card. This is necessary because SliverList
+      // provides unbounded height constraints, so Row's CrossAxisAlignment.stretch
+      // would otherwise force infinite height.
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            SizedBox(
+              width: 48,
+              child: CustomPaint(
+                painter: _TimelinePainter(
+                  isFirst: isFirst,
+                  isLast: isLast,
+                  color: lineColor,
+                ),
+                child: Align(
+                  alignment: Alignment.topCenter,
+                  child: Container(
+                    width: 24,
+                    height: 24,
+                    decoration: BoxDecoration(
+                      color: indicatorColor,
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: theme.colorScheme.surface,
+                        width: 2,
                       ),
-                    ],
-                  ),
-                  child: Icon(
-                    interaction.markForPrayer
-                        ? Icons.volunteer_activism
-                        : Icons.event,
-                    size: 16,
-                    color: onIndicatorColor,
+                      boxShadow: [
+                        BoxShadow(
+                          color: indicatorColor.withValues(alpha: 0.28),
+                          blurRadius: 6,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    child: Icon(
+                      interaction.markForPrayer
+                          ? Icons.volunteer_activism
+                          : Icons.event,
+                      size: 16,
+                      color: onIndicatorColor,
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: _buildInteractionCard(interaction),
-          ),
-        ],
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildInteractionCard(interaction),
+            ),
+          ],
+        ),
       ),
     );
   }

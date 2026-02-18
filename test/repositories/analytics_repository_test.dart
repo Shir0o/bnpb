@@ -11,6 +11,8 @@ class _TestDBHelper extends MockDBHelper {
   Future<List<Contact>> getContacts({
     String? contactId,
     List<String>? contactIds,
+    DateTime? updatedSince,
+    bool includeDeleted = false,
   }) async {
     if (contactId != null) {
       return contacts.where((c) => c.id == contactId).toList();

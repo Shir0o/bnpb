@@ -19,7 +19,7 @@ class MockDBHelper implements DBHelper {
   Future<void> insertContact(Contact contact) => throw UnimplementedError();
 
   @override
-  Future<void> upsertContactRowForTest(
+  Future<void> upsertContactFromSync(
     DatabaseExecutor txn,
     Contact contact, {
     required bool isUpdate,
@@ -30,7 +30,13 @@ class MockDBHelper implements DBHelper {
   Future<List<Contact>> getContacts({
     String? contactId,
     List<String>? contactIds,
+    DateTime? updatedSince,
+    bool includeDeleted = false,
   }) =>
+      throw UnimplementedError();
+
+  @override
+  Future<List<Contact>> getContactsModifiedSince(DateTime? since) =>
       throw UnimplementedError();
 
   @override
@@ -94,7 +100,13 @@ class MockDBHelper implements DBHelper {
     DateTime? start,
     DateTime? end,
     String? contactId,
+    DateTime? updatedSince,
+    bool includeDeleted = false,
   }) =>
+      throw UnimplementedError();
+
+  @override
+  Future<List<Interaction>> getInteractionsModifiedSince(DateTime? since) =>
       throw UnimplementedError();
 
   @override
@@ -117,14 +129,19 @@ class MockDBHelper implements DBHelper {
     PrayerRequestStatus? status,
     int? limit,
     bool latestAnsweredFirst = false,
+    DateTime? updatedSince,
+    bool includeDeleted = false,
   }) =>
       throw UnimplementedError();
 
   @override
+  Future<List<PrayerRequest>> getPrayerRequestsModifiedSince(DateTime? since) =>
+      throw UnimplementedError();
+
+  @override
   Future<List<PrayerRequest>> getPrayerRequestsForContact(
-    String contactId, {
-    bool includeArchived = false,
-  }) =>
+    String contactId,
+  ) =>
       throw UnimplementedError();
 
   @override

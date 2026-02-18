@@ -47,13 +47,21 @@ class PrayerList {
 
   static PrayerList fromMap(Map<String, dynamic> map,
       {List<String>? contactIds}) {
+    // If contactIds arg is null, try to read from map
+    var ids = contactIds;
+    if (ids == null && map['contactIds'] != null) {
+      if (map['contactIds'] is List) {
+        ids = (map['contactIds'] as List).map((e) => e.toString()).toList();
+      }
+    }
+
     return PrayerList(
       id: map['id'] as String,
       name: map['name'] as String,
       description: map['description'] as String?,
       color: map['color'] as String?,
       displayIndex: map['displayIndex'] as int? ?? 0,
-      contactIds: contactIds,
+      contactIds: ids,
     );
   }
 

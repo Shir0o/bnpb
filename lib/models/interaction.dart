@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:uuid/uuid.dart';
 
 /// Describes the source for an [AttachmentReference].
 enum AttachmentSource {
@@ -57,9 +58,13 @@ class AttachmentReference {
 
 /// Represents an interaction with a contact, including where, when and how it
 /// took place.
+///
+/// [syncId] is a unique identifier (UUID) for sync purposes,
+/// separate from the [id] which is the local database primary key.
 class Interaction {
-  const Interaction({
+  Interaction({
     this.id,
+    String? syncId,
     required this.occurredAt,
     required this.summary,
     required this.medium,
@@ -70,9 +75,13 @@ class Interaction {
     this.durationMinutes,
     this.category,
     this.participantIds = const [],
-  });
+    DateTime? updatedAt,
+    this.deletedAt,
+  })  : syncId = syncId ?? const Uuid().v4(),
+        updatedAt = updatedAt ?? DateTime.now();
 
   final int? id;
+  final String syncId;
   final List<String> participantIds;
   final DateTime occurredAt;
   final String summary;
@@ -83,9 +92,12 @@ class Interaction {
   final DateTime? followUpAt;
   final int? durationMinutes;
   final String? category;
+  final DateTime updatedAt;
+  final DateTime? deletedAt;
 
   Interaction copyWith({
     int? id,
+    String? syncId,
     DateTime? occurredAt,
     String? summary,
     String? medium,
@@ -96,9 +108,12 @@ class Interaction {
     int? durationMinutes,
     String? category,
     List<String>? participantIds,
+    DateTime? updatedAt,
+    DateTime? deletedAt,
   }) {
     return Interaction(
       id: id ?? this.id,
+      syncId: syncId ?? this.syncId,
       occurredAt: occurredAt ?? this.occurredAt,
       summary: summary ?? this.summary,
       medium: medium ?? this.medium,
@@ -109,6 +124,8 @@ class Interaction {
       durationMinutes: durationMinutes ?? this.durationMinutes,
       category: category ?? this.category,
       participantIds: participantIds ?? this.participantIds,
+      updatedAt: updatedAt ?? this.updatedAt,
+      deletedAt: deletedAt ?? this.deletedAt,
     );
   }
 
@@ -130,6 +147,7 @@ class Interaction {
   /// without additional decoding.
   Map<String, dynamic> toJson({bool includeId = true}) {
     final map = <String, dynamic>{
+      'syncId': syncId,
       'occurredAt': occurredAt.toIso8601String(),
       'summary': summary,
       'medium': medium,
@@ -141,6 +159,8 @@ class Interaction {
       'durationMinutes': durationMinutes,
       'category': category,
       'participantIds': participantIds,
+      'updatedAt': updatedAt.toIso8601String(),
+      'deletedAt': deletedAt?.toIso8601String(),
     };
     if (includeId && id != null) {
       map['id'] = id;
@@ -168,6 +188,7 @@ class Interaction {
 
     return Interaction(
       id: map['id'] as int?,
+      syncId: map['syncId'] as String?,
       occurredAt: DateTime.parse(map['occurredAt'] as String),
       summary: map['summary'] as String,
       medium: map['medium'] as String,
@@ -180,6 +201,12 @@ class Interaction {
       durationMinutes: _parseOptionalInt(map['durationMinutes']),
       category: _parseOptionalCategory(map['category']),
       participantIds: _parseParticipantIds(map['participantIds']),
+      updatedAt: map['updatedAt'] != null
+          ? DateTime.parse(map['updatedAt'] as String)
+          : null,
+      deletedAt: map['deletedAt'] != null
+          ? DateTime.parse(map['deletedAt'] as String)
+          : null,
     );
   }
 

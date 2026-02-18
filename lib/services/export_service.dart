@@ -13,6 +13,7 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
 import '../models/contact.dart';
+import '../models/prayer_list.dart';
 
 /// Supported export field identifiers.
 class ExportField {
@@ -146,9 +147,11 @@ class ExportService {
   /// Generates a JSON file containing the selected fields for each contact.
   Future<File> exportJson(
     List<Contact> contacts,
-    List<String> fieldIds,
-  ) async {
-    final payload = buildExportPayload(contacts, fieldIds);
+    List<String> fieldIds, {
+    List<PrayerList>? prayerLists,
+  }) async {
+    final payload =
+        buildFullExportPayload(contacts, fieldIds, prayerLists: prayerLists);
 
     final file = await _createTempFile('contacts_export', 'json');
     await file.writeAsString(jsonEncode(payload));
@@ -159,9 +162,11 @@ class ExportService {
   Future<File> exportEncryptedArchive(
     List<Contact> contacts,
     List<String> fieldIds,
-    String passphrase,
-  ) async {
-    final payload = buildExportPayload(contacts, fieldIds);
+    String passphrase, {
+    List<PrayerList>? prayerLists,
+  }) async {
+    final payload =
+        buildFullExportPayload(contacts, fieldIds, prayerLists: prayerLists);
 
     final jsonBytes = utf8.encode(jsonEncode(payload));
 
@@ -226,6 +231,30 @@ class ExportService {
   ) {
     // Ignore field selection for JSON/Archive export to ensure full data backup.
     return contacts.map((contact) => contact.toJson()).toList();
+  }
+
+  /// Builds the export payload. If [prayerLists] is provided, returns a Map wrapper.
+  /// Otherwise returns the List of contacts (legacy format).
+  dynamic buildFullExportPayload(
+    List<Contact> contacts,
+    List<String> fieldIds, {
+    List<PrayerList>? prayerLists,
+  }) {
+    final contactList = contacts.map((contact) => contact.toJson()).toList();
+
+    if (prayerLists != null && prayerLists.isNotEmpty) {
+      return {
+        'version': 2,
+        'contacts': contactList,
+        'prayerLists': prayerLists.map((list) {
+          final map = list.toMap();
+          map['contactIds'] = list.contactIds;
+          return map;
+        }).toList(),
+      };
+    }
+
+    return contactList;
   }
 
   Key _deriveKey(String passphrase) {

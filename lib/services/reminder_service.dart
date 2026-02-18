@@ -29,6 +29,7 @@ class ReminderService {
   SharedPreferences? _sharedPreferences;
 
   bool _initialized = false;
+  Future<void>? _initializationFuture;
   bool _timeZoneInitialized = false;
   bool _notificationsSupported = true;
   bool? _exactAlarmOptIn;
@@ -39,6 +40,15 @@ class ReminderService {
       return;
     }
 
+    if (_initializationFuture != null) {
+      return _initializationFuture;
+    }
+
+    _initializationFuture = _doInitialize();
+    await _initializationFuture;
+  }
+
+  Future<void> _doInitialize() async {
     try {
       const androidSettings =
           AndroidInitializationSettings('@mipmap/ic_launcher');
@@ -56,14 +66,22 @@ class ReminderService {
 
       await _plugin.initialize(settings);
       await _configureLocalTimeZone();
-      await _requestPlatformPermissions();
+      try {
+        await _requestPlatformPermissions();
+      } catch (e) {
+        // Ignore permission errors during init, we can request later or functionality just won't work
+        debugPrint('Permission request failed: $e');
+      }
 
       _initialized = true;
     } catch (error, stackTrace) {
       if (_markUnsupported('initialize', error, stackTrace)) {
         return;
       }
-      rethrow;
+      rethrow; // Do not swallow other errors? Or maybe we should to keep app alive.
+    } finally {
+      // If failed, we might want to allow retrying?
+      // For now, let's keep _initializationFuture set so we don't retry endlessly if it's a hard crash.
     }
   }
 

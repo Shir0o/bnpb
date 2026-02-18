@@ -35,22 +35,21 @@ void main() {
       ],
     );
 
-    await helper.upsertContactRowForTest(
+    await helper.upsertContactFromSync(
       fakeTxn,
       contact,
       isUpdate: false,
     );
 
-    final interactionDeletes = fakeTxn.deleteCalls
-        .where((call) => call.table == 'interactions')
+    // Expect soft delete (update) instead of hard delete
+    final interactionUpdates = fakeTxn.updateCalls
+        .where((call) =>
+            call.table == 'interactions' &&
+            call.values.containsKey('deletedAt'))
         .toList();
-    expect(interactionDeletes, hasLength(1));
-    expect(interactionDeletes, hasLength(1));
-    expect(
-      interactionDeletes.first.where,
-      'id NOT IN (SELECT interactionId FROM interaction_participants)',
-    );
-    expect(interactionDeletes.first.whereArgs, isNull);
+    expect(interactionUpdates, hasLength(1));
+    expect(interactionUpdates.first.where, 'id = ?');
+    expect(interactionUpdates.first.whereArgs, [999]);
 
     final interactionInserts = fakeTxn.insertCalls
         .where((call) => call.table == 'interactions')
@@ -73,11 +72,12 @@ void main() {
     expect(encoded['source'], AttachmentSource.local.name);
     expect(encoded['label'], 'Conversation notes');
 
-    final deleteIndex = fakeTxn.callOrder.indexOf('delete:interactions');
+    final updateIndex = fakeTxn.callOrder.indexOf('update:interactions');
     final insertIndex = fakeTxn.callOrder.indexOf('insert:interactions');
-    expect(deleteIndex, isNonNegative);
+    expect(updateIndex, isNonNegative);
     expect(insertIndex, isNonNegative);
-    expect(insertIndex, lessThan(deleteIndex));
+    // Insert happens before soft delete of orphans (which happens at end)
+    expect(insertIndex, lessThan(updateIndex));
   });
 
   test('Interaction.fromMap accepts markForPrayer in multiple formats', () {
@@ -125,9 +125,19 @@ class _DeleteCall {
   final List<Object?>? whereArgs;
 }
 
+class _UpdateCall {
+  _UpdateCall(this.table, this.values, this.where, this.whereArgs);
+
+  final String table;
+  final Map<String, Object?> values;
+  final String? where;
+  final List<Object?>? whereArgs;
+}
+
 class _FakeTransaction implements DatabaseExecutor {
   final List<_InsertCall> insertCalls = [];
   final List<_DeleteCall> deleteCalls = [];
+  final List<_UpdateCall> updateCalls = [];
   final List<String> callOrder = [];
 
   @override
@@ -164,6 +174,9 @@ class _FakeTransaction implements DatabaseExecutor {
     ConflictAlgorithm? conflictAlgorithm,
   }) async {
     callOrder.add('update:$table');
+    updateCalls.add(
+      _UpdateCall(table, Map<String, Object?>.from(values), where, whereArgs),
+    );
     return 1;
   }
 
@@ -197,8 +210,14 @@ class _FakeTransaction implements DatabaseExecutor {
   Future<List<Map<String, Object?>>> rawQuery(
     String sql, [
     List<Object?>? arguments,
-  ]) {
-    throw UnimplementedError();
+  ]) async {
+    if (sql.contains('SELECT id FROM interactions WHERE id NOT IN')) {
+      // Mock finding an orphan
+      return [
+        {'id': 999}
+      ];
+    }
+    return [];
   }
 
   @override
