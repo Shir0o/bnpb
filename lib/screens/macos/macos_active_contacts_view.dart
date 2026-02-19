@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import 'dart:async';
 
+import 'contact_view_helpers.dart';
 import '../../db/db_helper.dart';
 import '../../models/contact.dart';
 import '../../models/interaction.dart';
@@ -10,6 +11,12 @@ import '../../models/prayer_list.dart';
 import '../../models/prayer_request.dart';
 import '../../services/sync_service.dart';
 import '../../widgets/contact_selection_sheet.dart';
+
+const kPrimaryColor = Color(0xFF0D7CF2);
+const kBorderColor = Color(0xFFE5E5E5);
+const kBgLight = Color(0xFFF5F7F8);
+const kTextPrimary = Color(0xFF1C1C1E);
+const kTextSecondary = Color(0xFF9CA3AF);
 
 class MacOSActiveContactsView extends StatefulWidget {
   const MacOSActiveContactsView({super.key});
@@ -218,12 +225,44 @@ class _MacOSActiveContactsViewState extends State<MacOSActiveContactsView> {
   }
 
   Widget _buildContactTile(Contact contact, bool isSelected) {
+    // Determine last update
+    // Interactions are sorted (newest first)
+    final lastInteraction =
+        contact.interactions.isNotEmpty ? contact.interactions.first : null;
+    final lastRequest = contact.prayerRequests.isNotEmpty
+        ? contact.prayerRequests.last
+        : null; // Ideally requests should be sorted
+
+    DateTime? lastDate;
+    String snippet = '';
+
+    if (lastInteraction != null) {
+      lastDate = lastInteraction.occurredAt;
+      snippet = lastInteraction.summary;
+    }
+
+    if (lastRequest != null) {
+      if (lastDate == null || lastRequest.requestedAt.isAfter(lastDate)) {
+        lastDate = lastRequest.requestedAt;
+        snippet = lastRequest.description;
+      }
+    }
+
+    if (lastDate == null) {
+      snippet = contact.notes ?? '';
+      lastDate = contact.updatedAt;
+    }
+
+    final dateStr = formatDate(lastDate);
+
+    final avatarColor = getAvatarColor(contact.initials);
+
     return Material(
-      color: isSelected ? const Color(0xFF0D7CF2) : Colors.white,
+      color: isSelected ? kPrimaryColor : Colors.white,
       child: InkWell(
         onTap: () => setState(() => _selectedContact = contact),
         child: Padding(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -233,9 +272,12 @@ class _MacOSActiveContactsViewState extends State<MacOSActiveContactsView> {
                 height: 40,
                 decoration: BoxDecoration(
                   color: isSelected
-                      ? Colors.white.withValues(alpha: 0.2)
-                      : Colors.blue[50],
+                      ? Colors.white.withOpacity(0.2)
+                      : avatarColor.withOpacity(0.1),
                   shape: BoxShape.circle,
+                  border: isSelected
+                      ? Border.all(color: Colors.white.withOpacity(0.2))
+                      : null,
                 ),
                 alignment: Alignment.center,
                 child: Text(
@@ -243,7 +285,7 @@ class _MacOSActiveContactsViewState extends State<MacOSActiveContactsView> {
                   style: GoogleFonts.inter(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
-                    color: isSelected ? Colors.white : Colors.blue[700],
+                    color: isSelected ? Colors.white : avatarColor,
                   ),
                 ),
               ),
@@ -255,6 +297,7 @@ class _MacOSActiveContactsViewState extends State<MacOSActiveContactsView> {
                   children: [
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Flexible(
                           child: Text(
@@ -268,26 +311,29 @@ class _MacOSActiveContactsViewState extends State<MacOSActiveContactsView> {
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        Text(
-                          'Today', // Placeholder for last interaction
-                          style: GoogleFonts.inter(
-                            fontSize: 11,
-                            color: isSelected
-                                ? Colors.white.withValues(alpha: 0.9)
-                                : Colors.grey[400],
+                        Padding(
+                          padding: const EdgeInsets.only(left: 4),
+                          child: Text(
+                            dateStr,
+                            style: GoogleFonts.inter(
+                              fontSize: 11,
+                              color: isSelected
+                                  ? Colors.white.withOpacity(0.9)
+                                  : kTextSecondary,
+                            ),
                           ),
                         ),
                       ],
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      'Last notes here...', // Placeholder
+                      snippet,
                       style: GoogleFonts.inter(
                         fontSize: 12,
                         color: isSelected
-                            ? Colors.white.withValues(alpha: 0.8)
+                            ? Colors.white.withOpacity(0.8)
                             : Colors.grey[500],
-                        height: 1.4,
+                        height: 1.3,
                       ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
@@ -310,15 +356,17 @@ class _MacOSActiveContactsViewState extends State<MacOSActiveContactsView> {
     final recentInteractions = List<Interaction>.from(contact.interactions)
       ..sort((a, b) => b.occurredAt.compareTo(a.occurredAt));
 
+    final avatarColor = getAvatarColor(contact.initials);
+
     return Container(
       color: Colors.white,
       child: Column(
         children: [
           // Header
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
             decoration: const BoxDecoration(
-              border: Border(bottom: BorderSide(color: Color(0xFFF3F4F6))),
+              border: Border(bottom: BorderSide(color: kBorderColor)),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -328,20 +376,28 @@ class _MacOSActiveContactsViewState extends State<MacOSActiveContactsView> {
                     Container(
                       width: 48,
                       height: 48,
-                      decoration: const BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [Color(0xFF60A5FA), Color(0xFF2563EB)],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        shape: BoxShape.circle,
-                      ),
+                      decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              avatarColor.withOpacity(0.7),
+                              avatarColor,
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                                color: avatarColor.withOpacity(0.3),
+                                blurRadius: 8,
+                                offset: const Offset(0, 4))
+                          ]),
                       alignment: Alignment.center,
                       child: Text(
                         contact.initials,
                         style: GoogleFonts.inter(
                           fontSize: 18,
-                          fontWeight: FontWeight.w500,
+                          fontWeight: FontWeight.w600,
                           color: Colors.white,
                         ),
                       ),
@@ -355,35 +411,36 @@ class _MacOSActiveContactsViewState extends State<MacOSActiveContactsView> {
                           style: GoogleFonts.inter(
                             fontSize: 20,
                             fontWeight: FontWeight.bold,
-                            color: const Color(0xFF111827),
+                            color: kTextPrimary,
                           ),
                         ),
                         const SizedBox(height: 4),
                         Row(
                           children: [
                             if (contact.tags.isNotEmpty)
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 8, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFF3F4F6),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Text(
-                                  contact.tags.first,
-                                  style: GoogleFonts.inter(
-                                    fontSize: 11,
-                                    color: const Color(0xFF6B7280),
-                                  ),
-                                ),
-                              ),
-                            if (contact.tags.isNotEmpty)
-                              const SizedBox(width: 8),
+                              ...contact.tags.map((tag) => Padding(
+                                    padding: const EdgeInsets.only(right: 8),
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 8, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: kBgLight,
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: Text(
+                                        tag,
+                                        style: GoogleFonts.inter(
+                                          fontSize: 11,
+                                          color: kTextSecondary,
+                                        ),
+                                      ),
+                                    ),
+                                  )),
                             Text(
                               'Last prayed: Today', // Placeholder
                               style: GoogleFonts.inter(
                                 fontSize: 12,
-                                color: const Color(0xFF6B7280),
+                                color: kTextSecondary,
                               ),
                             ),
                           ],
@@ -394,7 +451,16 @@ class _MacOSActiveContactsViewState extends State<MacOSActiveContactsView> {
                 ),
                 TextButton(
                   onPressed: () {}, // Edit action
-                  child: Text('Edit', style: GoogleFonts.inter(fontSize: 13)),
+                  style: TextButton.styleFrom(
+                      foregroundColor: kPrimaryColor,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 8),
+                      backgroundColor: Colors.blue.withOpacity(0.05),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(6))),
+                  child: Text('Edit',
+                      style: GoogleFonts.inter(
+                          fontSize: 13, fontWeight: FontWeight.w500)),
                 ),
               ],
             ),
@@ -402,7 +468,7 @@ class _MacOSActiveContactsViewState extends State<MacOSActiveContactsView> {
           // Content Scroll
           Expanded(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -420,9 +486,20 @@ class _MacOSActiveContactsViewState extends State<MacOSActiveContactsView> {
                   else
                     ...activeRequests.map((req) => _buildRequestItem(req)),
                   const SizedBox(height: 24),
-                  const Divider(),
+                  const Divider(color: kBorderColor, height: 1),
                   const SizedBox(height: 24),
-                  _buildSectionTitle('Recent Sessions'),
+                  Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                    _buildSectionTitle('Interactions'),
+                    IconButton(
+                        onPressed: () {},
+                        icon: const Icon(Icons.add, size: 18),
+                        color: kTextSecondary,
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                        style: IconButton.styleFrom(
+                            hoverColor: kBgLight,
+                            padding: const EdgeInsets.all(4)))
+                  ]),
                   const SizedBox(height: 16),
                   if (recentInteractions.isEmpty)
                     Text(
@@ -432,8 +509,8 @@ class _MacOSActiveContactsViewState extends State<MacOSActiveContactsView> {
                     )
                   else
                     ...recentInteractions
-                        .take(5)
-                        .map((i) => _buildSessionItem(i)),
+                        .take(10)
+                        .map((i) => _buildSessionItem(i, contact)),
                 ],
               ),
             ),
@@ -475,7 +552,7 @@ class _MacOSActiveContactsViewState extends State<MacOSActiveContactsView> {
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(4)),
                   side: const BorderSide(color: Color(0xFFD1D5DB)),
-                  activeColor: Theme.of(context).primaryColor,
+                  activeColor: kPrimaryColor,
                   materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   visualDensity: VisualDensity.compact,
                 )),
@@ -489,7 +566,7 @@ class _MacOSActiveContactsViewState extends State<MacOSActiveContactsView> {
                 request.description,
                 style: GoogleFonts.inter(
                   fontSize: 14,
-                  color: const Color(0xFF111827),
+                  color: kTextPrimary,
                   height: 1.5, // Relaxed line height for readability
                 ),
               ),
@@ -500,64 +577,77 @@ class _MacOSActiveContactsViewState extends State<MacOSActiveContactsView> {
     );
   }
 
-  Widget _buildSessionItem(Interaction interaction) {
-    // Basic date formatting
-    final date = interaction.occurredAt;
-    final dateStr =
-        '${date.month}/${date.day} ${date.hour}:${date.minute.toString().padLeft(2, '0')}'; // TODO: Use better formatter
-
-    return Stack(
-      children: [
-        // Timeline line
-        Positioned(
-          top: 0,
-          bottom: 0,
-          left: 3, // Center of the 8px width dot is at 4px. Line width 2px.
-          child: Container(
-            width: 2,
-            color: const Color(0xFFF3F4F6),
+  Widget _buildSessionItem(Interaction interaction, Contact contact) {
+    return Padding(
+        padding: const EdgeInsets.only(bottom: 12),
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.transparent),
+            // Hover effect can be done with InkWell or logic, simplified here
           ),
-        ),
-        // Content
-        Padding(
-          padding: const EdgeInsets.only(left: 20, bottom: 24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                dateStr,
-                style: GoogleFonts.inter(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w500,
-                  color: const Color(0xFF9CA3AF),
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                interaction.summary,
-                style: GoogleFonts.inter(
-                  fontSize: 13,
-                  color: const Color(0xFF4B5563),
-                  height: 1.4,
-                ),
-              ),
-            ],
-          ),
-        ),
-        // Timeline Dot
-        Positioned(
-          left: 0,
-          top: 5, // Visual alignment with the date text
-          child: Container(
-            width: 8,
-            height: 8,
-            decoration: const BoxDecoration(
-              color: Color(0xFFE5E7EB), // Gray-200 equivalent
-              shape: BoxShape.circle,
-            ),
-          ),
-        ),
-      ],
-    );
+          child:
+              Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            // Avatar
+            Container(
+                margin: const EdgeInsets.only(top: 2),
+                child: SizedBox(
+                    width: 28,
+                    height: 28,
+                    child: Stack(children: [
+                      Container(
+                        decoration: BoxDecoration(
+                          color: getAvatarColor(contact.initials).withOpacity(0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(contact.initials,
+                            style: GoogleFonts.inter(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: getAvatarColor(contact.initials))),
+                      )
+                    ]))),
+            const SizedBox(width: 12),
+            Expanded(
+                child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                  Row(children: [
+                    Text(formatDate(interaction.occurredAt),
+                        style: GoogleFonts.inter(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: kTextPrimary)),
+                    const SizedBox(width: 8),
+                    Text(formatTime(interaction.occurredAt),
+                        style: GoogleFonts.inter(
+                            fontSize: 11, color: kTextSecondary)),
+                    const SizedBox(width: 8),
+                    Icon(getMediumIcon(interaction.medium),
+                        size: 14, color: kTextSecondary),
+                    if (interaction.durationMinutes != null) ...[
+                      const Spacer(),
+                      Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                              color: kBgLight,
+                              borderRadius: BorderRadius.circular(4)),
+                          child: Text('${interaction.durationMinutes}m',
+                              style: GoogleFonts.inter(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w500,
+                                  color: kTextSecondary)))
+                    ]
+                  ]),
+                  const SizedBox(height: 4),
+                  Text(interaction.summary,
+                      style: GoogleFonts.inter(
+                          fontSize: 13, color: Colors.grey[700], height: 1.5))
+                ]))
+          ]),
+        ));
   }
 }
