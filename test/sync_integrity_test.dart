@@ -29,6 +29,14 @@ class IntegritySpyDBHelper extends MockDBHelper {
 
   @override
   Future<Contact?> getContactById(String id) async => null;
+  @override
+  Future<List<Contact>> getContacts({
+    String? contactId,
+    List<String>? contactIds,
+    DateTime? updatedSince,
+    bool includeDeleted = false,
+  }) async =>
+      [];
 
   Future<void> _createSchema(Database db) async {
     // Minimal schema for SyncCoordinator
@@ -73,7 +81,9 @@ class IntegritySpyDBHelper extends MockDBHelper {
         name TEXT NOT NULL,
         description TEXT,
         color TEXT,
-        displayIndex INTEGER NOT NULL DEFAULT 0
+        displayIndex INTEGER NOT NULL DEFAULT 0,
+        updatedAt TEXT NOT NULL DEFAULT (datetime('now')),
+        deletedAt TEXT
       )
     ''');
 

@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:bnpb/db/db_helper.dart';
+import 'package:bnpb/models/prayer_list.dart';
 import 'package:bnpb/models/contact.dart';
 import 'package:bnpb/models/interaction.dart';
 import 'package:bnpb/models/prayer_request.dart';
@@ -66,8 +67,8 @@ class SyncCoordinator {
     final interactions = await _db.getInteractionsModifiedSince(lastExport);
     final prayers = await _db.getPrayerRequestsModifiedSince(lastExport);
 
-    // Prayer Lists don't have timestamps so we export all of them every time.
-    final prayerLists = await _db.getPrayerLists();
+    // Prayer Lists now have timestamps.
+    final prayerLists = await _db.getPrayerListsModifiedSince(lastExport);
 
     if (contacts.isEmpty &&
         interactions.isEmpty &&
@@ -498,59 +499,58 @@ class SyncCoordinator {
     return null;
   }
 
+
   Future<void> _mergePrayerLists(List<dynamic> remoteLists) async {
-    // PrayerLists do not have timestamps in current schema.
-    // Strategy: "Sync All" / "Merge by ID".
-    // We will iterate remote lists and upsert them.
-    // If a local list with same ID exists, we overwrite (remote wins) or merge?
-    // Without timestamps, we can't determine "newer".
-    // Assume Remote Wins for now to allow restore.
-
-    // Also, we don't track deletions because we don't have deletedAt.
-    // So deleted lists won't be deleted on import unless we diff?
-    // Diffing against "all local" is risky if we are doing incremental sync.
-    // But here we are just adding back missing ones.
-
     final db = await _db.database;
 
     for (final item in remoteLists) {
       final map = Map<String, dynamic>.from(item);
-      // PrayerList.fromMap expects contactIds separately if they are not in the map key 'contactIds'?
-      // toMap() creates: id, name, description, color, displayIndex.
-      // It does NOT include members in toMap by default in the model?
-      // CHECK PrayerList.toMap in model.
-      // Yes, toMap() does not include contactIds.
-      // But we need to export them!
+      final remoteList = PrayerList.fromMap(map);
 
-      // I need to update exportChanges to include members in the map manually.
+      final localRows = await db.query(
+        'prayer_lists',
+        where: 'id = ?',
+        whereArgs: [remoteList.id],
+      );
 
-      final contactIds =
-          (map['contactIds'] as List?)?.map((e) => e.toString()).toList();
-
-      // We upsert the list info
-      final listMap = {
-        'id': map['id'],
-        'name': map['name'],
-        'description': map['description'],
-        'color': map['color'],
-        'displayIndex': map['displayIndex'],
-      };
-
-      await db.insert('prayer_lists', listMap,
-          conflictAlgorithm: ConflictAlgorithm.replace);
-
-      // Update members
-      if (contactIds != null) {
-        final listId = map['id'] as String;
-        await db.delete('prayer_list_members',
-            where: 'listId = ?', whereArgs: [listId]);
-        for (final cid in contactIds) {
-          await db.insert(
-            'prayer_list_members',
-            {'listId': listId, 'contactId': cid},
-            conflictAlgorithm: ConflictAlgorithm.ignore,
-          );
+      bool shouldUpdate = false;
+      if (localRows.isEmpty) {
+        if (remoteList.deletedAt == null) {
+          shouldUpdate = true;
         }
+      } else {
+        // Found locally (could be soft deleted)
+        // PrayerList.fromMap parses timestamps correctly from DB row
+        final localList = PrayerList.fromMap(localRows.first);
+
+        if (remoteList.updatedAt.isAfter(localList.updatedAt)) {
+          shouldUpdate = true;
+        }
+      }
+
+      if (shouldUpdate) {
+        await _upsertPrayerList(db, remoteList);
+      }
+    }
+  }
+
+  Future<void> _upsertPrayerList(DatabaseExecutor db, PrayerList list) async {
+    await db.insert(
+      'prayer_lists',
+      list.toMap(),
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+
+    // Update members: remove old, add new
+    await db.delete('prayer_list_members', where: 'listId = ?', whereArgs: [list.id]);
+
+    if (list.deletedAt == null) {
+      for (final cid in list.contactIds) {
+        await db.insert(
+          'prayer_list_members',
+          {'listId': list.id, 'contactId': cid},
+          conflictAlgorithm: ConflictAlgorithm.ignore,
+        );
       }
     }
   }

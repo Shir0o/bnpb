@@ -16,12 +16,17 @@ class FakeDBHelper extends MockDBHelper {
   final List<Contact> contacts = [];
   final List<Interaction> interactions = [];
   final List<PrayerRequest> prayerRequests = [];
-  // Fix: SyncCoordinator calls getPrayerLists during export
   final List<PrayerList> prayerLists = [];
 
   @override
   Future<List<PrayerList>> getPrayerLists() async {
     return List.from(prayerLists);
+  }
+
+  @override
+  Future<List<PrayerList>> getPrayerListsModifiedSince(DateTime? since) async {
+    if (since == null) return List.from(prayerLists);
+    return prayerLists.where((l) => l.updatedAt.isAfter(since)).toList();
   }
 
   @override
@@ -119,14 +124,16 @@ void main() {
     // First export to set baseline
     await coordinator.exportChanges(tempDir);
 
-    // Clear directory (remove the first export file to verifying no NEW file is created)
-    // Actually SyncCoordinator will create a file ONLY if data found.
-    // But if we run export again immediately, since timestamp matches, we might get empty result?
-    // Wait, SyncCoordinator stores `lastExportTime`.
-    // It queries `since` lastExportTime.
+    // We need to wait a tiny bit to ensure timestamps differ if we rely on "modifiedSince"
+    // However, the test uses fake DB which returns EVERYTHING if since is null (first run).
+    // Second run, since is NOT null (set by first run).
+    // fakeDb filters by strict > comparison usually? Or >=?
+    // The implementation: return items where updatedAt.isAfter(since).
+    // Since updatedAt is 'now' from first run, and second run sets 'since' to 'now'.
+    // If we run immediately, updatedAt == since, so isAfter is false.
+    // So getContactsModifiedSince returns empty list.
 
-    // We need to ensure time advances if we rely on "since".
-    // Or just clear the temp dir files.
+    // Clear directory (remove the first export file to verifying no NEW file is created)
     final filesBefore = await tempDir
         .list()
         .where((e) =>
@@ -138,12 +145,6 @@ void main() {
     }
 
     // Run export again immediately (no data change)
-    // It should NOT create a file if logic prevents empty exports?
-    // My implementation:
-    // final contacts = await _db.getContactsModifiedSince(lastExport);
-    // ...
-    // if (contacts.isEmpty && interactions.isEmpty && ...) return;
-
     await coordinator.exportChanges(tempDir);
 
     final filesAfter = await tempDir
