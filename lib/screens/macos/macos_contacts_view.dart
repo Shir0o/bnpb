@@ -6,8 +6,8 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../db/db_helper.dart';
 import '../../models/contact.dart';
 import '../../services/sync_service.dart';
-import '../add_contact_page.dart';
 import 'contact_card.dart';
+import 'macos_contact_details_page.dart';
 
 class MacOSContactsView extends StatefulWidget {
   const MacOSContactsView({super.key});
@@ -87,7 +87,7 @@ class _MacOSContactsViewState extends State<MacOSContactsView> {
   Future<void> _onAddContact() async {
     await Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => const AddContactPage()),
+      MaterialPageRoute(builder: (context) => const MacOSContactDetailsPage()),
     );
     _loadContacts();
   }
@@ -222,9 +222,15 @@ class _MacOSContactsViewState extends State<MacOSContactsView> {
                       final contact = filtered[index];
                       return ContactCard(
                         contact: contact,
-                        onTap: () {
-                          // TODO: Handle selection or navigation to detail view
-                          // For now, maybe just select it visually if I add selection state
+                        onTap: () async {
+                          await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  MacOSContactDetailsPage(contact: contact),
+                            ),
+                          );
+                          _loadContacts(refresh: true);
                         },
                       );
                     },
