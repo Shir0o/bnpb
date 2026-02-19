@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'macos_prayer_diary_view.dart';
 import 'macos_settings_view.dart';
 import 'macos_active_contacts_view.dart';
+import 'macos_contacts_view.dart';
 import '../../services/sync_service.dart';
 
 class MacOSShell extends StatefulWidget {
@@ -106,12 +107,7 @@ class _MacOSShellState extends State<MacOSShell> {
       case 1:
         return const MacOSPrayerDiaryView();
       case 2:
-        return Column(
-          children: [
-            _buildShellHeader(),
-            Expanded(child: widget.child),
-          ],
-        );
+        return const MacOSContactsView();
       case 3:
         return const MacOSSettingsView();
       default:
