@@ -14,7 +14,7 @@ import '../services/security_service.dart';
 import '../constants/storage.dart';
 
 class DBHelper {
-  static const _dbVersion = 14;
+  static const _dbVersion = 15;
 
   static final DBHelper _instance = DBHelper._();
   static Database? _database;
@@ -65,6 +65,8 @@ class DBHelper {
         lastName TEXT NULL,
         nickname TEXT,
         location TEXT,
+        email TEXT,
+        phone TEXT,
         keywords TEXT,
         photoCues TEXT,
         reminderCues TEXT,
@@ -478,6 +480,11 @@ class DBHelper {
       await db.execute(
           "CREATE UNIQUE INDEX IF NOT EXISTS idx_prayer_requests_syncId ON prayer_requests(syncId)");
     }
+
+    if (oldVersion < 15) {
+      await db.execute('ALTER TABLE contacts ADD COLUMN email TEXT');
+      await db.execute('ALTER TABLE contacts ADD COLUMN phone TEXT');
+    }
   }
 
   // -------------------------------------------------------------
@@ -617,6 +624,8 @@ class DBHelper {
       'lastName': contact.lastName,
       'nickname': contact.nickname,
       'location': contact.location,
+      'email': contact.email,
+      'phone': contact.phone,
       'keywords': jsonEncode(contact.recognitionKeywords),
       'photoCues': jsonEncode(contact.recognitionPhotoUris),
       'reminderCues': jsonEncode(contact.recognitionReminders),

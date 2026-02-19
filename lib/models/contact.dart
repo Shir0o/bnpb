@@ -13,6 +13,8 @@ class Contact {
   final String? lastName; // Last name of the contact (optional)
   final String? nickname; // Nickname of the contact (optional)
   final String? location; // Location of the contact (optional)
+  final String? email; // Email address of the contact (optional)
+  final String? phone; // Phone number of the contact (optional)
   final String? firstMeetingNotes; // Notes from the first meeting
   final String? notes; // General notes about the contact
   final List<String> tags; // Relationship tags
@@ -44,6 +46,8 @@ class Contact {
     this.lastName,
     this.nickname,
     this.location,
+    this.email,
+    this.phone,
     this.firstMeetingNotes,
     this.notes,
     List<String>? tags,
@@ -70,6 +74,8 @@ class Contact {
     String? lastName,
     String? nickname,
     String? location,
+    String? email,
+    String? phone,
     String? firstMeetingNotes,
     String? notes,
     List<String>? tags,
@@ -89,6 +95,8 @@ class Contact {
       lastName: lastName ?? this.lastName,
       nickname: nickname ?? this.nickname,
       location: location ?? this.location,
+      email: email ?? this.email,
+      phone: phone ?? this.phone,
       firstMeetingNotes: firstMeetingNotes ?? this.firstMeetingNotes,
       notes: notes ?? this.notes,
       tags: tags ?? this.tags,
@@ -113,6 +121,8 @@ class Contact {
       'lastName': lastName,
       'nickname': nickname,
       'location': location,
+      'email': email,
+      'phone': phone,
       'firstMeetingNotes': firstMeetingNotes,
       'notes': notes,
       'tags': tags,
@@ -136,6 +146,8 @@ class Contact {
       'lastName': lastName,
       'nickname': nickname,
       'location': location,
+      'email': email,
+      'phone': phone,
       'firstMeetingNotes': firstMeetingNotes,
       'notes': notes,
       'tags': tags,
@@ -162,6 +174,8 @@ class Contact {
       lastName: map['lastName'] as String?,
       nickname: map['nickname'] as String?,
       location: map['location'] as String?,
+      email: map['email'] as String?,
+      phone: map['phone'] as String?,
       firstMeetingNotes: map['firstMeetingNotes'] as String?,
       notes: map['notes'] as String?,
       tags: _parseStringList(map['tags']),
