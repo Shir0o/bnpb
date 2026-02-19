@@ -17,7 +17,6 @@ import '../models/prayer_list.dart';
 import 'sync_coordinator.dart';
 import '../db/db_helper.dart';
 
-
 /// Supported export field identifiers.
 class ExportField {
   const ExportField({
@@ -153,8 +152,8 @@ class ExportService {
     List<String> fieldIds, {
     List<PrayerList>? prayerLists,
   }) async {
-    final payload =
-        await buildFullExportPayload(contacts, fieldIds, prayerLists: prayerLists);
+    final payload = await buildFullExportPayload(contacts, fieldIds,
+        prayerLists: prayerLists);
 
     final file = await _createTempFile('contacts_export', 'json');
     await file.writeAsString(jsonEncode(payload));
@@ -168,8 +167,8 @@ class ExportService {
     String passphrase, {
     List<PrayerList>? prayerLists,
   }) async {
-    final payload =
-        await buildFullExportPayload(contacts, fieldIds, prayerLists: prayerLists);
+    final payload = await buildFullExportPayload(contacts, fieldIds,
+        prayerLists: prayerLists);
 
     final jsonBytes = utf8.encode(jsonEncode(payload));
 

@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Prayer Sync - Diary</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script>
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "primary": "#007AFF", // System Blue
+              "background-light": "#f5f7f8",
+              "background-dark": "#101922",
+              "surface-light": "#ffffff",
+              "surface-dark": "#1e2936",
+              "separator-light": "#e5e7eb",
+              "separator-dark": "#374151",
+              "success": "#34C759", // System Green
+              "system-gray": "#8E8E93", // System Gray
+            },
+            fontFamily: {
+              "display": ["SF Pro Text", "Inter", "system-ui", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "sans-serif"],
+              "mono": ["SF Mono", "Menlo", "Monaco", "Courier New", "monospace"],
+            },
+            boxShadow: {
+                'window': '0 0 0 1px rgba(0,0,0,0.05), 0 2px 8px rgba(0,0,0,0.1)',
+            }
+          },
+        },
+      }
+    </script>
+<style>::-webkit-scrollbar {
+            width: 10px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 10px;
+            border: 3px solid transparent;
+            background-clip: content-box;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(0, 0, 0, 0.3);
+            background-clip: content-box;
+        }
+        .dark ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            background-clip: content-box;
+        }.glass-sidebar {
+            background: rgba(245, 247, 248, 0.85);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+        }
+        .dark .glass-sidebar {
+            background: rgba(16, 25, 34, 0.85);
+        }.sticky-header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+        .dark .sticky-header {
+            background: rgba(30, 41, 54, 0.95);
+        }.entry-card .edit-btn {
+            opacity: 0;
+            transition: opacity 0.2s ease-in-out;
+        }
+        .entry-card:hover .edit-btn {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 dark:bg-gray-900 h-screen w-screen overflow-hidden flex items-center justify-center font-display antialiased text-gray-900 dark:text-white selection:bg-primary/20 selection:text-primary">
+<div class="relative flex h-[85vh] w-[90vw] max-w-[1200px] overflow-hidden rounded-xl bg-surface-light dark:bg-surface-dark shadow-2xl border border-gray-200 dark:border-gray-800 flex-row">
+<aside class="glass-sidebar w-[260px] flex flex-col border-r border-separator-light dark:border-separator-dark shrink-0 z-20">
+<div class="h-[52px] flex items-center px-4 gap-2">
+<div class="w-3 h-3 rounded-full bg-[#FF5F57] border border-[#E0443E]"></div>
+<div class="w-3 h-3 rounded-full bg-[#FEBC2E] border border-[#D89E24]"></div>
+<div class="w-3 h-3 rounded-full bg-[#28C840] border border-[#1AAB29]"></div>
+</div>
+<nav class="flex-1 px-3 py-2 space-y-6 overflow-y-auto">
+<div>
+<h3 class="px-2 text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Library</h3>
+<ul class="space-y-0.5">
+<li>
+<a class="flex items-center gap-3 px-2 py-1.5 rounded-md text-[13px] text-gray-700 dark:text-gray-200 hover:bg-black/5 dark:hover:bg-white/10 transition-colors" href="#">
+<span class="material-symbols-outlined text-[18px] text-gray-500">format_list_bulleted</span>
+                            Prayer List
+                        </a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-2 py-1.5 rounded-md text-[13px] bg-primary text-white font-medium shadow-sm" href="#">
+<span class="material-symbols-outlined text-[18px]">book</span>
+                            Prayer Diary
+                        </a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-2 py-1.5 rounded-md text-[13px] text-gray-700 dark:text-gray-200 hover:bg-black/5 dark:hover:bg-white/10 transition-colors" href="#">
+<span class="material-symbols-outlined text-[18px] text-gray-500">group</span>
+                            Contacts
+                        </a>
+</li>
+</ul>
+</div>
+<div>
+<h3 class="px-2 text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">System</h3>
+<ul class="space-y-0.5">
+<li>
+<a class="flex items-center gap-3 px-2 py-1.5 rounded-md text-[13px] text-gray-700 dark:text-gray-200 hover:bg-black/5 dark:hover:bg-white/10 transition-colors" href="#">
+<span class="material-symbols-outlined text-[18px] text-gray-500">settings</span>
+                            Sync &amp; Settings
+                        </a>
+</li>
+</ul>
+</div>
+</nav>
+<div class="p-3 border-t border-separator-light dark:border-separator-dark">
+<div class="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+<span class="material-symbols-outlined text-[16px] animate-spin" style="animation-duration: 3s;">sync</span>
+<span>Syncing...</span>
+</div>
+</div>
+</aside>
+<main class="flex-1 flex flex-col min-w-0 bg-surface-light dark:bg-surface-dark relative">
+<header class="h-[52px] border-b border-separator-light dark:border-separator-dark flex items-center justify-between px-6 bg-surface-light/80 dark:bg-surface-dark/80 backdrop-blur-md sticky top-0 z-10">
+<div class="flex items-center gap-4">
+<h1 class="text-lg font-bold text-gray-900 dark:text-white tracking-tight">Prayer Diary</h1>
+</div>
+<div class="flex items-center gap-3">
+<div class="relative group">
+<span class="absolute inset-y-0 left-2 flex items-center text-gray-400">
+<span class="material-symbols-outlined text-[18px]">search</span>
+</span>
+<input class="pl-8 pr-3 py-1 bg-gray-100 dark:bg-gray-800 border-none rounded-md text-[13px] w-48 focus:ring-2 focus:ring-primary/50 focus:bg-white dark:focus:bg-gray-900 transition-all placeholder-gray-500 text-gray-900 dark:text-white" placeholder="Search" type="text"/>
+</div>
+<button class="flex items-center justify-center w-8 h-8 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 text-primary transition-colors">
+<span class="material-symbols-outlined">add</span>
+</button>
+</div>
+</header>
+<div class="flex-1 overflow-y-auto relative bg-white dark:bg-[#1e2936]">
+<div class="max-w-[700px] mx-auto pb-20">
+<div class="sticky-header sticky top-0 z-10 px-6 py-3 border-b border-separator-light/50 dark:border-separator-dark/50 flex items-center justify-between">
+<h2 class="text-[13px] font-bold text-gray-900 dark:text-white uppercase tracking-wide">Today</h2>
+<span class="text-[11px] text-gray-400 font-mono">October 24, 2023</span>
+</div>
+<div class="px-6">
+<article class="entry-card group py-5 border-b border-separator-light dark:border-separator-dark last:border-0 relative">
+<div class="flex items-start justify-between mb-2">
+<div class="flex flex-col gap-1 w-full">
+<div class="flex items-center gap-2 w-full justify-between">
+<div class="flex items-center gap-2">
+<span class="text-[12px] font-medium text-gray-400 dark:text-gray-500 tabular-nums">8:30 AM</span>
+<span class="text-gray-300 dark:text-gray-600 select-none">•</span>
+<div class="flex items-center gap-1.5 flex-wrap">
+<button class="inline-flex items-center px-2 py-0.5 rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-colors text-[11px] font-medium leading-4 cursor-default">
+<span class="material-symbols-outlined text-[14px] mr-1">person</span>
+                                                John Doe
+                                            </button>
+<button class="inline-flex items-center px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors text-[11px] font-medium leading-4 cursor-default">
+                                                Small Group
+                                            </button>
+</div>
+</div>
+<div class="flex items-center gap-2">
+<div class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 tabular-nums border border-gray-200 dark:border-gray-700">
+<span class="material-symbols-outlined text-[12px] mr-0.5 text-success">check_circle</span>
+<span>Answered</span>
+<span class="mx-1 opacity-50">|</span>
+<span class="material-symbols-outlined text-[12px] mr-0.5">schedule</span>
+                                            25m
+                                        </div>
+<button class="edit-btn text-primary hover:text-primary/80 text-[11px] font-medium px-2 py-0.5 rounded hover:bg-primary/5 transition-colors">
+                                            Edit
+                                        </button>
+</div>
+</div>
+</div>
+</div>
+<div class="pl-[4.5rem] relative">
+<div class="absolute left-6 top-1 w-px h-[calc(100%-4px)] bg-gray-200 dark:bg-gray-800"></div>
+<p class="text-[14px] leading-relaxed text-gray-800 dark:text-gray-200">
+                                Prayed for John's upcoming surgery and peace for the family. Also focused on the new study series we are starting next week. Felt a strong sense of peace regarding the logistics.
+                            </p>
+</div>
+</article>
+<article class="entry-card group py-5 border-b border-separator-light dark:border-separator-dark last:border-0 relative">
+<div class="flex items-start justify-between mb-2">
+<div class="flex flex-col gap-1 w-full">
+<div class="flex items-center gap-2 w-full justify-between">
+<div class="flex items-center gap-2">
+<span class="text-[12px] font-medium text-gray-400 dark:text-gray-500 tabular-nums">7:15 AM</span>
+<span class="text-gray-300 dark:text-gray-600 select-none">•</span>
+<div class="flex items-center gap-1.5 flex-wrap">
+<button class="inline-flex items-center px-2 py-0.5 rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-colors text-[11px] font-medium leading-4 cursor-default">
+<span class="material-symbols-outlined text-[14px] mr-1">person</span>
+                                                Sarah Smith
+                                            </button>
+</div>
+</div>
+<div class="flex items-center gap-2">
+<div class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 tabular-nums border border-gray-200 dark:border-gray-700">
+<span class="material-symbols-outlined text-[12px] mr-0.5 text-gray-400">schedule</span>
+<span>Pending</span>
+<span class="mx-1 opacity-50">|</span>
+<span class="material-symbols-outlined text-[12px] mr-0.5">schedule</span>
+                                            5m
+                                        </div>
+<button class="edit-btn text-primary hover:text-primary/80 text-[11px] font-medium px-2 py-0.5 rounded hover:bg-primary/5 transition-colors">
+                                            Edit
+                                        </button>
+</div>
+</div>
+</div>
+</div>
+<div class="pl-[4.5rem] relative">
+<div class="absolute left-6 top-1 w-px h-[calc(100%-4px)] bg-gray-200 dark:bg-gray-800"></div>
+<p class="text-[14px] leading-relaxed text-gray-800 dark:text-gray-200">
+                                Quick prayer regarding her job interview today. Asking for favor and clarity during the meeting.
+                            </p>
+</div>
+</article>
+</div>
+<div class="sticky-header sticky top-0 z-10 px-6 py-3 border-b border-separator-light/50 dark:border-separator-dark/50 flex items-center justify-between mt-4">
+<h2 class="text-[13px] font-bold text-gray-900 dark:text-white uppercase tracking-wide">Yesterday</h2>
+<span class="text-[11px] text-gray-400 font-mono">October 23, 2023</span>
+</div>
+<div class="px-6">
+<article class="entry-card group py-5 border-b border-separator-light dark:border-separator-dark last:border-0 relative">
+<div class="flex items-start justify-between mb-2">
+<div class="flex flex-col gap-1 w-full">
+<div class="flex items-center gap-2 w-full justify-between">
+<div class="flex items-center gap-2">
+<span class="text-[12px] font-medium text-gray-400 dark:text-gray-500 tabular-nums">9:00 PM</span>
+<span class="text-gray-300 dark:text-gray-600 select-none">•</span>
+<div class="flex items-center gap-1.5 flex-wrap">
+<button class="inline-flex items-center px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors text-[11px] font-medium leading-4 cursor-default">
+                                                Youth Ministry
+                                            </button>
+</div>
+</div>
+<div class="flex items-center gap-2">
+<div class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 tabular-nums border border-gray-200 dark:border-gray-700">
+<span class="material-symbols-outlined text-[12px] mr-0.5 text-gray-400">schedule</span>
+<span>Pending</span>
+<span class="mx-1 opacity-50">|</span>
+<span class="material-symbols-outlined text-[12px] mr-0.5">schedule</span>
+                                            15m
+                                        </div>
+<button class="edit-btn text-primary hover:text-primary/80 text-[11px] font-medium px-2 py-0.5 rounded hover:bg-primary/5 transition-colors">
+                                            Edit
+                                        </button>
+</div>
+</div>
+</div>
+</div>
+<div class="pl-[4.5rem] relative">
+<div class="absolute left-6 top-1 w-px h-[calc(100%-4px)] bg-gray-200 dark:bg-gray-800"></div>
+<p class="text-[14px] leading-relaxed text-gray-800 dark:text-gray-200">
+                                Interceded for the upcoming summer camp logistics. There are still many moving parts regarding transportation.
+                            </p>
+</div>
+</article>
+<article class="entry-card group py-5 border-b border-separator-light dark:border-separator-dark last:border-0 relative">
+<div class="flex items-start justify-between mb-2">
+<div class="flex flex-col gap-1 w-full">
+<div class="flex items-center gap-2 w-full justify-between">
+<div class="flex items-center gap-2">
+<span class="text-[12px] font-medium text-gray-400 dark:text-gray-500 tabular-nums">6:30 PM</span>
+<span class="text-gray-300 dark:text-gray-600 select-none">•</span>
+<div class="flex items-center gap-1.5 flex-wrap">
+<button class="inline-flex items-center px-2 py-0.5 rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-colors text-[11px] font-medium leading-4 cursor-default">
+<span class="material-symbols-outlined text-[14px] mr-1">person</span>
+                                                Pastor Mike
+                                            </button>
+<button class="inline-flex items-center px-2 py-0.5 rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-colors text-[11px] font-medium leading-4 cursor-default">
+<span class="material-symbols-outlined text-[14px] mr-1">person</span>
+                                                Elder Team
+                                            </button>
+</div>
+</div>
+<div class="flex items-center gap-2">
+<div class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 tabular-nums border border-gray-200 dark:border-gray-700">
+<span class="material-symbols-outlined text-[12px] mr-0.5 text-system-gray">inventory_2</span>
+<span>Archived</span>
+<span class="mx-1 opacity-50">|</span>
+<span class="material-symbols-outlined text-[12px] mr-0.5">schedule</span>
+                                            45m
+                                        </div>
+<button class="edit-btn text-primary hover:text-primary/80 text-[11px] font-medium px-2 py-0.5 rounded hover:bg-primary/5 transition-colors">
+                                            Edit
+                                        </button>
+</div>
+</div>
+</div>
+</div>
+<div class="pl-[4.5rem] relative">
+<div class="absolute left-6 top-1 w-px h-[calc(100%-4px)] bg-gray-200 dark:bg-gray-800"></div>
+<p class="text-[14px] leading-relaxed text-gray-800 dark:text-gray-200">
+                                Extended time of prayer for leadership direction.
+                            </p>
+</div>
+</article>
+</div>
+<div class="sticky-header sticky top-0 z-10 px-6 py-3 border-b border-separator-light/50 dark:border-separator-dark/50 flex items-center justify-between mt-4">
+<h2 class="text-[13px] font-bold text-gray-900 dark:text-white uppercase tracking-wide">Older</h2>
+</div>
+<div class="py-12 flex flex-col items-center justify-center text-center opacity-60">
+<div class="w-16 h-16 rounded-full bg-gray-50 dark:bg-gray-800 flex items-center justify-center mb-4">
+<span class="material-symbols-outlined text-3xl text-gray-400">volunteer_activism</span>
+</div>
+<p class="text-sm font-medium text-gray-500 dark:text-gray-400">End of recent history</p>
+</div>
+</div>
+</div>
+</main>
+</div>
+
+</body></html>
