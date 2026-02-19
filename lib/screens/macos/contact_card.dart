@@ -34,78 +34,85 @@ class ContactCard extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(12),
         hoverColor: Colors.grey[50],
-        child: Container(
-          decoration: BoxDecoration(
-            color: backgroundColor,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: isSelected ? borderColor : Colors.transparent,
-              width: isSelected ? 2 : 1, // Visual emphasis
+        // Optimization: Isolate the content from the InkWell ripple animation.
+        child: RepaintBoundary(
+          child: Container(
+            decoration: BoxDecoration(
+              color: backgroundColor,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: isSelected ? borderColor : Colors.transparent,
+                width: isSelected ? 2 : 1, // Visual emphasis
+              ),
             ),
-          ),
-          padding: const EdgeInsets.all(8),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              // Avatar
-              Container(
-                width: 64,
-                height: 64,
-                decoration: BoxDecoration(
-                  color: Colors.grey[200],
-                  shape: BoxShape.circle,
-                  border: Border.all(color: Colors.grey[100]!),
-                  image: contact.recognitionPhotoUris.isNotEmpty
-                      ? DecorationImage(
-                          image: NetworkImage(
-                              contact.recognitionPhotoUris.first), // Simplified
-                          fit: BoxFit.cover,
+            padding: const EdgeInsets.all(8),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // Avatar
+                Container(
+                  width: 64,
+                  height: 64,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[200],
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.grey[100]!),
+                    image: contact.recognitionPhotoUris.isNotEmpty
+                        ? DecorationImage(
+                            // Optimization: Resize image to display size to save memory.
+                            image: ResizeImage(
+                              NetworkImage(contact.recognitionPhotoUris.first),
+                              width: (64 * MediaQuery.of(context).devicePixelRatio)
+                                  .toInt(),
+                            ),
+                            fit: BoxFit.cover,
+                          )
+                        : null,
+                  ),
+                  alignment: Alignment.center,
+                  child: contact.recognitionPhotoUris.isEmpty
+                      ? Text(
+                          contact.initials,
+                          style: GoogleFonts.inter(
+                            fontSize: 24,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.grey[500],
+                          ),
                         )
                       : null,
                 ),
-                alignment: Alignment.center,
-                child: contact.recognitionPhotoUris.isEmpty
-                    ? Text(
-                        contact.initials,
-                        style: GoogleFonts.inter(
-                          fontSize: 24,
-                          fontWeight: FontWeight.w500,
-                          color: Colors.grey[500],
-                        ),
-                      )
-                    : null,
-              ),
-              const SizedBox(height: 12),
-              // Name
-              Text(
-                contact.displayName,
-                style: GoogleFonts.inter(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.grey[900],
+                const SizedBox(height: 12),
+                // Name
+                Text(
+                  contact.displayName,
+                  style: GoogleFonts.inter(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.grey[900],
+                  ),
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
-                textAlign: TextAlign.center,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              const SizedBox(height: 4),
-              // Status / Active Requests
-              Text(
-                activeRequestCount > 0
-                    ? '$activeRequestCount active request${activeRequestCount == 1 ? '' : 's'}'
-                    : 'No active requests',
-                style: GoogleFonts.inter(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w500,
-                  color: activeRequestCount > 0
-                      ? Theme.of(context).primaryColor
-                      : Colors.grey[400],
+                const SizedBox(height: 4),
+                // Status / Active Requests
+                Text(
+                  activeRequestCount > 0
+                      ? '$activeRequestCount active request${activeRequestCount == 1 ? '' : 's'}'
+                      : 'No active requests',
+                  style: GoogleFonts.inter(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                    color: activeRequestCount > 0
+                        ? Theme.of(context).primaryColor
+                        : Colors.grey[400],
+                  ),
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
-                textAlign: TextAlign.center,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
