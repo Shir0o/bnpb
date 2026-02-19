@@ -384,7 +384,7 @@ class SyncCoordinator {
       map.remove('participantIds');
       // Force timestamps and syncId
       map['updatedAt'] = remote.updatedAt.toIso8601String();
-      map['deletedAt'] = remote.deletedAt;
+      map['deletedAt'] = remote.deletedAt?.toIso8601String();
       map['syncId'] = remote.syncId;
 
       final id = await db.insert('interactions', map);
@@ -406,7 +406,7 @@ class SyncCoordinator {
         final map = remote.toMap(includeId: false, encodeAttachments: true);
         map.remove('participantIds');
         map['updatedAt'] = remoteUpdated.toIso8601String();
-        map['deletedAt'] = remote.deletedAt;
+        map['deletedAt'] = remote.deletedAt?.toIso8601String();
         // Keep local ID
 
         await db.update(
@@ -476,7 +476,7 @@ class SyncCoordinator {
 
       final map = remote.toMap(includeId: false);
       map['updatedAt'] = remote.updatedAt.toIso8601String();
-      map['deletedAt'] = remote.deletedAt;
+      map['deletedAt'] = remote.deletedAt?.toIso8601String();
       map['syncId'] = remote.syncId;
 
       if (localInteractionId != null) {
@@ -495,7 +495,7 @@ class SyncCoordinator {
         final localId = localRow['id'] as int;
         final map = remote.toMap(includeId: false);
         map['updatedAt'] = remoteUpdated.toIso8601String();
-        map['deletedAt'] = remote.deletedAt;
+        map['deletedAt'] = remote.deletedAt?.toIso8601String();
 
         if (localInteractionId != null) {
           map['interactionId'] = localInteractionId;

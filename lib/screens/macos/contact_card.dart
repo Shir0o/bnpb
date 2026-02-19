@@ -62,8 +62,9 @@ class ContactCard extends StatelessWidget {
                             // Optimization: Resize image to display size to save memory.
                             image: ResizeImage(
                               NetworkImage(contact.recognitionPhotoUris.first),
-                              width: (64 * MediaQuery.of(context).devicePixelRatio)
-                                  .toInt(),
+                              width:
+                                  (64 * MediaQuery.of(context).devicePixelRatio)
+                                      .toInt(),
                             ),
                             fit: BoxFit.cover,
                           )

@@ -4,7 +4,8 @@ import 'package:bnpb/screens/macos/contact_card.dart';
 import 'package:bnpb/models/contact.dart';
 
 void main() {
-  testWidgets('ContactCard has performance optimizations', (WidgetTester tester) async {
+  testWidgets('ContactCard has performance optimizations',
+      (WidgetTester tester) async {
     final contact = Contact(
       id: '1',
       firstName: 'John',
@@ -36,7 +37,8 @@ void main() {
     );
 
     expect(repaintBoundaryFinder, findsOneWidget,
-        reason: 'ContactCard content should be wrapped in RepaintBoundary to isolate from hover effects');
+        reason:
+            'ContactCard content should be wrapped in RepaintBoundary to isolate from hover effects');
 
     // Check for ResizeImage
     // Find the Container with the decoration
@@ -51,7 +53,8 @@ void main() {
       }),
     );
 
-    expect(containerFinder, findsOneWidget, reason: 'Should find the avatar container');
+    expect(containerFinder, findsOneWidget,
+        reason: 'Should find the avatar container');
     final container = tester.widget<Container>(containerFinder);
     final decoration = container.decoration as BoxDecoration;
     final imageProvider = decoration.image!.image;

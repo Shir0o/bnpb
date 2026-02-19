@@ -488,18 +488,20 @@ class _MacOSActiveContactsViewState extends State<MacOSActiveContactsView> {
                   const SizedBox(height: 24),
                   const Divider(color: kBorderColor, height: 1),
                   const SizedBox(height: 24),
-                  Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                    _buildSectionTitle('Interactions'),
-                    IconButton(
-                        onPressed: () {},
-                        icon: const Icon(Icons.add, size: 18),
-                        color: kTextSecondary,
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
-                        style: IconButton.styleFrom(
-                            hoverColor: kBgLight,
-                            padding: const EdgeInsets.all(4)))
-                  ]),
+                  Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        _buildSectionTitle('Interactions'),
+                        IconButton(
+                            onPressed: () {},
+                            icon: const Icon(Icons.add, size: 18),
+                            color: kTextSecondary,
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                            style: IconButton.styleFrom(
+                                hoverColor: kBgLight,
+                                padding: const EdgeInsets.all(4)))
+                      ]),
                   const SizedBox(height: 16),
                   if (recentInteractions.isEmpty)
                     Text(
@@ -587,8 +589,7 @@ class _MacOSActiveContactsViewState extends State<MacOSActiveContactsView> {
             border: Border.all(color: Colors.transparent),
             // Hover effect can be done with InkWell or logic, simplified here
           ),
-          child:
-              Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
             // Avatar
             Container(
                 margin: const EdgeInsets.only(top: 2),
@@ -598,7 +599,8 @@ class _MacOSActiveContactsViewState extends State<MacOSActiveContactsView> {
                     child: Stack(children: [
                       Container(
                         decoration: BoxDecoration(
-                          color: getAvatarColor(contact.initials).withOpacity(0.1),
+                          color:
+                              getAvatarColor(contact.initials).withOpacity(0.1),
                           shape: BoxShape.circle,
                         ),
                         alignment: Alignment.center,

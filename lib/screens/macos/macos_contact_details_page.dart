@@ -47,7 +47,8 @@ class _MacOSContactDetailsPageState extends State<MacOSContactDetailsPage> {
   void initState() {
     super.initState();
     final contact = widget.contact;
-    _firstNameController = TextEditingController(text: contact?.firstName ?? '');
+    _firstNameController =
+        TextEditingController(text: contact?.firstName ?? '');
     _middleNameController =
         TextEditingController(text: contact?.middleName ?? '');
     _lastNameController = TextEditingController(text: contact?.lastName ?? '');
@@ -153,7 +154,8 @@ class _MacOSContactDetailsPageState extends State<MacOSContactDetailsPage> {
         tags: widget.contact?.tags ?? [],
         recognitionKeywords: widget.contact?.recognitionKeywords ?? [],
         recognitionReminders: widget.contact?.recognitionReminders ?? [],
-        interactions: _interactions, // Interactions are not edited here directly
+        interactions:
+            _interactions, // Interactions are not edited here directly
         relationships:
             _relationships, // Relationships might need saving separately or via Contact update
         prayerRequests: widget.contact?.prayerRequests ?? [],
@@ -429,8 +431,8 @@ class _MacOSContactDetailsPageState extends State<MacOSContactDetailsPage> {
                   decoration: BoxDecoration(
                     color: Colors.black.withValues(alpha: 0.6),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.2)),
+                    border:
+                        Border.all(color: Colors.white.withValues(alpha: 0.2)),
                   ),
                   child: Text(
                     'Edit',
@@ -645,7 +647,8 @@ class _MacOSContactDetailsPageState extends State<MacOSContactDetailsPage> {
               hintStyle:
                   GoogleFonts.inter(fontSize: 13, color: Colors.grey[400]),
               filled: true,
-              fillColor: const Color(0xFFFEFCE8).withValues(alpha: 0.5), // yellow-50/50
+              fillColor: const Color(0xFFFEFCE8)
+                  .withValues(alpha: 0.5), // yellow-50/50
               contentPadding:
                   const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               border: OutlineInputBorder(
@@ -658,7 +661,8 @@ class _MacOSContactDetailsPageState extends State<MacOSContactDetailsPage> {
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(6),
-                borderSide: const BorderSide(color: Color(0xFF007AFF), width: 2),
+                borderSide:
+                    const BorderSide(color: Color(0xFF007AFF), width: 2),
               ),
             ),
           ),
@@ -710,12 +714,10 @@ class _MacOSContactDetailsPageState extends State<MacOSContactDetailsPage> {
                     children: [
                       Expanded(
                           flex: 2,
-                          child: Text('Date',
-                              style: _tableHeaderStyle())),
+                          child: Text('Date', style: _tableHeaderStyle())),
                       Expanded(
                           flex: 3,
-                          child: Text('Type',
-                              style: _tableHeaderStyle())),
+                          child: Text('Type', style: _tableHeaderStyle())),
                       Expanded(
                           flex: 1,
                           child: Text('Duration',
@@ -736,8 +738,8 @@ class _MacOSContactDetailsPageState extends State<MacOSContactDetailsPage> {
                   ..._interactions.take(5).map((interaction) {
                     return Container(
                       decoration: const BoxDecoration(
-                        border: Border(
-                            top: BorderSide(color: Color(0xFFF3F4F6))),
+                        border:
+                            Border(top: BorderSide(color: Color(0xFFF3F4F6))),
                       ),
                       padding: const EdgeInsets.symmetric(
                           horizontal: 12, vertical: 8),
@@ -746,8 +748,7 @@ class _MacOSContactDetailsPageState extends State<MacOSContactDetailsPage> {
                           Expanded(
                             flex: 2,
                             child: Text(
-                              DateFormat.yMMMd()
-                                  .format(interaction.occurredAt),
+                              DateFormat.yMMMd().format(interaction.occurredAt),
                               style: GoogleFonts.inter(
                                   fontSize: 12, color: Colors.grey[900]),
                             ),
@@ -762,8 +763,7 @@ class _MacOSContactDetailsPageState extends State<MacOSContactDetailsPage> {
                                 Text(
                                   _capitalize(interaction.medium),
                                   style: GoogleFonts.inter(
-                                      fontSize: 12,
-                                      color: Colors.grey[500]),
+                                      fontSize: 12, color: Colors.grey[500]),
                                 ),
                               ],
                             ),
@@ -788,8 +788,7 @@ class _MacOSContactDetailsPageState extends State<MacOSContactDetailsPage> {
                   Container(
                     decoration: const BoxDecoration(
                       color: Color(0xFFF9FAFB),
-                      border: Border(
-                          top: BorderSide(color: Color(0xFFF3F4F6))),
+                      border: Border(top: BorderSide(color: Color(0xFFF3F4F6))),
                     ),
                     padding:
                         const EdgeInsets.symmetric(horizontal: 12, vertical: 8),

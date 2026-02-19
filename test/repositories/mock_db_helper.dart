@@ -27,6 +27,14 @@ class MockDBHelper implements DBHelper {
       throw UnimplementedError();
 
   @override
+  Future<void> upsertContactRowForTest(
+    DatabaseExecutor txn,
+    Contact contact, {
+    required bool isUpdate,
+  }) =>
+      throw UnimplementedError();
+
+  @override
   Future<List<Contact>> getContacts({
     String? contactId,
     List<String>? contactIds,

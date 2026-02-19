@@ -35,7 +35,7 @@ void main() {
       ],
     );
 
-    await helper.upsertContactFromSync(
+    await helper.upsertContactRowForTest(
       fakeTxn,
       contact,
       isUpdate: false,
