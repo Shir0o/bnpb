@@ -15,7 +15,7 @@ import '../services/security_service.dart';
 import '../constants/storage.dart';
 
 class DBHelper {
-  static const _dbVersion = 15;
+  static const _dbVersion = 16;
 
   static final DBHelper _instance = DBHelper._();
   static Database? _database;
@@ -175,7 +175,7 @@ class DBHelper {
         name TEXT NOT NULL,
         description TEXT,
         color TEXT,
-        displayIndex INTEGER NOT NULL DEFAULT 0
+        displayIndex INTEGER NOT NULL DEFAULT 0, updatedAt TEXT NOT NULL DEFAULT (datetime('now')), deletedAt TEXT
       )
     ''');
 
@@ -425,7 +425,7 @@ class DBHelper {
           name TEXT NOT NULL,
           description TEXT,
           color TEXT,
-          displayIndex INTEGER NOT NULL DEFAULT 0
+          displayIndex INTEGER NOT NULL DEFAULT 0, updatedAt TEXT NOT NULL DEFAULT (datetime('now')), deletedAt TEXT
         )
       ''');
 
@@ -486,17 +486,60 @@ class DBHelper {
       await db.execute('ALTER TABLE contacts ADD COLUMN email TEXT');
       await db.execute('ALTER TABLE contacts ADD COLUMN phone TEXT');
     }
+    if (oldVersion < 16) {
+      await db.execute("ALTER TABLE prayer_lists ADD COLUMN updatedAt TEXT NOT NULL DEFAULT (datetime('now'))");
+      await db.execute('ALTER TABLE prayer_lists ADD COLUMN deletedAt TEXT');
+    }
+
   }
 
   // -------------------------------------------------------------
   // PRAYER LIST METHODS
   // -------------------------------------------------------------
 
+
   Future<List<PrayerList>> getPrayerLists() async {
     final db = await database;
     final listRows = await db.query(
       'prayer_lists',
+      where: 'deletedAt IS NULL',
       orderBy: 'displayIndex ASC, name ASC',
+    );
+
+    final lists = <PrayerList>[];
+    for (final row in listRows) {
+      final listId = row['id'] as String;
+      final memberRows = await db.query(
+        'prayer_list_members',
+        columns: ['contactId'],
+        where: 'listId = ?',
+        whereArgs: [listId],
+      );
+
+      final contactIds =
+          memberRows.map((m) => m['contactId'] as String).toList();
+
+      lists.add(
+        PrayerList.fromMap(row, contactIds: contactIds),
+      );
+    }
+    return lists;
+  }
+
+  Future<List<PrayerList>> getPrayerListsModifiedSince(DateTime? since) async {
+    final db = await database;
+    String? where;
+    List<Object>? whereArgs;
+
+    if (since != null) {
+      where = 'updatedAt > ?';
+      whereArgs = [since.toIso8601String()];
+    }
+
+    final listRows = await db.query(
+      'prayer_lists',
+      where: where,
+      whereArgs: whereArgs,
     );
 
     final lists = <PrayerList>[];
@@ -523,7 +566,7 @@ class DBHelper {
     final db = await database;
     final rows = await db.query(
       'prayer_lists',
-      where: 'id = ?',
+      where: 'id = ? AND deletedAt IS NULL',
       whereArgs: [id],
     );
 
@@ -543,15 +586,17 @@ class DBHelper {
 
   Future<void> insertPrayerList(PrayerList list) async {
     final db = await database;
+    final map = list.toMap();
+    map['updatedAt'] = DateTime.now().toUtc().toIso8601String();
+    map['deletedAt'] = null;
+
     await db.transaction((txn) async {
       await txn.insert(
         'prayer_lists',
-        list.toMap(),
+        map,
         conflictAlgorithm: ConflictAlgorithm.replace,
       );
 
-      // Members are expected to be empty on creation typically,
-      // but if provided, we insert them.
       for (final contactId in list.contactIds) {
         await txn.insert(
           'prayer_list_members',
@@ -564,9 +609,13 @@ class DBHelper {
 
   Future<void> updatePrayerList(PrayerList list) async {
     final db = await database;
+    final map = list.toMap();
+    map['updatedAt'] = DateTime.now().toUtc().toIso8601String();
+    map['deletedAt'] = null;
+
     await db.update(
       'prayer_lists',
-      list.toMap(),
+      map,
       where: 'id = ?',
       whereArgs: [list.id],
     );
@@ -574,8 +623,12 @@ class DBHelper {
 
   Future<void> deletePrayerList(String id) async {
     final db = await database;
-    await db.delete(
+    await db.update(
       'prayer_lists',
+      {
+        'deletedAt': DateTime.now().toUtc().toIso8601String(),
+        'updatedAt': DateTime.now().toUtc().toIso8601String()
+      },
       where: 'id = ?',
       whereArgs: [id],
     );
@@ -583,22 +636,39 @@ class DBHelper {
 
   Future<void> addContactToPrayerList(String listId, String contactId) async {
     final db = await database;
-    await db.insert(
-      'prayer_list_members',
-      {'listId': listId, 'contactId': contactId},
-      conflictAlgorithm: ConflictAlgorithm.ignore,
-    );
+    await db.transaction((txn) async {
+      await txn.insert(
+        'prayer_list_members',
+        {'listId': listId, 'contactId': contactId},
+        conflictAlgorithm: ConflictAlgorithm.ignore,
+      );
+      await txn.update(
+        'prayer_lists',
+        {'updatedAt': DateTime.now().toUtc().toIso8601String()},
+        where: 'id = ?',
+        whereArgs: [listId],
+      );
+    });
   }
 
   Future<void> removeContactFromPrayerList(
       String listId, String contactId) async {
     final db = await database;
-    await db.delete(
-      'prayer_list_members',
-      where: 'listId = ? AND contactId = ?',
-      whereArgs: [listId, contactId],
-    );
+    await db.transaction((txn) async {
+      await txn.delete(
+        'prayer_list_members',
+        where: 'listId = ? AND contactId = ?',
+        whereArgs: [listId, contactId],
+      );
+      await txn.update(
+        'prayer_lists',
+        {'updatedAt': DateTime.now().toUtc().toIso8601String()},
+        where: 'id = ?',
+        whereArgs: [listId],
+      );
+    });
   }
+
 
   // -------------------------------------------------------------
   // CONTACTS METHODS

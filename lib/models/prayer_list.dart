@@ -9,7 +9,10 @@ class PrayerList {
     this.color,
     this.displayIndex = 0,
     List<String>? contactIds,
-  }) : contactIds = contactIds ?? const [];
+    DateTime? updatedAt,
+    this.deletedAt,
+  })  : contactIds = contactIds ?? const [],
+        updatedAt = updatedAt ?? DateTime.now();
 
   final String id;
   final String name;
@@ -17,6 +20,8 @@ class PrayerList {
   final String? color; // Hex string, e.g. "0xFF4287F5"
   final int displayIndex;
   final List<String> contactIds;
+  final DateTime updatedAt;
+  final DateTime? deletedAt;
 
   PrayerList copyWith({
     String? name,
@@ -24,6 +29,8 @@ class PrayerList {
     String? color,
     int? displayIndex,
     List<String>? contactIds,
+    DateTime? updatedAt,
+    DateTime? deletedAt,
   }) {
     return PrayerList(
       id: id,
@@ -32,6 +39,8 @@ class PrayerList {
       color: color ?? this.color,
       displayIndex: displayIndex ?? this.displayIndex,
       contactIds: contactIds ?? this.contactIds,
+      updatedAt: updatedAt ?? this.updatedAt,
+      deletedAt: deletedAt ?? this.deletedAt,
     );
   }
 
@@ -42,6 +51,8 @@ class PrayerList {
       'description': description,
       'color': color,
       'displayIndex': displayIndex,
+      'updatedAt': updatedAt.toIso8601String(),
+      'deletedAt': deletedAt?.toIso8601String(),
     };
   }
 
@@ -62,6 +73,12 @@ class PrayerList {
       color: map['color'] as String?,
       displayIndex: map['displayIndex'] as int? ?? 0,
       contactIds: ids,
+      updatedAt: map['updatedAt'] != null
+          ? DateTime.parse(map['updatedAt'] as String)
+          : null,
+      deletedAt: map['deletedAt'] != null
+          ? DateTime.parse(map['deletedAt'] as String)
+          : null,
     );
   }
 

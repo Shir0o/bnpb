@@ -189,6 +189,9 @@ class MockDBHelper implements DBHelper {
 
   @override
   Future<List<PrayerList>> getPrayerLists() async => [];
+  @override
+  Future<List<PrayerList>> getPrayerListsModifiedSince(DateTime? since) =>
+      throw UnimplementedError();
 
   @override
   Future<PrayerList?> getPrayerList(String id) => throw UnimplementedError();

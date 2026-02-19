@@ -113,6 +113,7 @@ class SyncService {
     }
   }
 
+
   Future<void> _performGoogleSync() async {
     if (!await _googleDrive.isSignedIn()) {
       final account = await _googleDrive.signIn();
@@ -130,6 +131,7 @@ class SyncService {
       // 1. Download files from Google Drive to temp dir
       final remoteFiles = await _googleDrive.listSyncFiles();
       final processedFiles = await _coordinator.getProcessedFiles();
+      final deviceId = await _coordinator.getDeviceId();
 
       for (final file in remoteFiles) {
         if (file.id != null && file.name != null) {
@@ -142,6 +144,14 @@ class SyncService {
               print('-> Skipping ${file.name} as already processed');
             }
             continue;
+          }
+
+          // Optimization: Skip our own files (files created by this deviceId)
+          if (file.name!.startsWith(deviceId)) {
+             if (kDebugMode) {
+                print('-> Skipping ${file.name} as it is our own export');
+             }
+             continue;
           }
 
           if (kDebugMode) {
@@ -160,33 +170,18 @@ class SyncService {
       await _coordinator.exportChanges(syncTempDir);
 
       // 3. Upload new/updated files back to Google Drive
-      // We only want to upload *newly created* export files from this session.
-      // SyncCoordinator exportChanges creates a new file with timestamp.
-      // We should check which files in temp dir are NOT in remoteFiles?
-      // Or just upload everything that isn't in remoteFiles?
-      // Actually, exportChanges creates a NEW file.
-      // We just need to upload files that differ or are new.
-      // Since filenames are unique (timestamped), we just upload files that we don't see in remote list.
-      // Wait, we downloaded some files. We don't want to re-upload them.
-
       final localFiles = syncTempDir.listSync().whereType<File>();
       final remoteFileNames = remoteFiles.map((f) => f.name).toSet();
 
       for (final file in localFiles) {
         final name = p.basename(file.path);
         // Upload if it's not in remote files (meaning it's a new export)
-        // OR if we suspect it changed (but our files are immutable append-only logs usually).
-        // Best safety: If name is not in remote, upload.
         if (!remoteFileNames.contains(name)) {
           await _googleDrive.uploadFile(file, name);
         }
       }
 
-      // 4. Cleanup temp dir
-      // We could keep it, but for privacy/security better to wipe.
-      // However, SyncCoordinator relies on knowing which files it has processed.
-      // Wait: SyncCoordinator stores processed filenames in SharedPreferences.
-      // So wiping the physical files is fine.
+      // 4. Cleanup temp dir (handled in finally)
     } catch (e) {
       if (kDebugMode) {
         print('Google sync failed: $e');
