@@ -462,21 +462,36 @@ class _MacOSActiveContactsViewState extends State<MacOSActiveContactsView> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.only(top: 2),
-            child: Icon(
-              Icons.check_box_outline_blank,
-              size: 18,
-              color: const Color(0xFFD1D5DB),
-            ),
+            padding: const EdgeInsets.only(
+                top: 2), // Align checkbox with text top line
+            child: SizedBox(
+                width: 16,
+                height: 16,
+                child: Checkbox(
+                  value: false, // Pending requests are unchecked
+                  onChanged: (val) {
+                    // TODO: Handle marking as answered
+                  },
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(4)),
+                  side: const BorderSide(color: Color(0xFFD1D5DB)),
+                  activeColor: Theme.of(context).primaryColor,
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  visualDensity: VisualDensity.compact,
+                )),
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: Text(
-              request.description,
-              style: GoogleFonts.inter(
-                fontSize: 14,
-                color: const Color(0xFF111827),
-                height: 1.5,
+            child: Padding(
+              padding: const EdgeInsets.only(
+                  top: 0.5), // Subtle alignment adjustment
+              child: Text(
+                request.description,
+                style: GoogleFonts.inter(
+                  fontSize: 14,
+                  color: const Color(0xFF111827),
+                  height: 1.5, // Relaxed line height for readability
+                ),
               ),
             ),
           ),
@@ -486,41 +501,63 @@ class _MacOSActiveContactsViewState extends State<MacOSActiveContactsView> {
   }
 
   Widget _buildSessionItem(Interaction interaction) {
-    // Basic date formatting without extra package for now
+    // Basic date formatting
     final date = interaction.occurredAt;
     final dateStr =
-        '${date.month}/${date.day} ${date.hour}:${date.minute.toString().padLeft(2, '0')}';
+        '${date.month}/${date.day} ${date.hour}:${date.minute.toString().padLeft(2, '0')}'; // TODO: Use better formatter
 
-    return Padding(
-      padding: const EdgeInsets.only(left: 8, bottom: 20),
-      child: Container(
-        decoration: const BoxDecoration(
-          border: Border(left: BorderSide(color: Color(0xFFF3F4F6), width: 2)),
+    return Stack(
+      children: [
+        // Timeline line
+        Positioned(
+          top: 0,
+          bottom: 0,
+          left: 3, // Center of the 8px width dot is at 4px. Line width 2px.
+          child: Container(
+            width: 2,
+            color: const Color(0xFFF3F4F6),
+          ),
         ),
-        padding: const EdgeInsets.only(left: 16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              dateStr,
-              style: GoogleFonts.inter(
-                fontSize: 11,
-                fontWeight: FontWeight.w500,
-                color: const Color(0xFF9CA3AF),
+        // Content
+        Padding(
+          padding: const EdgeInsets.only(left: 20, bottom: 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                dateStr,
+                style: GoogleFonts.inter(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500,
+                  color: const Color(0xFF9CA3AF),
+                ),
               ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              interaction.summary,
-              style: GoogleFonts.inter(
-                fontSize: 13,
-                color: const Color(0xFF4B5563),
-                height: 1.4,
+              const SizedBox(height: 4),
+              Text(
+                interaction.summary,
+                style: GoogleFonts.inter(
+                  fontSize: 13,
+                  color: const Color(0xFF4B5563),
+                  height: 1.4,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
-      ),
+        // Timeline Dot
+        Positioned(
+          left: 0,
+          top: 5, // Visual alignment with the date text
+          child: Container(
+            width: 8,
+            height: 8,
+            decoration: const BoxDecoration(
+              color: Color(0xFFE5E7EB), // Gray-200 equivalent
+              shape: BoxShape.circle,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

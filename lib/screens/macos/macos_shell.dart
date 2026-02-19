@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter/services.dart';
-import '../prayer_lists_page.dart';
+
 import 'macos_prayer_diary_view.dart';
 import 'macos_settings_view.dart';
+import 'macos_active_contacts_view.dart';
 import '../../services/sync_service.dart';
 
 class MacOSShell extends StatefulWidget {
@@ -101,7 +102,7 @@ class _MacOSShellState extends State<MacOSShell> {
   Widget _buildMainContent() {
     switch (_selectedIndex) {
       case 0:
-        return const PrayerListPage();
+        return const MacOSActiveContactsView();
       case 1:
         return const MacOSPrayerDiaryView();
       case 2:
