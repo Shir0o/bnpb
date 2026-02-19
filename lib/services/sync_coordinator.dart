@@ -261,43 +261,18 @@ class SyncCoordinator {
   }
 
   Future<void> _mergeContact(Contact remote) async {
-    final local = await _db.getContactById(remote.id);
+    final localContacts =
+        await _db.getContacts(contactId: remote.id, includeDeleted: true);
+    final local = localContacts.isNotEmpty ? localContacts.first : null;
 
     if (local == null) {
-      // New or previously deleted locally?
-      // If deleted locally, we might have a tombstone?
-      // Current DB getContactById returns NULL if deleted (soft delete).
-      // We should check if it exists but is deleted.
-      // But _db.getContactById uses getContacts which filters deleted.
-      // If we want to check tombstone, we need raw query or unconditional fetch.
-      // BUT, if remote is newer, we should revive it anyway if remote is not deleted.
-      // If remote is deleted, we do nothing (it's gone).
-
-      if (remote.deletedAt != null) {
-        // Remote says delete. We don't have it (or it's deleted). Ensure deleted.
-        // Ideally we ensure it's deleted in DB, but if it returns null it's either gone or deleted.
-        // To be safe we could upsert it as deleted.
-        // But if it doesn't exist, inserting a deleted record is effectively storing a tombstone.
-        // This is good for eventual consistency.
-        // However, inserting might fail if we don't have all fields?
-        // Sync should carry all fields.
-        await _db.upsertContactFromSync(await _db.database, remote,
-            isUpdate: false);
-      } else {
-        // Remote is alive. Insert it.
-        await _db.upsertContactFromSync(await _db.database, remote,
-            isUpdate: false);
-      }
+      // New or previously hard-deleted locally (shouldn't happen with soft deletes)
+      // If remote is deleted, we just insert the tombstone for consistency.
+      await _db.upsertContactFromSync(await _db.database, remote,
+          isUpdate: false);
     } else {
-      // Local exists (and is alive).
+      // Local exists (could be alive or deleted).
       // Compare timestamps.
-      // CAUTION: 'updatedAt' might not be on the model instance from getContactById?
-      // Wait, Contact model NOW has updatedAt and deletedAt fields.
-      // Helper `getContacts` maps them?
-      // I didn't verify `Contact.fromMap` had `updatedAt` mapped!
-      // I only updated `DBHelper` to query. I updated `Contact` model earlier.
-      // Assuming `Contact.fromMap` works.
-
       final localTime = local.updatedAt;
       final remoteTime = remote.updatedAt; // Should stick to non-null
 

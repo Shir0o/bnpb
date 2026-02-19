@@ -20,6 +20,13 @@ class MacOSShell extends StatefulWidget {
 class _MacOSShellState extends State<MacOSShell> {
   int _selectedIndex = 0;
 
+  final List<GlobalKey<NavigatorState>> _navigatorKeys = [
+    GlobalKey<NavigatorState>(),
+    GlobalKey<NavigatorState>(),
+    GlobalKey<NavigatorState>(),
+    GlobalKey<NavigatorState>(),
+  ];
+
   @override
   Widget build(BuildContext context) {
     return CallbackShortcuts(
@@ -92,7 +99,15 @@ class _MacOSShellState extends State<MacOSShell> {
             ),
             // Main Content Area
             Expanded(
-              child: _buildMainContent(),
+              child: IndexedStack(
+                index: _selectedIndex,
+                children: [
+                  _buildNavigator(0, const MacOSActiveContactsView()),
+                  _buildNavigator(1, const MacOSPrayerDiaryView()),
+                  _buildNavigator(2, const MacOSContactsView()),
+                  _buildNavigator(3, const MacOSSettingsView()),
+                ],
+              ),
             ),
           ],
         ),
@@ -100,19 +115,16 @@ class _MacOSShellState extends State<MacOSShell> {
     );
   }
 
-  Widget _buildMainContent() {
-    switch (_selectedIndex) {
-      case 0:
-        return const MacOSActiveContactsView();
-      case 1:
-        return const MacOSPrayerDiaryView();
-      case 2:
-        return const MacOSContactsView();
-      case 3:
-        return const MacOSSettingsView();
-      default:
-        return const Center(child: Text('Not implemented'));
-    }
+  Widget _buildNavigator(int index, Widget child) {
+    return Navigator(
+      key: _navigatorKeys[index],
+      onGenerateRoute: (settings) {
+        return MaterialPageRoute(
+          settings: settings,
+          builder: (context) => child,
+        );
+      },
+    );
   }
 
   Widget _buildTrafficLight(Color color, Color borderColor) {

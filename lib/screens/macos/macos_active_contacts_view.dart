@@ -272,11 +272,11 @@ class _MacOSActiveContactsViewState extends State<MacOSActiveContactsView> {
                 height: 40,
                 decoration: BoxDecoration(
                   color: isSelected
-                      ? Colors.white.withOpacity(0.2)
-                      : avatarColor.withOpacity(0.1),
+                      ? Colors.white.withValues(alpha: 0.2)
+                      : avatarColor.withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                   border: isSelected
-                      ? Border.all(color: Colors.white.withOpacity(0.2))
+                      ? Border.all(color: Colors.white.withValues(alpha: 0.2))
                       : null,
                 ),
                 alignment: Alignment.center,
@@ -318,7 +318,7 @@ class _MacOSActiveContactsViewState extends State<MacOSActiveContactsView> {
                             style: GoogleFonts.inter(
                               fontSize: 11,
                               color: isSelected
-                                  ? Colors.white.withOpacity(0.9)
+                                  ? Colors.white.withValues(alpha: 0.9)
                                   : kTextSecondary,
                             ),
                           ),
@@ -331,7 +331,7 @@ class _MacOSActiveContactsViewState extends State<MacOSActiveContactsView> {
                       style: GoogleFonts.inter(
                         fontSize: 12,
                         color: isSelected
-                            ? Colors.white.withOpacity(0.8)
+                            ? Colors.white.withValues(alpha: 0.8)
                             : Colors.grey[500],
                         height: 1.3,
                       ),
@@ -379,7 +379,7 @@ class _MacOSActiveContactsViewState extends State<MacOSActiveContactsView> {
                       decoration: BoxDecoration(
                           gradient: LinearGradient(
                             colors: [
-                              avatarColor.withOpacity(0.7),
+                              avatarColor.withValues(alpha: 0.7),
                               avatarColor,
                             ],
                             begin: Alignment.topLeft,
@@ -388,7 +388,7 @@ class _MacOSActiveContactsViewState extends State<MacOSActiveContactsView> {
                           shape: BoxShape.circle,
                           boxShadow: [
                             BoxShadow(
-                                color: avatarColor.withOpacity(0.3),
+                                color: avatarColor.withValues(alpha: 0.3),
                                 blurRadius: 8,
                                 offset: const Offset(0, 4))
                           ]),
@@ -455,7 +455,7 @@ class _MacOSActiveContactsViewState extends State<MacOSActiveContactsView> {
                       foregroundColor: kPrimaryColor,
                       padding: const EdgeInsets.symmetric(
                           horizontal: 16, vertical: 8),
-                      backgroundColor: Colors.blue.withOpacity(0.05),
+                      backgroundColor: Colors.blue.withValues(alpha: 0.05),
                       shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(6))),
                   child: Text('Edit',
@@ -599,8 +599,8 @@ class _MacOSActiveContactsViewState extends State<MacOSActiveContactsView> {
                     child: Stack(children: [
                       Container(
                         decoration: BoxDecoration(
-                          color:
-                              getAvatarColor(contact.initials).withOpacity(0.1),
+                          color: getAvatarColor(contact.initials)
+                              .withValues(alpha: 0.1),
                           shape: BoxShape.circle,
                         ),
                         alignment: Alignment.center,

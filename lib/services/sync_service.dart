@@ -29,6 +29,8 @@ class SyncService {
   final StreamController<void> _syncCompleteController =
       StreamController<void>.broadcast();
 
+  bool _isSyncing = false;
+
   Stream<void> get onSyncComplete => _syncCompleteController.stream;
 
   Future<void> setSyncDirectory() async {
@@ -63,6 +65,8 @@ class SyncService {
 
   /// Performs a full sync: Import then Export.
   Future<void> performSync() async {
+    if (_isSyncing) return;
+    _isSyncing = true;
     final syncType = await getSyncType();
 
     try {
@@ -85,6 +89,7 @@ class SyncService {
       // If we are in the catch block, we logged it.
       // If we are here, we might have succeeded or caught an error.
       // Let's notify. UI can decide to refresh.
+      _isSyncing = false;
       _syncCompleteController.add(null);
     }
   }
@@ -128,11 +133,20 @@ class SyncService {
 
       for (final file in remoteFiles) {
         if (file.id != null && file.name != null) {
+          if (kDebugMode) {
+            print('Checking file: ${file.name}');
+          }
           // Optimization: Skip files we have already processed
           if (processedFiles.contains(file.name)) {
+            if (kDebugMode) {
+              print('-> Skipping ${file.name} as already processed');
+            }
             continue;
           }
 
+          if (kDebugMode) {
+            print('-> Downloading ${file.name} ...');
+          }
           final targetFile = File(p.join(syncTempDir.path, file.name));
           await _googleDrive.downloadFile(file.id!, targetFile);
         }
@@ -179,8 +193,14 @@ class SyncService {
       }
       rethrow;
     } finally {
-      if (await syncTempDir.exists()) {
-        await syncTempDir.delete(recursive: true);
+      try {
+        if (await syncTempDir.exists()) {
+          await syncTempDir.delete(recursive: true);
+        }
+      } catch (e) {
+        if (kDebugMode) {
+          print('Cleanup failed: $e');
+        }
       }
     }
   }

@@ -187,6 +187,60 @@ class _MacOSContactDetailsPageState extends State<MacOSContactDetailsPage> {
     }
   }
 
+  Future<void> _deleteContact() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Delete Contact',
+            style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
+        content: Text(
+            'Are you sure you want to delete this contact? This action cannot be undone.',
+            style: GoogleFonts.inter(fontSize: 14)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text('Cancel',
+                style: GoogleFonts.inter(color: Colors.grey[600])),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text('Delete',
+                style: GoogleFonts.inter(
+                    color: Colors.red, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true && widget.contact?.id != null) {
+      if (!mounted) return;
+      setState(() => _isSaving = true);
+      try {
+        await DBHelper().deleteContact(widget.contact!.id);
+
+        final deletedContact = widget.contact!.copyWith(
+          deletedAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        );
+        await ReminderCoordinator().syncSignificantDates(deletedContact);
+        unawaited(BackupService().exportBackup());
+
+        if (mounted) {
+          Navigator.pop(context, true);
+        }
+      } catch (e) {
+        debugPrint('Error deleting contact: $e');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to delete: $e')),
+          );
+        }
+      } finally {
+        if (mounted) setState(() => _isSaving = false);
+      }
+    }
+  }
+
   void _addRelationship() async {
     // We need to save the contact first if it's new, or handle ID generation.
     // If it's a new contact, we can't easily add relationships without an ID.
@@ -272,6 +326,12 @@ class _MacOSContactDetailsPageState extends State<MacOSContactDetailsPage> {
                         const SizedBox(height: 32),
                         // Interactions Section
                         _buildInteractionsSection(),
+                        if (widget.contact != null) ...[
+                          const SizedBox(height: 32),
+                          const Divider(height: 1, color: Color(0xFFE5E7EB)),
+                          const SizedBox(height: 32),
+                          _buildDeleteSection(),
+                        ],
                       ],
                     ),
                   ),
@@ -896,6 +956,23 @@ class _MacOSContactDetailsPageState extends State<MacOSContactDetailsPage> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildDeleteSection() {
+    return Center(
+      child: TextButton.icon(
+        onPressed: _isSaving ? null : _deleteContact,
+        icon: const Icon(Icons.delete_outline, size: 18, color: Colors.red),
+        label: Text('Delete Contact',
+            style: GoogleFonts.inter(
+                color: Colors.red, fontWeight: FontWeight.w500)),
+        style: TextButton.styleFrom(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          backgroundColor: Colors.red.withValues(alpha: 0.05),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        ),
+      ),
     );
   }
 }

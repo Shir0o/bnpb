@@ -59,13 +59,36 @@ class GoogleDriveService {
   /// Ensures the Drive API client is initialized.
   /// This may trigger a keychain access prompt on macOS.
   Future<void> _ensureApiInitialized() async {
-    if (_driveApi != null) return;
+    if (_driveApi != null) {
+      try {
+        // Just checking if we can get credentials to ensure they aren't totally busted
+        // But GoogleSignIn caches them. We might need to refresh if expired.
+        // The extension authenticatedClient() handles refresh if possible.
+        final _ = await _googleSignIn.authenticatedClient();
+        return; // still good
+      } catch (_) {
+        _driveApi = null; // force re-init
+      }
+    }
 
-    final user = await currentUser;
+    var user = await currentUser;
+    user ??= await signIn();
+
     if (user != null) {
       final authClient = await _googleSignIn.authenticatedClient();
       if (authClient != null) {
         _driveApi = drive.DriveApi(authClient);
+      } else {
+        // Force a re-authentication if we have a user but no client (token expired/invalid)
+        _currentUser = null;
+        await _googleSignIn.signOut();
+        user = await signIn();
+        if (user != null) {
+          final newAuthClient = await _googleSignIn.authenticatedClient();
+          if (newAuthClient != null) {
+            _driveApi = drive.DriveApi(newAuthClient);
+          }
+        }
       }
     }
   }
@@ -125,15 +148,31 @@ class GoogleDriveService {
       {String folderName = 'BNPB-Sync'}) async {
     await _ensureApiInitialized();
     if (_driveApi == null) {
+      if (kDebugMode) {
+        print('listSyncFiles: _driveApi is null, returning empty list');
+      }
       return [];
     }
 
     final folderId = await _getOrCreateFolder(folderName);
-    if (folderId == null) return [];
+    if (folderId == null) {
+      if (kDebugMode) {
+        print('listSyncFiles: folderId is null, returning empty list');
+      }
+      return [];
+    }
 
     final query = "'$folderId' in parents and trashed = false";
     final fileList = await _driveApi!.files
         .list(q: query, $fields: 'files(id, name, modifiedTime, size)');
+
+    if (kDebugMode) {
+      debugPrint(
+          'listSyncFiles: Found ${fileList.files?.length ?? 0} files in Drive');
+      for (final f in fileList.files ?? []) {
+        debugPrint('  - ${f.name}');
+      }
+    }
 
     return fileList.files ?? [];
   }
