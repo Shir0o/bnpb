@@ -5,8 +5,9 @@ import 'package:intl/intl.dart';
 import '../../db/db_helper.dart';
 import '../../models/contact.dart';
 import '../../models/prayer_request.dart';
-import '../prayer_request_details_page.dart';
+
 import '../../widgets/log_prayer_request_sheet.dart';
+import 'prayer_diary_entry.dart';
 
 class MacOSPrayerDiaryView extends StatefulWidget {
   const MacOSPrayerDiaryView({super.key});
@@ -21,6 +22,7 @@ class _MacOSPrayerDiaryViewState extends State<MacOSPrayerDiaryView> {
   List<Contact> _contacts = [];
   List<PrayerRequest> _requests = [];
   bool _isLoading = false;
+  String? _editingRequestId;
   String _searchQuery = '';
 
   @override
@@ -272,8 +274,7 @@ class _MacOSPrayerDiaryViewState extends State<MacOSPrayerDiaryView> {
   Widget _buildDateHeader(String title, DateTime date) {
     String dateStr = '';
     if (title == 'Older') {
-      // Just show nothing or a generic headers? Design shows "Older" section.
-      dateStr = ''; // Or dynamic range? Design implies just a header.
+      dateStr = '';
     } else {
       dateStr = DateFormat('MMMM d, y').format(date);
     }
@@ -282,8 +283,7 @@ class _MacOSPrayerDiaryViewState extends State<MacOSPrayerDiaryView> {
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
       decoration: const BoxDecoration(
         border: Border(
-          bottom:
-              BorderSide(color: Color(0xFFF5F5F7)), // Optional visual separator
+          bottom: BorderSide(color: Color(0xFFF5F5F7)),
         ),
       ),
       child: Row(
@@ -312,179 +312,53 @@ class _MacOSPrayerDiaryViewState extends State<MacOSPrayerDiaryView> {
   }
 
   Widget _buildEntry(PrayerRequest request) {
-    final contactName = _displayNameForContact(request.contactId);
-    final timeStr =
-        DateFormat('h:mm a').format(request.answeredAt ?? request.requestedAt);
-    final isAnswered = request.status == PrayerRequestStatus.answered;
-    final isArchived = request.status == PrayerRequestStatus.archived;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Timeline visual
-          // This part is a bit tricky with standard widgets.
-          // We can use a Stack or CustomPaint, or just simple containers if alignment is fixed.
-          // Let's approximate the timeline look:
-          // Left side: Time, Contact name, Status
-          // Right side: Content with timeline line.
-
-          Expanded(
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 20),
-              decoration: const BoxDecoration(
-                border: Border(
-                  bottom: BorderSide(color: Color(0xFFF5F5F7)),
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      // Time
-                      SizedBox(
-                        width: 60,
-                        child: Text(
-                          timeStr,
-                          style: GoogleFonts.inter(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                            color: Colors.grey[400],
-                          ),
-                        ),
-                      ),
-                      Text('•', style: TextStyle(color: Colors.grey[300])),
-                      const SizedBox(width: 8),
-                      // Contact Chip
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF0D7CF2)
-                              .withAlpha(25), // Primary/10
-                          borderRadius: BorderRadius.circular(100),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(Icons.person,
-                                size: 14, color: Color(0xFF0D7CF2)),
-                            const SizedBox(width: 4),
-                            Text(
-                              contactName,
-                              style: GoogleFonts.inter(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w500,
-                                color: const Color(0xFF0D7CF2),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const Spacer(),
-                      // Status Badge
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: Colors.grey[100],
-                          borderRadius: BorderRadius.circular(4),
-                          border: Border.all(color: Colors.grey[200]!),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            if (isAnswered)
-                              const Padding(
-                                padding: EdgeInsets.only(right: 2),
-                                child: Icon(Icons.check_circle,
-                                    size: 12, color: Colors.green),
-                              ),
-                            if (isArchived)
-                              const Padding(
-                                padding: EdgeInsets.only(right: 2),
-                                child: Icon(Icons.inventory_2,
-                                    size: 12, color: Colors.grey),
-                              ),
-                            Text(
-                              request.status.label,
-                              style: GoogleFonts.inter(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w500,
-                                color: Colors.grey[500],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      // Edit Button
-                      InkWell(
-                        onTap: () => _openPrayerRequestDetails(request),
-                        borderRadius: BorderRadius.circular(4),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 2),
-                          child: Text(
-                            'Edit',
-                            style: GoogleFonts.inter(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w500,
-                              color: const Color(0xFF0D7CF2),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  // Content with indent using padding
-                  Padding(
-                    padding:
-                        const EdgeInsets.only(left: 72), // 60 width + dot + gap
-                    child: Container(
-                      decoration: const BoxDecoration(
-                        border:
-                            Border(left: BorderSide(color: Color(0xFFE5E5E5))),
-                      ),
-                      padding: const EdgeInsets.only(left: 16),
-                      child: Text(
-                        request.description,
-                        style: GoogleFonts.inter(
-                          fontSize: 14,
-                          height: 1.5,
-                          color: Colors.black87,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
+    return PrayerDiaryEntry(
+      request: request,
+      contact: _contactLookup[request.contactId],
+      isEditing: _editingRequestId == request.syncId,
+      onEditStart: () => _onEntryEditStart(request),
+      onEditSave: _onEntryEditSave,
+      onEditCancel: _onEntryEditCancel,
     );
   }
 
-  Future<void> _openPrayerRequestDetails(PrayerRequest request) async {
-    final contact = _contactLookup[request.contactId];
-    if (contact == null) return;
+  void _onEntryEditStart(PrayerRequest request) {
+    setState(() {
+      _editingRequestId = request.syncId;
+    });
+  }
 
-    final didUpdate = await Navigator.of(context).push<bool>(
-      MaterialPageRoute(
-        builder: (context) => PrayerRequestDetailsPage(
-          request: request,
-          contact: contact,
-        ),
-      ),
-    );
-
-    if (mounted && didUpdate == true) {
-      await _loadData();
+  Future<void> _onEntryEditSave(PrayerRequest updatedRequest) async {
+    try {
+      if (updatedRequest.id != null) {
+        await _dbHelper.updatePrayerRequest(updatedRequest);
+      } else {
+        await _dbHelper.insertPrayerRequest(updatedRequest);
+      }
+      if (mounted) {
+        setState(() {
+          _editingRequestId = null;
+          final index =
+              _requests.indexWhere((r) => r.syncId == updatedRequest.syncId);
+          if (index != -1) {
+            _requests[index] = updatedRequest;
+          }
+        });
+      }
+    } catch (e) {
+      debugPrint('Error updating prayer request: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to update request: $e')),
+        );
+      }
     }
+  }
+
+  void _onEntryEditCancel() {
+    setState(() {
+      _editingRequestId = null;
+    });
   }
 
   String _displayNameForContact(String contactId) {
