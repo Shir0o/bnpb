@@ -1,0 +1,68 @@
+import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+
+/// Returns a deterministic color based on the input text.
+Color getAvatarColor(String text) {
+  if (text.isEmpty) return Colors.blue;
+  final colors = [
+    Colors.blue,
+    Colors.red,
+    Colors.green,
+    Colors.orange,
+    Colors.purple,
+    Colors.teal,
+    Colors.indigo,
+    Colors.brown,
+  ];
+  return colors[text.codeUnitAt(0) % colors.length];
+}
+
+/// Formats a date into a human-readable string (Today, Yesterday, MMM d).
+String formatDate(DateTime date) {
+  final now = DateTime.now();
+  final today = DateTime(now.year, now.month, now.day);
+  final input = DateTime(date.year, date.month, date.day);
+
+  if (input == today) {
+    return 'Today';
+  } else if (input == today.subtract(const Duration(days: 1))) {
+    return 'Yesterday';
+  } else {
+    return DateFormat('MMM d').format(date);
+  }
+}
+
+/// Formats a time into a human-readable string (h:mm a).
+String formatTime(DateTime date) {
+  return DateFormat('h:mm a').format(date);
+}
+
+/// Returns an icon representing the communication medium.
+IconData getMediumIcon(String medium) {
+  final normalized = medium.toLowerCase().trim();
+  switch (normalized) {
+    case 'call':
+    case 'phone':
+      return Icons.call;
+    case 'text':
+    case 'sms':
+    case 'message':
+      return Icons.message;
+    case 'email':
+    case 'mail':
+      return Icons.email;
+    case 'video':
+    case 'meet':
+    case 'zoom':
+      return Icons.videocam;
+    case 'person':
+    case 'face':
+    case 'meeting':
+      return Icons.face;
+    case 'group':
+    case 'community':
+      return Icons.groups;
+    default:
+      return Icons.chat_bubble_outline;
+  }
+}
