@@ -115,63 +115,6 @@ class _MacOSShellState extends State<MacOSShell> {
     }
   }
 
-  Widget _buildShellHeader() {
-    return Container(
-      height: 52,
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        border: Border(
-          bottom: BorderSide(color: Color(0xFFE5E5E5)),
-        ),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Row(
-        children: [
-          IconButton(
-            onPressed: () {},
-            icon: const Icon(Icons.menu, color: Colors.grey),
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(),
-          ),
-          const Spacer(),
-          // Search and Sync
-          Container(
-            width: 200,
-            height: 32,
-            decoration: BoxDecoration(
-              color: Colors.grey[100],
-              borderRadius: BorderRadius.circular(6),
-            ),
-            child: const TextField(
-              decoration: InputDecoration(
-                hintText: 'Search',
-                prefixIcon: Icon(Icons.search, size: 18),
-                border: InputBorder.none,
-                alignLabelWithHint: true,
-                isDense: true,
-                contentPadding: EdgeInsets.only(top: 6, bottom: 6),
-              ),
-              style: TextStyle(
-                fontSize: 13,
-                height: 1.0,
-                color: Colors.black,
-              ),
-              textAlignVertical: TextAlignVertical.center,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Container(
-            width: 1,
-            height: 16,
-            color: Colors.grey[300],
-          ),
-          const SizedBox(width: 12),
-          const Icon(Icons.cloud_done, color: Colors.green, size: 20),
-        ],
-      ),
-    );
-  }
-
   Widget _buildTrafficLight(Color color, Color borderColor) {
     return Container(
       width: 12,

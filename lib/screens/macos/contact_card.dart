@@ -131,7 +131,8 @@ class AddContactCard extends StatelessWidget {
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
               color: Colors.grey[300]!,
-              style: BorderStyle.solid, // Flutter doesn't support dashed easily without package, sticking to solid or using CustomPainter.
+              style: BorderStyle
+                  .solid, // Flutter doesn't support dashed easily without package, sticking to solid or using CustomPainter.
               // Design says dashed. For simplicity without extra dependencies, I'll use solid light grey which looks fine,
               // or implement a dashed border painter if critical. Let's start with solid light grey.
             ),
@@ -148,7 +149,8 @@ class AddContactCard extends StatelessWidget {
                   border: Border.all(
                     color: Colors.grey[300]!,
                     width: 2,
-                    style: BorderStyle.solid, // Again, mimicking dashed visually or using simple border
+                    style: BorderStyle
+                        .solid, // Again, mimicking dashed visually or using simple border
                   ),
                 ),
                 child: Icon(

@@ -95,7 +95,6 @@ class _MacOSContactsViewState extends State<MacOSContactsView> {
   @override
   Widget build(BuildContext context) {
     final filtered = _filteredContacts;
-    final theme = Theme.of(context);
 
     return Column(
       children: [
@@ -142,10 +141,12 @@ class _MacOSContactsViewState extends State<MacOSContactsView> {
                   controller: _searchController,
                   decoration: const InputDecoration(
                     hintText: 'Search',
-                    prefixIcon: Icon(Icons.search, size: 18, color: Colors.grey),
+                    prefixIcon:
+                        Icon(Icons.search, size: 18, color: Colors.grey),
                     border: InputBorder.none,
                     isDense: true,
-                    contentPadding: EdgeInsets.symmetric(vertical: 8), // Adjusted for alignment
+                    contentPadding: EdgeInsets.symmetric(
+                        vertical: 8), // Adjusted for alignment
                   ),
                   style: GoogleFonts.inter(fontSize: 13),
                   textAlignVertical: TextAlignVertical.center,
@@ -206,7 +207,8 @@ class _MacOSContactsViewState extends State<MacOSContactsView> {
                   color: Colors.white,
                   child: GridView.builder(
                     padding: const EdgeInsets.all(24),
-                    gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                    gridDelegate:
+                        const SliverGridDelegateWithMaxCrossAxisExtent(
                       maxCrossAxisExtent: 180,
                       mainAxisSpacing: 24,
                       crossAxisSpacing: 16,

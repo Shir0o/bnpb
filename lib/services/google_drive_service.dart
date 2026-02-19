@@ -21,15 +21,22 @@ class GoogleDriveService {
   GoogleSignInAccount? _currentUser;
   drive.DriveApi? _driveApi;
 
+  /// Returns the current user, attempting silent sign-in if necessary.
+  /// Does NOT initialize the Drive API client to avoid unnecessary keychain access.
+  Future<GoogleSignInAccount?> get currentUser async {
+    _currentUser ??= await _googleSignIn.signInSilently();
+    return _currentUser;
+  }
+
+  /// explicit sign in - usually triggered by user interaction
   Future<GoogleSignInAccount?> signIn() async {
     try {
       _currentUser = await _googleSignIn.signIn();
-      if (_currentUser != null) {
-        final authClient = await _googleSignIn.authenticatedClient();
-        if (authClient != null) {
-          _driveApi = drive.DriveApi(authClient);
-        }
-      }
+      // We don't strictly need to init the API here, but if the user
+      // explicitly signs in, they probably want to do something.
+      // However, for consistency with lazy loading, we can skip it.
+      // But clearing the old API client is important if user changed.
+      _driveApi = null;
       return _currentUser;
     } catch (e) {
       if (kDebugMode) {
@@ -49,19 +56,23 @@ class GoogleDriveService {
     return await _googleSignIn.isSignedIn();
   }
 
-  Future<GoogleSignInAccount?> get currentUser async {
-    _currentUser ??= await _googleSignIn.signInSilently();
-    if (_currentUser != null && _driveApi == null) {
+  /// Ensures the Drive API client is initialized.
+  /// This may trigger a keychain access prompt on macOS.
+  Future<void> _ensureApiInitialized() async {
+    if (_driveApi != null) return;
+
+    final user = await currentUser;
+    if (user != null) {
       final authClient = await _googleSignIn.authenticatedClient();
       if (authClient != null) {
         _driveApi = drive.DriveApi(authClient);
       }
     }
-    return _currentUser;
   }
 
   /// Finds a folder by name, or creates it if it doesn't exist.
   Future<String?> _getOrCreateFolder(String folderName) async {
+    // API must be initialized by caller
     if (_driveApi == null) return null;
 
     final query =
@@ -82,9 +93,9 @@ class GoogleDriveService {
 
   Future<void> uploadFile(File localFile, String remoteName,
       {String folderName = 'BNPB-Sync'}) async {
+    await _ensureApiInitialized();
     if (_driveApi == null) {
-      await currentUser;
-      if (_driveApi == null) throw Exception('Not signed in to Google Drive');
+      throw Exception('Not signed in to Google Drive');
     }
 
     final folderId = await _getOrCreateFolder(folderName);
@@ -112,9 +123,9 @@ class GoogleDriveService {
 
   Future<List<drive.File>> listSyncFiles(
       {String folderName = 'BNPB-Sync'}) async {
+    await _ensureApiInitialized();
     if (_driveApi == null) {
-      await currentUser;
-      if (_driveApi == null) return [];
+      return [];
     }
 
     final folderId = await _getOrCreateFolder(folderName);
@@ -128,9 +139,9 @@ class GoogleDriveService {
   }
 
   Future<void> downloadFile(String fileId, File targetFile) async {
+    await _ensureApiInitialized();
     if (_driveApi == null) {
-      await currentUser;
-      if (_driveApi == null) throw Exception('Not signed in to Google Drive');
+      throw Exception('Not signed in to Google Drive');
     }
 
     // To download content we use get() with downloadOptions: drive.DownloadOptions.fullMedia
