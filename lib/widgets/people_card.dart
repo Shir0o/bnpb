@@ -335,10 +335,12 @@ class _LatestInteractionSummary extends StatelessWidget {
 
   final Interaction interaction;
 
+  static final _dateFormat = DateFormat.yMMMd();
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final dateText = DateFormat.yMMMd().format(interaction.occurredAt);
+    final dateText = _dateFormat.format(interaction.occurredAt);
 
     return Container(
       padding: const EdgeInsets.all(12),
