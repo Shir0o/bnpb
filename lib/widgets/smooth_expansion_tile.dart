@@ -126,11 +126,17 @@ class _SmoothExpansionTileState extends State<SmoothExpansionTile>
         children = const <Widget>[];
       }
 
-      result = Padding(
-        padding: widget.childrenPadding ?? EdgeInsets.zero,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: children,
+      // Optimization: Wrap the children in a RepaintBoundary.
+      // This isolates the list of children (which can be complex, e.g., PeopleCard)
+      // from the expansion animation. The animation only needs to clip/align
+      // the cached layer, preventing expensive repaints of the children on every frame.
+      result = RepaintBoundary(
+        child: Padding(
+          padding: widget.childrenPadding ?? EdgeInsets.zero,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: children,
+          ),
         ),
       );
     }
