@@ -126,11 +126,16 @@ class _SmoothExpansionTileState extends State<SmoothExpansionTile>
         children = const <Widget>[];
       }
 
-      result = Padding(
-        padding: widget.childrenPadding ?? EdgeInsets.zero,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: children,
+      // Optimization: Wrap the expanded content in a RepaintBoundary.
+      // This ensures the complex child subtree is painted once into a layer
+      // and composited during the expansion animation, avoiding expensive repaints on every frame.
+      result = RepaintBoundary(
+        child: Padding(
+          padding: widget.childrenPadding ?? EdgeInsets.zero,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: children,
+          ),
         ),
       );
     }

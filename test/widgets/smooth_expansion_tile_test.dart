@@ -34,10 +34,23 @@ void main() {
     // Check for RepaintBoundary
     // The child (Column) is wrapped in RepaintBoundary inside Align inside ClipRect
     final childFinder = find.byKey(const Key('child1'));
+    final alignFinder = find.byType(Align);
 
-    final repaintBoundaryFinder =
-        find.ancestor(of: childFinder, matching: find.byType(RepaintBoundary));
-    expect(repaintBoundaryFinder, findsWidgets);
+    // Ensure the RepaintBoundary is inside the Align widget (part of the animated subtree)
+    final boundaryInsideAlign = find.descendant(
+      of: alignFinder,
+      matching: find.byType(RepaintBoundary),
+    );
+
+    // Ensure the RepaintBoundary wraps our content
+    final boundaryWrappingContent = find.ancestor(
+      of: childFinder,
+      matching: boundaryInsideAlign,
+    );
+
+    expect(boundaryWrappingContent, findsOneWidget,
+        reason:
+            'Expanded content should be wrapped in RepaintBoundary for performance');
 
     await tester.pumpAndSettle();
   });
