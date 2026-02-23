@@ -154,12 +154,17 @@ class SyncCoordinator {
     final deviceId = await getDeviceId();
     final processed = await _getProcessedFiles();
 
-    final files = syncDir.listSync().whereType<File>().where((f) {
-      final name = p.basename(f.path);
-      return name.endsWith('_data.json') &&
-          !name.startsWith(deviceId) && // Ignore own files
-          !processed.contains(name);
-    }).toList();
+    final files = await syncDir
+        .list()
+        .where((f) => f is File)
+        .cast<File>()
+        .where((f) {
+          final name = p.basename(f.path);
+          return name.endsWith('_data.json') &&
+              !name.startsWith(deviceId) && // Ignore own files
+              !processed.contains(name);
+        })
+        .toList();
 
     // Sort by timestamp in filename to apply in order
     // Filename format: deviceId_timestamp_data.json

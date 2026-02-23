@@ -170,7 +170,11 @@ class SyncService {
       await _coordinator.exportChanges(syncTempDir);
 
       // 3. Upload new/updated files back to Google Drive
-      final localFiles = syncTempDir.listSync().whereType<File>();
+      final localFiles = await syncTempDir
+          .list()
+          .where((f) => f is File)
+          .cast<File>()
+          .toList();
       final remoteFileNames = remoteFiles.map((f) => f.name).toSet();
 
       for (final file in localFiles) {
