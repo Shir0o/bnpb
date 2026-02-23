@@ -548,8 +548,17 @@ class _MacOSActiveContactsViewState extends State<MacOSActiveContactsView> {
                 height: 16,
                 child: Checkbox(
                   value: false, // Pending requests are unchecked
-                  onChanged: (val) {
-                    // TODO: Handle marking as answered
+                  onChanged: (val) async {
+                    if (val == true) {
+                      final updated = request.copyWith(
+                        status: PrayerRequestStatus.answered,
+                        answeredAt: DateTime.now(),
+                      );
+                      await _dbHelper.updatePrayerRequest(updated);
+                      if (mounted && _activeList != null) {
+                        await _loadListContacts(_activeList!);
+                      }
+                    }
                   },
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(4)),
