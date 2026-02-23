@@ -16,6 +16,10 @@ import '../widgets/contact_details_skeleton.dart';
 import '../widgets/people_card.dart';
 import '../widgets/relationship_dialog.dart';
 
+// Optimization: Cached DateFormats to avoid expensive parsing during scroll/build loops.
+final _cardDateFormatter = DateFormat.yMMMd().add_jm();
+final _cardFollowUpFormatter = DateFormat.MMMd().add_jm();
+
 const Map<String, String> _mediumLabels = {
   'in_person': 'In-person',
   'call': 'Call',
@@ -1521,8 +1525,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
     final mediumLabel = _mediumLabels[interaction.medium] ?? interaction.medium;
     final mediumIcon = _mediumIcons[interaction.medium] ?? Icons.forum_outlined;
 
-    final occurredAtLabel =
-        DateFormat.yMMMd().add_jm().format(interaction.occurredAt);
+    final occurredAtLabel = _cardDateFormatter.format(interaction.occurredAt);
     final participantBadges = _buildParticipantBadges(interaction);
     final metadataPills = <Widget>[
       _buildInfoPill(icon: mediumIcon, label: mediumLabel),
@@ -1675,9 +1678,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
                       const SizedBox(width: 6),
                       Expanded(
                         child: Text(
-                          DateFormat.MMMd()
-                              .add_jm()
-                              .format(interaction.followUpAt!),
+                          _cardFollowUpFormatter.format(interaction.followUpAt!),
                           style: theme.textTheme.labelSmall,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -2003,7 +2004,7 @@ class _InteractionDetailPageState extends State<InteractionDetailPage> {
             ),
             const SizedBox(height: 8),
             Text(
-              DateFormat.yMMMd().add_jm().format(_interaction.occurredAt),
+              _cardDateFormatter.format(_interaction.occurredAt),
               style: theme.textTheme.bodyMedium,
             ),
             const SizedBox(height: 16),
@@ -2044,7 +2045,7 @@ class _InteractionDetailPageState extends State<InteractionDetailPage> {
               icon: Icons.alarm_outlined,
               title: 'Follow-up',
               value: _interaction.followUpAt != null
-                  ? DateFormat.yMMMd().add_jm().format(_interaction.followUpAt!)
+                  ? _cardDateFormatter.format(_interaction.followUpAt!)
                   : null,
             ),
             if (_interaction.markForPrayer)
