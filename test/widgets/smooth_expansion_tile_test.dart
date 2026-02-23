@@ -35,9 +35,17 @@ void main() {
     // The child (Column) is wrapped in RepaintBoundary inside Align inside ClipRect
     final childFinder = find.byKey(const Key('child1'));
 
-    final repaintBoundaryFinder =
-        find.ancestor(of: childFinder, matching: find.byType(RepaintBoundary));
-    expect(repaintBoundaryFinder, findsWidgets);
+    // Verify optimization: RepaintBoundary should wrap the content
+    final tileFinder = find.byType(SmoothExpansionTile);
+    final internalBoundaryFinder = find.descendant(
+      of: tileFinder,
+      matching: find.ancestor(
+        of: childFinder,
+        matching: find.byType(RepaintBoundary),
+      ),
+    );
+
+    expect(internalBoundaryFinder, findsOneWidget);
 
     await tester.pumpAndSettle();
   });
