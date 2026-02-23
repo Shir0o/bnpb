@@ -256,9 +256,11 @@ class ContactSearchService {
     return (2 * intersection) / (queryTrigrams.length + textTrigrams.length);
   }
 
+  static final _normalizationRegExp = RegExp(r"[^a-z0-9]+");
+
   static String _normalize(String value) {
     final lowercase = value.toLowerCase();
-    return lowercase.replaceAll(RegExp(r'[^a-z0-9]+'), ' ').trim();
+    return lowercase.replaceAll(_normalizationRegExp, ' ').trim();
   }
 
   static Set<String> _trigrams(String text) {
