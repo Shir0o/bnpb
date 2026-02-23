@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:bnpb/services/sync_coordinator.dart';
 import 'package:bnpb/services/google_drive_service.dart';
+import 'package:googleapis/drive/v3.dart' as drive;
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
@@ -23,8 +24,14 @@ class SyncService {
   static const String _prefKeySyncDir = 'sync_directory_path';
   static const String _prefKeySyncType = 'sync_type';
 
-  final SyncCoordinator _coordinator = SyncCoordinator(DBHelper());
-  final GoogleDriveService _googleDrive = GoogleDriveService();
+  SyncCoordinator _coordinator = SyncCoordinator(DBHelper());
+
+  @visibleForTesting
+  set syncCoordinator(SyncCoordinator coordinator) => _coordinator = coordinator;
+  GoogleDriveService _googleDrive = GoogleDriveService();
+
+  @visibleForTesting
+  set googleDriveService(GoogleDriveService service) => _googleDrive = service;
 
   final StreamController<void> _syncCompleteController =
       StreamController<void>.broadcast();
@@ -133,34 +140,38 @@ class SyncService {
       final processedFiles = await _coordinator.getProcessedFiles();
       final deviceId = await _coordinator.getDeviceId();
 
-      for (final file in remoteFiles) {
-        if (file.id != null && file.name != null) {
-          if (kDebugMode) {
-            print('Checking file: ${file.name}');
-          }
-          // Optimization: Skip files we have already processed
-          if (processedFiles.contains(file.name)) {
-            if (kDebugMode) {
-              print('-> Skipping ${file.name} as already processed');
-            }
-            continue;
-          }
-
-          // Optimization: Skip our own files (files created by this deviceId)
-          if (file.name!.startsWith(deviceId)) {
-             if (kDebugMode) {
-                print('-> Skipping ${file.name} as it is our own export');
-             }
-             continue;
-          }
-
-          if (kDebugMode) {
-            print('-> Downloading ${file.name} ...');
-          }
-          final targetFile = File(p.join(syncTempDir.path, file.name));
-          await _googleDrive.downloadFile(file.id!, targetFile);
+      // Filter files to download first
+      final filesToDownload = remoteFiles.where((file) {
+        if (file.id == null || file.name == null) return false;
+        if (kDebugMode) {
+          print('Checking file: ${file.name}');
         }
-      }
+        // Optimization: Skip files we have already processed
+        if (processedFiles.contains(file.name)) {
+          if (kDebugMode) {
+            print('-> Skipping ${file.name} as already processed');
+          }
+          return false;
+        }
+
+        // Optimization: Skip our own files (files created by this deviceId)
+        if (file.name!.startsWith(deviceId)) {
+           if (kDebugMode) {
+              print('-> Skipping ${file.name} as it is our own export');
+           }
+           return false;
+        }
+        return true;
+      }).toList();
+
+      // Download in parallel batches
+      await _processInBatches<drive.File>(filesToDownload, (file) async {
+        if (kDebugMode) {
+          print('-> Downloading ${file.name} ...');
+        }
+        final targetFile = File(p.join(syncTempDir.path, file.name!));
+        await _googleDrive.downloadFile(file.id!, targetFile);
+      });
 
       // 2. Run standard SyncCoordinator logic on temp dir
       // This will import the downloaded files and mark them as processed.
@@ -177,13 +188,16 @@ class SyncService {
           .toList();
       final remoteFileNames = remoteFiles.map((f) => f.name).toSet();
 
-      for (final file in localFiles) {
+      final filesToUpload = localFiles.where((file) {
         final name = p.basename(file.path);
         // Upload if it's not in remote files (meaning it's a new export)
-        if (!remoteFileNames.contains(name)) {
-          await _googleDrive.uploadFile(file, name);
-        }
-      }
+        return !remoteFileNames.contains(name);
+      }).toList();
+
+      await _processInBatches<File>(filesToUpload, (file) async {
+        final name = p.basename(file.path);
+        await _googleDrive.uploadFile(file, name);
+      });
 
       // 4. Cleanup temp dir (handled in finally)
     } catch (e) {
@@ -246,5 +260,15 @@ class SyncService {
     // For now, return false to avoid triggering the "Overwrite" dialog in main.dart.
     // Differential sync should probably happen silently or via explicit Sync.
     return false;
+  }
+
+  Future<void> _processInBatches<T>(
+      List<T> items, Future<void> Function(T) process,
+      {int batchSize = 5}) async {
+    for (var i = 0; i < items.length; i += batchSize) {
+      final end = (i + batchSize < items.length) ? i + batchSize : items.length;
+      final batch = items.sublist(i, end);
+      await Future.wait(batch.map(process));
+    }
   }
 }
