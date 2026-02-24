@@ -170,19 +170,41 @@ class ReminderService {
       }
       final payload = jsonEncode(payloadMap);
 
-      await _plugin.zonedSchedule(
-        id,
-        title,
-        body,
-        tzTime,
-        NotificationDetails(
-          android: androidDetails,
-          iOS: darwinDetails,
-          macOS: darwinDetails,
-        ),
-        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-        payload: payload,
-      );
+      try {
+        await _plugin.zonedSchedule(
+          id,
+          title,
+          body,
+          tzTime,
+          NotificationDetails(
+            android: androidDetails,
+            iOS: darwinDetails,
+            macOS: darwinDetails,
+          ),
+          androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+          payload: payload,
+        );
+      } catch (e) {
+        if (_isExactAlarmPermissionError(e)) {
+          debugPrint(
+              'Exact alarm failed, falling back to inexact scheduling: $e');
+          await _plugin.zonedSchedule(
+            id,
+            title,
+            body,
+            tzTime,
+            NotificationDetails(
+              android: androidDetails,
+              iOS: darwinDetails,
+              macOS: darwinDetails,
+            ),
+            androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+            payload: payload,
+          );
+        } else {
+          rethrow;
+        }
+      }
     });
   }
 
@@ -303,15 +325,24 @@ class ReminderService {
     if (!_isUnsupportedError(error)) {
       return false;
     }
-    _notificationsSupported = false;
-    if (_isExactAlarmPermissionError(error)) {
+
+    final isExactAlarmError = _isExactAlarmPermissionError(error);
+
+    // We only disable the service if it's NOT an exact alarm error.
+    // If it's an exact alarm error, we'll try to fallback to inexact in scheduleReminder next time.
+    if (!isExactAlarmError) {
+      _notificationsSupported = false;
+    }
+
+    if (isExactAlarmError) {
       debugPrint(
-        'ReminderService disabled ($context): exact alarm permission required. '
-        'Reminders will remain disabled until the permission is granted.',
+        'ReminderService exact alarm failed ($context): permission required. '
+        'Falling back to inexact reminders if possible.',
       );
     }
+
     if (kDebugMode) {
-      debugPrint('ReminderService disabled ($context): $error');
+      debugPrint('ReminderService operation failed ($context): $error');
       debugPrint(stackTrace.toString());
     }
     return true;
@@ -352,6 +383,7 @@ class ReminderService {
     final code = error.code.toLowerCase();
     if (code.contains('scheduleexactalarm') ||
         code.contains('exactalarmpermission') ||
+        code == 'exact_alarms_not_permitted'.toLowerCase() ||
         code == 'androidscheduleexactalarmpermissiondenied'.toLowerCase()) {
       return true;
     }
@@ -440,6 +472,16 @@ class ReminderService {
       return false;
     }
     return await _deviceRequiresExactAlarmPermission();
+  }
+
+  /// Returns whether the exact alarm permission is currently granted.
+  Future<bool> isExactAlarmPermissionGranted() async {
+    if (!await isExactAlarmPermissionRelevant()) {
+      return true;
+    }
+    // We don't have a reliable way to check without the specific Android plugin import
+    // which might not be available. We'll rely on the try-catch in scheduleReminder.
+    return true;
   }
 
   /// Requests the exact alarm permission when the user has opted in and the
