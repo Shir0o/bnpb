@@ -35,7 +35,6 @@ Future<void> main() async {
     await ReminderService().initialize();
     final preferencesRepository = NotificationPreferencesRepository();
     await preferencesRepository.ensureDefaults();
-    await ReminderCoordinator().refreshAllContacts();
     runApp(const MyApp());
   } catch (error, stackTrace) {
     debugPrint('Initialization error: $error');
@@ -188,12 +187,23 @@ class _MainPageState extends State<MainPage> with WidgetsBindingObserver {
       onExitRequested: _onExitRequested,
     );
 
-    // Initial background sync
-    SyncService().performSync();
+    // Run heavy background initialization after the UI has a chance to mount
+    _runBackgroundInitialization();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _maybeShowOnboarding();
     });
+  }
+
+  Future<void> _runBackgroundInitialization() async {
+    // We don't await these here to keep initState fast, 
+    // but they will run in sequence in the background.
+    try {
+      await SyncService().performSync();
+      await ReminderCoordinator().refreshAllContacts();
+    } catch (e) {
+      debugPrint('Background initialization error: $e');
+    }
   }
 
   Future<AppExitResponse> _onExitRequested() async {
