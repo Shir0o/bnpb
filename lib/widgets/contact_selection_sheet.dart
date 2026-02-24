@@ -5,11 +5,13 @@ import '../services/contact_search_service.dart';
 class ContactSelectionSheet extends StatefulWidget {
   const ContactSelectionSheet({
     super.key,
-    required this.alreadySelectedIds,
+    this.initialSelectedIds = const {},
+    this.disabledIds = const {},
     this.title = 'Select Contacts',
   });
 
-  final Set<String> alreadySelectedIds;
+  final Set<String> initialSelectedIds;
+  final Set<String> disabledIds;
   final String title;
 
   @override
@@ -23,12 +25,13 @@ class _ContactSelectionSheetState extends State<ContactSelectionSheet> {
   final FocusNode _searchFocusNode = FocusNode();
 
   List<ContactMatch> _searchResults = [];
-  final Set<String> _selectedIds = {};
+  late final Set<String> _selectedIds;
   bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
+    _selectedIds = Set.from(widget.initialSelectedIds);
     _loadContacts();
     _searchController.addListener(_onSearchChanged);
   }
@@ -84,16 +87,8 @@ class _ContactSelectionSheetState extends State<ContactSelectionSheet> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isSearching = _searchController.text.isNotEmpty;
-    // If not searching, show all (except already members if desired? No, user might want to see them disabled or filter them out.
-    // The requirement is usually to pick *new* people.
-    // The parent passes `alreadySelectedIds`. We can filter them out completely or show them as disabled selected.
-    // Let's filter them out from the "available to pick" list to avoid clutter,
-    // or keep them but show as checked and disabled?
-    // Filtering out is usually cleaner for "Add" flows.
 
-    final displayList = _searchResults
-        .where((match) => !widget.alreadySelectedIds.contains(match.contact.id))
-        .toList();
+    final displayList = _searchResults;
 
     return Container(
       height: MediaQuery.of(context).size.height * 0.9,
@@ -120,10 +115,8 @@ class _ContactSelectionSheetState extends State<ContactSelectionSheet> {
                   ),
                 ),
                 TextButton(
-                  onPressed: _selectedIds.isEmpty
-                      ? null
-                      : () => Navigator.pop(context, _selectedIds.toList()),
-                  child: Text('Add (${_selectedIds.length})'),
+                  onPressed: () => Navigator.pop(context, _selectedIds.toList()),
+                  child: const Text('Done'),
                 ),
               ],
             ),
@@ -161,7 +154,7 @@ class _ContactSelectionSheetState extends State<ContactSelectionSheet> {
                         child: Text(
                           isSearching
                               ? 'No matching contacts found'
-                              : 'No contacts to add',
+                              : 'No contacts found',
                           style: theme.textTheme.bodyLarge?.copyWith(
                             color: theme.colorScheme.outline,
                           ),
@@ -173,28 +166,41 @@ class _ContactSelectionSheetState extends State<ContactSelectionSheet> {
                           final match = displayList[index];
                           final contact = match.contact;
                           final isSelected = _selectedIds.contains(contact.id);
+                          final isDisabled =
+                              widget.disabledIds.contains(contact.id);
 
                           return ListTile(
                             leading: CircleAvatar(
-                              backgroundColor:
-                                  theme.colorScheme.primaryContainer,
-                              foregroundColor:
-                                  theme.colorScheme.onPrimaryContainer,
+                              backgroundColor: isDisabled
+                                  ? theme.colorScheme.surfaceContainerHighest
+                                  : theme.colorScheme.primaryContainer,
+                              foregroundColor: isDisabled
+                                  ? theme.colorScheme.outline
+                                  : theme.colorScheme.onPrimaryContainer,
                               child: Text(contact.firstName.isNotEmpty
                                   ? contact.firstName[0].toUpperCase()
                                   : '?'),
                             ),
-                            title: Text(contact.fullName),
+                            title: Text(
+                              contact.fullName,
+                              style: TextStyle(
+                                color: isDisabled ? theme.colorScheme.outline : null,
+                              ),
+                            ),
                             subtitle: match.snippet != null
                                 ? Text(match.snippet!)
                                 : (contact.location?.isNotEmpty == true
                                     ? Text(contact.location!)
                                     : null),
                             trailing: Checkbox(
-                              value: isSelected,
-                              onChanged: (_) => _toggleSelection(contact.id),
+                              value: isSelected || isDisabled,
+                              onChanged: isDisabled
+                                  ? null
+                                  : (_) => _toggleSelection(contact.id),
                             ),
-                            onTap: () => _toggleSelection(contact.id),
+                            onTap: isDisabled
+                                ? null
+                                : () => _toggleSelection(contact.id),
                           );
                         },
                       ),

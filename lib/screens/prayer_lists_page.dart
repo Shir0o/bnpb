@@ -100,7 +100,7 @@ class _PrayerListPageState extends State<PrayerListPage> {
       context: context,
       isScrollControlled: true,
       builder: (context) => ContactSelectionSheet(
-        alreadySelectedIds: currentIds,
+        disabledIds: currentIds,
       ),
     );
 

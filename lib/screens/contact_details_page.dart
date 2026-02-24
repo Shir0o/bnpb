@@ -13,6 +13,7 @@ import '../services/backup_service.dart';
 import '../services/contact_service.dart';
 import '../services/reminder_coordinator.dart';
 import '../widgets/contact_details_skeleton.dart';
+import '../widgets/contact_selection_sheet.dart';
 import '../widgets/people_card.dart';
 import '../widgets/relationship_dialog.dart';
 
@@ -2161,18 +2162,22 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
   }
 
   Future<void> _showParticipantSelectionDialog() async {
-    final result = await showDialog<Set<String>>(
+    final result = await showModalBottomSheet<List<String>>(
       context: context,
-      builder: (context) => _ParticipantSelectionDialog(
-        availableContacts:
-            _availableContacts.where((c) => c.id != widget.contact.id).toList(),
-        selectedIds: _selectedParticipantIds,
+      isScrollControlled: true,
+      builder: (context) => ContactSelectionSheet(
+        title: 'Select Participants',
+        initialSelectedIds: _selectedParticipantIds,
+        disabledIds: {widget.contact.id},
       ),
     );
 
     if (result != null && mounted) {
       setState(() {
-        _selectedParticipantIds = result;
+        _selectedParticipantIds = {
+          widget.contact.id,
+          ...result,
+        };
       });
     }
   }
@@ -3090,128 +3095,6 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
       // Update validation state
       _isSaveEnabled = _calculateSaveEnabled();
     });
-  }
-}
-
-class _ParticipantSelectionDialog extends StatefulWidget {
-  final List<Contact> availableContacts;
-  final Set<String> selectedIds;
-
-  const _ParticipantSelectionDialog({
-    required this.availableContacts,
-    required this.selectedIds,
-  });
-
-  @override
-  State<_ParticipantSelectionDialog> createState() =>
-      _ParticipantSelectionDialogState();
-}
-
-class _ParticipantSelectionDialogState
-    extends State<_ParticipantSelectionDialog> {
-  late Set<String> _currentSelection;
-  late TextEditingController _searchController;
-  String _query = '';
-
-  @override
-  void initState() {
-    super.initState();
-    _currentSelection = Set.from(widget.selectedIds);
-    _searchController = TextEditingController();
-    _searchController.addListener(() {
-      setState(() {
-        _query = _searchController.text.trim().toLowerCase();
-      });
-    });
-  }
-
-  @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
-  }
-
-  List<Contact> get _filteredContacts {
-    final available = widget.availableContacts;
-    if (_query.isEmpty) {
-      return available;
-    }
-    return available.where((contact) {
-      return contact.fullName.toLowerCase().contains(_query) ||
-          (contact.nickname?.toLowerCase().contains(_query) ?? false);
-    }).toList();
-  }
-
-  void _toggle(String id) {
-    setState(() {
-      if (_currentSelection.contains(id)) {
-        _currentSelection.remove(id);
-      } else {
-        _currentSelection.add(id);
-      }
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final filtered = _filteredContacts;
-    return AlertDialog(
-      title: const Text('Select Participants'),
-      content: SizedBox(
-        width: double.maxFinite,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: _searchController,
-              decoration: const InputDecoration(
-                hintText: 'Search contacts',
-                prefixIcon: Icon(Icons.search),
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 12),
-            Flexible(
-              child: ListView.builder(
-                shrinkWrap: true,
-                itemCount: filtered.length,
-                itemBuilder: (context, index) {
-                  final contact = filtered[index];
-                  final isSelected = _currentSelection.contains(contact.id);
-                  return ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: CircleAvatar(
-                      child: Text(contact.fullName.isNotEmpty
-                          ? contact.fullName[0].toUpperCase()
-                          : '?'),
-                    ),
-                    title: Text(contact.fullName),
-                    subtitle:
-                        contact.nickname != null && contact.nickname!.isNotEmpty
-                            ? Text(contact.nickname!)
-                            : null,
-                    trailing: isSelected
-                        ? const Icon(Icons.check_circle, color: Colors.blue)
-                        : const Icon(Icons.circle_outlined),
-                    onTap: () => _toggle(contact.id),
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Cancel'),
-        ),
-        ElevatedButton(
-          onPressed: () => Navigator.pop(context, _currentSelection),
-          child: const Text('Done'),
-        ),
-      ],
-    );
   }
 }
 

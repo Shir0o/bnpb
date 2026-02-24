@@ -117,7 +117,7 @@ class _MacOSActiveContactsViewState extends State<MacOSActiveContactsView> {
       context: context,
       isScrollControlled: true,
       builder: (context) => ContactSelectionSheet(
-        alreadySelectedIds: currentIds,
+        disabledIds: currentIds,
         title: 'Add to ${_activeList!.name}',
       ),
     );
