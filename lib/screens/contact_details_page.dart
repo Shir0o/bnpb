@@ -2107,6 +2107,7 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
   bool _isSaveEnabled = false;
   bool _formWasSubmitted = false;
   bool _isSavingInteraction = false;
+  bool _occurredAtManuallyChanged = false;
   List<Contact> _availableContacts = [];
   Map<String, Contact> _contactLookup = {};
   Set<String> _selectedParticipantIds = {};
@@ -2135,6 +2136,42 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
     }
 
     return formState.validate();
+  }
+
+  void _updateOccurredAtFromDuration() {
+    if (_occurredAtManuallyChanged) {
+      return;
+    }
+
+    final text = _durationController.text.trim();
+    if (text.isEmpty) {
+      return;
+    }
+
+    final durationMinutes = int.tryParse(text);
+    if (durationMinutes == null || durationMinutes < 0) {
+      return;
+    }
+
+    final now = DateTime.now();
+    final newOccurredAt = now.subtract(Duration(minutes: durationMinutes));
+
+    // Check if significant change to avoid loop
+    if (_occurredAt.difference(newOccurredAt).abs().inMinutes < 1) {
+       // Keep existing time if difference is negligible to avoid jitter
+       // But user might want exact update.
+       // Actually, every keystroke will update it relative to 'now'.
+       // So typing '1' -> now-1. Typing '0' -> now-10.
+    }
+
+    setState(() {
+      _occurredAt = newOccurredAt;
+    });
+
+    final newTimeText = DateFormat.jm().format(newOccurredAt);
+    if (_occurredTimeController.text != newTimeText) {
+      _occurredTimeController.text = newTimeText;
+    }
   }
 
   void _updateSaveEnabled() {
@@ -2313,9 +2350,11 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
       ...(initial?.participantIds ?? const <String>{}),
     };
     _initContacts();
+    _occurredAtManuallyChanged = widget.initialInteraction != null;
     _speechBaseText = _summaryController.text.trim();
     _summaryController.addListener(_updateSaveEnabled);
     _durationController.addListener(_updateSaveEnabled);
+    _durationController.addListener(_updateOccurredAtFromDuration);
     _isSaveEnabled = _calculateSaveEnabled();
   }
 
@@ -2326,6 +2365,7 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
     _speechToText.cancel();
     _summaryController.removeListener(_updateSaveEnabled);
     _durationController.removeListener(_updateSaveEnabled);
+    _durationController.removeListener(_updateOccurredAtFromDuration);
     _summaryController.dispose();
     _locationController.dispose();
     _durationController.dispose();
@@ -2343,6 +2383,7 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
     );
     if (!mounted || date == null) return;
     setState(() {
+      _occurredAtManuallyChanged = true;
       _occurredAt = DateTime(
         date.year,
         date.month,
@@ -2362,6 +2403,7 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
     );
     if (!mounted || time == null) return;
     setState(() {
+      _occurredAtManuallyChanged = true;
       _occurredAt = DateTime(
         _occurredAt.year,
         _occurredAt.month,
@@ -2408,6 +2450,7 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
 
     if (shouldUpdate) {
       setState(() {
+        _occurredAtManuallyChanged = true;
         _occurredAt = normalized;
       });
       final normalizedText = DateFormat.jm().format(normalized);
