@@ -2,51 +2,70 @@
 const String kPrivacyPolicyText = '''
 BNPB Privacy Policy & Personal Usage Guidelines
 
-Last updated: May 2024
+Last updated: February 2026
 
 Overview
-BNPB stores contact insights entirely on your device. No data is uploaded to
-remote servers or shared with the developers. You control when information is
-exported, backed up, or deleted.
+BNPB is designed with a "local-first" philosophy. Your contact insights, 
+interaction history, and personal reflections are stored and processed entirely 
+on your device. No data is uploaded to remote servers for processing, and the 
+developers have no access to your information.
 
 Data storage & encryption
 • All contact details, interaction history, prayer requests, and notification
   preferences are written to an encrypted SQLCipher database.
 • The encryption key is generated locally and saved in the device key store via
-  Flutter Secure Storage. The key never leaves your device.
-• Automatic on-device backups reuse the same encryption, so copied database
-  files remain protected unless you unlock the app.
+  Flutter Secure Storage (e.g., Keychain on iOS/macOS, Keystore on Android). 
+  This key never leaves your device.
+• On-device analytics (such as time investment charts and interaction gaps) are 
+  calculated locally from your encrypted data. No usage metrics are transmitted 
+  to any external service.
 
-Local authentication
-• You can enable a passcode to gate the app. Without the code, data cannot be
-  viewed.
-• Supported devices may also unlock with biometrics (Face ID, Touch ID, or
-  fingerprint). Biometrics rely on the operating system—BNPB never sees your
-  biometric template.
+Sync & Backups
+BNPB provides options to keep your data safe across devices:
+• Local Sync: You may choose a folder on your device (or a shared cloud folder 
+  like iCloud, OneDrive, or Dropbox) to store a backup. Only the encrypted 
+  database file is copied.
+• Google Drive Sync: If enabled, BNPB uses Google Drive to sync your encrypted 
+  database. This uses the "App Data Folder" scope, meaning the files are 
+  invisible to you in the standard Drive interface and are only accessible by 
+  BNPB. 
+• Google Identity: When signing in for Google Drive sync, BNPB only uses your 
+  identity to facilitate the connection to your storage. We do not store your 
+  profile information or track your Google account activity.
+
+Permissions & Notifications
+• Notifications: Reminders for follow-ups and prayer updates are managed by the 
+  operating system's local notification service.
+• Precise Scheduling (Android): On Android 12+, we may request the "Exact Alarm" 
+  permission. This is used solely to ensure your reminders fire at the precise 
+  minute requested, rather than being delayed by system battery-saving measures.
+• Biometrics: If enabled, BNPB uses system-level biometric prompts (Face ID, 
+  Touch ID, or Android Biometric) to unlock the app. The app never sees or 
+  stores your biometric data.
 
 Exports
-• CSV, PDF, and JSON exports are created on demand and stay local until you share
-  them.
-• Encrypted archives wrap selected contact fields in an AES-256 encrypted ZIP
-  file that requires a passphrase to open.
-• Exports should be shared only with people who have consent from the contacts
-  represented in the file.
+• CSV, PDF, and JSON exports are created on demand and stay local until you 
+  explicitly share or move them.
+• Encrypted archives (.zip) use AES-256 encryption to protect exported data. 
+  You are responsible for the security of the passphrase used for these files.
 
 Deletion & retention
-• The “Securely purge all data” action overwrites the encrypted database,
-  deletes rolling backups, clears encryption keys, and cancels notifications.
-• You can also delete individual contacts at any time; associated reminders and
-  history are removed alongside the record.
+• The “Securely purge all data” action in Settings overwrites the encrypted 
+  database, removes local backups, clears encryption keys, and cancels all 
+  scheduled notifications.
+• Deleting a contact removes all associated history and reminders from the 
+  local database immediately.
 
 Personal usage guidelines
-• Collect information that contacts would reasonably expect you to remember and
-  respect their privacy boundaries.
-• Do not sell, publish, or otherwise commercialize personal data stored in BNPB
-  without explicit permission from the individuals represented.
-• Follow local regulations around personal data, consent, and biometric usage in
-  your jurisdiction.
+• Responsibility: You are responsible for the data you collect. Ensure you 
+  respect the privacy and consent of the individuals in your address book.
+• Non-Commercial: BNPB is a personal tool. Do not sell or commercialize the 
+  personal data of others stored within the app.
+• Compliance: Follow local regulations (such as GDPR or CCPA) regarding 
+  personal data management and the storage of sensitive information.
 
 Questions & changes
-This project is open source. Review the repository documentation for update
-history and submit issues or pull requests if you notice gaps in the policy.
+This project is open source. You can review the full source code and update 
+history on GitHub. Please report any security concerns or policy gaps through 
+the official repository.
 ''';

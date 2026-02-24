@@ -198,8 +198,12 @@ class _SettingsPageState extends State<SettingsPage> {
     return Column(
       children: [
         ListTile(
-          leading: Icon(_syncType == SyncType.local ? Icons.folder_outlined : Icons.cloud_outlined),
-          title: Text(_syncType == SyncType.local ? 'Local Folder Sync' : 'Google Drive Sync'),
+          leading: Icon(_syncType == SyncType.local
+              ? Icons.folder_outlined
+              : Icons.cloud_outlined),
+          title: Text(_syncType == SyncType.local
+              ? 'Local Folder Sync'
+              : 'Google Drive Sync'),
           subtitle: Text('Last sync: $lastSyncStr'),
           trailing: IconButton(
             icon: const Icon(Icons.sync),
@@ -234,7 +238,9 @@ class _SettingsPageState extends State<SettingsPage> {
             title: Text(_googleUser?.displayName ?? 'Not signed in'),
             subtitle: Text(_googleUser?.email ?? 'Tap to sign in'),
             leading: _googleUser != null
-                ? CircleAvatar(backgroundImage: NetworkImage(_googleUser!.photoUrl ?? ''), radius: 12)
+                ? CircleAvatar(
+                    backgroundImage: NetworkImage(_googleUser!.photoUrl ?? ''),
+                    radius: 12)
                 : null,
             onTap: () async {
               if (_googleUser == null) {
@@ -275,15 +281,20 @@ class _SettingsPageState extends State<SettingsPage> {
     try {
       await SyncService().performSync();
       await _load();
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Sync complete')));
+      if (mounted)
+        ScaffoldMessenger.of(context)
+            .showSnackBar(const SnackBar(content: Text('Sync complete')));
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Sync failed: $e')));
+      if (mounted)
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Sync failed: $e')));
     } finally {
       if (mounted) setState(() => _isUpdating = false);
     }
   }
 
-  Future<void> _setGlobalPreference(ReminderChannel channel, bool enabled, Duration leadTime) async {
+  Future<void> _setGlobalPreference(
+      ReminderChannel channel, bool enabled, Duration leadTime) async {
     final pref = NotificationPreference(
       scopeType: NotificationScopeType.global,
       scopeId: NotificationPreference.globalScopeId,
@@ -296,21 +307,24 @@ class _SettingsPageState extends State<SettingsPage> {
     _load();
   }
 
-  void _showLeadTimePicker(BuildContext context, ReminderChannel channel, bool enabled, Duration current) {
+  void _showLeadTimePicker(BuildContext context, ReminderChannel channel,
+      bool enabled, Duration current) {
     final options = _leadTimeOptions(channel, current);
     showModalBottomSheet(
       context: context,
       builder: (context) => SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
-          children: options.map((opt) => ListTile(
-            title: Text(_formatLeadTime(channel, opt)),
-            trailing: opt == current ? const Icon(Icons.check) : null,
-            onTap: () {
-              Navigator.pop(context);
-              _setGlobalPreference(channel, enabled, opt);
-            },
-          )).toList(),
+          children: options
+              .map((opt) => ListTile(
+                    title: Text(_formatLeadTime(channel, opt)),
+                    trailing: opt == current ? const Icon(Icons.check) : null,
+                    onTap: () {
+                      Navigator.pop(context);
+                      _setGlobalPreference(channel, enabled, opt);
+                    },
+                  ))
+              .toList(),
         ),
       ),
     );
@@ -318,7 +332,14 @@ class _SettingsPageState extends State<SettingsPage> {
 
   List<Duration> _leadTimeOptions(ReminderChannel channel, Duration current) {
     // Simplified common options
-    return [const Duration(minutes: 0), const Duration(minutes: 30), const Duration(hours: 1), const Duration(days: 1), current].toSet().toList()..sort();
+    return [
+      const Duration(minutes: 0),
+      const Duration(minutes: 30),
+      const Duration(hours: 1),
+      const Duration(days: 1),
+      current
+    ].toSet().toList()
+      ..sort();
   }
 
   String _formatLeadTime(ReminderChannel channel, Duration d) {
@@ -336,10 +357,15 @@ class _SettingsPageState extends State<SettingsPage> {
         context: context,
         builder: (context) => AlertDialog(
           title: const Text('Enable Exact Alarms?'),
-          content: const Text('This ensures reminders fire at the precise minute on Android 12+.'),
+          content: const Text(
+              'This ensures reminders fire at the precise minute on Android 12+.'),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-            TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Enable')),
+            TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Cancel')),
+            TextButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text('Enable')),
           ],
         ),
       );
@@ -358,10 +384,17 @@ class _SettingsPageState extends State<SettingsPage> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Set Passcode'),
-        content: TextField(controller: controller, obscureText: true, keyboardType: TextInputType.number),
+        content: TextField(
+            controller: controller,
+            obscureText: true,
+            keyboardType: TextInputType.number),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-          TextButton(onPressed: () => Navigator.pop(context, controller.text), child: const Text('Save')),
+          TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel')),
+          TextButton(
+              onPressed: () => Navigator.pop(context, controller.text),
+              child: const Text('Save')),
         ],
       ),
     );
@@ -381,10 +414,16 @@ class _SettingsPageState extends State<SettingsPage> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Purge All Data?'),
-        content: const Text('This will delete all contacts, interactions, and settings. This cannot be undone.'),
+        content: const Text(
+            'This will delete all contacts, interactions, and settings. This cannot be undone.'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Purge'), style: TextButton.styleFrom(foregroundColor: Colors.red)),
+          TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel')),
+          TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Purge'),
+              style: TextButton.styleFrom(foregroundColor: Colors.red)),
         ],
       ),
     );
@@ -398,6 +437,9 @@ class _SettingsPageState extends State<SettingsPage> {
 
   Future<void> _openExportOptions() async {
     if (_contacts.isEmpty) return;
-    showModalBottomSheet(context: context, isScrollControlled: true, builder: (context) => ExportOptionsSheet(contacts: _contacts));
+    showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        builder: (context) => ExportOptionsSheet(contacts: _contacts));
   }
 }
