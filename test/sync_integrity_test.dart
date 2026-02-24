@@ -52,7 +52,7 @@ class IntegritySpyDBHelper extends MockDBHelper {
         markForPrayer INTEGER NOT NULL DEFAULT 0,
         followUpAt TEXT,
         durationMinutes INTEGER,
-        category TEXT,
+        notes TEXT,
         updatedAt TEXT NOT NULL DEFAULT (datetime('now')),
         deletedAt TEXT
       )

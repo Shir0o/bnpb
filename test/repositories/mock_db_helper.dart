@@ -101,9 +101,6 @@ class MockDBHelper implements DBHelper {
       throw UnimplementedError();
 
   @override
-  Future<List<String>> getInteractionCategories() => throw UnimplementedError();
-
-  @override
   Future<List<Interaction>> getInteractions({
     DateTime? start,
     DateTime? end,

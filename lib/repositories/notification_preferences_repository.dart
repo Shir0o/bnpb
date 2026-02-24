@@ -76,6 +76,9 @@ class NotificationPreferencesRepository {
   ///
   /// The priority order is contact -> category -> global. If no stored
   /// preference exists the defaults defined on [ReminderChannel] are used.
+  ///
+  /// Note: [category] only applies to the [ReminderChannel.prayerUpdate] channel
+  /// as interactions no longer have categories.
   Future<ResolvedNotificationPreference> resolve({
     required ReminderChannel channel,
     required String contactId,
@@ -94,7 +97,9 @@ class NotificationPreferencesRepository {
     }
 
     final trimmedCategory = category?.trim();
-    if (trimmedCategory != null && trimmedCategory.isNotEmpty) {
+    if (trimmedCategory != null &&
+        trimmedCategory.isNotEmpty &&
+        channel == ReminderChannel.prayerUpdate) {
       final categoryPreference = await _dbHelper.getNotificationPreference(
         scopeType: NotificationScopeType.category,
         scopeId: trimmedCategory,

@@ -114,7 +114,6 @@ class ReminderCoordinator {
       final preference = await _preferencesRepository.resolve(
         channel: ReminderChannel.followUp,
         contactId: contact.id,
-        category: interaction.category,
       );
       if (!preference.enabled) {
         return;

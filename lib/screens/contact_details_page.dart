@@ -1625,14 +1625,14 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ),
-                          if (interaction.category != null &&
-                              interaction.category!.isNotEmpty)
+                          if (interaction.notes != null &&
+                              interaction.notes!.isNotEmpty)
                             Padding(
                               padding: const EdgeInsets.only(top: 2),
                               child: Text(
-                                interaction.category!,
+                                interaction.notes!,
                                 style: theme.textTheme.labelSmall,
-                                maxLines: 1,
+                                maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ),
@@ -2031,9 +2031,9 @@ class _InteractionDetailPageState extends State<InteractionDetailPage> {
               value: _interaction.location,
             ),
             _buildDetailTile(
-              icon: Icons.category_outlined,
-              title: 'Category',
-              value: _interaction.category,
+              icon: Icons.notes_outlined,
+              title: 'Notes',
+              value: _interaction.notes,
             ),
             _buildDetailTile(
               icon: Icons.timer_outlined,
@@ -2085,12 +2085,11 @@ class _LogInteractionSheet extends StatefulWidget {
 
 class _LogInteractionSheetState extends State<_LogInteractionSheet> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
-  late final TextEditingController _summaryController;
-  late final TextEditingController _locationController;
-  late final TextEditingController _durationController;
-  late final TextEditingController _categoryController;
-  late final TextEditingController _occurredTimeController;
-
+     late final TextEditingController _summaryController;
+    late final TextEditingController _locationController;
+    late final TextEditingController _durationController;
+    late final TextEditingController _notesController;
+    late final TextEditingController _occurredTimeController;
   final SpeechToText _speechToText = SpeechToText();
 
   DateTime _occurredAt = DateTime.now();
@@ -2291,7 +2290,8 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
           ? initial!.durationMinutes.toString()
           : '',
     );
-    _categoryController = TextEditingController(text: initial?.category ?? '');
+    _notesController =
+        TextEditingController(text: initial?.notes ?? '');
     _occurredAt = initial?.occurredAt ?? DateTime.now();
     _occurredTimeController = TextEditingController(
       text: DateFormat.jm().format(_occurredAt),
@@ -2320,7 +2320,7 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
     _summaryController.dispose();
     _locationController.dispose();
     _durationController.dispose();
-    _categoryController.dispose();
+    _notesController.dispose();
     _occurredTimeController.dispose();
     super.dispose();
   }
@@ -2606,8 +2606,8 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
     final durationText = _durationController.text.trim();
     final durationMinutes =
         durationText.isEmpty ? null : int.tryParse(durationText);
-    final categoryText = _categoryController.text.trim();
-    final category = categoryText.isEmpty ? null : categoryText;
+    final notesText = _notesController.text.trim();
+    final notes = notesText.isEmpty ? null : notesText;
 
     final participants = <String>{
       widget.contact.id,
@@ -2625,7 +2625,7 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
       markForPrayer: _markForPrayer,
       followUpAt: _followUpAt,
       durationMinutes: durationMinutes,
-      category: category,
+      notes: notes,
       participantIds: participants.toList(),
     );
 
@@ -2896,10 +2896,11 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
                   ),
                   const SizedBox(height: 12),
                   TextField(
-                    controller: _categoryController,
+                    controller: _notesController,
                     textCapitalization: TextCapitalization.sentences,
+                    maxLines: 3,
                     decoration: const InputDecoration(
-                      labelText: 'Category (optional)',
+                      labelText: 'Notes (optional)',
                       border: OutlineInputBorder(),
                     ),
                   ),
@@ -3074,8 +3075,8 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
       if (base.durationMinutes != null) {
         _durationController.text = base.durationMinutes.toString();
       }
-      if (base.category != null) {
-        _categoryController.text = base.category!;
+      if (base.notes != null) {
+        _notesController.text = base.notes!;
       }
 
       _markForPrayer = base.markForPrayer;

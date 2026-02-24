@@ -61,14 +61,8 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
       (a, b) => a.fullName.toLowerCase().compareTo(b.fullName.toLowerCase()),
     );
 
-    final interactionCategories = await _dbHelper.getInteractionCategories();
     final prayerCategories = await _dbHelper.getPrayerCategories();
     final categoryChannels = <String, Set<ReminderChannel>>{};
-    for (final category in interactionCategories) {
-      categoryChannels
-          .putIfAbsent(category, () => <ReminderChannel>{})
-          .add(ReminderChannel.followUp);
-    }
     for (final category in prayerCategories) {
       categoryChannels
           .putIfAbsent(category, () => <ReminderChannel>{})

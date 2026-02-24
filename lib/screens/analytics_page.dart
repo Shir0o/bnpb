@@ -332,8 +332,8 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
 
     if (entries.isEmpty) {
       return const _EmptyAnalyticsCard(
-        title: 'Time by category',
-        message: 'Add categories to your interactions to compare focus areas.',
+        title: 'Prayer focus areas',
+        message: 'Add categories to your prayer requests to see a breakdown.',
       );
     }
 
@@ -350,7 +350,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Time by category',
+              'Prayer focus areas',
               style: Theme.of(context).textTheme.titleMedium,
             ),
             const SizedBox(height: 12),
@@ -397,9 +397,8 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
               spacing: 8,
               runSpacing: 8,
               children: entries.map((entry) {
-                final label = entry.totalMinutes > 0
-                    ? '${entry.category} • ${entry.totalMinutes} min'
-                    : '${entry.category} • ${entry.interactionCount} logs';
+                final label =
+                    '${entry.category} • ${entry.interactionCount} request${entry.interactionCount == 1 ? '' : 's'}';
                 return Chip(
                   avatar: const Icon(Icons.label_outline, size: 18),
                   label: Text(label),

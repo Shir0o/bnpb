@@ -30,7 +30,7 @@ void main() {
           markForPrayer: true,
           followUpAt: DateTime.parse('2024-01-16T12:30:00.000Z'),
           durationMinutes: 45,
-          category: 'catchUp',
+          notes: 'catchUp',
         ),
       ],
     );

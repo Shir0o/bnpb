@@ -132,17 +132,6 @@ class AnalyticsRepository {
         accumulator.totalMinutes += durationMinutes;
         accumulator.interactionCount += 1;
 
-        final rawCategory = interaction.category?.trim();
-        final categoryKey = (rawCategory == null || rawCategory.isEmpty)
-            ? 'Uncategorized'
-            : rawCategory;
-        final categoryAccumulator = categoryAccumulators.putIfAbsent(
-          categoryKey,
-          () => _CategoryAccumulator(categoryKey),
-        );
-        categoryAccumulator.totalMinutes += durationMinutes;
-        categoryAccumulator.interactionCount += 1;
-
         final bucket =
             DateTime(occurredAt.year, occurredAt.month, occurredAt.day);
         final timelineAccumulator = timelineAccumulators.putIfAbsent(
@@ -156,6 +145,17 @@ class AnalyticsRepository {
             occurredAt.isAfter(latestInteraction)) {
           latestInteraction = occurredAt;
         }
+      }
+
+      for (final prayerRequest in contact.prayerRequests) {
+        final rawCategory = prayerRequest.category?.trim();
+        if (rawCategory == null || rawCategory.isEmpty) continue;
+
+        final categoryAccumulator = categoryAccumulators.putIfAbsent(
+          rawCategory,
+          () => _CategoryAccumulator(rawCategory),
+        );
+        categoryAccumulator.interactionCount += 1;
       }
 
       contactGaps.add(
@@ -184,10 +184,6 @@ class AnalyticsRepository {
     final categoryBreakdown =
         categoryAccumulators.values.map((entry) => entry.toDomain()).toList()
           ..sort((a, b) {
-            final durationCompare = b.totalMinutes.compareTo(a.totalMinutes);
-            if (durationCompare != 0) {
-              return durationCompare;
-            }
             return b.interactionCount.compareTo(a.interactionCount);
           });
 

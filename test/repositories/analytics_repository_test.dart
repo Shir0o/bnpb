@@ -45,14 +45,14 @@ void main() {
             summary: 'Chat',
             medium: 'phone',
             durationMinutes: 30,
-            category: 'Work',
+            notes: 'Work',
           ),
           Interaction(
             occurredAt: now.subtract(const Duration(days: 2)),
             summary: 'Coffee',
             medium: 'in_person',
             durationMinutes: 60,
-            category: 'Social',
+            notes: 'Social',
           ),
         ],
       );
@@ -63,13 +63,8 @@ void main() {
       expect(summary.totalMinutes, 90);
       expect(summary.totalInteractions, 2);
 
-      // Category breakdown
-      expect(summary.categoryBreakdown.length, 2);
-      expect(
-        summary.categoryBreakdown
-            .any((e) => e.category == 'Work' && e.totalMinutes == 30),
-        isTrue,
-      );
+      // Category breakdown (should be empty because interactions don't have categories anymore)
+      expect(summary.categoryBreakdown.length, 0);
     });
 
     test('buildSummary respects date range', () async {

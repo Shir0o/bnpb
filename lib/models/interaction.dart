@@ -73,7 +73,7 @@ class Interaction {
     this.markForPrayer = false,
     this.followUpAt,
     this.durationMinutes,
-    this.category,
+    this.notes,
     this.participantIds = const [],
     DateTime? updatedAt,
     this.deletedAt,
@@ -91,7 +91,7 @@ class Interaction {
   final bool markForPrayer;
   final DateTime? followUpAt;
   final int? durationMinutes;
-  final String? category;
+  final String? notes;
   final DateTime updatedAt;
   final DateTime? deletedAt;
 
@@ -106,7 +106,7 @@ class Interaction {
     bool? markForPrayer,
     DateTime? followUpAt,
     int? durationMinutes,
-    String? category,
+    String? notes,
     List<String>? participantIds,
     DateTime? updatedAt,
     DateTime? deletedAt,
@@ -122,7 +122,7 @@ class Interaction {
       markForPrayer: markForPrayer ?? this.markForPrayer,
       followUpAt: followUpAt ?? this.followUpAt,
       durationMinutes: durationMinutes ?? this.durationMinutes,
-      category: category ?? this.category,
+      notes: notes ?? this.notes,
       participantIds: participantIds ?? this.participantIds,
       updatedAt: updatedAt ?? this.updatedAt,
       deletedAt: deletedAt ?? this.deletedAt,
@@ -157,7 +157,7 @@ class Interaction {
       'markForPrayer': markForPrayer,
       'followUpAt': followUpAt?.toIso8601String(),
       'durationMinutes': durationMinutes,
-      'category': category,
+      'notes': notes,
       'participantIds': participantIds,
       'updatedAt': updatedAt.toIso8601String(),
       'deletedAt': deletedAt?.toIso8601String(),
@@ -199,7 +199,7 @@ class Interaction {
           ? DateTime.tryParse(map['followUpAt'] as String)
           : null,
       durationMinutes: _parseOptionalInt(map['durationMinutes']),
-      category: _parseOptionalCategory(map['category']),
+      notes: _parseOptionalString(map['notes'] ?? map['category']),
       participantIds: _parseParticipantIds(map['participantIds']),
       updatedAt: map['updatedAt'] != null
           ? DateTime.parse(map['updatedAt'] as String)
@@ -262,7 +262,7 @@ class Interaction {
     return false;
   }
 
-  static String? _parseOptionalCategory(dynamic value) {
+  static String? _parseOptionalString(dynamic value) {
     if (value is! String) {
       return null;
     }

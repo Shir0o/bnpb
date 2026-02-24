@@ -47,7 +47,7 @@ void main() {
         markForPrayer: true,
         followUpAt: DateTime.utc(2024, 1, 15),
         durationMinutes: 45,
-        category: 'Check-in',
+        notes: 'Check-in',
       );
 
       final contact = Contact(
@@ -88,7 +88,7 @@ void main() {
       // toIso8601String() usually returns "2024-01-15T00:00:00.000Z"
       expect(interactionJson['followUpAt'], '2024-01-15T00:00:00.000Z');
       expect(interactionJson['durationMinutes'], 45);
-      expect(interactionJson['category'], 'Check-in');
+      expect(interactionJson['notes'], 'Check-in');
     });
   });
 }

@@ -15,7 +15,7 @@ import '../services/security_service.dart';
 import '../constants/storage.dart';
 
 class DBHelper {
-  static const _dbVersion = 16;
+  static const _dbVersion = 17;
 
   static final DBHelper _instance = DBHelper._();
   static Database? _database;
@@ -106,7 +106,7 @@ class DBHelper {
         markForPrayer INTEGER NOT NULL DEFAULT 0,
         followUpAt TEXT,
         durationMinutes INTEGER,
-        category TEXT,
+        notes TEXT,
         updatedAt TEXT NOT NULL DEFAULT (datetime('now')),
         deletedAt TEXT
       )
@@ -486,12 +486,16 @@ class DBHelper {
       await db.execute('ALTER TABLE contacts ADD COLUMN email TEXT');
       await db.execute('ALTER TABLE contacts ADD COLUMN phone TEXT');
     }
-    if (oldVersion < 16) {
-      await db.execute(
-          "ALTER TABLE prayer_lists ADD COLUMN updatedAt TEXT NOT NULL DEFAULT '1970-01-01T00:00:00.000Z'");
-      await db.execute('ALTER TABLE prayer_lists ADD COLUMN deletedAt TEXT');
-    }
-  }
+        if (oldVersion < 16) {
+          await db.execute(
+              "ALTER TABLE prayer_lists ADD COLUMN updatedAt TEXT NOT NULL DEFAULT '1970-01-01T00:00:00.000Z'");
+          await db.execute('ALTER TABLE prayer_lists ADD COLUMN deletedAt TEXT');
+        }
+        if (oldVersion < 17) {
+          await db.execute('ALTER TABLE interactions RENAME COLUMN category TO notes');
+        }
+    
+      }
 
   // -------------------------------------------------------------
   // PRAYER LIST METHODS
@@ -1740,20 +1744,6 @@ class DBHelper {
     }
 
     return counts;
-  }
-
-  Future<List<String>> getInteractionCategories() async {
-    final db = await database;
-    final rows = await db.rawQuery('''
-      SELECT DISTINCT TRIM(category) as category
-      FROM interactions
-      WHERE category IS NOT NULL AND TRIM(category) != '' AND deletedAt IS NULL
-      ORDER BY LOWER(category)
-    ''');
-    return rows
-        .map((row) => row['category'] as String)
-        .where((category) => category.trim().isNotEmpty)
-        .toList();
   }
 
   Future<List<String>> getPrayerCategories() async {
