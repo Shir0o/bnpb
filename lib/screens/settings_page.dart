@@ -90,65 +90,65 @@ class _SettingsPageState extends State<SettingsPage> {
 
   @override
   Widget build(BuildContext context) {
-    Widget child;
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Settings'),
+      ),
+      body: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 400),
+        child: _buildBody(),
+      ),
+    );
+  }
 
+  Widget _buildBody() {
     if (_isLoading) {
-      child = const _SettingsSkeleton(key: ValueKey('loading'));
-    } else {
-      child = Scaffold(
-        key: const ValueKey('content'),
-        appBar: AppBar(
-          title: const Text('Settings'),
-        ),
-        body: RefreshIndicator(
-          onRefresh: _load,
-          child: ListView(
-            children: [
-              if (_isUpdating || _isPurging)
-                const LinearProgressIndicator(minHeight: 2),
-              _buildSectionHeader('Reminders'),
-              _buildGlobalRemindersTile(context),
-              if (_supportsExactAlarmPermission) _buildExactAlarmTile(context),
-              const Divider(),
-              _buildSectionHeader('Sync & Backup'),
-              _buildSyncGroup(context),
-              const Divider(),
-              _buildSectionHeader('Security'),
-              _buildSecurityGroup(context),
-              const Divider(),
-              _buildSectionHeader('Data'),
-              ListTile(
-                leading: const Icon(Icons.ios_share_outlined),
-                title: const Text('Export options'),
-                subtitle: const Text('CSV, PDF, JSON, or encrypted archive'),
-                onTap: _isPurging ? null : _openExportOptions,
-              ),
-              ListTile(
-                leading: const Icon(Icons.delete_forever_outlined),
-                title: const Text('Securely purge all data'),
-                textColor: Theme.of(context).colorScheme.error,
-                iconColor: Theme.of(context).colorScheme.error,
-                onTap: _isPurging ? null : _confirmSecurePurge,
-              ),
-              const Divider(),
-              _buildSectionHeader('About'),
-              ListTile(
-                leading: const Icon(Icons.privacy_tip_outlined),
-                title: const Text('Privacy policy'),
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const PrivacyPolicyPage()),
-                ),
-              ),
-              const SizedBox(height: 32),
-            ],
-          ),
-        ),
-      );
+      return const _SettingsSkeleton(key: ValueKey('loading'));
     }
 
-    return AnimatedSwitcher(
-      duration: const Duration(milliseconds: 400),
-      child: child,
+    return RefreshIndicator(
+      key: const ValueKey('content'),
+      onRefresh: _load,
+      child: ListView(
+        children: [
+          if (_isUpdating || _isPurging)
+            const LinearProgressIndicator(minHeight: 2),
+          _buildSectionHeader('Reminders'),
+          _buildGlobalRemindersTile(context),
+          if (_supportsExactAlarmPermission) _buildExactAlarmTile(context),
+          const Divider(),
+          _buildSectionHeader('Sync & Backup'),
+          _buildSyncGroup(context),
+          const Divider(),
+          _buildSectionHeader('Security'),
+          _buildSecurityGroup(context),
+          const Divider(),
+          _buildSectionHeader('Data'),
+          ListTile(
+            leading: const Icon(Icons.ios_share_outlined),
+            title: const Text('Export options'),
+            subtitle: const Text('CSV, PDF, JSON, or encrypted archive'),
+            onTap: _isPurging ? null : _openExportOptions,
+          ),
+          ListTile(
+            leading: const Icon(Icons.delete_forever_outlined),
+            title: const Text('Securely purge all data'),
+            textColor: Theme.of(context).colorScheme.error,
+            iconColor: Theme.of(context).colorScheme.error,
+            onTap: _isPurging ? null : _confirmSecurePurge,
+          ),
+          const Divider(),
+          _buildSectionHeader('About'),
+          ListTile(
+            leading: const Icon(Icons.privacy_tip_outlined),
+            title: const Text('Privacy policy'),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const PrivacyPolicyPage()),
+            ),
+          ),
+          const SizedBox(height: 32),
+        ],
+      ),
     );
   }
 

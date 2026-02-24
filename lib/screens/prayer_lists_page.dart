@@ -166,87 +166,92 @@ class _PrayerListPageState extends State<PrayerListPage> {
 
   @override
   Widget build(BuildContext context) {
-    Widget child;
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(_list?.name ?? 'Prayer List'),
+      ),
+      floatingActionButton: _list == null
+          ? null
+          : FloatingActionButton.extended(
+              onPressed: _addContacts,
+              icon: const Icon(Icons.person_add),
+              label: const Text('Add People'),
+            ),
+      body: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 400),
+        child: _buildBody(),
+      ),
+    );
+  }
 
+  Widget _buildBody() {
     if (_isLoading) {
-      child = const _PrayerListSkeleton(key: ValueKey('loading'));
-    } else if (_list == null) {
-      child = const Center(
+      return const _PrayerListSkeleton(key: ValueKey('loading'));
+    }
+
+    if (_list == null) {
+      return const Center(
         key: ValueKey('error'),
         child: Text('Unable to load prayer list'),
       );
-    } else {
-      child = Scaffold(
-        key: const ValueKey('content'),
-        appBar: AppBar(
-          title: Text(_list!.name),
-        ),
-        floatingActionButton: FloatingActionButton.extended(
-          onPressed: _addContacts,
-          icon: const Icon(Icons.person_add),
-          label: const Text('Add People'),
-        ),
-        body: _contacts.isEmpty
-            ? Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.playlist_add,
-                      size: 64,
-                      color: Theme.of(context).colorScheme.outline,
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'No contacts in your prayer list yet.',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            color: Theme.of(context).colorScheme.outline,
-                          ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Tap "Add People" to get started.',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: Theme.of(context).colorScheme.outline,
-                          ),
-                    ),
-                  ],
-                ),
-              )
-            : ListView.builder(
-                itemCount: _contacts.length,
-                itemBuilder: (context, index) {
-                  final contact = _contacts[index];
-                  return ListTile(
-                    leading: CircleAvatar(
-                      backgroundColor:
-                          Theme.of(context).colorScheme.primaryContainer,
-                      child: Text(
-                        contact.firstName.isNotEmpty ? contact.firstName[0] : '?',
-                        style: TextStyle(
-                            color:
-                                Theme.of(context).colorScheme.onPrimaryContainer),
-                      ),
-                    ),
-                    title: Text(contact.fullName),
-                    subtitle:
-                        contact.location != null ? Text(contact.location!) : null,
-                    onTap: () => _navigateToContactDetails(contact),
-                    trailing: IconButton(
-                      icon: const Icon(Icons.remove_circle_outline),
-                      onPressed: () => _removeContact(contact.id),
-                      tooltip: 'Remove from list',
-                    ),
-                  );
-                },
-              ),
-      );
     }
 
-    return AnimatedSwitcher(
-      duration: const Duration(milliseconds: 400),
-      child: child,
-    );
+    return _contacts.isEmpty
+        ? Center(
+            key: const ValueKey('empty'),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.playlist_add,
+                  size: 64,
+                  color: Theme.of(context).colorScheme.outline,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'No contacts in your prayer list yet.',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        color: Theme.of(context).colorScheme.outline,
+                      ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Tap "Add People" to get started.',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: Theme.of(context).colorScheme.outline,
+                      ),
+                ),
+              ],
+            ),
+          )
+        : ListView.builder(
+            key: const ValueKey('list'),
+            itemCount: _contacts.length,
+            itemBuilder: (context, index) {
+              final contact = _contacts[index];
+              return ListTile(
+                leading: CircleAvatar(
+                  backgroundColor:
+                      Theme.of(context).colorScheme.primaryContainer,
+                  child: Text(
+                    contact.firstName.isNotEmpty ? contact.firstName[0] : '?',
+                    style: TextStyle(
+                        color:
+                            Theme.of(context).colorScheme.onPrimaryContainer),
+                  ),
+                ),
+                title: Text(contact.fullName),
+                subtitle:
+                    contact.location != null ? Text(contact.location!) : null,
+                onTap: () => _navigateToContactDetails(contact),
+                trailing: IconButton(
+                  icon: const Icon(Icons.remove_circle_outline),
+                  onPressed: () => _removeContact(contact.id),
+                  tooltip: 'Remove from list',
+                ),
+              );
+            },
+          );
   }
 }
 
