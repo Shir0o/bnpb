@@ -27,7 +27,8 @@ class SyncService {
   SyncCoordinator _coordinator = SyncCoordinator(DBHelper());
 
   @visibleForTesting
-  set syncCoordinator(SyncCoordinator coordinator) => _coordinator = coordinator;
+  set syncCoordinator(SyncCoordinator coordinator) =>
+      _coordinator = coordinator;
   GoogleDriveService _googleDrive = GoogleDriveService();
 
   @visibleForTesting
@@ -120,7 +121,6 @@ class SyncService {
     }
   }
 
-
   Future<void> _performGoogleSync() async {
     if (!await _googleDrive.isSignedIn()) {
       final account = await _googleDrive.signIn();
@@ -156,10 +156,10 @@ class SyncService {
 
         // Optimization: Skip our own files (files created by this deviceId)
         if (file.name!.startsWith(deviceId)) {
-           if (kDebugMode) {
-              print('-> Skipping ${file.name} as it is our own export');
-           }
-           return false;
+          if (kDebugMode) {
+            print('-> Skipping ${file.name} as it is our own export');
+          }
+          return false;
         }
         return true;
       }).toList();

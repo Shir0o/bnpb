@@ -1678,7 +1678,8 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
                       const SizedBox(width: 6),
                       Expanded(
                         child: Text(
-                          _cardFollowUpFormatter.format(interaction.followUpAt!),
+                          _cardFollowUpFormatter
+                              .format(interaction.followUpAt!),
                           style: theme.textTheme.labelSmall,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,

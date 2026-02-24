@@ -154,17 +154,13 @@ class SyncCoordinator {
     final deviceId = await getDeviceId();
     final processed = await _getProcessedFiles();
 
-    final files = await syncDir
-        .list()
-        .where((f) => f is File)
-        .cast<File>()
-        .where((f) {
-          final name = p.basename(f.path);
-          return name.endsWith('_data.json') &&
-              !name.startsWith(deviceId) && // Ignore own files
-              !processed.contains(name);
-        })
-        .toList();
+    final files =
+        await syncDir.list().where((f) => f is File).cast<File>().where((f) {
+      final name = p.basename(f.path);
+      return name.endsWith('_data.json') &&
+          !name.startsWith(deviceId) && // Ignore own files
+          !processed.contains(name);
+    }).toList();
 
     // Sort by timestamp in filename to apply in order
     // Filename format: deviceId_timestamp_data.json
@@ -504,7 +500,6 @@ class SyncCoordinator {
     return null;
   }
 
-
   Future<void> _mergePrayerLists(List<dynamic> remoteLists) async {
     final db = await _db.database;
 
@@ -547,7 +542,8 @@ class SyncCoordinator {
     );
 
     // Update members: remove old, add new
-    await db.delete('prayer_list_members', where: 'listId = ?', whereArgs: [list.id]);
+    await db.delete('prayer_list_members',
+        where: 'listId = ?', whereArgs: [list.id]);
 
     if (list.deletedAt == null) {
       for (final cid in list.contactIds) {
