@@ -307,7 +307,9 @@ class _AddContactPageState extends State<AddContactPage> {
             Expanded(
               child: TextField(
                 controller: controller,
-                decoration: _buildInputDecoration('Add $label').copyWith(
+                decoration:
+                    _buildInputDecoration('Add $label', prefixIcon: leadingIcon)
+                        .copyWith(
                   suffixIcon: IconButton(
                     icon: const Icon(Icons.add),
                     onPressed: onAdd,
@@ -373,10 +375,16 @@ class _AddContactPageState extends State<AddContactPage> {
               ),
             )
           else
-            IconButton(
-              icon: const Icon(Icons.check),
-              onPressed: _isLoadingReferenceData ? null : _saveContact,
-              tooltip: 'Save Contact',
+            Padding(
+              padding: const EdgeInsets.only(right: 8.0),
+              child: TextButton.icon(
+                onPressed: _isLoadingReferenceData ? null : _saveContact,
+                icon: const Icon(Icons.save_alt),
+                label: const Text('Save'),
+                style: TextButton.styleFrom(
+                  foregroundColor: Theme.of(context).colorScheme.primary,
+                ),
+              ),
             ),
         ],
       ),
@@ -392,6 +400,7 @@ class _AddContactPageState extends State<AddContactPage> {
                   _buildTextField(
                     controller: _firstNameController,
                     label: 'First Name',
+                    prefixIcon: Icons.person_outline,
                     validator: (value) => value == null || value.trim().isEmpty
                         ? 'Enter first name'
                         : null,
@@ -400,21 +409,25 @@ class _AddContactPageState extends State<AddContactPage> {
                   _buildTextField(
                     controller: _middleNameController,
                     label: 'Middle Name (Optional)',
+                    prefixIcon: Icons.person_outline,
                   ),
                   const SizedBox(height: 16),
                   _buildTextField(
                     controller: _lastNameController,
                     label: 'Last Name (Optional)',
+                    prefixIcon: Icons.person_outline,
                   ),
                   const SizedBox(height: 16),
                   _buildTextField(
                     controller: _nicknameController,
                     label: 'Nickname (Optional)',
+                    prefixIcon: Icons.badge_outlined,
                   ),
                   const SizedBox(height: 16),
                   _buildTextField(
                     controller: _locationController,
                     label: 'Location (Optional)',
+                    prefixIcon: Icons.place_outlined,
                   ),
                 ],
               ),
@@ -424,6 +437,7 @@ class _AddContactPageState extends State<AddContactPage> {
                   _buildTextField(
                     controller: _firstMeetingNotesController,
                     label: 'First Meeting Notes (Optional)',
+                    prefixIcon: Icons.handshake_outlined,
                     maxLines: 3,
                   ),
                 ],
@@ -492,6 +506,7 @@ class _AddContactPageState extends State<AddContactPage> {
                           controller: _photoCueController,
                           decoration: _buildInputDecoration(
                             'Link or path to a helpful photo',
+                            prefixIcon: Icons.image_outlined,
                           ).copyWith(
                             suffixIcon: IconButton(
                               icon: const Icon(Icons.add),
@@ -508,7 +523,7 @@ class _AddContactPageState extends State<AddContactPage> {
                     alignment: Alignment.centerLeft,
                     child: OutlinedButton.icon(
                       onPressed: _pickPhotoCue,
-                      icon: const Icon(Icons.image_outlined),
+                      icon: const Icon(Icons.image_search),
                       label: const Text('Pick image from device'),
                     ),
                   ),
@@ -527,8 +542,9 @@ class _AddContactPageState extends State<AddContactPage> {
                       Expanded(
                         child: TextField(
                           controller: _tagController,
-                          decoration:
-                              _buildInputDecoration('Add a tag').copyWith(
+                          decoration: _buildInputDecoration('Add a tag',
+                                  prefixIcon: Icons.tag)
+                              .copyWith(
                             suffixIcon: IconButton(
                               icon: const Icon(Icons.add),
                               onPressed: _addTagFromInput,
@@ -600,20 +616,22 @@ class _AddContactPageState extends State<AddContactPage> {
     required String label,
     String? Function(String?)? validator,
     int maxLines = 1,
+    IconData? prefixIcon,
   }) {
     return TextFormField(
       controller: controller,
       textCapitalization: TextCapitalization.sentences,
-      decoration: _buildInputDecoration(label),
+      decoration: _buildInputDecoration(label, prefixIcon: prefixIcon),
       validator: validator,
       maxLines: maxLines,
     );
   }
 
   /// Helper function to apply a consistent OutlineInputBorder style
-  InputDecoration _buildInputDecoration(String label) {
+  InputDecoration _buildInputDecoration(String label, {IconData? prefixIcon}) {
     return InputDecoration(
       labelText: label,
+      prefixIcon: prefixIcon != null ? Icon(prefixIcon) : null,
       border: const OutlineInputBorder(),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
