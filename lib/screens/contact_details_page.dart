@@ -2092,6 +2092,7 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
   late final TextEditingController _notesController;
   late final TextEditingController _occurredTimeController;
   final SpeechToText _speechToText = SpeechToText();
+  late DateTime _anchorEndTime;
 
   DateTime _occurredAt = DateTime.now();
   DateTime? _followUpAt;
@@ -2302,6 +2303,8 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
     );
     _notesController = TextEditingController(text: initial?.notes ?? '');
     _occurredAt = initial?.occurredAt ?? DateTime.now();
+    final initialDuration = initial?.durationMinutes ?? 0;
+    _anchorEndTime = _occurredAt.add(Duration(minutes: initialDuration));
     _occurredTimeController = TextEditingController(
       text: DateFormat.jm().format(_occurredAt),
     );
@@ -2316,6 +2319,7 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
     _speechBaseText = _summaryController.text.trim();
     _summaryController.addListener(_updateSaveEnabled);
     _durationController.addListener(_updateSaveEnabled);
+    _durationController.addListener(_updateStartTimeBasedOnDuration);
     _isSaveEnabled = _calculateSaveEnabled();
   }
 
@@ -2326,12 +2330,25 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
     _speechToText.cancel();
     _summaryController.removeListener(_updateSaveEnabled);
     _durationController.removeListener(_updateSaveEnabled);
+    _durationController.removeListener(_updateStartTimeBasedOnDuration);
     _summaryController.dispose();
     _locationController.dispose();
     _durationController.dispose();
     _notesController.dispose();
     _occurredTimeController.dispose();
     super.dispose();
+  }
+
+  void _updateStartTimeBasedOnDuration() {
+    if (widget.initialInteraction != null) return;
+
+    final text = _durationController.text.trim();
+    final durationMinutes = int.tryParse(text) ?? 0;
+
+    setState(() {
+      _occurredAt = _anchorEndTime.subtract(Duration(minutes: durationMinutes));
+      _occurredTimeController.text = DateFormat.jm().format(_occurredAt);
+    });
   }
 
   Future<void> _pickDate() async {
@@ -2350,6 +2367,8 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
         _occurredAt.hour,
         _occurredAt.minute,
       );
+      final currentDuration = int.tryParse(_durationController.text.trim()) ?? 0;
+      _anchorEndTime = _occurredAt.add(Duration(minutes: currentDuration));
     });
     // No need to update time text controller as date doesn't affect time string (JM format)
     _updateSaveEnabled();
@@ -2369,6 +2388,8 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
         time.hour,
         time.minute,
       );
+      final currentDuration = int.tryParse(_durationController.text.trim()) ?? 0;
+      _anchorEndTime = _occurredAt.add(Duration(minutes: currentDuration));
     });
     _occurredTimeController.text = DateFormat.jm().format(_occurredAt);
     _updateSaveEnabled();
@@ -2409,6 +2430,8 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
     if (shouldUpdate) {
       setState(() {
         _occurredAt = normalized;
+        final currentDuration = int.tryParse(_durationController.text.trim()) ?? 0;
+        _anchorEndTime = _occurredAt.add(Duration(minutes: currentDuration));
       });
       final normalizedText = DateFormat.jm().format(normalized);
       _occurredTimeController.value = TextEditingValue(
