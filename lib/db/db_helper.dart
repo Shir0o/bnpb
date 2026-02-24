@@ -486,16 +486,16 @@ class DBHelper {
       await db.execute('ALTER TABLE contacts ADD COLUMN email TEXT');
       await db.execute('ALTER TABLE contacts ADD COLUMN phone TEXT');
     }
-        if (oldVersion < 16) {
-          await db.execute(
-              "ALTER TABLE prayer_lists ADD COLUMN updatedAt TEXT NOT NULL DEFAULT '1970-01-01T00:00:00.000Z'");
-          await db.execute('ALTER TABLE prayer_lists ADD COLUMN deletedAt TEXT');
-        }
-        if (oldVersion < 17) {
-          await db.execute('ALTER TABLE interactions RENAME COLUMN category TO notes');
-        }
-    
-      }
+    if (oldVersion < 16) {
+      await db.execute(
+          "ALTER TABLE prayer_lists ADD COLUMN updatedAt TEXT NOT NULL DEFAULT '1970-01-01T00:00:00.000Z'");
+      await db.execute('ALTER TABLE prayer_lists ADD COLUMN deletedAt TEXT');
+    }
+    if (oldVersion < 17) {
+      await db
+          .execute('ALTER TABLE interactions RENAME COLUMN category TO notes');
+    }
+  }
 
   // -------------------------------------------------------------
   // PRAYER LIST METHODS

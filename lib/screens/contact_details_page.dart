@@ -2086,11 +2086,11 @@ class _LogInteractionSheet extends StatefulWidget {
 
 class _LogInteractionSheetState extends State<_LogInteractionSheet> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
-     late final TextEditingController _summaryController;
-    late final TextEditingController _locationController;
-    late final TextEditingController _durationController;
-    late final TextEditingController _notesController;
-    late final TextEditingController _occurredTimeController;
+  late final TextEditingController _summaryController;
+  late final TextEditingController _locationController;
+  late final TextEditingController _durationController;
+  late final TextEditingController _notesController;
+  late final TextEditingController _occurredTimeController;
   final SpeechToText _speechToText = SpeechToText();
 
   DateTime _occurredAt = DateTime.now();
@@ -2300,8 +2300,7 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
           ? initial!.durationMinutes.toString()
           : '',
     );
-    _notesController =
-        TextEditingController(text: initial?.notes ?? '');
+    _notesController = TextEditingController(text: initial?.notes ?? '');
     _occurredAt = initial?.occurredAt ?? DateTime.now();
     _occurredTimeController = TextEditingController(
       text: DateFormat.jm().format(_occurredAt),

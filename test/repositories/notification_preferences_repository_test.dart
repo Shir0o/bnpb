@@ -99,30 +99,30 @@ void main() {
         const NotificationPreference(
           scopeType: NotificationScopeType.global,
           scopeId: 'global',
-          channel: ReminderChannel.followUp,
+          channel: ReminderChannel.prayerUpdate,
           enabled: true,
           leadTime: Duration(hours: 1),
         ),
       );
       var resolved = await repository.resolve(
-        channel: ReminderChannel.followUp,
+        channel: ReminderChannel.prayerUpdate,
         contactId: 'c1',
         category: 'Work',
       );
       expect(resolved.leadTime, const Duration(hours: 1));
 
-      // 2. Category override
+      // 2. Category override (only supported for prayerUpdate)
       await repository.savePreference(
         const NotificationPreference(
           scopeType: NotificationScopeType.category,
           scopeId: 'Work',
-          channel: ReminderChannel.followUp,
+          channel: ReminderChannel.prayerUpdate,
           enabled: true,
           leadTime: Duration(hours: 2),
         ),
       );
       resolved = await repository.resolve(
-        channel: ReminderChannel.followUp,
+        channel: ReminderChannel.prayerUpdate,
         contactId: 'c1',
         category: 'Work',
       );
@@ -133,17 +133,47 @@ void main() {
         const NotificationPreference(
           scopeType: NotificationScopeType.contact,
           scopeId: 'c1',
-          channel: ReminderChannel.followUp,
+          channel: ReminderChannel.prayerUpdate,
           enabled: true,
           leadTime: Duration(hours: 3),
         ),
       );
       resolved = await repository.resolve(
-        channel: ReminderChannel.followUp,
+        channel: ReminderChannel.prayerUpdate,
         contactId: 'c1',
         category: 'Work',
       );
       expect(resolved.leadTime, const Duration(hours: 3));
+    });
+
+    test('resolve ignores category for followUp channel', () async {
+      await repository.savePreference(
+        const NotificationPreference(
+          scopeType: NotificationScopeType.global,
+          scopeId: 'global',
+          channel: ReminderChannel.followUp,
+          enabled: true,
+          leadTime: Duration(hours: 1),
+        ),
+      );
+      await repository.savePreference(
+        const NotificationPreference(
+          scopeType: NotificationScopeType.category,
+          scopeId: 'Work',
+          channel: ReminderChannel.followUp,
+          enabled: true,
+          leadTime: Duration(hours: 2),
+        ),
+      );
+
+      final resolved = await repository.resolve(
+        channel: ReminderChannel.followUp,
+        contactId: 'c1',
+        category: 'Work',
+      );
+
+      // Should still be global (1h) because followUp ignores category
+      expect(resolved.leadTime, const Duration(hours: 1));
     });
 
     test('loadPreferences filtering', () async {

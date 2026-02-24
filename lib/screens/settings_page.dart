@@ -539,7 +539,8 @@ class _SettingsSkeleton extends StatelessWidget {
         children: List.generate(
           10,
           (index) => ListTile(
-            leading: const SkeletonBox(width: 24, height: 24, shape: BoxShape.circle),
+            leading: const SkeletonBox(
+                width: 24, height: 24, shape: BoxShape.circle),
             title: SkeletonBox(width: 120 + (index % 4 * 30.0), height: 16),
             subtitle: const SkeletonBox(width: 200, height: 12),
           ),

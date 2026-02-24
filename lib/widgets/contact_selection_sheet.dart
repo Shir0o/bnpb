@@ -55,7 +55,7 @@ class _ContactSelectionSheetState extends State<ContactSelectionSheet> {
 
     if (mounted) {
       final results = await _searchService.search('');
-      
+
       // Ensure at least 400ms passes so the loading indicator doesn't "flash"
       final elapsed = stopwatch.elapsedMilliseconds;
       if (elapsed < 400) {
@@ -124,7 +124,8 @@ class _ContactSelectionSheetState extends State<ContactSelectionSheet> {
                   ),
                 ),
                 TextButton(
-                  onPressed: () => Navigator.pop(context, _selectedIds.toList()),
+                  onPressed: () =>
+                      Navigator.pop(context, _selectedIds.toList()),
                   child: const Text('Done'),
                 ),
               ],
@@ -154,7 +155,7 @@ class _ContactSelectionSheetState extends State<ContactSelectionSheet> {
           ),
           const SizedBox(height: 8),
 
-  // List
+          // List
           Expanded(
             child: AnimatedSwitcher(
               duration: const Duration(milliseconds: 300),
@@ -178,7 +179,8 @@ class _ContactSelectionSheetState extends State<ContactSelectionSheet> {
                           itemBuilder: (context, index) {
                             final match = displayList[index];
                             final contact = match.contact;
-                            final isSelected = _selectedIds.contains(contact.id);
+                            final isSelected =
+                                _selectedIds.contains(contact.id);
                             final isDisabled =
                                 widget.disabledIds.contains(contact.id);
 
@@ -197,7 +199,9 @@ class _ContactSelectionSheetState extends State<ContactSelectionSheet> {
                               title: Text(
                                 contact.fullName,
                                 style: TextStyle(
-                                  color: isDisabled ? theme.colorScheme.outline : null,
+                                  color: isDisabled
+                                      ? theme.colorScheme.outline
+                                      : null,
                                 ),
                               ),
                               subtitle: match.snippet != null
@@ -235,7 +239,8 @@ class _ContactSelectionSkeleton extends StatelessWidget {
         itemCount: 10,
         physics: const NeverScrollableScrollPhysics(),
         itemBuilder: (context, index) => ListTile(
-          leading: const SkeletonBox(width: 40, height: 40, shape: BoxShape.circle),
+          leading:
+              const SkeletonBox(width: 40, height: 40, shape: BoxShape.circle),
           title: SkeletonBox(width: 120 + (index % 3 * 20.0), height: 16),
           subtitle: const SkeletonBox(width: 80, height: 12),
           trailing: const SkeletonBox(width: 24, height: 24),

@@ -272,7 +272,8 @@ class _PrayerListSkeleton extends StatelessWidget {
         itemCount: 8,
         physics: const NeverScrollableScrollPhysics(),
         itemBuilder: (context, index) => ListTile(
-          leading: const SkeletonBox(width: 40, height: 40, shape: BoxShape.circle),
+          leading:
+              const SkeletonBox(width: 40, height: 40, shape: BoxShape.circle),
           title: SkeletonBox(width: 140 + (index % 3 * 20.0), height: 16),
           subtitle: const SkeletonBox(width: 100, height: 12),
           trailing: const SkeletonBox(width: 24, height: 24),
