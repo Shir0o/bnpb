@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../db/db_helper.dart';
 import '../services/contact_search_service.dart';
+import 'skeleton_loader.dart';
 
 class ContactSelectionSheet extends StatefulWidget {
   const ContactSelectionSheet({
@@ -158,7 +159,7 @@ class _ContactSelectionSheetState extends State<ContactSelectionSheet> {
             child: AnimatedSwitcher(
               duration: const Duration(milliseconds: 300),
               child: _isLoading
-                  ? const Center(key: ValueKey('loading'), child: CircularProgressIndicator())
+                  ? const _ContactSelectionSkeleton(key: ValueKey('loading'))
                   : displayList.isEmpty
                       ? Center(
                           key: const ValueKey('empty'),
@@ -219,6 +220,26 @@ class _ContactSelectionSheetState extends State<ContactSelectionSheet> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _ContactSelectionSkeleton extends StatelessWidget {
+  const _ContactSelectionSkeleton({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return SkeletonLoader(
+      child: ListView.builder(
+        itemCount: 10,
+        physics: const NeverScrollableScrollPhysics(),
+        itemBuilder: (context, index) => ListTile(
+          leading: const SkeletonBox(width: 40, height: 40, shape: BoxShape.circle),
+          title: SkeletonBox(width: 120 + (index % 3 * 20.0), height: 16),
+          subtitle: const SkeletonBox(width: 80, height: 12),
+          trailing: const SkeletonBox(width: 24, height: 24),
+        ),
       ),
     );
   }
