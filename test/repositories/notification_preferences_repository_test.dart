@@ -94,6 +94,9 @@ void main() {
     });
 
     test('resolve uses hierarchy correctly', () async {
+      final dbHelper = _TestDBHelper();
+      final repository = NotificationPreferencesRepository(dbHelper: dbHelper);
+
       // 1. Global only
       await repository.savePreference(
         const NotificationPreference(
@@ -147,6 +150,9 @@ void main() {
     });
 
     test('resolve ignores category for followUp channel', () async {
+      final dbHelper = _TestDBHelper();
+      final repository = NotificationPreferencesRepository(dbHelper: dbHelper);
+
       await repository.savePreference(
         const NotificationPreference(
           scopeType: NotificationScopeType.global,
