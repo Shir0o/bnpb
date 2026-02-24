@@ -116,6 +116,11 @@ class _MacOSActiveContactsViewState extends State<MacOSActiveContactsView> {
     final selectedIds = await showModalBottomSheet<List<String>>(
       context: context,
       isScrollControlled: true,
+      sheetAnimationStyle: AnimationStyle(
+        duration: const Duration(milliseconds: 500),
+        reverseDuration: const Duration(milliseconds: 300),
+        curve: Curves.easeOutCubic,
+      ),
       builder: (context) => ContactSelectionSheet(
         disabledIds: currentIds,
         title: 'Add to ${_activeList!.name}',

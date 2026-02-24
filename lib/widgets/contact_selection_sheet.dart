@@ -45,6 +45,7 @@ class _ContactSelectionSheetState extends State<ContactSelectionSheet> {
 
   Future<void> _loadContacts() async {
     setState(() => _isLoading = true);
+    final stopwatch = Stopwatch()..start();
     final contacts = await _dbHelper.getContacts();
     // Sort by name by default
     contacts.sort((a, b) => a.fullName.compareTo(b.fullName));
@@ -53,6 +54,13 @@ class _ContactSelectionSheetState extends State<ContactSelectionSheet> {
 
     if (mounted) {
       final results = await _searchService.search('');
+      
+      // Ensure at least 400ms passes so the loading indicator doesn't "flash"
+      final elapsed = stopwatch.elapsedMilliseconds;
+      if (elapsed < 400) {
+        await Future.delayed(Duration(milliseconds: 400 - elapsed));
+      }
+
       if (mounted) {
         if (_searchController.text.isNotEmpty) return;
         setState(() {
@@ -145,65 +153,70 @@ class _ContactSelectionSheetState extends State<ContactSelectionSheet> {
           ),
           const SizedBox(height: 8),
 
-          // List
+  // List
           Expanded(
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : displayList.isEmpty
-                    ? Center(
-                        child: Text(
-                          isSearching
-                              ? 'No matching contacts found'
-                              : 'No contacts found',
-                          style: theme.textTheme.bodyLarge?.copyWith(
-                            color: theme.colorScheme.outline,
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 300),
+              child: _isLoading
+                  ? const Center(key: ValueKey('loading'), child: CircularProgressIndicator())
+                  : displayList.isEmpty
+                      ? Center(
+                          key: const ValueKey('empty'),
+                          child: Text(
+                            isSearching
+                                ? 'No matching contacts found'
+                                : 'No contacts found',
+                            style: theme.textTheme.bodyLarge?.copyWith(
+                              color: theme.colorScheme.outline,
+                            ),
                           ),
-                        ),
-                      )
-                    : ListView.builder(
-                        itemCount: displayList.length,
-                        itemBuilder: (context, index) {
-                          final match = displayList[index];
-                          final contact = match.contact;
-                          final isSelected = _selectedIds.contains(contact.id);
-                          final isDisabled =
-                              widget.disabledIds.contains(contact.id);
+                        )
+                      : ListView.builder(
+                          key: const ValueKey('list'),
+                          itemCount: displayList.length,
+                          itemBuilder: (context, index) {
+                            final match = displayList[index];
+                            final contact = match.contact;
+                            final isSelected = _selectedIds.contains(contact.id);
+                            final isDisabled =
+                                widget.disabledIds.contains(contact.id);
 
-                          return ListTile(
-                            leading: CircleAvatar(
-                              backgroundColor: isDisabled
-                                  ? theme.colorScheme.surfaceContainerHighest
-                                  : theme.colorScheme.primaryContainer,
-                              foregroundColor: isDisabled
-                                  ? theme.colorScheme.outline
-                                  : theme.colorScheme.onPrimaryContainer,
-                              child: Text(contact.firstName.isNotEmpty
-                                  ? contact.firstName[0].toUpperCase()
-                                  : '?'),
-                            ),
-                            title: Text(
-                              contact.fullName,
-                              style: TextStyle(
-                                color: isDisabled ? theme.colorScheme.outline : null,
+                            return ListTile(
+                              leading: CircleAvatar(
+                                backgroundColor: isDisabled
+                                    ? theme.colorScheme.surfaceContainerHighest
+                                    : theme.colorScheme.primaryContainer,
+                                foregroundColor: isDisabled
+                                    ? theme.colorScheme.outline
+                                    : theme.colorScheme.onPrimaryContainer,
+                                child: Text(contact.firstName.isNotEmpty
+                                    ? contact.firstName[0].toUpperCase()
+                                    : '?'),
                               ),
-                            ),
-                            subtitle: match.snippet != null
-                                ? Text(match.snippet!)
-                                : (contact.location?.isNotEmpty == true
-                                    ? Text(contact.location!)
-                                    : null),
-                            trailing: Checkbox(
-                              value: isSelected || isDisabled,
-                              onChanged: isDisabled
+                              title: Text(
+                                contact.fullName,
+                                style: TextStyle(
+                                  color: isDisabled ? theme.colorScheme.outline : null,
+                                ),
+                              ),
+                              subtitle: match.snippet != null
+                                  ? Text(match.snippet!)
+                                  : (contact.location?.isNotEmpty == true
+                                      ? Text(contact.location!)
+                                      : null),
+                              trailing: Checkbox(
+                                value: isSelected || isDisabled,
+                                onChanged: isDisabled
+                                    ? null
+                                    : (_) => _toggleSelection(contact.id),
+                              ),
+                              onTap: isDisabled
                                   ? null
-                                  : (_) => _toggleSelection(contact.id),
-                            ),
-                            onTap: isDisabled
-                                ? null
-                                : () => _toggleSelection(contact.id),
-                          );
-                        },
-                      ),
+                                  : () => _toggleSelection(contact.id),
+                            );
+                          },
+                        ),
+            ),
           ),
         ],
       ),
