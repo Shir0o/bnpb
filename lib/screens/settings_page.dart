@@ -197,25 +197,20 @@ class _SettingsPageState extends State<SettingsPage> {
 
     return Column(
       children: [
-        ListTile(
-          leading: Icon(_syncType == SyncType.local
-              ? Icons.folder_outlined
-              : Icons.cloud_outlined),
-          title: Text(_syncType == SyncType.local
-              ? 'Local Folder Sync'
-              : 'Google Drive Sync'),
-          subtitle: Text('Last sync: $lastSyncStr'),
-          trailing: IconButton(
-            icon: const Icon(Icons.sync),
-            onPressed: _isUpdating ? null : _performSync,
-          ),
-        ),
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
           child: SegmentedButton<SyncType>(
             segments: const [
-              ButtonSegment(value: SyncType.local, label: Text('Local')),
-              ButtonSegment(value: SyncType.googleDrive, label: Text('Google')),
+              ButtonSegment(
+                value: SyncType.local,
+                label: Text('Local'),
+                icon: Icon(Icons.folder_outlined),
+              ),
+              ButtonSegment(
+                value: SyncType.googleDrive,
+                label: Text('Google Drive'),
+                icon: Icon(Icons.cloud_outlined),
+              ),
             ],
             selected: {_syncType},
             onSelectionChanged: (Set<SyncType> newSelection) async {
@@ -228,8 +223,10 @@ class _SettingsPageState extends State<SettingsPage> {
         ),
         if (_syncType == SyncType.local)
           ListTile(
+            leading: const Icon(Icons.location_on_outlined),
             title: const Text('Sync Location'),
             subtitle: Text(_syncPath ?? 'Not set'),
+            trailing: const Icon(Icons.edit_outlined, size: 20),
             onTap: () async {
               await SyncService().setSyncDirectory();
               await _loadSyncState();
@@ -237,22 +234,42 @@ class _SettingsPageState extends State<SettingsPage> {
           )
         else
           ListTile(
-            title: Text(_googleUser?.displayName ?? 'Not signed in'),
-            subtitle: Text(_googleUser?.email ?? 'Tap to sign in'),
             leading: _googleUser != null
                 ? CircleAvatar(
                     backgroundImage: NetworkImage(_googleUser!.photoUrl ?? ''),
                     radius: 12)
-                : null,
-            onTap: () async {
-              if (_googleUser == null) {
-                await GoogleDriveService().signIn();
-              } else {
-                await GoogleDriveService().signOut();
-              }
-              await _loadSyncState();
-            },
+                : const Icon(Icons.account_circle_outlined),
+            title: Text(_googleUser?.displayName ?? 'Sign in to sync'),
+            subtitle: Text(_googleUser?.email ?? 'Google Drive integration'),
+            trailing: TextButton(
+              onPressed: () async {
+                if (_googleUser == null) {
+                  await GoogleDriveService().signIn();
+                } else {
+                  await GoogleDriveService().signOut();
+                }
+                await _loadSyncState();
+              },
+              child: Text(_googleUser == null ? 'Sign In' : 'Sign Out'),
+            ),
           ),
+        const Divider(indent: 16, endIndent: 16),
+        ListTile(
+          leading: const Icon(Icons.history),
+          title: const Text('Last sync status'),
+          subtitle: Text(lastSyncStr),
+          trailing: _isUpdating
+              ? const SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : IconButton(
+                  icon: const Icon(Icons.sync),
+                  tooltip: 'Sync now',
+                  onPressed: _performSync,
+                ),
+        ),
       ],
     );
   }
