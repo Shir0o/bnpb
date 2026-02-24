@@ -13,7 +13,6 @@ import '../services/security_service.dart';
 import '../services/sync_service.dart';
 import '../widgets/export_options_sheet.dart';
 import 'privacy_policy_page.dart';
-import 'reminder_overrides_page.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -108,15 +107,6 @@ class _SettingsPageState extends State<SettingsPage> {
               const LinearProgressIndicator(minHeight: 2),
             _buildSectionHeader('Reminders'),
             _buildGlobalRemindersTile(context),
-            ListTile(
-              leading: const Icon(Icons.person_pin_outlined),
-              title: const Text('Reminder overrides'),
-              subtitle: const Text('Contact and category specific rules'),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const ReminderOverridesPage()),
-              ),
-            ),
             if (_supportsExactAlarmPermission) _buildExactAlarmTile(context),
             const Divider(),
             _buildSectionHeader('Sync & Backup'),
