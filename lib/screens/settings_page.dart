@@ -219,8 +219,10 @@ class _SettingsPageState extends State<SettingsPage> {
             ],
             selected: {_syncType},
             onSelectionChanged: (Set<SyncType> newSelection) async {
-              await SyncService().setSyncType(newSelection.first);
-              _load();
+              final newType = newSelection.first;
+              setState(() => _syncType = newType);
+              await SyncService().setSyncType(newType);
+              await _loadSyncState();
             },
           ),
         ),
@@ -230,7 +232,7 @@ class _SettingsPageState extends State<SettingsPage> {
             subtitle: Text(_syncPath ?? 'Not set'),
             onTap: () async {
               await SyncService().setSyncDirectory();
-              _load();
+              await _loadSyncState();
             },
           )
         else
@@ -248,7 +250,7 @@ class _SettingsPageState extends State<SettingsPage> {
               } else {
                 await GoogleDriveService().signOut();
               }
-              _load();
+              await _loadSyncState();
             },
           ),
       ],
@@ -276,11 +278,26 @@ class _SettingsPageState extends State<SettingsPage> {
 
   // --- Actions & Helpers ---
 
+  Future<void> _loadSyncState() async {
+    final syncPath = await SyncService().getSyncDirectory();
+    final lastBackupTime = await SyncService().getLastBackupTime();
+    final syncType = await SyncService().getSyncType();
+    final googleUser = await GoogleDriveService().currentUser;
+    if (mounted) {
+      setState(() {
+        _syncPath = syncPath;
+        _lastBackupTime = lastBackupTime;
+        _syncType = syncType;
+        _googleUser = googleUser;
+      });
+    }
+  }
+
   Future<void> _performSync() async {
     setState(() => _isUpdating = true);
     try {
       await SyncService().performSync();
-      await _load();
+      await _loadSyncState();
       if (mounted)
         ScaffoldMessenger.of(context)
             .showSnackBar(const SnackBar(content: Text('Sync complete')));
@@ -304,7 +321,30 @@ class _SettingsPageState extends State<SettingsPage> {
     );
     await _preferencesRepository.savePreference(pref);
     await _reminderCoordinator.refreshAllContacts();
-    _load();
+    await _loadRemindersState();
+  }
+
+  Future<void> _loadRemindersState() async {
+    final storedPreferences = await _preferencesRepository.loadPreferences();
+    final globalDefaults = <ReminderChannel, NotificationPreference>{};
+    for (final preference in storedPreferences) {
+      if (preference.scopeType == NotificationScopeType.global) {
+        globalDefaults[preference.channel] = preference;
+      }
+    }
+
+    final reminderService = ReminderService();
+    final supportsExactAlarmPermission =
+        await reminderService.isExactAlarmPermissionRelevant();
+    final exactAlarmOptIn = await reminderService.isExactAlarmOptInEnabled();
+
+    if (mounted) {
+      setState(() {
+        _globalDefaults = globalDefaults;
+        _supportsExactAlarmPermission = supportsExactAlarmPermission;
+        _exactAlarmOptIn = exactAlarmOptIn;
+      });
+    }
   }
 
   void _showLeadTimePicker(BuildContext context, ReminderChannel channel,
@@ -319,9 +359,9 @@ class _SettingsPageState extends State<SettingsPage> {
               .map((opt) => ListTile(
                     title: Text(_formatLeadTime(channel, opt)),
                     trailing: opt == current ? const Icon(Icons.check) : null,
-                    onTap: () {
+                    onTap: () async {
                       Navigator.pop(context);
-                      _setGlobalPreference(channel, enabled, opt);
+                      await _setGlobalPreference(channel, enabled, opt);
                     },
                   ))
               .toList(),
@@ -375,7 +415,7 @@ class _SettingsPageState extends State<SettingsPage> {
     } else {
       await reminderService.updateExactAlarmOptIn(false);
     }
-    _load();
+    await _loadRemindersState();
   }
 
   Future<void> _promptForPasscode() async {
@@ -400,13 +440,26 @@ class _SettingsPageState extends State<SettingsPage> {
     );
     if (result != null && result.length >= 4) {
       await _securityService.setPasscode(result);
-      _load();
+      await _loadSecurityState();
+    }
+  }
+
+  Future<void> _loadSecurityState() async {
+    final hasPasscode = await _securityService.hasPasscode();
+    final biometricEnabled = await _securityService.isBiometricEnabled();
+    final biometricAvailable = await _securityService.canUseBiometrics();
+    if (mounted) {
+      setState(() {
+        _hasPasscode = hasPasscode;
+        _biometricEnabled = biometricEnabled && biometricAvailable;
+        _biometricAvailable = biometricAvailable;
+      });
     }
   }
 
   Future<void> _toggleBiometrics(bool value) async {
     await _securityService.setBiometricEnabled(value);
-    _load();
+    await _loadSecurityState();
   }
 
   Future<void> _confirmSecurePurge() async {
