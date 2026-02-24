@@ -12,6 +12,7 @@ import '../services/reminder_service.dart';
 import '../services/security_service.dart';
 import '../services/sync_service.dart';
 import '../widgets/export_options_sheet.dart';
+import '../widgets/skeleton_loader.dart';
 import 'privacy_policy_page.dart';
 
 class SettingsPage extends StatefulWidget {
@@ -89,59 +90,65 @@ class _SettingsPageState extends State<SettingsPage> {
 
   @override
   Widget build(BuildContext context) {
+    Widget child;
+
     if (_isLoading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
+      child = const _SettingsSkeleton(key: ValueKey('loading'));
+    } else {
+      child = Scaffold(
+        key: const ValueKey('content'),
+        appBar: AppBar(
+          title: const Text('Settings'),
+        ),
+        body: RefreshIndicator(
+          onRefresh: _load,
+          child: ListView(
+            children: [
+              if (_isUpdating || _isPurging)
+                const LinearProgressIndicator(minHeight: 2),
+              _buildSectionHeader('Reminders'),
+              _buildGlobalRemindersTile(context),
+              if (_supportsExactAlarmPermission) _buildExactAlarmTile(context),
+              const Divider(),
+              _buildSectionHeader('Sync & Backup'),
+              _buildSyncGroup(context),
+              const Divider(),
+              _buildSectionHeader('Security'),
+              _buildSecurityGroup(context),
+              const Divider(),
+              _buildSectionHeader('Data'),
+              ListTile(
+                leading: const Icon(Icons.ios_share_outlined),
+                title: const Text('Export options'),
+                subtitle: const Text('CSV, PDF, JSON, or encrypted archive'),
+                onTap: _isPurging ? null : _openExportOptions,
+              ),
+              ListTile(
+                leading: const Icon(Icons.delete_forever_outlined),
+                title: const Text('Securely purge all data'),
+                textColor: Theme.of(context).colorScheme.error,
+                iconColor: Theme.of(context).colorScheme.error,
+                onTap: _isPurging ? null : _confirmSecurePurge,
+              ),
+              const Divider(),
+              _buildSectionHeader('About'),
+              ListTile(
+                leading: const Icon(Icons.privacy_tip_outlined),
+                title: const Text('Privacy policy'),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const PrivacyPolicyPage()),
+                ),
+              ),
+              const SizedBox(height: 32),
+            ],
+          ),
+        ),
       );
     }
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Settings'),
-      ),
-      body: RefreshIndicator(
-        onRefresh: _load,
-        child: ListView(
-          children: [
-            if (_isUpdating || _isPurging)
-              const LinearProgressIndicator(minHeight: 2),
-            _buildSectionHeader('Reminders'),
-            _buildGlobalRemindersTile(context),
-            if (_supportsExactAlarmPermission) _buildExactAlarmTile(context),
-            const Divider(),
-            _buildSectionHeader('Sync & Backup'),
-            _buildSyncGroup(context),
-            const Divider(),
-            _buildSectionHeader('Security'),
-            _buildSecurityGroup(context),
-            const Divider(),
-            _buildSectionHeader('Data'),
-            ListTile(
-              leading: const Icon(Icons.ios_share_outlined),
-              title: const Text('Export options'),
-              subtitle: const Text('CSV, PDF, JSON, or encrypted archive'),
-              onTap: _isPurging ? null : _openExportOptions,
-            ),
-            ListTile(
-              leading: const Icon(Icons.delete_forever_outlined),
-              title: const Text('Securely purge all data'),
-              textColor: Theme.of(context).colorScheme.error,
-              iconColor: Theme.of(context).colorScheme.error,
-              onTap: _isPurging ? null : _confirmSecurePurge,
-            ),
-            const Divider(),
-            _buildSectionHeader('About'),
-            ListTile(
-              leading: const Icon(Icons.privacy_tip_outlined),
-              title: const Text('Privacy policy'),
-              onTap: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const PrivacyPolicyPage()),
-              ),
-            ),
-            const SizedBox(height: 32),
-          ],
-        ),
-      ),
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 400),
+      child: child,
     );
   }
 
@@ -511,5 +518,27 @@ class _SettingsPageState extends State<SettingsPage> {
         context: context,
         isScrollControlled: true,
         builder: (context) => ExportOptionsSheet(contacts: _contacts));
+  }
+}
+
+class _SettingsSkeleton extends StatelessWidget {
+  const _SettingsSkeleton({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return SkeletonLoader(
+      child: ListView(
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        physics: const NeverScrollableScrollPhysics(),
+        children: List.generate(
+          10,
+          (index) => ListTile(
+            leading: const SkeletonBox(width: 24, height: 24, shape: BoxShape.circle),
+            title: SkeletonBox(width: 120 + (index % 4 * 30.0), height: 16),
+            subtitle: const SkeletonBox(width: 200, height: 12),
+          ),
+        ),
+      ),
+    );
   }
 }

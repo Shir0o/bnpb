@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../repositories/analytics_repository.dart';
+import '../widgets/skeleton_loader.dart';
 
 /// Predefined ranges supported by the analytics dashboard.
 enum AnalyticsRange { last30Days, last90Days, last365Days, allTime }
@@ -108,10 +109,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
     Widget child;
 
     if (_isLoading) {
-      child = const Center(
-        key: ValueKey('loading'),
-        child: CircularProgressIndicator(),
-      );
+      child = const _AnalyticsSkeleton(key: ValueKey('loading'));
     } else {
       final summary = _summary;
       if (summary == null) {
@@ -684,6 +682,29 @@ class _EmptyAnalyticsCard extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _AnalyticsSkeleton extends StatelessWidget {
+  const _AnalyticsSkeleton({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return SkeletonLoader(
+      child: ListView(
+        padding: const EdgeInsets.all(16),
+        physics: const NeverScrollableScrollPhysics(),
+        children: [
+          const SkeletonBox(height: 120), // Headline
+          const SizedBox(height: 16),
+          const SkeletonBox(height: 300), // Top contacts
+          const SizedBox(height: 16),
+          const SkeletonBox(height: 280), // Category card
+          const SizedBox(height: 16),
+          const SkeletonBox(height: 240), // Timeline
+        ],
       ),
     );
   }

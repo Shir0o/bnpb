@@ -7,6 +7,7 @@ import '../models/prayer_list.dart';
 import '../services/contact_service.dart';
 import '../services/reminder_coordinator.dart';
 import '../widgets/contact_selection_sheet.dart';
+import '../widgets/skeleton_loader.dart';
 import 'contact_details_page.dart';
 
 class PrayerListPage extends StatefulWidget {
@@ -165,83 +166,106 @@ class _PrayerListPageState extends State<PrayerListPage> {
 
   @override
   Widget build(BuildContext context) {
+    Widget child;
+
     if (_isLoading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
+      child = const _PrayerListSkeleton(key: ValueKey('loading'));
+    } else if (_list == null) {
+      child = const Center(
+        key: ValueKey('error'),
+        child: Text('Unable to load prayer list'),
       );
-    }
-
-    // Should be guaranteed by _ensureDefaultList, but handle safely
-    if (_list == null) {
-      return Scaffold(
-        appBar: AppBar(title: const Text('Prayer List')),
-        body: const Center(child: Text('Unable to load prayer list')),
-      );
-    }
-
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(_list!.name),
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _addContacts,
-        icon: const Icon(Icons.person_add),
-        label: const Text('Add People'),
-      ),
-      body: _contacts.isEmpty
-          ? Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.playlist_add,
-                    size: 64,
-                    color: Theme.of(context).colorScheme.outline,
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'No contacts in your prayer list yet.',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          color: Theme.of(context).colorScheme.outline,
-                        ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Tap "Add People" to get started.',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Theme.of(context).colorScheme.outline,
-                        ),
-                  ),
-                ],
-              ),
-            )
-          : ListView.builder(
-              itemCount: _contacts.length,
-              itemBuilder: (context, index) {
-                final contact = _contacts[index];
-                return ListTile(
-                  leading: CircleAvatar(
-                    backgroundColor:
-                        Theme.of(context).colorScheme.primaryContainer,
-                    child: Text(
-                      contact.firstName.isNotEmpty ? contact.firstName[0] : '?',
-                      style: TextStyle(
-                          color:
-                              Theme.of(context).colorScheme.onPrimaryContainer),
+    } else {
+      child = Scaffold(
+        key: const ValueKey('content'),
+        appBar: AppBar(
+          title: Text(_list!.name),
+        ),
+        floatingActionButton: FloatingActionButton.extended(
+          onPressed: _addContacts,
+          icon: const Icon(Icons.person_add),
+          label: const Text('Add People'),
+        ),
+        body: _contacts.isEmpty
+            ? Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.playlist_add,
+                      size: 64,
+                      color: Theme.of(context).colorScheme.outline,
                     ),
-                  ),
-                  title: Text(contact.fullName),
-                  subtitle:
-                      contact.location != null ? Text(contact.location!) : null,
-                  onTap: () => _navigateToContactDetails(contact),
-                  trailing: IconButton(
-                    icon: const Icon(Icons.remove_circle_outline),
-                    onPressed: () => _removeContact(contact.id),
-                    tooltip: 'Remove from list',
-                  ),
-                );
-              },
-            ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'No contacts in your prayer list yet.',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            color: Theme.of(context).colorScheme.outline,
+                          ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Tap "Add People" to get started.',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: Theme.of(context).colorScheme.outline,
+                          ),
+                    ),
+                  ],
+                ),
+              )
+            : ListView.builder(
+                itemCount: _contacts.length,
+                itemBuilder: (context, index) {
+                  final contact = _contacts[index];
+                  return ListTile(
+                    leading: CircleAvatar(
+                      backgroundColor:
+                          Theme.of(context).colorScheme.primaryContainer,
+                      child: Text(
+                        contact.firstName.isNotEmpty ? contact.firstName[0] : '?',
+                        style: TextStyle(
+                            color:
+                                Theme.of(context).colorScheme.onPrimaryContainer),
+                      ),
+                    ),
+                    title: Text(contact.fullName),
+                    subtitle:
+                        contact.location != null ? Text(contact.location!) : null,
+                    onTap: () => _navigateToContactDetails(contact),
+                    trailing: IconButton(
+                      icon: const Icon(Icons.remove_circle_outline),
+                      onPressed: () => _removeContact(contact.id),
+                      tooltip: 'Remove from list',
+                    ),
+                  );
+                },
+              ),
+      );
+    }
+
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 400),
+      child: child,
+    );
+  }
+}
+
+class _PrayerListSkeleton extends StatelessWidget {
+  const _PrayerListSkeleton({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return SkeletonLoader(
+      child: ListView.builder(
+        itemCount: 8,
+        physics: const NeverScrollableScrollPhysics(),
+        itemBuilder: (context, index) => ListTile(
+          leading: const SkeletonBox(width: 40, height: 40, shape: BoxShape.circle),
+          title: SkeletonBox(width: 140 + (index % 3 * 20.0), height: 16),
+          subtitle: const SkeletonBox(width: 100, height: 12),
+          trailing: const SkeletonBox(width: 24, height: 24),
+        ),
+      ),
     );
   }
 }
