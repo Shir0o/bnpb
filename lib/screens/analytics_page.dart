@@ -51,6 +51,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
     setState(() {
       _isLoading = true;
     });
+    final stopwatch = Stopwatch()..start();
 
     final now = DateTime.now();
     final start = _startForRange(_selectedRange, now);
@@ -58,6 +59,11 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
       rangeStart: start,
       rangeEnd: now,
     );
+
+    final elapsed = stopwatch.elapsedMilliseconds;
+    if (elapsed < 300) {
+      await Future.delayed(Duration(milliseconds: 300 - elapsed));
+    }
 
     if (!mounted) return;
     setState(() {
@@ -102,7 +108,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
         ],
       ),
       body: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 400),
+        duration: const Duration(milliseconds: 300),
         child: _buildBody(),
       ),
     );

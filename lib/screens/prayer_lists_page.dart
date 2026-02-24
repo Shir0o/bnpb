@@ -31,6 +31,7 @@ class _PrayerListPageState extends State<PrayerListPage> {
 
   Future<void> _ensureDefaultList() async {
     setState(() => _isLoading = true);
+    final stopwatch = Stopwatch()..start();
 
     // Check for existing lists
     final lists = await _dbHelper.getPrayerLists();
@@ -50,6 +51,14 @@ class _PrayerListPageState extends State<PrayerListPage> {
 
     // Load contacts for this list
     await _loadListContacts(targetList);
+
+    final elapsed = stopwatch.elapsedMilliseconds;
+    if (elapsed < 300) {
+      await Future.delayed(Duration(milliseconds: 300 - elapsed));
+    }
+    if (mounted) {
+      setState(() => _isLoading = false);
+    }
   }
 
   Future<void> _loadListContacts(PrayerList list) async {
@@ -63,7 +72,6 @@ class _PrayerListPageState extends State<PrayerListPage> {
         setState(() {
           _list = freshList;
           _contacts = [];
-          _isLoading = false;
         });
       }
       return;
@@ -87,7 +95,6 @@ class _PrayerListPageState extends State<PrayerListPage> {
       setState(() {
         _list = freshList;
         _contacts = contacts;
-        _isLoading = false;
       });
     }
   }
@@ -101,8 +108,8 @@ class _PrayerListPageState extends State<PrayerListPage> {
       context: context,
       isScrollControlled: true,
       sheetAnimationStyle: AnimationStyle(
-        duration: const Duration(milliseconds: 500),
-        reverseDuration: const Duration(milliseconds: 300),
+        duration: const Duration(milliseconds: 300),
+        reverseDuration: const Duration(milliseconds: 200),
         curve: Curves.easeOutCubic,
       ),
       builder: (context) => ContactSelectionSheet(
@@ -178,7 +185,7 @@ class _PrayerListPageState extends State<PrayerListPage> {
               label: const Text('Add People'),
             ),
       body: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 400),
+        duration: const Duration(milliseconds: 300),
         child: _buildBody(),
       ),
     );

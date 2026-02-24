@@ -2166,8 +2166,8 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
       context: context,
       isScrollControlled: true,
       sheetAnimationStyle: AnimationStyle(
-        duration: const Duration(milliseconds: 500),
-        reverseDuration: const Duration(milliseconds: 300),
+        duration: const Duration(milliseconds: 300),
+        reverseDuration: const Duration(milliseconds: 200),
         curve: Curves.easeOutCubic,
       ),
       builder: (context) => ContactSelectionSheet(

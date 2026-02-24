@@ -54,6 +54,7 @@ class _SettingsPageState extends State<SettingsPage> {
 
   Future<void> _load() async {
     setState(() => _isLoading = true);
+    final stopwatch = Stopwatch()..start();
 
     await _preferencesRepository.ensureDefaults();
     _syncPath = await SyncService().getSyncDirectory();
@@ -79,6 +80,11 @@ class _SettingsPageState extends State<SettingsPage> {
         await reminderService.isExactAlarmPermissionRelevant();
     _exactAlarmOptIn = await reminderService.isExactAlarmOptInEnabled();
 
+    final elapsed = stopwatch.elapsedMilliseconds;
+    if (elapsed < 300) {
+      await Future.delayed(Duration(milliseconds: 300 - elapsed));
+    }
+
     if (mounted) {
       setState(() {
         _globalDefaults = globalDefaults;
@@ -95,7 +101,7 @@ class _SettingsPageState extends State<SettingsPage> {
         title: const Text('Settings'),
       ),
       body: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 400),
+        duration: const Duration(milliseconds: 300),
         child: _buildBody(),
       ),
     );
