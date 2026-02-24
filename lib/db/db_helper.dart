@@ -24,6 +24,14 @@ class DBHelper {
 
   factory DBHelper() => _instance;
 
+  @visibleForTesting
+  static void setDatabaseForTest(Database db) {
+    _database = db;
+  }
+
+  @visibleForTesting
+  Future<void> createSchemaForTest(Database db) => _createSchema(db);
+
   Future<Database> get database async {
     if (_database != null) return _database!;
     _database = await _initDatabase();
@@ -1089,14 +1097,32 @@ class DBHelper {
     // Gather IDs for batch fetching
     final retrievedContactIds =
         contactRows.map((c) => c['id'] as String).toList();
-    final placeholders = List.filled(retrievedContactIds.length, '?').join(',');
+    final retrievedContactIdsSet = retrievedContactIds.toSet();
+
+    // Check if we fetched all active contacts to use optimized bulk queries
+    // This avoids huge IN clauses which can crash SQLite or be slow to parse
+    final isFetchAllActive = contactId == null &&
+        (contactIds == null || contactIds.isEmpty) &&
+        updatedSince == null &&
+        !includeDeleted;
 
     // 2. Fetch Tags
-    final tagRows = await db.query(
-      'contact_tags',
-      where: 'contactId IN ($placeholders)',
-      whereArgs: retrievedContactIds,
-    );
+    final List<Map<String, Object?>> tagRows;
+    if (isFetchAllActive) {
+      tagRows = await db.rawQuery('''
+        SELECT t.* FROM contact_tags t
+        JOIN contacts c ON t.contactId = c.id
+        WHERE c.deletedAt IS NULL
+      ''');
+    } else {
+      tagRows = await _chunkedQuery(
+        db: db,
+        table: 'contact_tags',
+        inColumn: 'contactId',
+        values: retrievedContactIds,
+      );
+    }
+
     final tagsByContact = <String, List<String>>{};
     for (final row in tagRows) {
       final cId = row['contactId'] as String;
@@ -1106,15 +1132,37 @@ class DBHelper {
 
     // 3. Fetch Interactions
     // We need to fetch interactions via interaction_participants
-    // AND filter by deletedAt IS NULL on the interaction itself, unless we want deleted interactions?
-    // Usually for contact hydration we only want active interactions.
-    final participantRows = await db.rawQuery('''
-      SELECT ip.contactId, i.*
-      FROM interaction_participants ip
-      JOIN interactions i ON ip.interactionId = i.id
-      WHERE ip.contactId IN ($placeholders) AND i.deletedAt IS NULL
-      ORDER BY i.occurredAt DESC
-    ''', retrievedContactIds);
+    // AND filter by deletedAt IS NULL on the interaction itself.
+    final List<Map<String, Object?>> participantRows;
+    if (isFetchAllActive) {
+      participantRows = await db.rawQuery('''
+        SELECT ip.contactId, i.*
+        FROM interaction_participants ip
+        JOIN interactions i ON ip.interactionId = i.id
+        JOIN contacts c ON ip.contactId = c.id
+        WHERE c.deletedAt IS NULL AND i.deletedAt IS NULL
+        ORDER BY i.occurredAt DESC
+      ''');
+    } else {
+      participantRows = [];
+      const int batchSize = 900;
+      for (var i = 0; i < retrievedContactIds.length; i += batchSize) {
+        final end = (i + batchSize < retrievedContactIds.length)
+            ? i + batchSize
+            : retrievedContactIds.length;
+        final chunk = retrievedContactIds.sublist(i, end);
+        final placeholders = List.filled(chunk.length, '?').join(',');
+
+        final rows = await db.rawQuery('''
+          SELECT ip.contactId, i.*
+          FROM interaction_participants ip
+          JOIN interactions i ON ip.interactionId = i.id
+          WHERE ip.contactId IN ($placeholders) AND i.deletedAt IS NULL
+          ORDER BY i.occurredAt DESC
+        ''', chunk);
+        participantRows.addAll(rows);
+      }
+    }
 
     // We also need to get ALL participants for these interactions to properly populate participantIds
     final fetchedInteractionIds =
@@ -1138,11 +1186,23 @@ class DBHelper {
     }
 
     // 4. Fetch Prayer Requests
-    final prayerRows = await db.query(
-      'prayer_requests',
-      where: 'contactId IN ($placeholders) AND deletedAt IS NULL',
-      whereArgs: retrievedContactIds,
-    );
+    final List<Map<String, Object?>> prayerRows;
+    if (isFetchAllActive) {
+      prayerRows = await db.rawQuery('''
+        SELECT pr.* FROM prayer_requests pr
+        JOIN contacts c ON pr.contactId = c.id
+        WHERE c.deletedAt IS NULL AND pr.deletedAt IS NULL
+      ''');
+    } else {
+      prayerRows = await _chunkedQuery(
+        db: db,
+        table: 'prayer_requests',
+        inColumn: 'contactId',
+        values: retrievedContactIds,
+        where: 'deletedAt IS NULL',
+      );
+    }
+
     final requestsByContact = <String, List<PrayerRequest>>{};
     for (final row in prayerRows) {
       final cId = row['contactId'] as String;
@@ -1152,23 +1212,45 @@ class DBHelper {
     }
 
     // 5. Fetch Relationships
-    final relRows = await db.query(
-      'relationships',
-      where:
-          'sourceContactId IN ($placeholders) OR targetContactId IN ($placeholders)',
-      whereArgs: [...retrievedContactIds, ...retrievedContactIds],
-    );
+    final List<Map<String, Object?>> relRows;
+    if (isFetchAllActive) {
+      relRows = await db.rawQuery('''
+         SELECT r.* FROM relationships r
+         JOIN contacts s ON r.sourceContactId = s.id
+         JOIN contacts t ON r.targetContactId = t.id
+         WHERE s.deletedAt IS NULL OR t.deletedAt IS NULL
+       ''');
+    } else {
+      relRows = [];
+      const int batchSize = 450; // Smaller batch due to OR condition (2x params)
+      for (var i = 0; i < retrievedContactIds.length; i += batchSize) {
+        final end = (i + batchSize < retrievedContactIds.length)
+            ? i + batchSize
+            : retrievedContactIds.length;
+        final chunk = retrievedContactIds.sublist(i, end);
+        final placeholders = List.filled(chunk.length, '?').join(',');
+
+        final rows = await db.query(
+          'relationships',
+          where:
+              'sourceContactId IN ($placeholders) OR targetContactId IN ($placeholders)',
+          whereArgs: [...chunk, ...chunk],
+        );
+        relRows.addAll(rows);
+      }
+    }
+
     final relationshipsByContact = <String, List<Relationship>>{};
     for (final row in relRows) {
       final src = row['sourceContactId'] as String;
       final tgt = row['targetContactId'] as String;
       // Add to both if present
-      if (retrievedContactIds.contains(src)) {
+      if (retrievedContactIdsSet.contains(src)) {
         relationshipsByContact
             .putIfAbsent(src, () => [])
             .add(Relationship.fromMap(Map<String, dynamic>.from(row)));
       }
-      if (retrievedContactIds.contains(tgt)) {
+      if (retrievedContactIdsSet.contains(tgt)) {
         relationshipsByContact
             .putIfAbsent(tgt, () => [])
             .add(Relationship.fromMap(Map<String, dynamic>.from(row)));
@@ -1176,11 +1258,21 @@ class DBHelper {
     }
 
     // 6. Fetch Meet Contexts
-    final contextRows = await db.query(
-      'meet_contexts',
-      where: 'contactId IN ($placeholders)',
-      whereArgs: retrievedContactIds,
-    );
+    final List<Map<String, Object?>> contextRows;
+    if (isFetchAllActive) {
+      contextRows = await db.rawQuery('''
+        SELECT mc.* FROM meet_contexts mc
+        JOIN contacts c ON mc.contactId = c.id
+        WHERE c.deletedAt IS NULL
+      ''');
+    } else {
+      contextRows = await _chunkedQuery(
+        db: db,
+        table: 'meet_contexts',
+        inColumn: 'contactId',
+        values: retrievedContactIds,
+      );
+    }
     final contextMap = {
       for (var r in contextRows)
         r['contactId'] as String: r['firstMeetingNotes'] as String
@@ -1830,4 +1922,52 @@ class DBHelper {
   // -------------------------------------------------------------
   // ATTENDANCE METHODS
   // -------------------------------------------------------------
+
+  Future<List<Map<String, Object?>>> _chunkedQuery({
+    required DatabaseExecutor db,
+    required String table,
+    required String inColumn,
+    required List<Object> values,
+    List<String>? columns,
+    String? where,
+    List<Object?>? whereArgs,
+    String? orderBy,
+  }) async {
+    final results = <Map<String, Object?>>[];
+    // Use 900 to be safely under the 999 limit often found in mobile SQLite builds
+    const int batchSize = 900;
+
+    // Parallelize queries for better performance
+    final futures = <Future<List<Map<String, Object?>>>>[];
+
+    for (var i = 0; i < values.length; i += batchSize) {
+      final end =
+          (i + batchSize < values.length) ? i + batchSize : values.length;
+      final chunk = values.sublist(i, end);
+      final placeholders = List.filled(chunk.length, '?').join(',');
+
+      final chunkWhere = where != null
+          ? '($where) AND $inColumn IN ($placeholders)'
+          : '$inColumn IN ($placeholders)';
+
+      final chunkArgs = whereArgs != null ? [...whereArgs, ...chunk] : chunk;
+
+      futures.add(
+        db.query(
+          table,
+          columns: columns,
+          where: chunkWhere,
+          whereArgs: chunkArgs,
+          orderBy: orderBy,
+        ),
+      );
+    }
+
+    final chunkResults = await Future.wait(futures);
+    for (final chunk in chunkResults) {
+      results.addAll(chunk);
+    }
+
+    return results;
+  }
 }

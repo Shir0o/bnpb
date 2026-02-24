@@ -16,6 +16,9 @@ class MockDBHelper implements DBHelper {
   Future<void> close() async {}
 
   @override
+  Future<void> createSchemaForTest(Database db) async {}
+
+  @override
   Future<void> insertContact(Contact contact) => throw UnimplementedError();
 
   @override
