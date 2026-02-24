@@ -140,34 +140,35 @@ class SyncService {
       final processedFiles = await _coordinator.getProcessedFiles();
       final deviceId = await _coordinator.getDeviceId();
 
-      // Filter files to download first
-      final filesToDownload = remoteFiles.where((file) {
-        if (file.id == null || file.name == null) return false;
-        if (kDebugMode) {
-          print('Checking file: ${file.name}');
-        }
-        // Optimization: Skip files we have already processed
-        if (processedFiles.contains(file.name)) {
-          if (kDebugMode) {
-            print('-> Skipping ${file.name} as already processed');
-          }
-          return false;
-        }
+      // Optimization: Group remote files by deviceId and only take the latest one per device.
+      // This drastically reduces the number of files we check and download.
+      final latestFilesPerDevice = <String, drive.File>{};
+      for (final file in remoteFiles) {
+        if (file.name == null || file.id == null) continue;
+        final name = file.name!;
+        if (!name.endsWith('_data.json')) continue;
 
-        // Optimization: Skip our own files (files created by this deviceId)
-        if (file.name!.startsWith(deviceId)) {
-          if (kDebugMode) {
-            print('-> Skipping ${file.name} as it is our own export');
-          }
-          return false;
+        // Skip our own files
+        if (name.startsWith(deviceId)) continue;
+
+        // Skip already processed files
+        if (processedFiles.contains(name)) continue;
+
+        final fileDeviceId = name.split('_').first;
+        final timestamp = _extractTimestamp(name);
+
+        final existing = latestFilesPerDevice[fileDeviceId];
+        if (existing == null || timestamp > _extractTimestamp(existing.name!)) {
+          latestFilesPerDevice[fileDeviceId] = file;
         }
-        return true;
-      }).toList();
+      }
+
+      final filesToDownload = latestFilesPerDevice.values.toList();
 
       // Download in parallel batches
       await _processInBatches<drive.File>(filesToDownload, (file) async {
         if (kDebugMode) {
-          print('-> Downloading ${file.name} ...');
+          print('-> Downloading latest from device: ${file.name}');
         }
         final targetFile = File(p.join(syncTempDir.path, file.name!));
         await _googleDrive.downloadFile(file.id!, targetFile);
@@ -270,5 +271,18 @@ class SyncService {
       final batch = items.sublist(i, end);
       await Future.wait(batch.map(process));
     }
+  }
+
+  int _extractTimestamp(String filename) {
+    // Expected: deviceId_timestamp_data.json
+    try {
+      final withoutSuffix = filename.replaceAll('_data.json', '');
+      final lastUnderscore = withoutSuffix.lastIndexOf('_');
+      if (lastUnderscore != -1) {
+        final tsPart = withoutSuffix.substring(lastUnderscore + 1);
+        return int.tryParse(tsPart) ?? 0;
+      }
+    } catch (_) {}
+    return 0;
   }
 }
