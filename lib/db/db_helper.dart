@@ -492,8 +492,14 @@ class DBHelper {
       await db.execute('ALTER TABLE prayer_lists ADD COLUMN deletedAt TEXT');
     }
     if (oldVersion < 17) {
-      await db
-          .execute('ALTER TABLE interactions RENAME COLUMN category TO notes');
+      final columns = await db.rawQuery('PRAGMA table_info(interactions)');
+      final hasCategory = columns.any((column) => column['name'] == 'category');
+      final hasNotes = columns.any((column) => column['name'] == 'notes');
+
+      if (hasCategory && !hasNotes) {
+        await db.execute(
+            'ALTER TABLE interactions RENAME COLUMN category TO notes');
+      }
     }
   }
 

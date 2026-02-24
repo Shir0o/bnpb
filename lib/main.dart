@@ -196,7 +196,7 @@ class _MainPageState extends State<MainPage> with WidgetsBindingObserver {
   }
 
   Future<void> _runBackgroundInitialization() async {
-    // We don't await these here to keep initState fast, 
+    // We don't await these here to keep initState fast,
     // but they will run in sequence in the background.
     try {
       await SyncService().performSync();

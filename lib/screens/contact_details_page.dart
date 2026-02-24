@@ -2625,12 +2625,14 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
 
     final interaction = Interaction(
       id: widget.initialInteraction?.id,
+      syncId: widget.initialInteraction?.syncId,
       occurredAt: _occurredAt,
       summary: summary,
       medium: _medium,
       location: _locationController.text.trim().isEmpty
           ? null
           : _locationController.text.trim(),
+      attachments: widget.initialInteraction?.attachments ?? const [],
       markForPrayer: _markForPrayer,
       followUpAt: _followUpAt,
       durationMinutes: durationMinutes,
