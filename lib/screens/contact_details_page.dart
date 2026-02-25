@@ -1909,14 +1909,34 @@ class _InteractionDetailPageState extends State<InteractionDetailPage> {
 
       return Chip(
         avatar: CircleAvatar(
-          backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.12),
-          foregroundColor: theme.colorScheme.primary,
-          child: Text(initial),
+          backgroundColor: theme.colorScheme.primaryContainer,
+          foregroundColor: theme.colorScheme.onPrimaryContainer,
+          child: Text(initial, style: const TextStyle(fontSize: 12)),
         ),
         label: Text(name),
+        labelStyle: theme.textTheme.labelMedium,
         visualDensity: VisualDensity.compact,
+        side: BorderSide(color: theme.colorScheme.outlineVariant),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       );
     }).toList();
+  }
+
+  Widget _buildCard({required List<Widget> children, Color? color}) {
+    final theme = Theme.of(context);
+    return Card(
+      elevation: 0,
+      color: color ?? theme.colorScheme.surfaceContainerLow,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: color == null
+            ? BorderSide(color: theme.colorScheme.outlineVariant, width: 0.5)
+            : BorderSide.none,
+      ),
+      child: Column(
+        children: children,
+      ),
+    );
   }
 
   Widget _buildDetailTile({
@@ -1928,10 +1948,22 @@ class _InteractionDetailPageState extends State<InteractionDetailPage> {
       return const SizedBox.shrink();
     }
 
+    final theme = Theme.of(context);
     return ListTile(
-      leading: Icon(icon),
-      title: Text(title),
-      subtitle: Text(value),
+      leading: Icon(icon, color: theme.colorScheme.primary),
+      title: Text(
+        title,
+        style: theme.textTheme.labelMedium?.copyWith(
+          color: theme.colorScheme.onSurfaceVariant,
+        ),
+      ),
+      subtitle: Text(
+        value,
+        style: theme.textTheme.bodyLarge?.copyWith(
+          color: theme.colorScheme.onSurface,
+        ),
+      ),
+      dense: true,
     );
   }
 
@@ -1998,65 +2030,139 @@ class _InteractionDetailPageState extends State<InteractionDetailPage> {
           children: [
             if (_isLoading) ...[
               const LinearProgressIndicator(),
-              const SizedBox(height: 12),
+              const SizedBox(height: 16),
             ],
+            // Header Section
             Text(
               _interaction.summary,
-              style: theme.textTheme.titleLarge,
+              style: theme.textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: theme.colorScheme.onSurface,
+              ),
             ),
             const SizedBox(height: 8),
-            Text(
-              _cardDateFormatter.format(_interaction.occurredAt),
-              style: theme.textTheme.bodyMedium,
+            Row(
+              children: [
+                Icon(
+                  Icons.calendar_today_outlined,
+                  size: 16,
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  _cardDateFormatter.format(_interaction.occurredAt),
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 24),
+
+            // Participants Section
             if (participantBadges.isNotEmpty) ...[
-              Text('Participants', style: theme.textTheme.titleSmall),
-              const SizedBox(height: 8),
+              Text(
+                'Participants',
+                style: theme.textTheme.titleSmall?.copyWith(
+                  color: theme.colorScheme.primary,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 12),
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
                 children: participantBadges,
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 24),
             ],
-            _buildDetailTile(
-              icon: _mediumIcons[_interaction.medium] ??
-                  Icons.event_note_outlined,
-              title: 'Medium',
-              value: mediumLabel,
+
+            // Details Card
+            Text(
+              'Details',
+              style: theme.textTheme.titleSmall?.copyWith(
+                color: theme.colorScheme.primary,
+                fontWeight: FontWeight.bold,
+              ),
             ),
-            _buildDetailTile(
-              icon: Icons.place_outlined,
-              title: 'Location',
-              value: _interaction.location,
-            ),
-            _buildDetailTile(
-              icon: Icons.notes_outlined,
-              title: 'Notes',
-              value: _interaction.notes,
-            ),
-            _buildDetailTile(
-              icon: Icons.timer_outlined,
-              title: 'Duration',
-              value: _interaction.durationMinutes != null
-                  ? '${_interaction.durationMinutes} minutes'
-                  : null,
-            ),
-            _buildDetailTile(
-              icon: Icons.alarm_outlined,
-              title: 'Follow-up',
-              value: _interaction.followUpAt != null
-                  ? _cardDateFormatter.format(_interaction.followUpAt!)
-                  : null,
-            ),
-            if (_interaction.markForPrayer)
-              ListTile(
-                leading: Icon(
-                  Icons.self_improvement_outlined,
-                  color: theme.colorScheme.secondary,
+            const SizedBox(height: 12),
+            _buildCard(
+              children: [
+                _buildDetailTile(
+                  icon: _mediumIcons[_interaction.medium] ??
+                      Icons.event_note_outlined,
+                  title: 'Medium',
+                  value: mediumLabel,
                 ),
-                title: const Text('Marked for prayer'),
+                _buildDetailTile(
+                  icon: Icons.place_outlined,
+                  title: 'Location',
+                  value: _interaction.location,
+                ),
+                _buildDetailTile(
+                  icon: Icons.timer_outlined,
+                  title: 'Duration',
+                  value: _interaction.durationMinutes != null
+                      ? '${_interaction.durationMinutes} minutes'
+                      : null,
+                ),
+                _buildDetailTile(
+                  icon: Icons.alarm_outlined,
+                  title: 'Follow-up',
+                  value: _interaction.followUpAt != null
+                      ? _cardDateFormatter.format(_interaction.followUpAt!)
+                      : null,
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+
+            // Notes Section
+            if (_interaction.notes != null &&
+                _interaction.notes!.isNotEmpty) ...[
+              Text(
+                'Notes',
+                style: theme.textTheme.titleSmall?.copyWith(
+                  color: theme.colorScheme.primary,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 12),
+              _buildCard(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Text(
+                      _interaction.notes!,
+                      style: theme.textTheme.bodyLarge?.copyWith(
+                        height: 1.5,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+            ],
+
+            // Prayer Section
+            if (_interaction.markForPrayer)
+              _buildCard(
+                color: theme.colorScheme.secondaryContainer,
+                children: [
+                  ListTile(
+                    leading: Icon(
+                      Icons.self_improvement_outlined,
+                      color: theme.colorScheme.onSecondaryContainer,
+                    ),
+                    title: Text(
+                      'Marked for prayer',
+                      style: theme.textTheme.labelLarge?.copyWith(
+                        color: theme.colorScheme.onSecondaryContainer,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
               ),
           ],
         ),
@@ -2158,10 +2264,10 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
 
     // Check if significant change to avoid loop
     if (_occurredAt.difference(newOccurredAt).abs().inMinutes < 1) {
-       // Keep existing time if difference is negligible to avoid jitter
-       // But user might want exact update.
-       // Actually, every keystroke will update it relative to 'now'.
-       // So typing '1' -> now-1. Typing '0' -> now-10.
+      // Keep existing time if difference is negligible to avoid jitter
+      // But user might want exact update.
+      // Actually, every keystroke will update it relative to 'now'.
+      // So typing '1' -> now-1. Typing '0' -> now-10.
     }
 
     setState(() {

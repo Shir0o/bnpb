@@ -1222,7 +1222,8 @@ class DBHelper {
        ''');
     } else {
       relRows = [];
-      const int batchSize = 450; // Smaller batch due to OR condition (2x params)
+      const int batchSize =
+          450; // Smaller batch due to OR condition (2x params)
       for (var i = 0; i < retrievedContactIds.length; i += batchSize) {
         final end = (i + batchSize < retrievedContactIds.length)
             ? i + batchSize
