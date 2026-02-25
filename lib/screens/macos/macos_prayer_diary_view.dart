@@ -51,12 +51,8 @@ class _MacOSPrayerDiaryViewState extends State<MacOSPrayerDiaryView> {
               a.fullName.toLowerCase().compareTo(b.fullName.toLowerCase()),
         );
 
-      // Sort requests by date descending
-      requests.sort((a, b) {
-        final aDate = a.answeredAt ?? a.requestedAt;
-        final bDate = b.answeredAt ?? b.requestedAt;
-        return bDate.compareTo(aDate);
-      });
+      // Sort requests
+      _sortRequests(requests);
 
       setState(() {
         _requests = requests;
@@ -76,6 +72,23 @@ class _MacOSPrayerDiaryViewState extends State<MacOSPrayerDiaryView> {
         });
       }
     }
+  }
+
+  void _sortRequests(List<PrayerRequest> requests) {
+    requests.sort((a, b) {
+      // Group 1: Pending (comes first)
+      // Group 2: Answered and Archived (comes after)
+      final aIsPending = a.status == PrayerRequestStatus.pending;
+      final bIsPending = b.status == PrayerRequestStatus.pending;
+
+      if (aIsPending && !bIsPending) return -1;
+      if (!aIsPending && bIsPending) return 1;
+
+      // Within groups, sort by date descending
+      final aDate = a.answeredAt ?? a.requestedAt;
+      final bDate = b.answeredAt ?? b.requestedAt;
+      return bDate.compareTo(aDate);
+    });
   }
 
   Future<void> _openLogPrayerRequestSheet() async {
@@ -350,6 +363,7 @@ class _MacOSPrayerDiaryViewState extends State<MacOSPrayerDiaryView> {
               _requests.indexWhere((r) => r.syncId == updatedRequest.syncId);
           if (index != -1) {
             _requests[index] = updatedRequest;
+            _sortRequests(_requests);
           }
         });
       }

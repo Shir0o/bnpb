@@ -44,6 +44,8 @@ class _PrayerDiaryPageState extends State<PrayerDiaryPage> {
       }
 
       final requests = results[0] as List<PrayerRequest>;
+      _sortRequests(requests);
+
       final contacts = List<Contact>.from(results[1] as List<Contact>)
         ..sort(
           (a, b) =>
@@ -293,6 +295,7 @@ class _PrayerDiaryPageState extends State<PrayerDiaryPage> {
       _requests = _requests
           .map((entry) => entry.id == request.id ? updated : entry)
           .toList();
+      _sortRequests(_requests);
     });
 
     try {
@@ -314,6 +317,23 @@ class _PrayerDiaryPageState extends State<PrayerDiaryPage> {
         SnackBar(content: Text('Failed to update status: $error')),
       );
     }
+  }
+
+  void _sortRequests(List<PrayerRequest> requests) {
+    requests.sort((a, b) {
+      // Group 1: Pending (comes first)
+      // Group 2: Answered and Archived (comes after)
+      final aIsPending = a.status == PrayerRequestStatus.pending;
+      final bIsPending = b.status == PrayerRequestStatus.pending;
+
+      if (aIsPending && !bIsPending) return -1;
+      if (!aIsPending && bIsPending) return 1;
+
+      // Within groups, sort by date descending
+      final aDate = a.answeredAt ?? a.requestedAt;
+      final bDate = b.answeredAt ?? b.requestedAt;
+      return bDate.compareTo(aDate);
+    });
   }
 
   String _statusChangeMessage(PrayerRequestStatus status) {
