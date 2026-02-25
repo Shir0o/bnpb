@@ -249,37 +249,46 @@ class ExportService {
   }) async {
     final contactList = contacts.map((contact) => contact.toJson()).toList();
 
-    // Flatten interactions and prayer requests
+    // Flatten interactions and prayer requests with de-duplication
     final flatInteractions = <Map<String, dynamic>>[];
     final flatPrayerRequests = <Map<String, dynamic>>[];
 
-    for (final contact in contacts) {
-      // Map interaction ID to SyncID for prayer request resolution
-      final interactionMap = <int, String>{};
+    final seenInteractionSyncIds = <String>{};
+    final seenPrayerSyncIds = <String>{};
 
+    // Global mapping of local interaction ID to SyncID for prayer request resolution
+    final globalInteractionMap = <int, String>{};
+
+    for (final contact in contacts) {
       for (final interaction in contact.interactions) {
-        flatInteractions.add(interaction.toJson());
         if (interaction.id != null) {
-          interactionMap[interaction.id!] = interaction.syncId;
+          globalInteractionMap[interaction.id!] = interaction.syncId;
+        }
+        if (!seenInteractionSyncIds.contains(interaction.syncId)) {
+          flatInteractions.add(interaction.toJson());
+          seenInteractionSyncIds.add(interaction.syncId);
         }
       }
+    }
 
+    for (final contact in contacts) {
       for (final prayer in contact.prayerRequests) {
-        final map = prayer.toMap();
-        // Resolve interactionSyncId if linked
-        if (prayer.interactionId != null) {
-          final syncId = interactionMap[prayer.interactionId!];
-          if (syncId != null) {
-            map['interactionSyncId'] = syncId;
+        if (!seenPrayerSyncIds.contains(prayer.syncId)) {
+          final map = prayer.toMap();
+          // Resolve interactionSyncId if linked
+          if (prayer.interactionId != null) {
+            final syncId = globalInteractionMap[prayer.interactionId!];
+            if (syncId != null) {
+              map['interactionSyncId'] = syncId;
+            }
           }
+          flatPrayerRequests.add(map);
+          seenPrayerSyncIds.add(prayer.syncId);
         }
-        flatPrayerRequests.add(map);
       }
     }
 
     // Get Device ID (reuse SyncCoordinator logic)
-    // Note: We instantiate SyncCoordinator solely to access getDeviceId.
-    // It's stateless for this purpose (uses SharedPreferences).
     final syncCoordinator = SyncCoordinator(DBHelper());
     final deviceId = await syncCoordinator.getDeviceId();
 

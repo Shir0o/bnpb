@@ -424,6 +424,32 @@ class SyncCoordinator {
     }
   }
 
+  Future<void> _replacePrayerParticipants(DatabaseExecutor txn, int requestId,
+      List<String> participantIds) async {
+    await txn.delete(
+      'prayer_request_participants',
+      where: 'prayerRequestId = ?',
+      whereArgs: [requestId],
+    );
+
+    final uniqueParticipants = participantIds.toSet();
+    for (final participant in uniqueParticipants) {
+      try {
+        await txn.insert(
+          'prayer_request_participants',
+          {
+            'prayerRequestId': requestId,
+            'contactId': participant,
+          },
+          conflictAlgorithm: ConflictAlgorithm.replace,
+        );
+      } catch (e) {
+        debugPrint(
+            'Skipping participant $participant for prayer request $requestId due to error: $e');
+      }
+    }
+  }
+
   Future<void> _mergePrayerRequest(
       PrayerRequest remote, String? interactionSyncId) async {
     // Similar logic using syncId
@@ -440,18 +466,13 @@ class SyncCoordinator {
     if (interactionSyncId != null) {
       localInteractionId =
           await _getLocalInteractionIdBySyncId(interactionSyncId);
-      // If null, we might not have synced interactions yet?
-      // Files are sorted by timestamp, so hopefully interaction came first.
-      // Or it's in same file. Order in file: Contacts, Interactions, Prayers. Yes.
     }
-
-    // Note: we can't update `remote.interactionId` directly as it's immutable?
-    // We construct map.
 
     if (rows.isEmpty) {
       if (remote.deletedAt != null) return;
 
       final map = remote.toMap(includeId: false);
+      map.remove('participantIds');
       map['updatedAt'] = remote.updatedAt.toIso8601String();
       map['deletedAt'] = remote.deletedAt?.toIso8601String();
       map['syncId'] = remote.syncId;
@@ -462,7 +483,8 @@ class SyncCoordinator {
         map.remove('interactionId');
       }
 
-      await db.insert('prayer_requests', map);
+      final id = await db.insert('prayer_requests', map);
+      await _replacePrayerParticipants(db, id, remote.participantIds);
     } else {
       final localRow = rows.first;
       final localUpdated = DateTime.parse(localRow['updatedAt'] as String);
@@ -471,6 +493,7 @@ class SyncCoordinator {
       if (remoteUpdated.isAfter(localUpdated)) {
         final localId = localRow['id'] as int;
         final map = remote.toMap(includeId: false);
+        map.remove('participantIds');
         map['updatedAt'] = remoteUpdated.toIso8601String();
         map['deletedAt'] = remote.deletedAt?.toIso8601String();
 
@@ -482,6 +505,7 @@ class SyncCoordinator {
 
         await db.update('prayer_requests', map,
             where: 'id = ?', whereArgs: [localId]);
+        await _replacePrayerParticipants(db, localId, remote.participantIds);
       }
     }
   }

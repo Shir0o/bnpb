@@ -237,210 +237,192 @@ class _LogPrayerRequestSheetState extends State<LogPrayerRequestSheet> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final mediaQuery = MediaQuery.of(context);
-    final canSave = _selectedParticipantIds.isNotEmpty && !_isSaving;
+    final isEditing = widget.initialRequest != null;
 
     return SafeArea(
-      top: false,
-      child: AnimatedPadding(
-        padding: EdgeInsets.only(
-          left: 16,
-          right: 16,
-          top: 24,
-          bottom: mediaQuery.viewInsets.bottom + 24,
-        ),
-        duration: const Duration(milliseconds: 220),
-        curve: Curves.easeOut,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Flexible(
-              child: SingleChildScrollView(
-                keyboardDismissBehavior:
-                    ScrollViewKeyboardDismissBehavior.onDrag,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          widget.initialRequest == null
-                              ? 'Log a prayer request'
-                              : 'Update prayer request',
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.close),
-                          tooltip: 'Close',
-                          onPressed: () => Navigator.of(context).pop(),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Associated Contacts',
-                      style: theme.textTheme.labelLarge,
-                    ),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        ..._selectedParticipantIds.map((id) {
-                          final contact = _contactLookup[id];
-                          final name = contact?.fullName ?? id;
-                          final isInitial = widget.initialContact?.id == id;
-
-                          return Chip(
-                            label: Text(name),
-                            onDeleted: isInitial
-                                ? null
-                                : () {
-                                    setState(() {
-                                      _selectedParticipantIds.remove(id);
-                                    });
-                                  },
-                            deleteIconColor: theme.colorScheme.error,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            side: BorderSide(
-                              color: theme.colorScheme.outlineVariant,
-                            ),
-                          );
-                        }),
-                        ActionChip(
-                          avatar: const Icon(Icons.add, size: 18),
-                          label: const Text('Add Contact'),
-                          onPressed: _showContactSelection,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          side: BorderSide(
-                            color: theme.colorScheme.primary,
-                            style: BorderStyle.solid,
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.close),
+            tooltip: 'Close',
+            onPressed: () => Navigator.of(context).pop(),
+          ),
+          centerTitle: true,
+          title: Text(
+            isEditing ? 'Update prayer request' : 'Log a prayer request',
+            style: theme.textTheme.titleMedium,
+          ),
+          actions: [
+            Padding(
+              padding: const EdgeInsets.only(right: 8.0),
+              child: TextButton(
+                onPressed: _selectedParticipantIds.isNotEmpty && !_isSaving
+                    ? _save
+                    : null,
+                child: _isSaving
+                    ? SizedBox(
+                        height: 16,
+                        width: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            theme.colorScheme.primary,
                           ),
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: 24),
-                    TextField(
-                      controller: _descriptionController,
-                      decoration: const InputDecoration(
-                        labelText: 'Request',
-                        border: OutlineInputBorder(),
-                        alignLabelWithHint: true,
+                      )
+                    : Text(
+                        isEditing ? 'Update' : 'Save',
+                        style: const TextStyle(fontWeight: FontWeight.bold),
                       ),
-                      minLines: 2,
-                      maxLines: 4,
-                      textCapitalization: TextCapitalization.sentences,
-                    ),
-                    const SizedBox(height: 16),
-                    SegmentedButton<PrayerRequestStatus>(
-                      segments: PrayerRequestStatus.values
-                          .map(
-                            (option) => ButtonSegment<PrayerRequestStatus>(
-                              value: option,
-                              label: Text(option.label),
-                              icon: Icon(_statusIcon(option)),
-                            ),
-                          )
-                          .toList(),
-                      selected: {_status},
-                      onSelectionChanged: (selection) {
-                        if (selection.isEmpty) return;
-                        _updateStatus(selection.first);
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      leading: const Icon(Icons.calendar_month_outlined),
-                      title: const Text('Requested on'),
-                      subtitle: Text(_formatDate(_requestedAt)),
-                      onTap: _pickRequestedDate,
-                    ),
-                    if (_status == PrayerRequestStatus.answered) ...[
-                      ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        leading: const Icon(Icons.celebration_outlined),
-                        title: const Text('Answered on'),
-                        subtitle: Text(
-                          _answeredAt != null
-                              ? _formatDate(_answeredAt!)
-                              : 'Set an answer date',
-                        ),
-                        trailing: Wrap(
-                          spacing: 4,
-                          children: [
-                            IconButton(
-                              icon: const Icon(Icons.today_outlined),
-                              tooltip: 'Use today',
-                              onPressed: () {
-                                setState(() {
-                                  _answeredAt = DateTime.now();
-                                });
-                              },
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.edit_outlined),
-                              onPressed: _pickAnsweredDate,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: _categoryController,
-                      decoration: const InputDecoration(
-                        labelText: 'Category (optional)',
-                        border: OutlineInputBorder(),
-                      ),
-                      textCapitalization: TextCapitalization.words,
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: _reflectionController,
-                      decoration: const InputDecoration(
-                        labelText: 'Notes',
-                        border: OutlineInputBorder(),
-                      ),
-                      minLines: 2,
-                      maxLines: 4,
-                      textCapitalization: TextCapitalization.sentences,
-                    ),
-                    const SizedBox(height: 24),
-                  ],
-                ),
-              ),
-            ),
-            SafeArea(
-              top: false,
-              child: Padding(
-                padding: const EdgeInsets.only(top: 16),
-                child: SizedBox(
-                  width: double.infinity,
-                  child: FilledButton.icon(
-                    onPressed: canSave ? _save : null,
-                    icon: _isSaving
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.check_circle_outline),
-                    label: Text(
-                      widget.initialRequest == null
-                          ? 'Save request'
-                          : 'Update request',
-                    ),
-                  ),
-                ),
               ),
             ),
           ],
+        ),
+        body: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Associated Contacts',
+                style: theme.textTheme.labelLarge,
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  ..._selectedParticipantIds.map((id) {
+                    final contact = _contactLookup[id];
+                    final name = contact?.fullName ?? id;
+                    final isInitial = widget.initialContact?.id == id;
+
+                    return Chip(
+                      label: Text(name),
+                      onDeleted: isInitial
+                          ? null
+                          : () {
+                              setState(() {
+                                _selectedParticipantIds.remove(id);
+                              });
+                            },
+                      deleteIconColor: theme.colorScheme.error,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      side: BorderSide(
+                        color: theme.colorScheme.outlineVariant,
+                      ),
+                    );
+                  }),
+                  ActionChip(
+                    avatar: const Icon(Icons.add, size: 18),
+                    label: const Text('Add Contact'),
+                    onPressed: _showContactSelection,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    side: BorderSide(
+                      color: theme.colorScheme.primary,
+                      style: BorderStyle.solid,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              TextField(
+                controller: _descriptionController,
+                decoration: const InputDecoration(
+                  labelText: 'Request',
+                  border: OutlineInputBorder(),
+                  alignLabelWithHint: true,
+                ),
+                minLines: 2,
+                maxLines: 4,
+                textCapitalization: TextCapitalization.sentences,
+              ),
+              const SizedBox(height: 16),
+              SegmentedButton<PrayerRequestStatus>(
+                segments: PrayerRequestStatus.values
+                    .map(
+                      (option) => ButtonSegment<PrayerRequestStatus>(
+                        value: option,
+                        label: Text(option.label),
+                        icon: Icon(_statusIcon(option)),
+                      ),
+                    )
+                    .toList(),
+                selected: {_status},
+                onSelectionChanged: (selection) {
+                  if (selection.isEmpty) return;
+                  _updateStatus(selection.first);
+                },
+              ),
+              const SizedBox(height: 16),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.calendar_month_outlined),
+                title: const Text('Requested on'),
+                subtitle: Text(_formatDate(_requestedAt)),
+                onTap: _pickRequestedDate,
+              ),
+              if (_status == PrayerRequestStatus.answered) ...[
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.celebration_outlined),
+                  title: const Text('Answered on'),
+                  subtitle: Text(
+                    _answeredAt != null
+                        ? _formatDate(_answeredAt!)
+                        : 'Set an answer date',
+                  ),
+                  trailing: Wrap(
+                    spacing: 4,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.today_outlined),
+                        tooltip: 'Use today',
+                        onPressed: () {
+                          setState(() {
+                            _answeredAt = DateTime.now();
+                          });
+                        },
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.edit_outlined),
+                        onPressed: _pickAnsweredDate,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+              const SizedBox(height: 12),
+              TextField(
+                controller: _categoryController,
+                decoration: const InputDecoration(
+                  labelText: 'Category (optional)',
+                  border: OutlineInputBorder(),
+                ),
+                textCapitalization: TextCapitalization.words,
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _reflectionController,
+                decoration: const InputDecoration(
+                  labelText: 'Notes',
+                  border: OutlineInputBorder(),
+                ),
+                minLines: 2,
+                maxLines: 4,
+                textCapitalization: TextCapitalization.sentences,
+              ),
+              const SizedBox(height: 24),
+            ],
+          ),
         ),
       ),
     );

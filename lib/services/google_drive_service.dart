@@ -187,10 +187,11 @@ class GoogleDriveService {
     final mediaResponse = await _driveApi!.files.get(fileId,
         downloadOptions: drive.DownloadOptions.fullMedia) as drive.Media;
 
-    final List<int> data = [];
-    await for (final chunk in mediaResponse.stream) {
-      data.addAll(chunk);
+    final sink = targetFile.openWrite();
+    try {
+      await sink.addStream(mediaResponse.stream);
+    } finally {
+      await sink.close();
     }
-    await targetFile.writeAsBytes(data);
   }
 }
