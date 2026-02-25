@@ -66,9 +66,16 @@ class ContactSearchService {
           .toList();
     }
 
+    final queryTrigrams = _trigrams(normalizedQuery);
+
     final results = <ContactMatch>[];
     for (final item in indexedContacts) {
-      final combinedScore = _score(normalizedQuery, item.combinedText);
+      final combinedScore = _score(
+        normalizedQuery,
+        queryTrigrams,
+        item.normalizedCombinedText,
+        item.combinedTrigrams,
+      );
 
       if (combinedScore <= 0) {
         continue;
@@ -79,14 +86,25 @@ class ContactSearchService {
       String? bestFieldSnippet;
 
       for (final field in item.fields) {
-        final fieldText = field.values.join(' ');
-        if (fieldText.trim().isEmpty) {
+        // Use pre-calculated field normalized text and trigrams
+        // if field text is not empty.
+        // _SearchField handles empty checks internally or normalizedText will be empty.
+        if (field.normalizedText.isEmpty) {
           continue;
         }
-        final fieldScore = _score(normalizedQuery, fieldText);
+
+        final fieldScore = _score(
+          normalizedQuery,
+          queryTrigrams,
+          field.normalizedText,
+          field.trigrams,
+        );
+
         if (fieldScore > bestFieldScore) {
           bestFieldScore = fieldScore;
           bestFieldLabel = field.label;
+          // _snippet still uses original text for display
+          final fieldText = field.values.join(' ');
           bestFieldSnippet = _snippet(fieldText, query);
         }
       }
@@ -158,6 +176,7 @@ class ContactSearchService {
       return const [];
     }
 
+    final queryTrigrams = _trigrams(normalizedQuery);
     final matches = <ContactMatch>[];
 
     for (final item in indexedContacts) {
@@ -166,15 +185,22 @@ class ContactSearchService {
       String? bestSnippet;
 
       for (final field in item.fields) {
-        final text = field.values.join(' ');
-        if (text.trim().isEmpty) {
+        if (field.normalizedText.isEmpty) {
           continue;
         }
-        final score = _score(normalizedQuery, text);
+
+        final score = _score(
+          normalizedQuery,
+          queryTrigrams,
+          field.normalizedText,
+          field.trigrams,
+        );
+
         if (score > bestScore) {
           bestScore = score;
           bestLabel = field.label;
-          bestSnippet = _snippet(text, query);
+          final fieldText = field.values.join(' ');
+          bestSnippet = _snippet(fieldText, query);
         }
       }
 
@@ -235,8 +261,12 @@ class ContactSearchService {
     ];
   }
 
-  static double _score(String normalizedQuery, String text) {
-    final normalizedText = _normalize(text);
+  static double _score(
+    String normalizedQuery,
+    Set<String> queryTrigrams,
+    String normalizedText,
+    Set<String> textTrigrams,
+  ) {
     if (normalizedQuery.isEmpty || normalizedText.isEmpty) {
       return 0;
     }
@@ -246,8 +276,6 @@ class ContactSearchService {
       return 0.6 + 0.4 * ratio.clamp(0.0, 1.0);
     }
 
-    final queryTrigrams = _trigrams(normalizedQuery);
-    final textTrigrams = _trigrams(normalizedText);
     if (queryTrigrams.isEmpty || textTrigrams.isEmpty) {
       return 0;
     }
@@ -372,22 +400,33 @@ class _SuggestionScore {
 }
 
 class _SearchField {
-  const _SearchField({required this.label, required this.values});
+  _SearchField({required this.label, required this.values}) {
+    final text = values.join(' ');
+    normalizedText = ContactSearchService._normalize(text);
+    trigrams = ContactSearchService._trigrams(normalizedText);
+  }
 
   final String label;
   final List<String> values;
+  late final String normalizedText;
+  late final Set<String> trigrams;
 }
 
 class _IndexedContact {
   final Contact contact;
   final List<_SearchField> fields;
   final String combinedText;
+  late final String normalizedCombinedText;
+  late final Set<String> combinedTrigrams;
 
   _IndexedContact({
     required this.contact,
     required this.fields,
     this.combinedText = '',
-  });
+  }) {
+    normalizedCombinedText = ContactSearchService._normalize(combinedText);
+    combinedTrigrams = ContactSearchService._trigrams(normalizedCombinedText);
+  }
 }
 
 class _SearchRequest {
