@@ -3,13 +3,17 @@ import 'dart:io';
 import 'package:bnpb/services/google_drive_service.dart';
 import 'package:bnpb/services/sync_coordinator.dart';
 import 'package:bnpb/services/sync_service.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:googleapis/drive/v3.dart' as drive;
 import 'package:mocktail/mocktail.dart';
-import 'package:path_provider_platform_interface/path_provider_platform_interface.dart';
-import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 import 'package:path/path.dart' as p;
 import 'package:shared_preferences/shared_preferences.dart';
+
+// ignore: depend_on_referenced_packages
+import 'package:path_provider_platform_interface/path_provider_platform_interface.dart';
+// ignore: depend_on_referenced_packages
+import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 
 class MockGoogleDriveService extends Mock implements GoogleDriveService {}
 
@@ -99,7 +103,7 @@ void main() {
     await syncService.performSync();
     stopwatch.stop();
 
-    print('Sync execution time: ${stopwatch.elapsedMilliseconds}ms');
+    debugPrint('Sync execution time: ${stopwatch.elapsedMilliseconds}ms');
     expect(stopwatch.elapsedMilliseconds, lessThan(600),
         reason: 'Sync should be parallelized');
 

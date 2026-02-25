@@ -424,8 +424,8 @@ class SyncCoordinator {
     }
   }
 
-  Future<void> _replacePrayerParticipants(DatabaseExecutor txn, int requestId,
-      List<String> participantIds) async {
+  Future<void> _replacePrayerParticipants(
+      DatabaseExecutor txn, int requestId, List<String> participantIds) async {
     await txn.delete(
       'prayer_request_participants',
       where: 'prayerRequestId = ?',

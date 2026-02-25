@@ -196,6 +196,16 @@ class DBHelper {
         FOREIGN KEY(contactId) REFERENCES contacts(id) ON DELETE CASCADE
       )
     ''');
+
+    await db.execute('''
+      CREATE TABLE prayer_request_participants (
+        prayerRequestId INTEGER NOT NULL,
+        contactId TEXT NOT NULL,
+        PRIMARY KEY(prayerRequestId, contactId),
+        FOREIGN KEY(prayerRequestId) REFERENCES prayer_requests(id) ON DELETE CASCADE,
+        FOREIGN KEY(contactId) REFERENCES contacts(id) ON DELETE CASCADE
+      )
+    ''');
   }
 
   Future<void> _migrate(
@@ -1077,7 +1087,8 @@ class DBHelper {
       where: 'contactId = ?',
       whereArgs: [contact.id],
     );
-    final existingIds = existingRows.map((r) => r['prayerRequestId'] as int).toSet();
+    final existingIds =
+        existingRows.map((r) => r['prayerRequestId'] as int).toSet();
     final newIds =
         contact.prayerRequests.map((r) => r.id).whereType<int>().toSet();
 

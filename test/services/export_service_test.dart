@@ -148,8 +148,9 @@ void main() {
       expect(prayerJson['participantIds'], containsAll(['c1', 'c2']));
       expect(prayerJson['interactionSyncId'], interaction.syncId);
     });
-   group('buildFullExportPayload', () {
-      test('correctly de-duplicates interactions and prayer requests', () async {
+    group('buildFullExportPayload', () {
+      test('correctly de-duplicates interactions and prayer requests',
+          () async {
         final interaction = Interaction(
           id: 1,
           occurredAt: DateTime.now(),
@@ -190,7 +191,8 @@ void main() {
 
         expect(payload['interactions'], hasLength(1));
         expect(payload['prayerRequests'], hasLength(1));
-        expect(payload['prayerRequests'][0]['interactionSyncId'], interaction.syncId);
+        expect(payload['prayerRequests'][0]['interactionSyncId'],
+            interaction.syncId);
       });
     });
   });

@@ -63,6 +63,6 @@ BNPB provides options to keep your data safe across devices:
   personal data management and the storage of sensitive information.
 
 ## Questions & changes
-This project is open source. You can review the full source code and update 
-history on GitHub. Please report any security concerns or policy gaps through 
-the official repository.
+BNPB is a proprietary tool and its source code is not publicly available. 
+Please report any security concerns or policy gaps through the official 
+support channels.

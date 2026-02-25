@@ -328,13 +328,15 @@ class _SettingsPageState extends State<SettingsPage> {
     try {
       await SyncService().performSync();
       await _loadSyncState();
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context)
             .showSnackBar(const SnackBar(content: Text('Sync complete')));
+      }
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context)
             .showSnackBar(SnackBar(content: Text('Sync failed: $e')));
+      }
     } finally {
       if (mounted) setState(() => _isUpdating = false);
     }
@@ -402,13 +404,13 @@ class _SettingsPageState extends State<SettingsPage> {
 
   List<Duration> _leadTimeOptions(ReminderChannel channel, Duration current) {
     // Simplified common options
-    return [
+    return {
       const Duration(minutes: 0),
       const Duration(minutes: 30),
       const Duration(hours: 1),
       const Duration(days: 1),
       current
-    ].toSet().toList()
+    }.toList()
       ..sort();
   }
 
@@ -505,8 +507,8 @@ class _SettingsPageState extends State<SettingsPage> {
               child: const Text('Cancel')),
           TextButton(
               onPressed: () => Navigator.pop(context, true),
-              child: const Text('Purge'),
-              style: TextButton.styleFrom(foregroundColor: Colors.red)),
+              style: TextButton.styleFrom(foregroundColor: Colors.red),
+              child: const Text('Purge')),
         ],
       ),
     );
