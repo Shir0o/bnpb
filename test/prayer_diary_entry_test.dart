@@ -8,7 +8,7 @@ void main() {
   group('PrayerDiaryEntry', () {
     final request = PrayerRequest(
       id: 1,
-      contactId: 'c1',
+      participantIds: ['c1'],
       description: 'Test prayer request',
       status: PrayerRequestStatus.pending,
       requestedAt: DateTime(2023, 10, 24, 8, 30),
@@ -26,7 +26,7 @@ void main() {
           home: Scaffold(
             body: PrayerDiaryEntry(
               request: request,
-              contact: contact,
+              contacts: [contact],
               isEditing: false,
               onEditStart: () {},
               onEditSave: (_) {},
@@ -51,7 +51,7 @@ void main() {
           home: Scaffold(
             body: PrayerDiaryEntry(
               request: request,
-              contact: contact,
+              contacts: [contact],
               isEditing: false,
               onEditStart: () {
                 editStarted = true;
@@ -77,7 +77,7 @@ void main() {
           home: Scaffold(
             body: PrayerDiaryEntry(
               request: request,
-              contact: contact,
+              contacts: [contact],
               isEditing: true, // Edit mode ON
               onEditStart: () {},
               onEditSave: (_) {},
@@ -101,7 +101,7 @@ void main() {
           home: Scaffold(
             body: PrayerDiaryEntry(
               request: request,
-              contact: contact,
+              contacts: [contact],
               isEditing: true,
               onEditStart: () {},
               onEditSave: (req) {

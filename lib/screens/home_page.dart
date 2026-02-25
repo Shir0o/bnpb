@@ -560,22 +560,16 @@ class _HomePageState extends State<HomePage>
   }
 
   Future<void> _openPrayerRequestDetails(PrayerRequest request) async {
-    final contact = _contactLookup[request.contactId];
-    if (contact == null) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Contact details unavailable for this request.'),
-        ),
-      );
-      return;
-    }
+    final participants = request.participantIds
+        .map((id) => _contactLookup[id])
+        .whereType<Contact>()
+        .toList();
 
     final didUpdate = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
         builder: (context) => PrayerRequestDetailsPage(
           request: request,
-          contact: contact,
+          initialContacts: participants,
         ),
       ),
     );

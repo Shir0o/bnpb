@@ -85,7 +85,7 @@ void main() {
           prayerRequests: [
             PrayerRequest(
               id: 201,
-              contactId: '1',
+              participantIds: ['1'],
               description: 'Health',
               status: PrayerRequestStatus.pending,
               requestedAt: DateTime(2023, 1, 2),

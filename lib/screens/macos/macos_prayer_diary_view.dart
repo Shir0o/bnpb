@@ -203,9 +203,12 @@ class _MacOSPrayerDiaryViewState extends State<MacOSPrayerDiaryView> {
   Widget _buildContent() {
     final filteredRequests = _requests.where((req) {
       if (_searchQuery.isEmpty) return true;
-      final contactName = _displayNameForContact(req.contactId).toLowerCase();
-      return req.description.toLowerCase().contains(_searchQuery) ||
-          contactName.contains(_searchQuery);
+      final matchDescription = req.description.toLowerCase().contains(_searchQuery);
+      final matchContacts = req.participantIds.any((id) {
+        final name = _displayNameForContact(id).toLowerCase();
+        return name.contains(_searchQuery);
+      });
+      return matchDescription || matchContacts;
     }).toList();
 
     if (filteredRequests.isEmpty) {
@@ -312,9 +315,14 @@ class _MacOSPrayerDiaryViewState extends State<MacOSPrayerDiaryView> {
   }
 
   Widget _buildEntry(PrayerRequest request) {
+    final participants = request.participantIds
+        .map((id) => _contactLookup[id])
+        .whereType<Contact>()
+        .toList();
+
     return PrayerDiaryEntry(
       request: request,
-      contact: _contactLookup[request.contactId],
+      contacts: participants,
       isEditing: _editingRequestId == request.syncId,
       onEditStart: () => _onEntryEditStart(request),
       onEditSave: _onEntryEditSave,

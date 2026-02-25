@@ -5,6 +5,7 @@ import '../db/db_helper.dart';
 import '../models/contact.dart';
 import '../models/prayer_request.dart';
 import '../services/reminder_coordinator.dart';
+import 'contact_selection_sheet.dart';
 
 /// Shared bottom sheet for creating or editing a [PrayerRequest].
 class LogPrayerRequestSheet extends StatefulWidget {
@@ -39,7 +40,8 @@ class _LogPrayerRequestSheetState extends State<LogPrayerRequestSheet> {
   late DateTime _requestedAt;
   DateTime? _answeredAt;
   late PrayerRequestStatus _status;
-  String? _selectedContactId;
+  final Set<String> _selectedParticipantIds = {};
+  late final Map<String, Contact> _contactLookup;
   bool _isSaving = false;
 
   @override
@@ -56,15 +58,17 @@ class _LogPrayerRequestSheetState extends State<LogPrayerRequestSheet> {
     _requestedAt = widget.initialRequest?.requestedAt ?? DateTime.now();
     _answeredAt = widget.initialRequest?.answeredAt;
     _status = widget.initialRequest?.status ?? PrayerRequestStatus.pending;
-    final presetContactId = widget.initialContact?.id ??
-        widget.initialRequest?.contactId ??
-        (widget.availableContacts.length == 1
-            ? widget.availableContacts.first.id
-            : null);
-    if (presetContactId != null &&
-        widget.availableContacts
-            .any((contact) => contact.id == presetContactId)) {
-      _selectedContactId = presetContactId;
+
+    _contactLookup = {
+      for (final contact in widget.availableContacts) contact.id: contact
+    };
+
+    if (widget.initialRequest != null) {
+      _selectedParticipantIds.addAll(widget.initialRequest!.participantIds);
+    } else if (widget.initialContact != null) {
+      _selectedParticipantIds.add(widget.initialContact!.id);
+    } else if (widget.availableContacts.length == 1) {
+      _selectedParticipantIds.add(widget.availableContacts.first.id);
     }
   }
 
@@ -114,6 +118,29 @@ class _LogPrayerRequestSheetState extends State<LogPrayerRequestSheet> {
     });
   }
 
+  Future<void> _showContactSelection() async {
+    final result = await showModalBottomSheet<List<String>>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (context) => ContactSelectionSheet(
+        title: 'Select Contacts',
+        initialSelectedIds: _selectedParticipantIds,
+        disabledIds: widget.initialContact != null ? {widget.initialContact!.id} : {},
+      ),
+    );
+
+    if (result != null && mounted) {
+      setState(() {
+        _selectedParticipantIds.clear();
+        if (widget.initialContact != null) {
+          _selectedParticipantIds.add(widget.initialContact!.id);
+        }
+        _selectedParticipantIds.addAll(result);
+      });
+    }
+  }
+
   Future<void> _save() async {
     if (_isSaving) {
       return;
@@ -128,17 +155,12 @@ class _LogPrayerRequestSheetState extends State<LogPrayerRequestSheet> {
       return;
     }
 
-    if (_selectedContactId == null) {
+    if (_selectedParticipantIds.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Select who this prayer request is for.')),
+        const SnackBar(content: Text('Select at least one contact for this prayer request.')),
       );
       return;
     }
-
-    final selectedContact = widget.availableContacts.firstWhere(
-      (contact) => contact.id == _selectedContactId,
-      orElse: () => throw StateError('Selected contact missing'),
-    );
 
     setState(() {
       _isSaving = true;
@@ -149,7 +171,7 @@ class _LogPrayerRequestSheetState extends State<LogPrayerRequestSheet> {
 
     final payload = PrayerRequest(
       id: widget.initialRequest?.id,
-      contactId: selectedContact.id,
+      participantIds: _selectedParticipantIds.toList(),
       description: description,
       status: _status,
       requestedAt: _requestedAt,
@@ -169,8 +191,14 @@ class _LogPrayerRequestSheetState extends State<LogPrayerRequestSheet> {
         savedRequest = payload;
       }
 
-      await ReminderCoordinator()
-          .syncPrayerRequestReminder(selectedContact, savedRequest);
+      // Sync reminders for all participants
+      for (final contactId in _selectedParticipantIds) {
+        final contact = _contactLookup[contactId];
+        if (contact != null) {
+          await ReminderCoordinator()
+              .syncPrayerRequestReminder(contact, savedRequest);
+        }
+      }
 
       widget.onSaved(savedRequest);
 
@@ -208,10 +236,9 @@ class _LogPrayerRequestSheetState extends State<LogPrayerRequestSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final mediaQuery = MediaQuery.of(context);
-    final contactLocked = widget.initialContact != null;
-    final canSave =
-        !(_selectedContactId == null && !contactLocked) && !_isSaving;
+    final canSave = _selectedParticipantIds.isNotEmpty && !_isSaving;
 
     return SafeArea(
       top: false,
@@ -251,36 +278,59 @@ class _LogPrayerRequestSheetState extends State<LogPrayerRequestSheet> {
                       ],
                     ),
                     const SizedBox(height: 16),
-                    DropdownButtonFormField<String>(
-                      decoration: const InputDecoration(
-                        labelText: 'Contact',
-                        border: OutlineInputBorder(),
-                      ),
-                      initialValue: _selectedContactId,
-                      onChanged: contactLocked
-                          ? null
-                          : (value) {
-                              setState(() {
-                                _selectedContactId = value;
-                              });
-                            },
-                      items: widget.availableContacts
-                          .map(
-                            (contact) => DropdownMenuItem<String>(
-                              value: contact.id,
-                              child: Text(contact.fullName.isNotEmpty
-                                  ? contact.fullName
-                                  : (contact.nickname ?? contact.firstName)),
-                            ),
-                          )
-                          .toList(),
+                    Text(
+                      'Associated Contacts',
+                      style: theme.textTheme.labelLarge,
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        ..._selectedParticipantIds.map((id) {
+                          final contact = _contactLookup[id];
+                          final name = contact?.fullName ?? id;
+                          final isInitial = widget.initialContact?.id == id;
+
+                          return Chip(
+                            label: Text(name),
+                            onDeleted: isInitial
+                                ? null
+                                : () {
+                                    setState(() {
+                                      _selectedParticipantIds.remove(id);
+                                    });
+                                  },
+                            deleteIconColor: theme.colorScheme.error,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            side: BorderSide(
+                              color: theme.colorScheme.outlineVariant,
+                            ),
+                          );
+                        }),
+                        ActionChip(
+                          avatar: const Icon(Icons.add, size: 18),
+                          label: const Text('Add Contact'),
+                          onPressed: _showContactSelection,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          side: BorderSide(
+                            color: theme.colorScheme.primary,
+                            style: BorderStyle.solid,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
                     TextField(
                       controller: _descriptionController,
                       decoration: const InputDecoration(
                         labelText: 'Request',
                         border: OutlineInputBorder(),
+                        alignLabelWithHint: true,
                       ),
                       minLines: 2,
                       maxLines: 4,

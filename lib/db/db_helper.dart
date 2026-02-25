@@ -15,7 +15,7 @@ import '../services/security_service.dart';
 import '../constants/storage.dart';
 
 class DBHelper {
-  static const _dbVersion = 17;
+  static const _dbVersion = 18;
 
   static final DBHelper _instance = DBHelper._();
   static Database? _database;
@@ -509,6 +509,22 @@ class DBHelper {
             'ALTER TABLE interactions RENAME COLUMN category TO notes');
       }
     }
+    if (oldVersion < 18) {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS prayer_request_participants (
+          prayerRequestId INTEGER NOT NULL,
+          contactId TEXT NOT NULL,
+          PRIMARY KEY(prayerRequestId, contactId),
+          FOREIGN KEY(prayerRequestId) REFERENCES prayer_requests(id) ON DELETE CASCADE,
+          FOREIGN KEY(contactId) REFERENCES contacts(id) ON DELETE CASCADE
+        )
+      ''');
+
+      await db.execute('''
+        INSERT OR IGNORE INTO prayer_request_participants (prayerRequestId, contactId)
+        SELECT id, contactId FROM prayer_requests
+      ''');
+    }
   }
 
   // -------------------------------------------------------------
@@ -993,6 +1009,54 @@ class DBHelper {
     return participantsByInteraction;
   }
 
+  Future<Map<int, List<String>>> _getParticipantsForPrayerRequests(
+    Database db,
+    Iterable<int> prayerRequestIds,
+  ) async {
+    if (prayerRequestIds.isEmpty) {
+      return {};
+    }
+
+    final placeholders = List.filled(prayerRequestIds.length, '?').join(',');
+    final rows = await db.query(
+      'prayer_request_participants',
+      where: 'prayerRequestId IN ($placeholders)',
+      whereArgs: prayerRequestIds.toList(),
+    );
+
+    final participantsByRequest = <int, List<String>>{};
+    for (final row in rows) {
+      final requestId = row['prayerRequestId'] as int;
+      final participantId = row['contactId'] as String;
+      participantsByRequest.putIfAbsent(requestId, () => []);
+      participantsByRequest[requestId]!.add(participantId);
+    }
+
+    return participantsByRequest;
+  }
+
+  Future<void> _replacePrayerRequestParticipants(
+    DatabaseExecutor txn,
+    int requestId,
+    List<String> participants,
+  ) async {
+    await txn.delete(
+      'prayer_request_participants',
+      where: 'prayerRequestId = ?',
+      whereArgs: [requestId],
+    );
+
+    for (final contactId in participants) {
+      await txn.insert(
+        'prayer_request_participants',
+        {
+          'prayerRequestId': requestId,
+          'contactId': contactId,
+        },
+      );
+    }
+  }
+
   Future<void> _replacePrayerRequests(
     DatabaseExecutor txn,
     Contact contact,
@@ -1008,12 +1072,12 @@ class DBHelper {
     // If we abide by "Current contact object is the truth", we marks records not in this list as deleted.
 
     final existingRows = await txn.query(
-      'prayer_requests',
-      columns: ['id'],
-      where: 'contactId = ? AND deletedAt IS NULL',
+      'prayer_request_participants',
+      columns: ['prayerRequestId'],
+      where: 'contactId = ?',
       whereArgs: [contact.id],
     );
-    final existingIds = existingRows.map((r) => r['id'] as int).toSet();
+    final existingIds = existingRows.map((r) => r['prayerRequestId'] as int).toSet();
     final newIds =
         contact.prayerRequests.map((r) => r.id).whereType<int>().toSet();
 
@@ -1031,10 +1095,16 @@ class DBHelper {
     }
 
     for (final request in contact.prayerRequests) {
-      final reqMap =
-          request.copyWith(contactId: contact.id).toMap(includeId: false);
+      final participants = {
+        ...request.participantIds,
+        contact.id,
+      }.toList();
+
+      final reqMap = request.toMap(includeId: false);
+      reqMap.remove('participantIds');
       reqMap['updatedAt'] = DateTime.now().toUtc().toIso8601String();
 
+      int requestId = -1;
       if (request.id != null) {
         final count = await txn.update(
           'prayer_requests',
@@ -1046,11 +1116,14 @@ class DBHelper {
           // Record doesn't exist (e.g. during restore), insert it with ID.
           final insertMap = Map<String, dynamic>.from(reqMap);
           insertMap['id'] = request.id;
-          await txn.insert('prayer_requests', insertMap);
+          requestId = await txn.insert('prayer_requests', insertMap);
+        } else {
+          requestId = request.id!;
         }
       } else {
-        await txn.insert('prayer_requests', reqMap);
+        requestId = await txn.insert('prayer_requests', reqMap);
       }
+      await _replacePrayerRequestParticipants(txn, requestId, participants);
     }
   }
 
@@ -1186,29 +1259,51 @@ class DBHelper {
     }
 
     // 4. Fetch Prayer Requests
-    final List<Map<String, Object?>> prayerRows;
+    final List<Map<String, Object?>> prayerParticipantRows;
     if (isFetchAllActive) {
-      prayerRows = await db.rawQuery('''
-        SELECT pr.* FROM prayer_requests pr
-        JOIN contacts c ON pr.contactId = c.id
+      prayerParticipantRows = await db.rawQuery('''
+        SELECT prp.contactId, pr.*
+        FROM prayer_request_participants prp
+        JOIN prayer_requests pr ON prp.prayerRequestId = pr.id
+        JOIN contacts c ON prp.contactId = c.id
         WHERE c.deletedAt IS NULL AND pr.deletedAt IS NULL
       ''');
     } else {
-      prayerRows = await _chunkedQuery(
-        db: db,
-        table: 'prayer_requests',
-        inColumn: 'contactId',
-        values: retrievedContactIds,
-        where: 'deletedAt IS NULL',
-      );
+      prayerParticipantRows = [];
+      const int batchSize = 900;
+      for (var i = 0; i < retrievedContactIds.length; i += batchSize) {
+        final end = (i + batchSize < retrievedContactIds.length)
+            ? i + batchSize
+            : retrievedContactIds.length;
+        final chunk = retrievedContactIds.sublist(i, end);
+        final placeholders = List.filled(chunk.length, '?').join(',');
+
+        final rows = await db.rawQuery('''
+          SELECT prp.contactId, pr.*
+          FROM prayer_request_participants prp
+          JOIN prayer_requests pr ON prp.prayerRequestId = pr.id
+          WHERE prp.contactId IN ($placeholders) AND pr.deletedAt IS NULL
+        ''', chunk);
+        prayerParticipantRows.addAll(rows);
+      }
     }
 
+    final fetchedPrayerIds =
+        prayerParticipantRows.map((r) => r['id'] as int).toSet();
+    final allPrayerParticipantsMap =
+        await _getParticipantsForPrayerRequests(db, fetchedPrayerIds);
+
     final requestsByContact = <String, List<PrayerRequest>>{};
-    for (final row in prayerRows) {
+    for (final row in prayerParticipantRows) {
       final cId = row['contactId'] as String;
+      final prId = row['id'] as int;
+      final prMap = Map<String, dynamic>.from(row);
+      prMap.remove('contactId');
+      prMap['participantIds'] = allPrayerParticipantsMap[prId] ?? [];
+
       requestsByContact
           .putIfAbsent(cId, () => [])
-          .add(PrayerRequest.fromMap(Map<String, dynamic>.from(row)));
+          .add(PrayerRequest.fromMap(prMap));
     }
 
     // 5. Fetch Relationships
@@ -1696,13 +1791,19 @@ class DBHelper {
   Future<PrayerRequest> insertPrayerRequest(PrayerRequest request) async {
     final db = await database;
     final reqMap = request.toMap(includeId: false);
+    reqMap.remove('participantIds');
     reqMap['updatedAt'] = DateTime.now().toUtc().toIso8601String();
     reqMap['deletedAt'] = null;
 
-    final id = await db.insert(
-      'prayer_requests',
-      reqMap,
-    );
+    int id = -1;
+    await db.transaction((txn) async {
+      id = await txn.insert(
+        'prayer_requests',
+        reqMap,
+      );
+      await _replacePrayerRequestParticipants(txn, id, request.participantIds);
+    });
+
     return request.copyWith(id: id);
   }
 
@@ -1714,15 +1815,20 @@ class DBHelper {
 
     final db = await database;
     final reqMap = request.toMap(includeId: false);
+    reqMap.remove('participantIds');
     reqMap['updatedAt'] = DateTime.now().toUtc().toIso8601String();
     reqMap['deletedAt'] = null;
 
-    await db.update(
-      'prayer_requests',
-      reqMap,
-      where: 'id = ?',
-      whereArgs: [request.id],
-    );
+    await db.transaction((txn) async {
+      await txn.update(
+        'prayer_requests',
+        reqMap,
+        where: 'id = ?',
+        whereArgs: [request.id],
+      );
+      await _replacePrayerRequestParticipants(
+          txn, request.id!, request.participantIds);
+    });
   }
 
   Future<void> deletePrayerRequest(int id) async {
@@ -1743,16 +1849,22 @@ class DBHelper {
     String contactId,
   ) async {
     final db = await database;
-    final rows = await db.query(
-      'prayer_requests',
-      where: 'contactId = ? AND deletedAt IS NULL',
-      whereArgs: [contactId],
-      orderBy: 'requestedAt DESC',
-    );
+    final rows = await db.rawQuery('''
+      SELECT pr.* FROM prayer_requests pr
+      JOIN prayer_request_participants prp ON pr.id = prp.prayerRequestId
+      WHERE prp.contactId = ? AND pr.deletedAt IS NULL
+      ORDER BY pr.requestedAt DESC
+    ''', [contactId]);
 
-    return rows
-        .map((row) => PrayerRequest.fromMap(Map<String, dynamic>.from(row)))
-        .toList();
+    final requests = rows.map((row) => Map<String, dynamic>.from(row)).toList();
+    final ids = requests.map((r) => r['id'] as int).toList();
+    final participantsMap = await _getParticipantsForPrayerRequests(db, ids);
+
+    return requests.map((r) {
+      final id = r['id'] as int;
+      r['participantIds'] = participantsMap[id] ?? [];
+      return PrayerRequest.fromMap(r);
+    }).toList();
   }
 
   Future<List<PrayerRequest>> getPrayerRequests({
@@ -1788,9 +1900,15 @@ class DBHelper {
       limit: limit,
     );
 
-    return rows
-        .map((row) => PrayerRequest.fromMap(Map<String, dynamic>.from(row)))
-        .toList();
+    final requests = rows.map((row) => Map<String, dynamic>.from(row)).toList();
+    final ids = requests.map((r) => r['id'] as int).toList();
+    final participantsMap = await _getParticipantsForPrayerRequests(db, ids);
+
+    return requests.map((r) {
+      final id = r['id'] as int;
+      r['participantIds'] = participantsMap[id] ?? [];
+      return PrayerRequest.fromMap(r);
+    }).toList();
   }
 
   Future<List<PrayerRequest>> getPrayerRequestsModifiedSince(

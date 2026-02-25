@@ -11,14 +11,14 @@ class PrayerRequestDetailsPage extends StatefulWidget {
   const PrayerRequestDetailsPage({
     super.key,
     required this.request,
-    required this.contact,
+    this.initialContacts = const [],
   });
 
   /// The prayer request being displayed.
   final PrayerRequest request;
 
-  /// Contact associated with the request.
-  final Contact contact;
+  /// Contacts associated with the request.
+  final List<Contact> initialContacts;
 
   @override
   State<PrayerRequestDetailsPage> createState() =>
@@ -29,7 +29,7 @@ class _PrayerRequestDetailsPageState extends State<PrayerRequestDetailsPage> {
   final DBHelper _dbHelper = DBHelper();
 
   late PrayerRequest _request;
-  late Contact _contact;
+  List<Contact> _contacts = [];
   List<Contact> _availableContacts = [];
   bool _isLoadingContacts = false;
   bool _didUpdate = false;
@@ -38,7 +38,7 @@ class _PrayerRequestDetailsPageState extends State<PrayerRequestDetailsPage> {
   void initState() {
     super.initState();
     _request = widget.request;
-    _contact = widget.contact;
+    _contacts = List.from(widget.initialContacts);
     _loadContacts();
   }
 
@@ -59,11 +59,11 @@ class _PrayerRequestDetailsPageState extends State<PrayerRequestDetailsPage> {
 
     setState(() {
       _availableContacts = contacts;
-      final matching = contacts.firstWhere(
-        (candidate) => candidate.id == _request.contactId,
-        orElse: () => _contact,
-      );
-      _contact = matching;
+      final contactLookup = {for (final c in contacts) c.id: c};
+      _contacts = _request.participantIds
+          .map((id) => contactLookup[id])
+          .whereType<Contact>()
+          .toList();
       _isLoadingContacts = false;
     });
   }
@@ -82,11 +82,11 @@ class _PrayerRequestDetailsPageState extends State<PrayerRequestDetailsPage> {
     final result = await showModalBottomSheet<String>(
       context: context,
       isScrollControlled: true,
+      useSafeArea: true,
       builder: (context) {
         return LogPrayerRequestSheet(
           initialRequest: _request,
           availableContacts: List<Contact>.from(_availableContacts),
-          initialContact: _contact,
           onSaved: (updated) {
             didSave = true;
             savedRequest = updated;
@@ -99,37 +99,13 @@ class _PrayerRequestDetailsPageState extends State<PrayerRequestDetailsPage> {
       return;
     }
 
-    Contact? resolvedContact;
-    for (final contact in _availableContacts) {
-      if (contact.id == savedRequest!.contactId) {
-        resolvedContact = contact;
-        break;
-      }
-    }
-    resolvedContact ??= await _dbHelper.getContactById(savedRequest!.contactId);
-
-    if (!mounted) {
-      return;
-    }
-
     setState(() {
       _request = savedRequest!;
-      if (resolvedContact != null) {
-        final nonNullableContact = resolvedContact;
-        final existingIndex =
-            _availableContacts.indexWhere((c) => c.id == nonNullableContact.id);
-        if (existingIndex >= 0) {
-          _availableContacts[existingIndex] = nonNullableContact;
-        } else {
-          _availableContacts = List<Contact>.from(_availableContacts)
-            ..add(nonNullableContact)
-            ..sort(
-              (a, b) =>
-                  a.fullName.toLowerCase().compareTo(b.fullName.toLowerCase()),
-            );
-        }
-        _contact = nonNullableContact;
-      }
+      final contactLookup = {for (final c in _availableContacts) c.id: c};
+      _contacts = _request.participantIds
+          .map((id) => contactLookup[id])
+          .whereType<Contact>()
+          .toList();
       _didUpdate = true;
     });
 
@@ -147,12 +123,78 @@ class _PrayerRequestDetailsPageState extends State<PrayerRequestDetailsPage> {
     return DateFormat.yMMMd().format(date);
   }
 
-  String get _contactDisplayName {
-    if (_contact.fullName.isNotEmpty) {
-      return _contact.fullName;
+  List<Widget> _buildParticipantBadges() {
+    if (_contacts.isEmpty) {
+      return const [];
     }
-    final nickname = _contact.nickname ?? '';
-    return nickname.isNotEmpty ? nickname : 'Unknown contact';
+
+    final theme = Theme.of(context);
+    return _contacts.map((contact) {
+      final name = contact.fullName.isNotEmpty
+          ? contact.fullName
+          : (contact.nickname?.isNotEmpty == true
+              ? contact.nickname!
+              : 'Unnamed');
+      final initial = name.isNotEmpty ? name[0].toUpperCase() : '?';
+
+      return Chip(
+        avatar: CircleAvatar(
+          backgroundColor: theme.colorScheme.primaryContainer,
+          foregroundColor: theme.colorScheme.onPrimaryContainer,
+          child: Text(initial, style: const TextStyle(fontSize: 12)),
+        ),
+        label: Text(name),
+        labelStyle: theme.textTheme.labelMedium,
+        visualDensity: VisualDensity.compact,
+        side: BorderSide(color: theme.colorScheme.outlineVariant),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      );
+    }).toList();
+  }
+
+  Widget _buildCard({required List<Widget> children, Color? color}) {
+    final theme = Theme.of(context);
+    return Card(
+      elevation: 0,
+      color: color ?? theme.colorScheme.surfaceContainerLow,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: color == null
+            ? BorderSide(color: theme.colorScheme.outlineVariant, width: 0.5)
+            : BorderSide.none,
+      ),
+      child: Column(
+        children: children,
+      ),
+    );
+  }
+
+  Widget _buildDetailTile({
+    required IconData icon,
+    required String title,
+    String? value,
+  }) {
+    if (value == null || value.trim().isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    final theme = Theme.of(context);
+    return ListTile(
+      leading: Icon(icon, color: theme.colorScheme.primary),
+      title: Text(
+        title,
+        style: theme.textTheme.labelMedium?.copyWith(
+          color: theme.colorScheme.onSurfaceVariant,
+        ),
+      ),
+      subtitle: Text(
+        value,
+        style: theme.textTheme.bodyLarge?.copyWith(
+          color: theme.colorScheme.onSurface,
+        ),
+      ),
+      dense: true,
+    );
   }
 
   void _handleBack() {
@@ -161,6 +203,9 @@ class _PrayerRequestDetailsPageState extends State<PrayerRequestDetailsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final participantBadges = _buildParticipantBadges();
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Prayer request details'),
@@ -176,111 +221,139 @@ class _PrayerRequestDetailsPageState extends State<PrayerRequestDetailsPage> {
           ),
         ],
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    _request.description,
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  const SizedBox(height: 16),
-                  _buildDetailRow(
-                    icon: Icons.person_outline,
-                    label: 'Contact',
-                    value: _contactDisplayName,
-                  ),
-                  _buildDetailRow(
-                    icon: Icons.flag_outlined,
-                    label: 'Status',
-                    value: _request.status.label,
-                  ),
-                  _buildDetailRow(
-                    icon: Icons.calendar_month_outlined,
-                    label: 'Requested on',
-                    value: _formatDate(_request.requestedAt),
-                  ),
-                  if (_request.answeredAt != null)
-                    _buildDetailRow(
-                      icon: Icons.celebration_outlined,
-                      label: 'Answered on',
-                      value: _formatDate(_request.answeredAt!),
-                    ),
-                  if (_request.category != null &&
-                      _request.category!.trim().isNotEmpty)
-                    _buildDetailRow(
-                      icon: Icons.label_outline,
-                      label: 'Category',
-                      value: _request.category!,
-                    ),
-                  if (_request.reflectionNotes != null &&
-                      _request.reflectionNotes!.trim().isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: const [
-                              Icon(Icons.notes_outlined),
-                              SizedBox(width: 8),
-                              Text('Reflection notes'),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            _request.reflectionNotes!,
-                            style: Theme.of(context).textTheme.bodyMedium,
-                          ),
-                        ],
-                      ),
-                    ),
-                ],
+      body: RefreshIndicator(
+        onRefresh: _loadContacts,
+        child: ListView(
+          padding: const EdgeInsets.all(16),
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: [
+            // Header Section
+            Text(
+              _request.description,
+              style: theme.textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: theme.colorScheme.onSurface,
               ),
             ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDetailRow({
-    required IconData icon,
-    required String label,
-    required String value,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, size: 20),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            const SizedBox(height: 8),
+            Row(
               children: [
-                Text(
-                  label,
-                  style: Theme.of(context)
-                      .textTheme
-                      .labelMedium
-                      ?.copyWith(color: Theme.of(context).colorScheme.outline),
+                Icon(
+                  Icons.calendar_today_outlined,
+                  size: 16,
+                  color: theme.colorScheme.onSurfaceVariant,
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(width: 8),
                 Text(
-                  value,
-                  style: Theme.of(context).textTheme.bodyMedium,
+                  _formatDate(_request.requestedAt),
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
                 ),
               ],
             ),
-          ),
-        ],
+            const SizedBox(height: 24),
+
+            // Participants Section
+            if (participantBadges.isNotEmpty) ...[
+              Text(
+                'Participants',
+                style: theme.textTheme.titleSmall?.copyWith(
+                  color: theme.colorScheme.primary,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: participantBadges,
+              ),
+              const SizedBox(height: 24),
+            ],
+
+            // Details Card
+            Text(
+              'Details',
+              style: theme.textTheme.titleSmall?.copyWith(
+                color: theme.colorScheme.primary,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 12),
+            _buildCard(
+              children: [
+                _buildDetailTile(
+                  icon: _request.status == PrayerRequestStatus.answered
+                      ? Icons.volunteer_activism_outlined
+                      : Icons.hourglass_top_outlined,
+                  title: 'Status',
+                  value: _request.status.label,
+                ),
+                if (_request.answeredAt != null)
+                  _buildDetailTile(
+                    icon: Icons.celebration_outlined,
+                    title: 'Answered on',
+                    value: _formatDate(_request.answeredAt!),
+                  ),
+                _buildDetailTile(
+                  icon: Icons.label_outline,
+                  title: 'Category',
+                  value: _request.category,
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+
+            // Reflection Notes Section
+            if (_request.reflectionNotes != null &&
+                _request.reflectionNotes!.trim().isNotEmpty) ...[
+              Text(
+                'Reflection notes',
+                style: theme.textTheme.titleSmall?.copyWith(
+                  color: theme.colorScheme.primary,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 12),
+              _buildCard(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Text(
+                      _request.reflectionNotes!,
+                      style: theme.textTheme.bodyLarge?.copyWith(
+                        height: 1.5,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+            ],
+
+            // Answered styling
+            if (_request.status == PrayerRequestStatus.answered)
+              _buildCard(
+                color: theme.colorScheme.secondaryContainer,
+                children: [
+                  ListTile(
+                    leading: Icon(
+                      Icons.celebration_outlined,
+                      color: theme.colorScheme.onSecondaryContainer,
+                    ),
+                    title: Text(
+                      'Praise report - Answered!',
+                      style: theme.textTheme.labelLarge?.copyWith(
+                        color: theme.colorScheme.onSecondaryContainer,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+          ],
+        ),
       ),
     );
   }

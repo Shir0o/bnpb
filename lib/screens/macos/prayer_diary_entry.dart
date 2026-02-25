@@ -7,7 +7,7 @@ import '../../models/prayer_request.dart';
 
 class PrayerDiaryEntry extends StatefulWidget {
   final PrayerRequest request;
-  final Contact? contact;
+  final List<Contact> contacts;
   final bool isEditing;
   final VoidCallback onEditStart;
   final ValueChanged<PrayerRequest> onEditSave;
@@ -16,7 +16,7 @@ class PrayerDiaryEntry extends StatefulWidget {
   const PrayerDiaryEntry({
     super.key,
     required this.request,
-    this.contact,
+    this.contacts = const [],
     required this.isEditing,
     required this.onEditStart,
     required this.onEditSave,
@@ -92,7 +92,9 @@ class _PrayerDiaryEntryState extends State<PrayerDiaryEntry> {
   Widget _buildViewMode() {
     final timeStr = DateFormat('h:mm a')
         .format(widget.request.answeredAt ?? widget.request.requestedAt);
-    final contactName = widget.contact?.displayName ?? 'Unknown';
+    final contactNames = widget.contacts.isEmpty
+        ? 'Unknown'
+        : widget.contacts.map((c) => c.displayName).join(', ');
     final isAnswered = widget.request.status == PrayerRequestStatus.answered;
     final isArchived = widget.request.status == PrayerRequestStatus.archived;
 
@@ -140,7 +142,7 @@ class _PrayerDiaryEntryState extends State<PrayerDiaryEntry> {
                         size: 14, color: Color(0xFF0D7CF2)),
                     const SizedBox(width: 4),
                     Text(
-                      contactName,
+                      contactNames,
                       style: GoogleFonts.inter(
                         fontSize: 11,
                         fontWeight: FontWeight.w500,
@@ -245,7 +247,9 @@ class _PrayerDiaryEntryState extends State<PrayerDiaryEntry> {
   Widget _buildEditMode() {
     final timeStr = DateFormat('h:mm a')
         .format(widget.request.answeredAt ?? widget.request.requestedAt);
-    final contactName = widget.contact?.displayName ?? 'Unknown';
+    final contactNamesLabel = widget.contacts.isEmpty
+        ? 'Unknown'
+        : widget.contacts.map((c) => c.displayName).join(', ');
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
@@ -301,7 +305,7 @@ class _PrayerDiaryEntryState extends State<PrayerDiaryEntry> {
                         size: 14, color: Color(0xFF0D7CF2)),
                     const SizedBox(width: 4),
                     Text(
-                      contactName,
+                      contactNamesLabel,
                       style: GoogleFonts.inter(
                         fontSize: 11,
                         fontWeight: FontWeight.w500,

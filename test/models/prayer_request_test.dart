@@ -15,7 +15,7 @@ void main() {
       final date = DateTime(2023, 1, 1);
       final req = PrayerRequest(
         id: 10,
-        contactId: 'c1',
+        participantIds: ['c1'],
         description: 'Health',
         status: PrayerRequestStatus.answered,
         requestedAt: date,
@@ -26,20 +26,24 @@ void main() {
       expect(map['id'], 10);
       expect(map['status'], 'answered');
       expect(map['answeredAt'], isNotNull);
+      expect(map['participantIds'], ['c1']);
+      expect(map['contactId'], 'c1');
 
       final restored = PrayerRequest.fromMap(map);
       expect(restored.id, 10);
       expect(restored.status, PrayerRequestStatus.answered);
       expect(restored.answeredAt, date.add(const Duration(days: 5)));
+      expect(restored.participantIds, ['c1']);
     });
 
-    test('handles null optional fields', () {
+    test('handles null optional fields and legacy contactId', () {
       final req = PrayerRequest.fromMap({
         'contactId': 'c1',
         'description': 'Test',
         'status': 'pending',
         'requestedAt': DateTime.now().toIso8601String(),
       });
+      expect(req.participantIds, ['c1']);
       expect(req.answeredAt, null);
       expect(req.category, null);
     });

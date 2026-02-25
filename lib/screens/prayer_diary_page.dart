@@ -114,22 +114,16 @@ class _PrayerDiaryPageState extends State<PrayerDiaryPage> {
   }
 
   Future<void> _openPrayerRequestDetails(PrayerRequest request) async {
-    final contact = _contactLookup[request.contactId];
-    if (contact == null) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Contact details unavailable for this request.'),
-        ),
-      );
-      return;
-    }
+    final participants = request.participantIds
+        .map((id) => _contactLookup[id])
+        .whereType<Contact>()
+        .toList();
 
     final didUpdate = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
         builder: (context) => PrayerRequestDetailsPage(
           request: request,
-          contact: contact,
+          initialContacts: participants,
         ),
       ),
     );
@@ -219,10 +213,16 @@ class _PrayerDiaryPageState extends State<PrayerDiaryPage> {
 
   Widget _buildPrayerTile(PrayerRequest request) {
     final theme = Theme.of(context);
-    final contactName = _displayNameForContact(request.contactId);
+    final contactNames = request.participantIds
+        .map((id) => _displayNameForContact(id))
+        .where((name) => name != 'Unknown contact')
+        .join(', ');
+
+    final displayNames = contactNames.isEmpty ? 'Unknown contact' : contactNames;
+
     final details = [
       _formatDate(request.answeredAt ?? request.requestedAt),
-      contactName,
+      displayNames,
     ].where((value) => value.isNotEmpty).join(' • ');
 
     return ListTile(

@@ -45,7 +45,7 @@ class PrayerRequest {
   PrayerRequest({
     this.id,
     String? syncId,
-    required this.contactId,
+    required this.participantIds,
     this.interactionId,
     required this.description,
     required this.status,
@@ -64,8 +64,11 @@ class PrayerRequest {
   /// Unique identifier for sync purposes.
   final String syncId;
 
-  /// Contact that owns the prayer request.
-  final String contactId;
+  /// Contacts associated with the prayer request.
+  final List<String> participantIds;
+
+  /// Backward compatibility: Returns the first participant ID.
+  String get contactId => participantIds.isNotEmpty ? participantIds.first : '';
 
   /// Optional interaction that spawned the request.
   final int? interactionId;
@@ -98,7 +101,7 @@ class PrayerRequest {
   PrayerRequest copyWith({
     int? id,
     String? syncId,
-    String? contactId,
+    List<String>? participantIds,
     int? interactionId,
     String? description,
     PrayerRequestStatus? status,
@@ -112,7 +115,7 @@ class PrayerRequest {
     return PrayerRequest(
       id: id ?? this.id,
       syncId: syncId ?? this.syncId,
-      contactId: contactId ?? this.contactId,
+      participantIds: participantIds ?? this.participantIds,
       interactionId: interactionId ?? this.interactionId,
       description: description ?? this.description,
       status: status ?? this.status,
@@ -129,6 +132,7 @@ class PrayerRequest {
   Map<String, dynamic> toMap({bool includeId = true}) {
     final map = <String, dynamic>{
       'syncId': syncId,
+      // For database migration compatibility while column still exists.
       'contactId': contactId,
       'interactionId': interactionId,
       'description': description,
@@ -139,6 +143,7 @@ class PrayerRequest {
       'reflectionNotes': reflectionNotes,
       'updatedAt': updatedAt.toIso8601String(),
       'deletedAt': deletedAt?.toIso8601String(),
+      'participantIds': participantIds,
     };
     if (includeId && id != null) {
       map['id'] = id;
@@ -151,7 +156,7 @@ class PrayerRequest {
     return PrayerRequest(
       id: map['id'] as int?,
       syncId: map['syncId'] as String?,
-      contactId: map['contactId'] as String,
+      participantIds: _parseParticipantIds(map['participantIds'], map['contactId']),
       interactionId: map['interactionId'] as int?,
       description: map['description'] as String,
       status: PrayerRequestStatusX.fromStorage(map['status'] as String?),
@@ -168,5 +173,18 @@ class PrayerRequest {
           ? DateTime.parse(map['deletedAt'] as String)
           : null,
     );
+  }
+
+  static List<String> _parseParticipantIds(dynamic value, dynamic legacyContactId) {
+    if (value is List<String>) {
+      return value;
+    }
+    if (value is List) {
+      return value.map((entry) => entry.toString()).toList();
+    }
+    if (legacyContactId is String && legacyContactId.isNotEmpty) {
+      return [legacyContactId];
+    }
+    return const [];
   }
 }
