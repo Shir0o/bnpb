@@ -22,6 +22,10 @@ class GoogleDriveService {
 
   GoogleSignInAccount? _currentUser;
   drive.DriveApi? _driveApi;
+  String? _lastSignInError;
+
+  /// Returns the latest error message from a sign-in attempt.
+  String? get lastSignInError => _lastSignInError;
 
   /// Returns the current user, attempting silent sign-in if necessary.
   /// Does NOT initialize the Drive API client to avoid unnecessary keychain access.
@@ -32,6 +36,7 @@ class GoogleDriveService {
 
   /// explicit sign in - usually triggered by user interaction
   Future<GoogleSignInAccount?> signIn() async {
+    _lastSignInError = null;
     try {
       _currentUser = await _googleSignIn.signIn();
       _driveApi = null;
@@ -45,10 +50,11 @@ class GoogleDriveService {
             'name/config is incorrect.';
       }
 
+      _lastSignInError = errorMessage;
       if (kDebugMode) {
         print('$errorMessage: $e');
       }
-      throw Exception(errorMessage);
+      return null;
     }
   }
 

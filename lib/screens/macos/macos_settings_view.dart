@@ -100,15 +100,14 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
   }
 
   Future<void> _signInWithGoogle() async {
-    try {
-      final user = await _googleDriveService.signIn();
-      if (user != null) {
-        await _loadSettings();
-      }
-    } catch (e) {
-      if (mounted) {
+    final user = await _googleDriveService.signIn();
+    if (user != null) {
+      await _loadSettings();
+    } else {
+      final error = _googleDriveService.lastSignInError;
+      if (error != null && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString().replaceAll('Exception: ', ''))),
+          SnackBar(content: Text(error)),
         );
       }
     }
