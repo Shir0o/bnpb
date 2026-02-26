@@ -32,6 +32,7 @@ Future<void> main() async {
       databaseFactory = databaseFactoryFfi;
     }
     WidgetsFlutterBinding.ensureInitialized();
+    GoogleFonts.config.allowRuntimeFetching = false;
     await ReminderService().initialize();
     final preferencesRepository = NotificationPreferencesRepository();
     await preferencesRepository.ensureDefaults();

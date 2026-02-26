@@ -12,7 +12,9 @@ class GoogleDriveService {
   final GoogleSignIn _googleSignIn = GoogleSignIn(
     clientId: Platform.isMacOS
         ? '228185988095-9soj0hn2t78nnfbe1bt5amt54tjtnap2.apps.googleusercontent.com'
-        : null,
+        : Platform.isAndroid
+            ? '228185988095-j6gjirouvrt8o71q6bs1ubco9a2gdm8f.apps.googleusercontent.com'
+            : null,
     scopes: [
       drive.DriveApi.driveFileScope,
     ],
@@ -32,17 +34,21 @@ class GoogleDriveService {
   Future<GoogleSignInAccount?> signIn() async {
     try {
       _currentUser = await _googleSignIn.signIn();
-      // We don't strictly need to init the API here, but if the user
-      // explicitly signs in, they probably want to do something.
-      // However, for consistency with lazy loading, we can skip it.
-      // But clearing the old API client is important if user changed.
       _driveApi = null;
       return _currentUser;
     } catch (e) {
-      if (kDebugMode) {
-        print('Google Sign-In failed: $e');
+      String errorMessage = 'Google Sign-In failed';
+      if (e.toString().contains('ApiException: 10')) {
+        errorMessage =
+            'Google Sign-In failed (Status 10). This usually means the SHA-1 fingerprint '
+            'is not registered in the Google Cloud/Firebase console, or the package '
+            'name/config is incorrect.';
       }
-      return null;
+
+      if (kDebugMode) {
+        print('$errorMessage: $e');
+      }
+      throw Exception(errorMessage);
     }
   }
 
@@ -58,12 +64,10 @@ class GoogleDriveService {
 
   /// Ensures the Drive API client is initialized.
   /// This may trigger a keychain access prompt on macOS.
+  /// Silent by default; will NOT trigger interactive sign-in dialog.
   Future<void> _ensureApiInitialized() async {
     if (_driveApi != null) {
       try {
-        // Just checking if we can get credentials to ensure they aren't totally busted
-        // But GoogleSignIn caches them. We might need to refresh if expired.
-        // The extension authenticatedClient() handles refresh if possible.
         final _ = await _googleSignIn.authenticatedClient();
         return; // still good
       } catch (_) {
@@ -71,25 +75,21 @@ class GoogleDriveService {
       }
     }
 
-    var user = await currentUser;
-    user ??= await signIn();
+    // Silent sign-in only for background/automated tasks
+    final user = await currentUser;
 
     if (user != null) {
       final authClient = await _googleSignIn.authenticatedClient();
       if (authClient != null) {
         _driveApi = drive.DriveApi(authClient);
       } else {
-        // Force a re-authentication if we have a user but no client (token expired/invalid)
+        // Force a re-authentication state if we have a user but no client
         _currentUser = null;
         await _googleSignIn.signOut();
-        user = await signIn();
-        if (user != null) {
-          final newAuthClient = await _googleSignIn.authenticatedClient();
-          if (newAuthClient != null) {
-            _driveApi = drive.DriveApi(newAuthClient);
-          }
-        }
+        throw Exception('Not signed in to Google Drive (Token expired)');
       }
+    } else {
+      throw Exception('Not signed in to Google Drive (Silent sign-in failed)');
     }
   }
 

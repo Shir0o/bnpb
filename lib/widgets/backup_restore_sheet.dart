@@ -53,13 +53,40 @@ class _BackupRestoreSheetState extends State<BackupRestoreSheet> {
     final messenger = ScaffoldMessenger.of(context);
 
     try {
-      await BackupService().restoreBackup(snapshot, messenger: messenger);
+      await _showLoading(
+        () => BackupService().restoreBackup(snapshot, messenger: messenger),
+        'Restoring backup...',
+      );
       if (!mounted) {
         return;
       }
       Navigator.of(context).pop(BackupRestoreSheetResult.restored);
     } on BackupRestoreException {
       // Error snackbar already displayed by the service. Keep the sheet open.
+    }
+  }
+
+  Future<T> _showLoading<T>(Future<T> Function() action, String message) async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        content: Row(
+          children: [
+            const CircularProgressIndicator(),
+            const SizedBox(width: 24),
+            Expanded(child: Text(message)),
+          ],
+        ),
+      ),
+    );
+
+    try {
+      return await action();
+    } finally {
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
     }
   }
 

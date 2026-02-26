@@ -682,7 +682,11 @@ class _HomePageState extends State<HomePage>
         return;
       }
 
-      final count = await ImportService().importJsonExport(File(filePath));
+      final count = await _showLoading(
+        () => ImportService().importJsonExport(File(filePath)),
+        'Importing contacts...',
+      );
+
       await _fetchContacts();
 
       if (!mounted) return;
@@ -694,6 +698,30 @@ class _HomePageState extends State<HomePage>
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to restore contacts: $e')),
       );
+    }
+  }
+
+  Future<T> _showLoading<T>(Future<T> Function() action, String message) async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        content: Row(
+          children: [
+            const CircularProgressIndicator(),
+            const SizedBox(width: 24),
+            Expanded(child: Text(message)),
+          ],
+        ),
+      ),
+    );
+
+    try {
+      return await action();
+    } finally {
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
     }
   }
 

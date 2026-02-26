@@ -122,9 +122,12 @@ class SyncService {
   }
 
   Future<void> _performGoogleSync() async {
-    if (!await _googleDrive.isSignedIn()) {
-      final account = await _googleDrive.signIn();
-      if (account == null) throw Exception('Google Sign-In failed');
+    final user = await _googleDrive.currentUser;
+    if (user == null) {
+      if (kDebugMode) {
+        print('Google Sync: Skipping because user is not signed in.');
+      }
+      return;
     }
 
     final tempDir = await getTemporaryDirectory();

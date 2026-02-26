@@ -31,6 +31,7 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
   SyncType _syncType = SyncType.local;
   GoogleSignInAccount? _googleUser;
   bool _isSyncing = false;
+  String? _syncError;
   final List<Map<String, dynamic>> _logs = [
     {'time': '10:45:02', 'msg': 'Initializing sync service...'},
     {'time': '10:45:03', 'msg': 'Ready.'},
@@ -49,7 +50,10 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
   Future<void> _performManualSync() async {
     if (_isSyncing) return;
 
-    setState(() => _isSyncing = true);
+    setState(() {
+      _isSyncing = true;
+      _syncError = null;
+    });
     _addLog('Starting manual sync...', color: const Color(0xFF60A5FA));
 
     try {
@@ -57,6 +61,9 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
       _addLog('Sync completed successfully.', color: const Color(0xFF4ADE80));
     } catch (e) {
       _addLog('Sync failed: $e', color: const Color(0xFFEF4444));
+      setState(() {
+        _syncError = e.toString().replaceAll('Exception: ', '');
+      });
     } finally {
       if (mounted) {
         setState(() => _isSyncing = false);
@@ -93,9 +100,17 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
   }
 
   Future<void> _signInWithGoogle() async {
-    final user = await _googleDriveService.signIn();
-    if (user != null) {
-      await _loadSettings();
+    try {
+      final user = await _googleDriveService.signIn();
+      if (user != null) {
+        await _loadSettings();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString().replaceAll('Exception: ', ''))),
+        );
+      }
     }
   }
 
@@ -139,7 +154,10 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
     try {
       final extension = p.extension(path).toLowerCase();
       if (extension == '.json') {
-        final count = await ImportService().importJsonExport(file);
+        final count = await _showLoading(
+          () => ImportService().importJsonExport(file),
+          'Importing contacts...',
+        );
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('$count contacts imported successfully')),
@@ -178,8 +196,11 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
 
       if (confirmed == true) {
         if (!mounted) return;
-        await _backupService.restoreBackup(snapshot,
-            messenger: ScaffoldMessenger.of(context));
+        await _showLoading(
+          () => _backupService.restoreBackup(snapshot,
+              messenger: ScaffoldMessenger.of(context)),
+          'Restoring backup...',
+        );
         await _loadSettings();
 
         if (mounted) {
@@ -195,6 +216,112 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
         );
       }
     }
+  }
+
+  Future<T> _showLoading<T>(Future<T> Function() action, String message) async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        content: Row(
+          children: [
+            const CircularProgressIndicator(),
+            const SizedBox(width: 24),
+            Expanded(child: Text(message)),
+          ],
+        ),
+      ),
+    );
+
+    try {
+      return await action();
+    } finally {
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+    }
+  }
+
+  Widget _buildSyncStatusBadge() {
+    if (_isSyncing) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: const Color(0xFFEFF6FF), // blue-50
+          border: Border.all(color: const Color(0xFFDBEAFE)), // blue-100
+          borderRadius: BorderRadius.circular(4),
+        ),
+        child: Row(
+          children: [
+            const SizedBox(
+              width: 14,
+              height: 14,
+              child: CircularProgressIndicator(
+                  strokeWidth: 2, color: Color(0xFF3B82F6)),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              'Syncing...',
+              style: GoogleFonts.inter(
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                color: const Color(0xFF1D4ED8), // blue-700
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (_syncError != null) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFEF2F2), // red-50
+          border: Border.all(color: const Color(0xFFFECACA)), // red-200
+          borderRadius: BorderRadius.circular(4),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.sync_problem,
+                size: 16, color: Color(0xFFB91C1C)), // red-700
+            const SizedBox(width: 8),
+            Text(
+              'Sync Failed',
+              style: GoogleFonts.inter(
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                color: const Color(0xFFB91C1C),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF0FDF4), // green-50
+        border: Border.all(color: const Color(0xFFBBF7D0)), // green-200
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.cloud_done,
+              size: 16, color: Color(0xFF15803D)), // green-700
+          const SizedBox(width: 8),
+          Text(
+            'Synced',
+            style: GoogleFonts.inter(
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+              color: const Color(0xFF15803D),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -225,31 +352,7 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
                   color: Colors.black,
                 ),
               ),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF0FDF4), // green-50
-                  border:
-                      Border.all(color: const Color(0xFFBBF7D0)), // green-200
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.cloud_done,
-                        size: 16, color: Color(0xFF15803D)), // green-700
-                    const SizedBox(width: 8),
-                    Text(
-                      'Synced',
-                      style: GoogleFonts.inter(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                        color: const Color(0xFF15803D),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+              _buildSyncStatusBadge(),
             ],
           ),
         ),

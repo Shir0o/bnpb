@@ -257,7 +257,18 @@ class _SettingsPageState extends State<SettingsPage> {
             trailing: TextButton(
               onPressed: () async {
                 if (_googleUser == null) {
-                  await GoogleDriveService().signIn();
+                  final messenger = ScaffoldMessenger.of(context);
+                  try {
+                    await GoogleDriveService().signIn();
+                  } catch (e) {
+                    if (mounted) {
+                      messenger.showSnackBar(
+                        SnackBar(
+                            content: Text(
+                                e.toString().replaceAll('Exception: ', ''))),
+                      );
+                    }
+                  }
                 } else {
                   await GoogleDriveService().signOut();
                 }
