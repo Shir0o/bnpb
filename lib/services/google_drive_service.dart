@@ -12,9 +12,10 @@ class GoogleDriveService {
   final GoogleSignIn _googleSignIn = GoogleSignIn(
     clientId: Platform.isMacOS
         ? '228185988095-9soj0hn2t78nnfbe1bt5amt54tjtnap2.apps.googleusercontent.com'
-        : Platform.isAndroid
-            ? '228185988095-j6gjirouvrt8o71q6bs1ubco9a2gdm8f.apps.googleusercontent.com'
-            : null,
+        : null,
+    serverClientId: Platform.isAndroid
+        ? '228185988095-j6gjirouvrt8o71q6bs1ubco9a2gdm8f.apps.googleusercontent.com'
+        : null,
     scopes: [
       drive.DriveApi.driveFileScope,
     ],
