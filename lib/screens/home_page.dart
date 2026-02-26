@@ -125,6 +125,15 @@ class _HomePageState extends State<HomePage>
   bool _wasKeyboardVisible = false;
   StreamSubscription<void>? _syncSubscription;
 
+  // Optimization: Cached DateFormat to avoid expensive parsing during build loops.
+  late DateFormat _dateFormat;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _dateFormat = DateFormat.yMMMd();
+  }
+
   @override
   void initState() {
     super.initState();
@@ -556,7 +565,7 @@ class _HomePageState extends State<HomePage>
   }
 
   String _formatDate(DateTime date) {
-    return DateFormat.yMMMd().format(date);
+    return _dateFormat.format(date);
   }
 
   Future<void> _openPrayerRequestDetails(PrayerRequest request) async {
