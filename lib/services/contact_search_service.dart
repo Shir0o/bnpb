@@ -45,8 +45,9 @@ class ContactSearchService {
   }
 
   static List<_IndexedContact> _buildGeneralIndex(List<Contact> contacts) {
+    final formatter = DateFormat.yMMMd();
     return contacts.map((contact) {
-      final fields = _buildGeneralFields(contact);
+      final fields = _buildGeneralFields(contact, formatter);
       final combinedText = fields.expand((field) => field.values).join(' ');
       return _IndexedContact(
         contact: contact,
@@ -220,8 +221,8 @@ class ContactSearchService {
     return matches;
   }
 
-  static List<_SearchField> _buildGeneralFields(Contact contact) {
-    final formatter = DateFormat.yMMMd();
+  static List<_SearchField> _buildGeneralFields(
+      Contact contact, DateFormat formatter) {
     final interactionSummaries = contact.interactions
         .map(
           (Interaction interaction) =>
