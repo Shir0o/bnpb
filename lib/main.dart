@@ -176,6 +176,7 @@ class _MainPageState extends State<MainPage> with WidgetsBindingObserver {
   ];
 
   late final AppLifecycleListener _listener;
+  late final PageController _pageController;
 
   @override
   void initState() {
@@ -186,6 +187,8 @@ class _MainPageState extends State<MainPage> with WidgetsBindingObserver {
     _listener = AppLifecycleListener(
       onExitRequested: _onExitRequested,
     );
+
+    _pageController = PageController(initialPage: _currentIndex);
 
     // Run heavy background initialization after the UI has a chance to mount
     _runBackgroundInitialization();
@@ -294,8 +297,13 @@ class _MainPageState extends State<MainPage> with WidgetsBindingObserver {
           }
           return true;
         },
-        child: IndexedStack(
-          index: _currentIndex,
+        // Optimization: Replaced IndexedStack with a lazy-loading PageView.
+        // IndexedStack instantiates and builds all children immediately, causing a spike
+        // in memory and initialization overhead on startup. PageView with AutomaticKeepAliveClientMixin
+        // on its children preserves state while only building pages as they are navigated to.
+        child: PageView(
+          controller: _pageController,
+          physics: const NeverScrollableScrollPhysics(),
           children: _pages,
         ),
       ),
@@ -310,6 +318,7 @@ class _MainPageState extends State<MainPage> with WidgetsBindingObserver {
               setState(() {
                 _currentIndex = index;
               });
+              _pageController.jumpToPage(index);
             },
             destinations: const [
               NavigationDestination(
@@ -341,6 +350,7 @@ class _MainPageState extends State<MainPage> with WidgetsBindingObserver {
 
   @override
   void dispose() {
+    _pageController.dispose();
     _listener.dispose();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();

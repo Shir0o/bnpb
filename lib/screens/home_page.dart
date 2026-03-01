@@ -96,7 +96,7 @@ class PrayerInsightsEmptyState extends StatelessWidget {
 }
 
 class _HomePageState extends State<HomePage>
-    with WidgetsBindingObserver, TickerProviderStateMixin {
+    with WidgetsBindingObserver, TickerProviderStateMixin, AutomaticKeepAliveClientMixin {
   final DBHelper _dbHelper = DBHelper();
   List<Contact> _contacts = [];
   List<Contact> _filteredContacts = [];
@@ -789,7 +789,11 @@ class _HomePageState extends State<HomePage>
   }
 
   @override
+  bool get wantKeepAlive => true;
+
+  @override
   Widget build(BuildContext context) {
+    super.build(context);
     final groupedEntries = _groupedFilteredContacts;
     final hasFilterOptions = _availableTags.isNotEmpty;
     final searchSuggestions = _buildSearchSuggestions();
