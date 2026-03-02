@@ -640,13 +640,15 @@ class DBHelper {
         conflictAlgorithm: ConflictAlgorithm.replace,
       );
 
+      final batch = txn.batch();
       for (final contactId in list.contactIds) {
-        await txn.insert(
+        batch.insert(
           'prayer_list_members',
           {'listId': list.id, 'contactId': contactId},
           conflictAlgorithm: ConflictAlgorithm.ignore,
         );
       }
+      await batch.commit(noResult: true);
     });
   }
 
@@ -836,13 +838,15 @@ class DBHelper {
       whereArgs: [contact.id],
     );
 
+    final batch = (txn as dynamic).batch() as Batch;
     for (final tag in contact.tags.toSet()) {
       if (tag.isEmpty) continue;
-      await txn.insert('contact_tags', {
+      batch.insert('contact_tags', {
         'contactId': contact.id,
         'tag': tag,
       });
     }
+    await batch.commit(noResult: true);
   }
 
   Future<void> _replaceInteractions(
@@ -963,8 +967,9 @@ class DBHelper {
     );
 
     final uniqueParticipants = participantIds.toSet();
+    final batch = (txn as dynamic).batch() as Batch;
     for (final participant in uniqueParticipants) {
-      await txn.insert(
+      batch.insert(
         'interaction_participants',
         {
           'interactionId': interactionId,
@@ -973,6 +978,7 @@ class DBHelper {
         conflictAlgorithm: ConflictAlgorithm.replace,
       );
     }
+    await batch.commit(noResult: true);
   }
 
   Future<void> _removeOrphanInteractions(DatabaseExecutor txn) async {
@@ -1056,8 +1062,9 @@ class DBHelper {
       whereArgs: [requestId],
     );
 
+    final batch = (txn as dynamic).batch() as Batch;
     for (final contactId in participants) {
-      await txn.insert(
+      batch.insert(
         'prayer_request_participants',
         {
           'prayerRequestId': requestId,
@@ -1065,6 +1072,7 @@ class DBHelper {
         },
       );
     }
+    await batch.commit(noResult: true);
   }
 
   Future<void> _replacePrayerRequests(
