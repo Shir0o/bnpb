@@ -173,6 +173,10 @@ class _FakeBatch implements Batch {
   }
 
   @override
+  Future<List<Object?>> apply({bool? noResult, bool? continueOnError}) =>
+      commit(noResult: noResult, continueOnError: continueOnError);
+
+  @override
   void execute(String sql, [List<Object?>? arguments]) {
     throw UnimplementedError();
   }
