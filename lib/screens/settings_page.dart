@@ -22,7 +22,8 @@ class SettingsPage extends StatefulWidget {
   State<SettingsPage> createState() => _SettingsPageState();
 }
 
-class _SettingsPageState extends State<SettingsPage> {
+class _SettingsPageState extends State<SettingsPage>
+    with AutomaticKeepAliveClientMixin {
   final DBHelper _dbHelper = DBHelper();
   final NotificationPreferencesRepository _preferencesRepository =
       NotificationPreferencesRepository();
@@ -95,7 +96,11 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   @override
+  bool get wantKeepAlive => true;
+
+  @override
   Widget build(BuildContext context) {
+    super.build(context);
     return Scaffold(
       appBar: AppBar(
         title: const Text('Settings'),

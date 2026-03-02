@@ -16,7 +16,8 @@ class AddContactPage extends StatefulWidget {
   State<AddContactPage> createState() => _AddContactPageState();
 }
 
-class _AddContactPageState extends State<AddContactPage> {
+class _AddContactPageState extends State<AddContactPage>
+    with AutomaticKeepAliveClientMixin {
   final _formKey = GlobalKey<FormState>();
 
   // Controllers for text fields
@@ -358,7 +359,11 @@ class _AddContactPageState extends State<AddContactPage> {
   }
 
   @override
+  bool get wantKeepAlive => true;
+
+  @override
   Widget build(BuildContext context) {
+    super.build(context);
     return Scaffold(
       appBar: AppBar(
         title: const Text('Add Contact'),

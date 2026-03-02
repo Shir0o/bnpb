@@ -33,7 +33,8 @@ class AnalyticsPage extends StatefulWidget {
   State<AnalyticsPage> createState() => _AnalyticsPageState();
 }
 
-class _AnalyticsPageState extends State<AnalyticsPage> {
+class _AnalyticsPageState extends State<AnalyticsPage>
+    with AutomaticKeepAliveClientMixin {
   final AnalyticsRepository _repository = AnalyticsRepository();
   final DateFormat _dateLabelFormatter = DateFormat.yMMMd();
 
@@ -73,7 +74,11 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
   }
 
   @override
+  bool get wantKeepAlive => true;
+
+  @override
   Widget build(BuildContext context) {
+    super.build(context);
     return Scaffold(
       appBar: AppBar(
         title: const Text('Analytics'),
