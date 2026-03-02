@@ -134,6 +134,87 @@ class _UpdateCall {
   final List<Object?>? whereArgs;
 }
 
+class _FakeBatch implements Batch {
+  final _FakeTransaction _txn;
+  final List<Function> _calls = [];
+
+  _FakeBatch(this._txn);
+
+  @override
+  void delete(String table, {String? where, List<Object?>? whereArgs}) {
+    _calls.add(() => _txn.delete(table, where: where, whereArgs: whereArgs));
+  }
+
+  @override
+  void insert(String table, Map<String, Object?> values,
+      {String? nullColumnHack, ConflictAlgorithm? conflictAlgorithm}) {
+    _calls.add(() => _txn.insert(table, values,
+        nullColumnHack: nullColumnHack, conflictAlgorithm: conflictAlgorithm));
+  }
+
+  @override
+  void update(String table, Map<String, Object?> values,
+      {String? where,
+      List<Object?>? whereArgs,
+      ConflictAlgorithm? conflictAlgorithm}) {
+    _calls.add(() => _txn.update(table, values,
+        where: where,
+        whereArgs: whereArgs,
+        conflictAlgorithm: conflictAlgorithm));
+  }
+
+  @override
+  Future<List<Object?>> commit(
+      {bool? exclusive, bool? noResult, bool? continueOnError}) async {
+    for (final call in _calls) {
+      await call();
+    }
+    return [];
+  }
+
+  @override
+  void execute(String sql, [List<Object?>? arguments]) {
+    throw UnimplementedError();
+  }
+
+  @override
+  void rawDelete(String sql, [List<Object?>? arguments]) {
+    throw UnimplementedError();
+  }
+
+  @override
+  void rawInsert(String sql, [List<Object?>? arguments]) {
+    throw UnimplementedError();
+  }
+
+  @override
+  void rawUpdate(String sql, [List<Object?>? arguments]) {
+    throw UnimplementedError();
+  }
+
+  @override
+  int get length => _calls.length;
+
+  @override
+  void query(String table,
+      {bool? distinct,
+      List<String>? columns,
+      String? where,
+      List<Object?>? whereArgs,
+      String? groupBy,
+      String? having,
+      String? orderBy,
+      int? limit,
+      int? offset}) {
+    throw UnimplementedError();
+  }
+
+  @override
+  void rawQuery(String sql, [List<Object?>? arguments]) {
+    throw UnimplementedError();
+  }
+}
+
 class _FakeTransaction implements DatabaseExecutor {
   final List<_InsertCall> insertCalls = [];
   final List<_DeleteCall> deleteCalls = [];
@@ -226,9 +307,7 @@ class _FakeTransaction implements DatabaseExecutor {
   }
 
   @override
-  Batch batch() {
-    throw UnimplementedError();
-  }
+  Batch batch() => _FakeBatch(this);
 
   @override
   Future<void> execute(String sql, [List<Object?>? arguments]) {
