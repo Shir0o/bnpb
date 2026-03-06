@@ -93,7 +93,7 @@ class AnalyticsSummary {
 /// interactions, including date range, category, and per-contact summaries.
 class AnalyticsRepository {
   AnalyticsRepository({DBHelper? dbHelper})
-      : _dbHelper = dbHelper ?? DBHelper();
+    : _dbHelper = dbHelper ?? DBHelper();
 
   final DBHelper _dbHelper;
 
@@ -132,8 +132,11 @@ class AnalyticsRepository {
         accumulator.totalMinutes += durationMinutes;
         accumulator.interactionCount += 1;
 
-        final bucket =
-            DateTime(occurredAt.year, occurredAt.month, occurredAt.day);
+        final bucket = DateTime(
+          occurredAt.year,
+          occurredAt.month,
+          occurredAt.day,
+        );
         final timelineAccumulator = timelineAccumulators.putIfAbsent(
           bucket,
           () => _TimelineAccumulator(bucket),
@@ -187,10 +190,9 @@ class AnalyticsRepository {
             return b.interactionCount.compareTo(a.interactionCount);
           });
 
-    final timeline = timelineAccumulators.values
-        .map((entry) => entry.toDomain())
-        .toList()
-      ..sort((a, b) => a.date.compareTo(b.date));
+    final timeline =
+        timelineAccumulators.values.map((entry) => entry.toDomain()).toList()
+          ..sort((a, b) => a.date.compareTo(b.date));
 
     contactGaps.sort((a, b) {
       final aGap = a.gap?.inSeconds.toDouble() ?? double.infinity;

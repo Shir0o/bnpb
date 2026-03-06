@@ -5,10 +5,7 @@ import '../services/security_service.dart';
 /// Wraps the application in a lock screen whenever the user configures a
 /// passcode or biometric gate.
 class SecurityGate extends StatefulWidget {
-  const SecurityGate({
-    required this.child,
-    super.key,
-  });
+  const SecurityGate({required this.child, super.key});
 
   /// Widget tree to render when the gate is unlocked.
   final Widget child;
@@ -98,16 +95,17 @@ class _SecurityGateState extends State<SecurityGate> {
       case _GateStatus.unlocked:
         return widget.child;
       case _GateStatus.loading:
-        return const Scaffold(
-          body: Center(child: CircularProgressIndicator()),
-        );
+        // Return a blank scaffold to avoid a jarring flash of a spinner
+        // during the very brief security evaluation.
+        return const Scaffold();
       case _GateStatus.locked:
         return _LockScreen(
           onSubmit: _unlockWithPasscode,
           errorText: _error,
           showBiometricButton: _biometricsEnabled,
-          onBiometricRequested:
-              _biometricsEnabled ? _unlockWithBiometrics : null,
+          onBiometricRequested: _biometricsEnabled
+              ? _unlockWithBiometrics
+              : null,
           biometricsAvailable: _biometricsAvailable,
         );
     }
@@ -216,10 +214,9 @@ class _LockScreenState extends State<_LockScreen> {
                       padding: const EdgeInsets.only(top: 8),
                       child: Text(
                         'Biometric unlock is unavailable on this device.',
-                        style: Theme.of(context)
-                            .textTheme
-                            .bodySmall
-                            ?.copyWith(color: Theme.of(context).hintColor),
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context).hintColor,
+                        ),
                         textAlign: TextAlign.center,
                       ),
                     ),

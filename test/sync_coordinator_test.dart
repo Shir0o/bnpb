@@ -37,14 +37,16 @@ class FakeDBHelper extends MockDBHelper {
 
   @override
   Future<List<Interaction>> getInteractionsModifiedSince(
-      DateTime? since) async {
+    DateTime? since,
+  ) async {
     if (since == null) return List.from(interactions);
     return interactions.where((i) => i.updatedAt.isAfter(since)).toList();
   }
 
   @override
   Future<List<PrayerRequest>> getPrayerRequestsModifiedSince(
-      DateTime? since) async {
+    DateTime? since,
+  ) async {
     if (since == null) return List.from(prayerRequests);
     return prayerRequests.where((p) => p.updatedAt.isAfter(since)).toList();
   }
@@ -103,9 +105,11 @@ void main() {
     // Verify file created
     final files = await tempDir.list().toList();
     final jsonFiles = files
-        .where((f) =>
-            f.path.endsWith('.json') &&
-            !f.path.endsWith('processed_files.json'))
+        .where(
+          (f) =>
+              f.path.endsWith('.json') &&
+              !f.path.endsWith('processed_files.json'),
+        )
         .toList();
     expect(jsonFiles.length, 1);
 
@@ -136,9 +140,11 @@ void main() {
     // Clear directory (remove the first export file to verifying no NEW file is created)
     final filesBefore = await tempDir
         .list()
-        .where((e) =>
-            e.path.endsWith('.json') &&
-            !e.path.endsWith('processed_files.json'))
+        .where(
+          (e) =>
+              e.path.endsWith('.json') &&
+              !e.path.endsWith('processed_files.json'),
+        )
         .toList();
     for (var f in filesBefore) {
       await f.delete();
@@ -149,9 +155,11 @@ void main() {
 
     final filesAfter = await tempDir
         .list()
-        .where((e) =>
-            e.path.endsWith('.json') &&
-            !e.path.endsWith('processed_files.json'))
+        .where(
+          (e) =>
+              e.path.endsWith('.json') &&
+              !e.path.endsWith('processed_files.json'),
+        )
         .toList();
     expect(filesAfter, isEmpty);
   });

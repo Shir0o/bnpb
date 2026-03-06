@@ -19,11 +19,7 @@ void main() {
   testWidgets('MacOSPrayerDiaryView smoke test', (WidgetTester tester) async {
     // Build the widget
     await tester.pumpWidget(
-      const MaterialApp(
-        home: Scaffold(
-          body: MacOSPrayerDiaryView(),
-        ),
-      ),
+      const MaterialApp(home: Scaffold(body: MacOSPrayerDiaryView())),
     );
 
     // Verify initial state (likely loading or empty)

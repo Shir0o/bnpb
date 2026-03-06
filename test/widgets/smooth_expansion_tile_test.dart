@@ -3,8 +3,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:bnpb/widgets/smooth_expansion_tile.dart';
 
 void main() {
-  testWidgets('SmoothExpansionTile renders children and toggles expansion',
-      (WidgetTester tester) async {
+  testWidgets('SmoothExpansionTile renders children and toggles expansion', (
+    WidgetTester tester,
+  ) async {
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
@@ -12,7 +13,10 @@ void main() {
             title: const Text('Test Title'),
             children: [
               Container(
-                  height: 100, color: Colors.red, key: const Key('child1')),
+                height: 100,
+                color: Colors.red,
+                key: const Key('child1'),
+              ),
             ],
           ),
         ),

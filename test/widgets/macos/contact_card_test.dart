@@ -4,8 +4,9 @@ import 'package:bnpb/screens/macos/contact_card.dart';
 import 'package:bnpb/models/contact.dart';
 
 void main() {
-  testWidgets('ContactCard has performance optimizations',
-      (WidgetTester tester) async {
+  testWidgets('ContactCard has performance optimizations', (
+    WidgetTester tester,
+  ) async {
     final contact = Contact(
       id: '1',
       firstName: 'John',
@@ -20,9 +21,7 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
-        home: Scaffold(
-          body: ContactCard(contact: contact),
-        ),
+        home: Scaffold(body: ContactCard(contact: contact)),
       ),
     );
 
@@ -36,9 +35,12 @@ void main() {
       matching: find.byType(RepaintBoundary),
     );
 
-    expect(repaintBoundaryFinder, findsOneWidget,
-        reason:
-            'ContactCard content should be wrapped in RepaintBoundary to isolate from hover effects');
+    expect(
+      repaintBoundaryFinder,
+      findsOneWidget,
+      reason:
+          'ContactCard content should be wrapped in RepaintBoundary to isolate from hover effects',
+    );
 
     // Check for ResizeImage
     // Find the Container with the decoration
@@ -53,14 +55,20 @@ void main() {
       }),
     );
 
-    expect(containerFinder, findsOneWidget,
-        reason: 'Should find the avatar container');
+    expect(
+      containerFinder,
+      findsOneWidget,
+      reason: 'Should find the avatar container',
+    );
     final container = tester.widget<Container>(containerFinder);
     final decoration = container.decoration as BoxDecoration;
     final imageProvider = decoration.image!.image;
 
-    expect(imageProvider, isA<ResizeImage>(),
-        reason: 'Contact avatar should use ResizeImage to save memory');
+    expect(
+      imageProvider,
+      isA<ResizeImage>(),
+      reason: 'Contact avatar should use ResizeImage to save memory',
+    );
 
     final resizeImage = imageProvider as ResizeImage;
     // We expect the width to be around 64 * devicePixelRatio.

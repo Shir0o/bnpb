@@ -18,10 +18,10 @@ class ReminderCoordinator {
     ReminderService? reminderService,
     NotificationPreferencesRepository? preferencesRepository,
     DBHelper? dbHelper,
-  })  : _reminderService = reminderService ?? ReminderService(),
-        _preferencesRepository =
-            preferencesRepository ?? NotificationPreferencesRepository(),
-        _dbHelper = dbHelper ?? DBHelper();
+  }) : _reminderService = reminderService ?? ReminderService(),
+       _preferencesRepository =
+           preferencesRepository ?? NotificationPreferencesRepository(),
+       _dbHelper = dbHelper ?? DBHelper();
 
   @visibleForTesting
   ReminderCoordinator.testHarness({
@@ -29,10 +29,10 @@ class ReminderCoordinator {
     NotificationPreferencesRepository? preferencesRepository,
     DBHelper? dbHelper,
   }) : this._(
-          reminderService: reminderService,
-          preferencesRepository: preferencesRepository,
-          dbHelper: dbHelper,
-        );
+         reminderService: reminderService,
+         preferencesRepository: preferencesRepository,
+         dbHelper: dbHelper,
+       );
 
   static final ReminderCoordinator _instance = ReminderCoordinator._();
 
@@ -65,10 +65,7 @@ class ReminderCoordinator {
   }
 
   /// Reloads the contact from persistence and rebuilds reminders.
-  Future<void> refreshContact(
-    String contactId, {
-    bool silent = false,
-  }) async {
+  Future<void> refreshContact(String contactId, {bool silent = false}) async {
     final contact = await _dbHelper.getContactById(contactId);
     if (contact == null) {
       return;
@@ -124,8 +121,9 @@ class ReminderCoordinator {
         scheduledFor = DateTime.now().add(const Duration(minutes: 5));
       }
 
-      final formattedFollowUp =
-          DateFormat.yMMMd().add_jm().format(followUpAt.toLocal());
+      final formattedFollowUp = DateFormat.yMMMd().add_jm().format(
+        followUpAt.toLocal(),
+      );
       final body =
           'Planned follow-up at $formattedFollowUp • ${interaction.summary}';
 
@@ -287,8 +285,10 @@ class ReminderCoordinator {
     }
 
     final contactIds = pending.map((item) => item.contact.id).toSet().toList();
-    final prayerIds =
-        pending.map((item) => item.request.id).whereType<int>().toList();
+    final prayerIds = pending
+        .map((item) => item.request.id)
+        .whereType<int>()
+        .toList();
 
     await _reminderService.scheduleReminder(
       channel: ReminderChannel.weeklyReview,
@@ -312,8 +312,9 @@ class ReminderCoordinator {
     );
 
     final now = DateTime.now();
-    final staleContacts =
-        contacts.where((contact) => _isContactStale(contact, now)).toList();
+    final staleContacts = contacts
+        .where((contact) => _isContactStale(contact, now))
+        .toList();
 
     if (staleContacts.isEmpty) {
       return;
@@ -332,8 +333,10 @@ class ReminderCoordinator {
       scheduledFor = now.add(const Duration(hours: 1));
     }
 
-    final previewNames =
-        staleContacts.take(3).map((contact) => contact.fullName).toList();
+    final previewNames = staleContacts
+        .take(3)
+        .map((contact) => contact.fullName)
+        .toList();
     var body = staleContacts.length == 1
         ? '${staleContacts.first.fullName} is due for a check-in.'
         : '${staleContacts.length} people could use a fresh check-in.';
@@ -484,8 +487,9 @@ class ReminderCoordinator {
   }
 
   int _daysInMonth(int year, int month) {
-    final firstDayNextMonth =
-        (month == 12) ? DateTime(year + 1, 1, 1) : DateTime(year, month + 1, 1);
+    final firstDayNextMonth = (month == 12)
+        ? DateTime(year + 1, 1, 1)
+        : DateTime(year, month + 1, 1);
     return firstDayNextMonth.subtract(const Duration(days: 1)).day;
   }
 
@@ -507,10 +511,7 @@ class _SignificantDate {
 }
 
 class _PrayerReviewItem {
-  const _PrayerReviewItem({
-    required this.contact,
-    required this.request,
-  });
+  const _PrayerReviewItem({required this.contact, required this.request});
 
   final Contact contact;
   final PrayerRequest request;
@@ -554,7 +555,12 @@ DateTime _nextWeeklyAnchor(
   }
   final targetDate = startOfDay.add(Duration(days: daysUntil));
   return DateTime(
-      targetDate.year, targetDate.month, targetDate.day, hour, minute);
+    targetDate.year,
+    targetDate.month,
+    targetDate.day,
+    hour,
+    minute,
+  );
 }
 
 DateTime _nextMonthlyAnchor(
@@ -570,9 +576,10 @@ DateTime _nextMonthlyAnchor(
 final RegExp _fullDatePattern = RegExp(r'^(\d{4})[-/](\d{2})[-/](\d{2})');
 final RegExp _monthDayPattern = RegExp(r'^(\d{2})[-/](\d{2})');
 final RegExp _textualMonthPattern = RegExp(
-    r'^(January|February|March|April|May|June|July|August|September|'
-    r'October|November|December)\s+(\d{1,2})',
-    caseSensitive: false);
+  r'^(January|February|March|April|May|June|July|August|September|'
+  r'October|November|December)\s+(\d{1,2})',
+  caseSensitive: false,
+);
 
 const Map<String, int> _monthLookup = {
   'jan': 1,

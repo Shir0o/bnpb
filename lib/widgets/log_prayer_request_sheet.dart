@@ -47,8 +47,9 @@ class _LogPrayerRequestSheetState extends State<LogPrayerRequestSheet> {
   @override
   void initState() {
     super.initState();
-    _descriptionController =
-        TextEditingController(text: widget.initialRequest?.description ?? '');
+    _descriptionController = TextEditingController(
+      text: widget.initialRequest?.description ?? '',
+    );
     _reflectionController = TextEditingController(
       text: widget.initialRequest?.reflectionNotes ?? '',
     );
@@ -60,7 +61,7 @@ class _LogPrayerRequestSheetState extends State<LogPrayerRequestSheet> {
     _status = widget.initialRequest?.status ?? PrayerRequestStatus.pending;
 
     _contactLookup = {
-      for (final contact in widget.availableContacts) contact.id: contact
+      for (final contact in widget.availableContacts) contact.id: contact,
     };
 
     if (widget.initialRequest != null) {
@@ -126,8 +127,9 @@ class _LogPrayerRequestSheetState extends State<LogPrayerRequestSheet> {
       builder: (context) => ContactSelectionSheet(
         title: 'Select Contacts',
         initialSelectedIds: _selectedParticipantIds,
-        disabledIds:
-            widget.initialContact != null ? {widget.initialContact!.id} : {},
+        disabledIds: widget.initialContact != null
+            ? {widget.initialContact!.id}
+            : {},
       ),
     );
 
@@ -159,8 +161,8 @@ class _LogPrayerRequestSheetState extends State<LogPrayerRequestSheet> {
     if (_selectedParticipantIds.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-            content:
-                Text('Select at least one contact for this prayer request.')),
+          content: Text('Select at least one contact for this prayer request.'),
+        ),
       );
       return;
     }
@@ -198,16 +200,19 @@ class _LogPrayerRequestSheetState extends State<LogPrayerRequestSheet> {
       for (final contactId in _selectedParticipantIds) {
         final contact = _contactLookup[contactId];
         if (contact != null) {
-          await ReminderCoordinator()
-              .syncPrayerRequestReminder(contact, savedRequest);
+          await ReminderCoordinator().syncPrayerRequestReminder(
+            contact,
+            savedRequest,
+          );
         }
       }
 
       widget.onSaved(savedRequest);
 
       if (!mounted) return;
-      Navigator.of(context)
-          .pop(widget.initialRequest == null ? 'created' : 'updated');
+      Navigator.of(
+        context,
+      ).pop(widget.initialRequest == null ? 'created' : 'updated');
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -290,10 +295,7 @@ class _LogPrayerRequestSheetState extends State<LogPrayerRequestSheet> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'Associated Contacts',
-                style: theme.textTheme.labelLarge,
-              ),
+              Text('Associated Contacts', style: theme.textTheme.labelLarge),
               const SizedBox(height: 8),
               Wrap(
                 spacing: 8,
@@ -317,9 +319,7 @@ class _LogPrayerRequestSheetState extends State<LogPrayerRequestSheet> {
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      side: BorderSide(
-                        color: theme.colorScheme.outlineVariant,
-                      ),
+                      side: BorderSide(color: theme.colorScheme.outlineVariant),
                     );
                   }),
                   ActionChip(

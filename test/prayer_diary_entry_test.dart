@@ -14,11 +14,7 @@ void main() {
       requestedAt: DateTime(2023, 10, 24, 8, 30),
     );
 
-    final contact = Contact(
-      id: 'c1',
-      firstName: 'John',
-      lastName: 'Doe',
-    );
+    final contact = Contact(id: 'c1', firstName: 'John', lastName: 'Doe');
 
     testWidgets('renders correctly in view mode', (tester) async {
       await tester.pumpWidget(

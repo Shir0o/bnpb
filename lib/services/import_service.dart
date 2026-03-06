@@ -33,16 +33,18 @@ class ImportService {
 
     if (jsonData is List) {
       restoredContacts = jsonData
-          .map((contactMap) => Contact.fromMap(
-                Map<String, dynamic>.from(contactMap as Map),
-              ))
+          .map(
+            (contactMap) =>
+                Contact.fromMap(Map<String, dynamic>.from(contactMap as Map)),
+          )
           .toList();
     } else if (jsonData is Map) {
       if (jsonData['contacts'] != null) {
         restoredContacts = (jsonData['contacts'] as List)
-            .map((contactMap) => Contact.fromMap(
-                  Map<String, dynamic>.from(contactMap as Map),
-                ))
+            .map(
+              (contactMap) =>
+                  Contact.fromMap(Map<String, dynamic>.from(contactMap as Map)),
+            )
             .toList();
       }
       if (jsonData['prayerLists'] != null) {
@@ -78,7 +80,8 @@ class ImportService {
 
       final contactWithoutRelations = contact.copyWith(
         interactions: [],
-        prayerRequests: [], // Logic in HomePage didn't explicitly clear requests, but stripping interactions is key
+        prayerRequests:
+            [], // Logic in HomePage didn't explicitly clear requests, but stripping interactions is key
       );
       await _dbHelper.insertContact(contactWithoutRelations);
     }

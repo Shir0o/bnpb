@@ -20,8 +20,10 @@ void main() {
     });
 
     test('returns Yesterday', () {
-      expect(formatDate(DateTime.now().subtract(const Duration(days: 1))),
-          'Yesterday');
+      expect(
+        formatDate(DateTime.now().subtract(const Duration(days: 1))),
+        'Yesterday',
+      );
     });
 
     test('returns formatted date for older dates', () {

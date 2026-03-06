@@ -161,10 +161,7 @@ class _AnalyticsPageState extends State<AnalyticsPage>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              rangeText,
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
+            Text(rangeText, style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 16),
             Row(
               children: [
@@ -201,8 +198,9 @@ class _AnalyticsPageState extends State<AnalyticsPage>
     }
 
     final values = entries
-        .map((entry) =>
-            _resolveValue(entry.totalMinutes, entry.interactionCount))
+        .map(
+          (entry) => _resolveValue(entry.totalMinutes, entry.interactionCount),
+        )
         .toList();
     final maxY = values.reduce(math.max);
     final double yInterval = (maxY == 0 ? 1 : math.max(1, maxY / 4)).toDouble();
@@ -379,15 +377,14 @@ class _AnalyticsPageState extends State<AnalyticsPage>
                             entry.value.totalMinutes,
                             entry.value.interactionCount,
                           );
-                          final percentage =
-                              totalValue == 0 ? 0 : (value / totalValue) * 100;
+                          final percentage = totalValue == 0
+                              ? 0
+                              : (value / totalValue) * 100;
                           return PieChartSectionData(
                             value: value,
                             title: '${percentage.toStringAsFixed(1)}%',
                             radius: sectionRadius,
-                            titleStyle: Theme.of(context)
-                                .textTheme
-                                .bodyMedium
+                            titleStyle: Theme.of(context).textTheme.bodyMedium
                                 ?.copyWith(fontWeight: FontWeight.bold),
                           );
                         }).toList(),
@@ -426,13 +423,16 @@ class _AnalyticsPageState extends State<AnalyticsPage>
     }
 
     final values = timeline
-        .map((entry) =>
-            _resolveValue(entry.totalMinutes, entry.interactionCount))
+        .map(
+          (entry) => _resolveValue(entry.totalMinutes, entry.interactionCount),
+        )
         .toList();
     final maxY = values.reduce(math.max);
     final double yInterval = (maxY == 0 ? 1 : math.max(1, maxY / 4)).toDouble();
-    final labelStep =
-        math.min(timeline.length, math.max(1, (timeline.length / 6).ceil()));
+    final labelStep = math.min(
+      timeline.length,
+      math.max(1, (timeline.length / 6).ceil()),
+    );
 
     return Card(
       child: Padding(
@@ -462,10 +462,9 @@ class _AnalyticsPageState extends State<AnalyticsPage>
                         dotData: FlDotData(show: false),
                         belowBarData: BarAreaData(
                           show: true,
-                          color: Theme.of(context)
-                              .colorScheme
-                              .primary
-                              .withValues(alpha: 0.15),
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.primary.withValues(alpha: 0.15),
                         ),
                         spots: timeline.asMap().entries.map((entry) {
                           final index = entry.key.toDouble();
@@ -631,10 +630,9 @@ class _MetricTile extends StatelessWidget {
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
-        color: Theme.of(context)
-            .colorScheme
-            .surfaceContainerHighest
-            .withValues(alpha: 0.6),
+        color: Theme.of(
+          context,
+        ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.6),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -643,15 +641,12 @@ class _MetricTile extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             value,
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 4),
-          Text(
-            label,
-            style: Theme.of(context).textTheme.bodyMedium,
-          ),
+          Text(label, style: Theme.of(context).textTheme.bodyMedium),
         ],
       ),
     );
@@ -659,10 +654,7 @@ class _MetricTile extends StatelessWidget {
 }
 
 class _EmptyAnalyticsCard extends StatelessWidget {
-  const _EmptyAnalyticsCard({
-    required this.title,
-    required this.message,
-  });
+  const _EmptyAnalyticsCard({required this.title, required this.message});
 
   final String title;
   final String message;
@@ -675,17 +667,13 @@ class _EmptyAnalyticsCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              title,
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
+            Text(title, style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 12),
             Text(
               message,
-              style: Theme.of(context)
-                  .textTheme
-                  .bodyMedium
-                  ?.copyWith(color: Theme.of(context).colorScheme.outline),
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: Theme.of(context).colorScheme.outline,
+              ),
             ),
           ],
         ),

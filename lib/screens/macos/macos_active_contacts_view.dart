@@ -77,8 +77,9 @@ class _MacOSActiveContactsViewState extends State<MacOSActiveContactsView> {
     final freshList = await _dbHelper.getPrayerList(list.id);
     if (freshList == null) return;
 
-    final loadedContacts =
-        await _dbHelper.getContacts(contactIds: freshList.contactIds);
+    final loadedContacts = await _dbHelper.getContacts(
+      contactIds: freshList.contactIds,
+    );
 
     // Initial selected contact logic
     Contact? nextSelected = _selectedContact;
@@ -86,8 +87,9 @@ class _MacOSActiveContactsViewState extends State<MacOSActiveContactsView> {
       nextSelected = loadedContacts.first;
     } else if (loadedContacts.isNotEmpty && _selectedContact != null) {
       // Refresh the selected contact data if it's in the list
-      final found =
-          loadedContacts.where((c) => c.id == _selectedContact!.id).firstOrNull;
+      final found = loadedContacts
+          .where((c) => c.id == _selectedContact!.id)
+          .firstOrNull;
       if (found != null) {
         nextSelected = found;
       } else {
@@ -147,21 +149,19 @@ class _MacOSActiveContactsViewState extends State<MacOSActiveContactsView> {
         Container(
           width: 300,
           decoration: const BoxDecoration(
-            border: Border(
-              right: BorderSide(color: Color(0xFFE5E5E5)),
-            ),
+            border: Border(right: BorderSide(color: Color(0xFFE5E5E5))),
             color: Colors.white,
           ),
           child: Column(
             children: [
               // List Header
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
                 decoration: const BoxDecoration(
-                  border: Border(
-                    bottom: BorderSide(color: Color(0xFFE5E5E5)),
-                  ),
+                  border: Border(bottom: BorderSide(color: Color(0xFFE5E5E5))),
                   color: Color(0xFFF9FAFB), // Slight bg for header
                 ),
                 child: Row(
@@ -187,8 +187,11 @@ class _MacOSActiveContactsViewState extends State<MacOSActiveContactsView> {
                           tooltip: 'Add Contact',
                         ),
                         const SizedBox(width: 12),
-                        Icon(Icons.filter_list,
-                            size: 18, color: Theme.of(context).primaryColor),
+                        Icon(
+                          Icons.filter_list,
+                          size: 18,
+                          color: Theme.of(context).primaryColor,
+                        ),
                       ],
                     ),
                   ],
@@ -202,7 +205,9 @@ class _MacOSActiveContactsViewState extends State<MacOSActiveContactsView> {
                           'No active contacts.\nClick + to add.',
                           textAlign: TextAlign.center,
                           style: GoogleFonts.inter(
-                              color: Colors.grey[400], fontSize: 12),
+                            color: Colors.grey[400],
+                            fontSize: 12,
+                          ),
                         ),
                       )
                     : ListView.separated(
@@ -232,8 +237,9 @@ class _MacOSActiveContactsViewState extends State<MacOSActiveContactsView> {
   Widget _buildContactTile(Contact contact, bool isSelected) {
     // Determine last update
     // Interactions are sorted (newest first)
-    final lastInteraction =
-        contact.interactions.isNotEmpty ? contact.interactions.first : null;
+    final lastInteraction = contact.interactions.isNotEmpty
+        ? contact.interactions.first
+        : null;
     final lastRequest = contact.prayerRequests.isNotEmpty
         ? contact.prayerRequests.last
         : null; // Ideally requests should be sorted
@@ -382,21 +388,23 @@ class _MacOSActiveContactsViewState extends State<MacOSActiveContactsView> {
                       width: 48,
                       height: 48,
                       decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [
-                              avatarColor.withValues(alpha: 0.7),
-                              avatarColor,
-                            ],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
+                        gradient: LinearGradient(
+                          colors: [
+                            avatarColor.withValues(alpha: 0.7),
+                            avatarColor,
+                          ],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: avatarColor.withValues(alpha: 0.3),
+                            blurRadius: 8,
+                            offset: const Offset(0, 4),
                           ),
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                                color: avatarColor.withValues(alpha: 0.3),
-                                blurRadius: 8,
-                                offset: const Offset(0, 4))
-                          ]),
+                        ],
+                      ),
                       alignment: Alignment.center,
                       child: Text(
                         contact.initials,
@@ -423,24 +431,28 @@ class _MacOSActiveContactsViewState extends State<MacOSActiveContactsView> {
                         Row(
                           children: [
                             if (contact.tags.isNotEmpty)
-                              ...contact.tags.map((tag) => Padding(
-                                    padding: const EdgeInsets.only(right: 8),
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 8, vertical: 2),
-                                      decoration: BoxDecoration(
-                                        color: kBgLight,
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                      child: Text(
-                                        tag,
-                                        style: GoogleFonts.inter(
-                                          fontSize: 11,
-                                          color: kTextSecondary,
-                                        ),
+                              ...contact.tags.map(
+                                (tag) => Padding(
+                                  padding: const EdgeInsets.only(right: 8),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 2,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: kBgLight,
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Text(
+                                      tag,
+                                      style: GoogleFonts.inter(
+                                        fontSize: 11,
+                                        color: kTextSecondary,
                                       ),
                                     ),
-                                  )),
+                                  ),
+                                ),
+                              ),
                             Text(
                               'Last prayed: Today', // Placeholder
                               style: GoogleFonts.inter(
@@ -457,15 +469,23 @@ class _MacOSActiveContactsViewState extends State<MacOSActiveContactsView> {
                 TextButton(
                   onPressed: () {}, // Edit action
                   style: TextButton.styleFrom(
-                      foregroundColor: kPrimaryColor,
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 8),
-                      backgroundColor: Colors.blue.withValues(alpha: 0.05),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(6))),
-                  child: Text('Edit',
-                      style: GoogleFonts.inter(
-                          fontSize: 13, fontWeight: FontWeight.w500)),
+                    foregroundColor: kPrimaryColor,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
+                    backgroundColor: Colors.blue.withValues(alpha: 0.05),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                  ),
+                  child: Text(
+                    'Edit',
+                    style: GoogleFonts.inter(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -485,7 +505,9 @@ class _MacOSActiveContactsViewState extends State<MacOSActiveContactsView> {
                       child: Text(
                         'No active prayer requests.',
                         style: GoogleFonts.inter(
-                            color: Colors.grey[400], fontSize: 13),
+                          color: Colors.grey[400],
+                          fontSize: 13,
+                        ),
                       ),
                     )
                   else
@@ -494,25 +516,30 @@ class _MacOSActiveContactsViewState extends State<MacOSActiveContactsView> {
                   const Divider(color: kBorderColor, height: 1),
                   const SizedBox(height: 24),
                   Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        _buildSectionTitle('Interactions'),
-                        IconButton(
-                            onPressed: () {},
-                            icon: const Icon(Icons.add, size: 18),
-                            color: kTextSecondary,
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(),
-                            style: IconButton.styleFrom(
-                                hoverColor: kBgLight,
-                                padding: const EdgeInsets.all(4)))
-                      ]),
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      _buildSectionTitle('Interactions'),
+                      IconButton(
+                        onPressed: () {},
+                        icon: const Icon(Icons.add, size: 18),
+                        color: kTextSecondary,
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                        style: IconButton.styleFrom(
+                          hoverColor: kBgLight,
+                          padding: const EdgeInsets.all(4),
+                        ),
+                      ),
+                    ],
+                  ),
                   const SizedBox(height: 16),
                   if (recentInteractions.isEmpty)
                     Text(
                       'No recent interactions.',
                       style: GoogleFonts.inter(
-                          color: Colors.grey[400], fontSize: 13),
+                        color: Colors.grey[400],
+                        fontSize: 13,
+                      ),
                     )
                   else
                     ...recentInteractions
@@ -547,37 +574,41 @@ class _MacOSActiveContactsViewState extends State<MacOSActiveContactsView> {
         children: [
           Padding(
             padding: const EdgeInsets.only(
-                top: 2), // Align checkbox with text top line
+              top: 2,
+            ), // Align checkbox with text top line
             child: SizedBox(
-                width: 16,
-                height: 16,
-                child: Checkbox(
-                  value: false, // Pending requests are unchecked
-                  onChanged: (val) async {
-                    if (val == true) {
-                      final updated = request.copyWith(
-                        status: PrayerRequestStatus.answered,
-                        answeredAt: DateTime.now(),
-                      );
-                      await _dbHelper.updatePrayerRequest(updated);
-                      if (mounted && _activeList != null) {
-                        await _loadListContacts(_activeList!);
-                      }
+              width: 16,
+              height: 16,
+              child: Checkbox(
+                value: false, // Pending requests are unchecked
+                onChanged: (val) async {
+                  if (val == true) {
+                    final updated = request.copyWith(
+                      status: PrayerRequestStatus.answered,
+                      answeredAt: DateTime.now(),
+                    );
+                    await _dbHelper.updatePrayerRequest(updated);
+                    if (mounted && _activeList != null) {
+                      await _loadListContacts(_activeList!);
                     }
-                  },
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(4)),
-                  side: const BorderSide(color: Color(0xFFD1D5DB)),
-                  activeColor: kPrimaryColor,
-                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  visualDensity: VisualDensity.compact,
-                )),
+                  }
+                },
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                side: const BorderSide(color: Color(0xFFD1D5DB)),
+                activeColor: kPrimaryColor,
+                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                visualDensity: VisualDensity.compact,
+              ),
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(
             child: Padding(
               padding: const EdgeInsets.only(
-                  top: 0.5), // Subtle alignment adjustment
+                top: 0.5,
+              ), // Subtle alignment adjustment
               child: Text(
                 request.description,
                 style: GoogleFonts.inter(
@@ -595,75 +626,113 @@ class _MacOSActiveContactsViewState extends State<MacOSActiveContactsView> {
 
   Widget _buildSessionItem(Interaction interaction, Contact contact) {
     return Padding(
-        padding: const EdgeInsets.only(bottom: 12),
-        child: Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.transparent),
-            // Hover effect can be done with InkWell or logic, simplified here
-          ),
-          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.transparent),
+          // Hover effect can be done with InkWell or logic, simplified here
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
             // Avatar
             Container(
-                margin: const EdgeInsets.only(top: 2),
-                child: SizedBox(
-                    width: 28,
-                    height: 28,
-                    child: Stack(children: [
-                      Container(
-                        decoration: BoxDecoration(
-                          color: getAvatarColor(contact.initials)
-                              .withValues(alpha: 0.1),
-                          shape: BoxShape.circle,
+              margin: const EdgeInsets.only(top: 2),
+              child: SizedBox(
+                width: 28,
+                height: 28,
+                child: Stack(
+                  children: [
+                    Container(
+                      decoration: BoxDecoration(
+                        color: getAvatarColor(
+                          contact.initials,
+                        ).withValues(alpha: 0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        contact.initials,
+                        style: GoogleFonts.inter(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: getAvatarColor(contact.initials),
                         ),
-                        alignment: Alignment.center,
-                        child: Text(contact.initials,
-                            style: GoogleFonts.inter(
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                                color: getAvatarColor(contact.initials))),
-                      )
-                    ]))),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
             const SizedBox(width: 12),
             Expanded(
-                child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
                     children: [
-                  Row(children: [
-                    Text(formatDate(interaction.occurredAt),
+                      Text(
+                        formatDate(interaction.occurredAt),
                         style: GoogleFonts.inter(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: kTextPrimary)),
-                    const SizedBox(width: 8),
-                    Text(formatTime(interaction.occurredAt),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: kTextPrimary,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        formatTime(interaction.occurredAt),
                         style: GoogleFonts.inter(
-                            fontSize: 11, color: kTextSecondary)),
-                    const SizedBox(width: 8),
-                    Icon(getMediumIcon(interaction.medium),
-                        size: 14, color: kTextSecondary),
-                    if (interaction.durationMinutes != null) ...[
-                      const Spacer(),
-                      Container(
+                          fontSize: 11,
+                          color: kTextSecondary,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Icon(
+                        getMediumIcon(interaction.medium),
+                        size: 14,
+                        color: kTextSecondary,
+                      ),
+                      if (interaction.durationMinutes != null) ...[
+                        const Spacer(),
+                        Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 6, vertical: 2),
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
                           decoration: BoxDecoration(
-                              color: kBgLight,
-                              borderRadius: BorderRadius.circular(4)),
-                          child: Text('${interaction.durationMinutes}m',
-                              style: GoogleFonts.inter(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w500,
-                                  color: kTextSecondary)))
-                    ]
-                  ]),
+                            color: kBgLight,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            '${interaction.durationMinutes}m',
+                            style: GoogleFonts.inter(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500,
+                              color: kTextSecondary,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
                   const SizedBox(height: 4),
-                  Text(interaction.summary,
-                      style: GoogleFonts.inter(
-                          fontSize: 13, color: Colors.grey[700], height: 1.5))
-                ]))
-          ]),
-        ));
+                  Text(
+                    interaction.summary,
+                    style: GoogleFonts.inter(
+                      fontSize: 13,
+                      color: Colors.grey[700],
+                      height: 1.5,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

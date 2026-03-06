@@ -16,11 +16,10 @@ class GoogleDriveService {
     serverClientId: Platform.isAndroid
         ? '228185988095-j6gjirouvrt8o71q6bs1ubco9a2gdm8f.apps.googleusercontent.com'
         : null,
-    scopes: [
-      drive.DriveApi.driveFileScope,
-    ],
+    scopes: [drive.DriveApi.driveFileScope],
   );
 
+  bool _triedSilentSignIn = false;
   GoogleSignInAccount? _currentUser;
   drive.DriveApi? _driveApi;
   String? _lastSignInError;
@@ -31,7 +30,11 @@ class GoogleDriveService {
   /// Returns the current user, attempting silent sign-in if necessary.
   /// Does NOT initialize the Drive API client to avoid unnecessary keychain access.
   Future<GoogleSignInAccount?> get currentUser async {
-    _currentUser ??= await _googleSignIn.signInSilently();
+    if (_currentUser != null) return _currentUser;
+    if (_triedSilentSignIn) return null;
+
+    _currentUser = await _googleSignIn.signInSilently();
+    _triedSilentSignIn = true;
     return _currentUser;
   }
 
@@ -40,6 +43,7 @@ class GoogleDriveService {
     _lastSignInError = null;
     try {
       _currentUser = await _googleSignIn.signIn();
+      _triedSilentSignIn = true;
       _driveApi = null;
       return _currentUser;
     } catch (e) {
@@ -63,6 +67,7 @@ class GoogleDriveService {
     await _googleSignIn.signOut();
     _currentUser = null;
     _driveApi = null;
+    _triedSilentSignIn = false;
   }
 
   Future<bool> isSignedIn() async {
@@ -121,8 +126,11 @@ class GoogleDriveService {
     return createdFolder.id;
   }
 
-  Future<void> uploadFile(File localFile, String remoteName,
-      {String folderName = 'BNPB-Sync'}) async {
+  Future<void> uploadFile(
+    File localFile,
+    String remoteName, {
+    String folderName = 'BNPB-Sync',
+  }) async {
     await _ensureApiInitialized();
     if (_driveApi == null) {
       throw Exception('Not signed in to Google Drive');
@@ -140,8 +148,11 @@ class GoogleDriveService {
 
     if (existingFiles.files != null && existingFiles.files!.isNotEmpty) {
       // Update existing file
-      await _driveApi!.files.update(driveFile, existingFiles.files!.first.id!,
-          uploadMedia: media);
+      await _driveApi!.files.update(
+        driveFile,
+        existingFiles.files!.first.id!,
+        uploadMedia: media,
+      );
     } else {
       // Create new file
       if (folderId != null) {
@@ -151,8 +162,9 @@ class GoogleDriveService {
     }
   }
 
-  Future<List<drive.File>> listSyncFiles(
-      {String folderName = 'BNPB-Sync'}) async {
+  Future<List<drive.File>> listSyncFiles({
+    String folderName = 'BNPB-Sync',
+  }) async {
     await _ensureApiInitialized();
     if (_driveApi == null) {
       if (kDebugMode) {
@@ -170,12 +182,15 @@ class GoogleDriveService {
     }
 
     final query = "'$folderId' in parents and trashed = false";
-    final fileList = await _driveApi!.files
-        .list(q: query, $fields: 'files(id, name, modifiedTime, size)');
+    final fileList = await _driveApi!.files.list(
+      q: query,
+      $fields: 'files(id, name, modifiedTime, size)',
+    );
 
     if (kDebugMode) {
       debugPrint(
-          'listSyncFiles: Found ${fileList.files?.length ?? 0} files in Drive');
+        'listSyncFiles: Found ${fileList.files?.length ?? 0} files in Drive',
+      );
       for (final f in fileList.files ?? []) {
         debugPrint('  - ${f.name}');
       }
@@ -191,8 +206,12 @@ class GoogleDriveService {
     }
 
     // To download content we use get() with downloadOptions: drive.DownloadOptions.fullMedia
-    final mediaResponse = await _driveApi!.files.get(fileId,
-        downloadOptions: drive.DownloadOptions.fullMedia) as drive.Media;
+    final mediaResponse =
+        await _driveApi!.files.get(
+              fileId,
+              downloadOptions: drive.DownloadOptions.fullMedia,
+            )
+            as drive.Media;
 
     final sink = targetFile.openWrite();
     try {

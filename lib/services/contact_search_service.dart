@@ -134,7 +134,8 @@ class ContactSearchService {
   }
 
   static List<_IndexedContact> _buildMeetingContextIndex(
-      List<Contact> contacts) {
+    List<Contact> contacts,
+  ) {
     final formatter = DateFormat.yMMMd();
     return contacts.map((contact) {
       final segments = <_SearchField>[];
@@ -161,15 +162,13 @@ class ContactSearchService {
           ),
         );
       }
-      return _IndexedContact(
-        contact: contact,
-        fields: segments,
-      );
+      return _IndexedContact(contact: contact, fields: segments);
     }).toList();
   }
 
   static List<ContactMatch> _performMeetingContextSearch(
-      _SearchRequest request) {
+    _SearchRequest request,
+  ) {
     final query = request.query;
     final indexedContacts = request.indexedContacts;
     final normalizedQuery = _normalize(query);
@@ -222,7 +221,9 @@ class ContactSearchService {
   }
 
   static List<_SearchField> _buildGeneralFields(
-      Contact contact, DateFormat formatter) {
+    Contact contact,
+    DateFormat formatter,
+  ) {
     final interactionSummaries = contact.interactions
         .map(
           (Interaction interaction) =>
@@ -235,14 +236,8 @@ class ContactSearchService {
         label: 'Name',
         values: [contact.fullName, contact.nickname ?? ''],
       ),
-      _SearchField(
-        label: 'Location',
-        values: [contact.location ?? ''],
-      ),
-      _SearchField(
-        label: 'Tags',
-        values: contact.tags,
-      ),
+      _SearchField(label: 'Location', values: [contact.location ?? '']),
+      _SearchField(label: 'Tags', values: contact.tags),
       _SearchField(
         label: 'First meeting notes',
         values: [contact.firstMeetingNotes ?? ''],
@@ -255,10 +250,7 @@ class ContactSearchService {
         label: 'Recognition reminders',
         values: contact.recognitionReminders,
       ),
-      _SearchField(
-        label: 'Interactions',
-        values: interactionSummaries,
-      ),
+      _SearchField(label: 'Interactions', values: interactionSummaries),
     ];
   }
 

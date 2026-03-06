@@ -77,8 +77,9 @@ class _PrayerListPageState extends State<PrayerListPage> {
       return;
     }
 
-    final loadedContacts =
-        await _dbHelper.getContacts(contactIds: freshList.contactIds);
+    final loadedContacts = await _dbHelper.getContacts(
+      contactIds: freshList.contactIds,
+    );
 
     // Optimization: Batch fetch all contacts at once instead of N+1 queries.
     // Re-assemble in the correct order based on the list definition.
@@ -112,9 +113,7 @@ class _PrayerListPageState extends State<PrayerListPage> {
         reverseDuration: const Duration(milliseconds: 200),
         curve: Curves.easeOutCubic,
       ),
-      builder: (context) => ContactSelectionSheet(
-        disabledIds: currentIds,
-      ),
+      builder: (context) => ContactSelectionSheet(disabledIds: currentIds),
     );
 
     if (selectedIds != null && selectedIds.isNotEmpty) {
@@ -146,9 +145,9 @@ class _PrayerListPageState extends State<PrayerListPage> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to delete contact: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to delete contact: $e')));
       }
     }
   }
@@ -156,27 +155,25 @@ class _PrayerListPageState extends State<PrayerListPage> {
   void _navigateToContactDetails(Contact contact) {
     Navigator.of(context)
         .push(
-      MaterialPageRoute(
-        builder: (context) => ContactDetailsPage(
-          contact: contact,
-          onDelete: () => _deleteContact(contact.id),
-        ),
-      ),
-    )
+          MaterialPageRoute(
+            builder: (context) => ContactDetailsPage(
+              contact: contact,
+              onDelete: () => _deleteContact(contact.id),
+            ),
+          ),
+        )
         .then((_) {
-      // Refresh list in case contact was deleted or changed
-      if (_list != null) {
-        _loadListContacts(_list!);
-      }
-    });
+          // Refresh list in case contact was deleted or changed
+          if (_list != null) {
+            _loadListContacts(_list!);
+          }
+        });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(_list?.name ?? 'Prayer List'),
-      ),
+      appBar: AppBar(title: Text(_list?.name ?? 'Prayer List')),
       floatingActionButton: _list == null
           ? null
           : FloatingActionButton.extended(
@@ -218,15 +215,15 @@ class _PrayerListPageState extends State<PrayerListPage> {
                 Text(
                   'No contacts in your prayer list yet.',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: Theme.of(context).colorScheme.outline,
-                      ),
+                    color: Theme.of(context).colorScheme.outline,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 Text(
                   'Tap "Add People" to get started.',
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Theme.of(context).colorScheme.outline,
-                      ),
+                    color: Theme.of(context).colorScheme.outline,
+                  ),
                 ),
               ],
             ),
@@ -238,18 +235,20 @@ class _PrayerListPageState extends State<PrayerListPage> {
               final contact = _contacts[index];
               return ListTile(
                 leading: CircleAvatar(
-                  backgroundColor:
-                      Theme.of(context).colorScheme.primaryContainer,
+                  backgroundColor: Theme.of(
+                    context,
+                  ).colorScheme.primaryContainer,
                   child: Text(
                     contact.firstName.isNotEmpty ? contact.firstName[0] : '?',
                     style: TextStyle(
-                        color:
-                            Theme.of(context).colorScheme.onPrimaryContainer),
+                      color: Theme.of(context).colorScheme.onPrimaryContainer,
+                    ),
                   ),
                 ),
                 title: Text(contact.fullName),
-                subtitle:
-                    contact.location != null ? Text(contact.location!) : null,
+                subtitle: contact.location != null
+                    ? Text(contact.location!)
+                    : null,
                 onTap: () => _navigateToContactDetails(contact),
                 trailing: IconButton(
                   icon: const Icon(Icons.remove_circle_outline),
@@ -272,8 +271,11 @@ class _PrayerListSkeleton extends StatelessWidget {
         itemCount: 8,
         physics: const NeverScrollableScrollPhysics(),
         itemBuilder: (context, index) => ListTile(
-          leading:
-              const SkeletonBox(width: 40, height: 40, shape: BoxShape.circle),
+          leading: const SkeletonBox(
+            width: 40,
+            height: 40,
+            shape: BoxShape.circle,
+          ),
           title: SkeletonBox(width: 140 + (index % 3 * 20.0), height: 16),
           subtitle: const SkeletonBox(width: 100, height: 12),
           trailing: const SkeletonBox(width: 24, height: 24),

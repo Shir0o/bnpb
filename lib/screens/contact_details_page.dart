@@ -47,8 +47,8 @@ class ContactDetailsPage extends StatefulWidget {
     required this.onDelete,
     ContactService? contactService,
     DBHelper? dbHelper,
-  })  : _contactService = contactService ?? ContactService(),
-        _dbHelper = dbHelper ?? DBHelper();
+  }) : _contactService = contactService ?? ContactService(),
+       _dbHelper = dbHelper ?? DBHelper();
 
   final ContactService _contactService;
   final DBHelper _dbHelper;
@@ -165,8 +165,9 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
       final mediumLabel =
           _mediumLabels[interaction.medium] ?? interaction.medium;
       final matchesSummary = interaction.summary.toLowerCase().contains(query);
-      final matchesLocation =
-          (interaction.location ?? '').toLowerCase().contains(query);
+      final matchesLocation = (interaction.location ?? '')
+          .toLowerCase()
+          .contains(query);
       final matchesMedium = mediumLabel.toLowerCase().contains(query);
 
       return matchesSummary || matchesLocation || matchesMedium;
@@ -209,17 +210,17 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
     final dbHelper = widget._dbHelper;
     final contacts = await dbHelper.getContacts();
     final tags = await dbHelper.getAllTags();
-    final relationships =
-        await dbHelper.getRelationshipsForContact(widget.contact.id);
+    final relationships = await dbHelper.getRelationshipsForContact(
+      widget.contact.id,
+    );
 
     setState(() {
       _contactLookup = {for (final contact in contacts) contact.id: contact};
       _availableContacts =
           contacts.where((contact) => contact.id != widget.contact.id).toList()
             ..sort(
-              (a, b) => a.fullName.toLowerCase().compareTo(
-                    b.fullName.toLowerCase(),
-                  ),
+              (a, b) =>
+                  a.fullName.toLowerCase().compareTo(b.fullName.toLowerCase()),
             );
       final mergedTags = {...tags, ..._selectedTags};
       _availableTags = mergedTags.toList()
@@ -372,10 +373,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          label,
-          style: Theme.of(context).textTheme.titleSmall,
-        ),
+        Text(label, style: Theme.of(context).textTheme.titleSmall),
         const SizedBox(height: 8),
         Row(
           children: [
@@ -434,10 +432,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
     // displaySize is the width of the container.
     final cacheWidth =
         (displaySize * MediaQuery.of(context).devicePixelRatio * 1.5).toInt();
-    return ResizeImage(
-      provider,
-      width: cacheWidth,
-    );
+    return ResizeImage(provider, width: cacheWidth);
   }
 
   Contact _buildContactFromState({List<Interaction>? interactionsOverride}) {
@@ -454,15 +449,17 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
       lastName: lastNameText.isEmpty ? null : lastNameText,
       nickname: nicknameText.isEmpty ? null : nicknameText,
       location: locationText.isEmpty ? null : locationText,
-      firstMeetingNotes:
-          firstMeetingNotesText.isEmpty ? null : firstMeetingNotesText,
+      firstMeetingNotes: firstMeetingNotesText.isEmpty
+          ? null
+          : firstMeetingNotesText,
       notes: notesText.isEmpty ? null : notesText,
       tags: List<String>.from(_selectedTags),
       recognitionKeywords: List<String>.from(_keywords),
       recognitionPhotoUris: List<String>.from(_photoCues),
       recognitionReminders: List<String>.from(_reminderCues),
-      interactions:
-          List<Interaction>.from(interactionsOverride ?? _interactions),
+      interactions: List<Interaction>.from(
+        interactionsOverride ?? _interactions,
+      ),
     );
   }
 
@@ -552,9 +549,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
                 Navigator.of(dialogContext).pop();
                 Navigator.of(pageContext).pop();
               },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red,
-              ),
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
               child: const Text('Delete'),
             ),
           ],
@@ -579,9 +574,9 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
     await BackupService().exportBackup();
 
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Interaction removed')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Interaction removed')));
   }
 
   void _applyInteractionListUpdate(List<Interaction> interactions) {
@@ -628,8 +623,9 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
     setState(() {
       _isLoadingRelationships = true;
     });
-    final relationships =
-        await widget._dbHelper.getRelationshipsForContact(widget.contact.id);
+    final relationships = await widget._dbHelper.getRelationshipsForContact(
+      widget.contact.id,
+    );
     setState(() {
       _relationships = relationships;
       _isLoadingRelationships = false;
@@ -700,9 +696,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
                 if (!context.mounted) return;
                 Navigator.pop(context);
               },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red,
-              ),
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
               child: const Text('Delete'),
             ),
           ],
@@ -727,11 +721,13 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
   Widget _buildRelationshipCard() {
     final outgoing = _relationships
         .where(
-            (relationship) => relationship.sourceContactId == widget.contact.id)
+          (relationship) => relationship.sourceContactId == widget.contact.id,
+        )
         .toList();
     final incoming = _relationships
         .where(
-            (relationship) => relationship.targetContactId == widget.contact.id)
+          (relationship) => relationship.targetContactId == widget.contact.id,
+        )
         .toList();
 
     return _buildCard(
@@ -762,8 +758,10 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
               style: Theme.of(context).textTheme.labelLarge,
             ),
             const SizedBox(height: 8),
-            ...outgoing.map((relationship) =>
-                _buildRelationshipTile(relationship, isOutgoing: true)),
+            ...outgoing.map(
+              (relationship) =>
+                  _buildRelationshipTile(relationship, isOutgoing: true),
+            ),
           ],
           if (incoming.isNotEmpty) ...[
             if (outgoing.isNotEmpty) const Divider(height: 24),
@@ -772,16 +770,20 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
               style: Theme.of(context).textTheme.labelLarge,
             ),
             const SizedBox(height: 8),
-            ...incoming.map((relationship) =>
-                _buildRelationshipTile(relationship, isOutgoing: false)),
+            ...incoming.map(
+              (relationship) =>
+                  _buildRelationshipTile(relationship, isOutgoing: false),
+            ),
           ],
         ],
       ],
     );
   }
 
-  Widget _buildRelationshipTile(Relationship relationship,
-      {required bool isOutgoing}) {
+  Widget _buildRelationshipTile(
+    Relationship relationship, {
+    required bool isOutgoing,
+  }) {
     final otherContactId = isOutgoing
         ? relationship.targetContactId
         : relationship.sourceContactId;
@@ -790,10 +792,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
     final subtitleChildren = <Widget>[
       Text('Type: ${relationship.type}'),
       if (notes != null && notes.isNotEmpty)
-        Padding(
-          padding: const EdgeInsets.only(top: 4),
-          child: Text(notes),
-        ),
+        Padding(padding: const EdgeInsets.only(top: 4), child: Text(notes)),
       if (!isOutgoing)
         Padding(
           padding: const EdgeInsets.only(top: 4),
@@ -807,9 +806,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
     return ListTile(
       contentPadding: EdgeInsets.zero,
       leading: CircleAvatar(
-        child: Text(
-          otherName.isNotEmpty ? otherName[0].toUpperCase() : '?',
-        ),
+        child: Text(otherName.isNotEmpty ? otherName[0].toUpperCase() : '?'),
       ),
       title: Text(otherName),
       subtitle: Column(
@@ -861,10 +858,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
             tooltip: _isEditing ? 'Cancel edit' : 'Edit contact',
             onPressed: _isEditing ? _cancelEditing : _startEditing,
           ),
-          IconButton(
-            icon: const Icon(Icons.delete),
-            onPressed: _confirmDelete,
-          ),
+          IconButton(icon: const Icon(Icons.delete), onPressed: _confirmDelete),
         ],
       ),
       body: AnimatedSwitcher(
@@ -879,25 +873,19 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
                   SliverPadding(
                     padding: const EdgeInsets.all(16.0),
                     sliver: SliverList(
-                      delegate: SliverChildListDelegate(
-                        [
-                          PeopleCard(
-                            contact: previewContact,
-                          ),
+                      delegate: SliverChildListDelegate([
+                        PeopleCard(contact: previewContact),
+                        const SizedBox(height: 16),
+                        ...detailSections,
+                        if (detailSections.isNotEmpty)
                           const SizedBox(height: 16),
-                          ...detailSections,
-                          if (detailSections.isNotEmpty)
-                            const SizedBox(height: 16),
-                          _buildRelationshipCard(),
-                          const SizedBox(height: 16),
-                        ],
-                      ),
+                        _buildRelationshipCard(),
+                        const SizedBox(height: 16),
+                      ]),
                     ),
                   ),
                   ..._buildInteractionsSlivers(),
-                  const SliverToBoxAdapter(
-                    child: SizedBox(height: 80),
-                  ),
+                  const SliverToBoxAdapter(child: SizedBox(height: 80)),
                 ],
               ),
       ),
@@ -911,10 +899,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
 
   List<Widget> _buildInteractionsSlivers() {
     final theme = Theme.of(context);
-    final title = Text(
-      'Interactions',
-      style: theme.textTheme.titleMedium,
-    );
+    final title = Text('Interactions', style: theme.textTheme.titleMedium);
 
     // If loading or empty, just show the header card with appropriate content
     if (_isLoadingInteractions) {
@@ -981,17 +966,14 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
       SliverPadding(
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
         sliver: SliverList(
-          delegate: SliverChildBuilderDelegate(
-            (context, index) {
-              final interaction = _filteredInteractionsCache[index];
-              return _buildTimelineTile(
-                interaction: interaction,
-                isFirst: index == 0,
-                isLast: index == _filteredInteractionsCache.length - 1,
-              );
-            },
-            childCount: _filteredInteractionsCache.length,
-          ),
+          delegate: SliverChildBuilderDelegate((context, index) {
+            final interaction = _filteredInteractionsCache[index];
+            return _buildTimelineTile(
+              interaction: interaction,
+              isFirst: index == 0,
+              isLast: index == _filteredInteractionsCache.length - 1,
+            );
+          }, childCount: _filteredInteractionsCache.length),
         ),
       ),
     ];
@@ -1000,9 +982,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
   Card _buildCard({required List<Widget> children}) {
     return Card(
       elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -1048,10 +1028,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
   Widget _buildEditDetailsCard() {
     return _buildCard(
       children: [
-        _buildTextField(
-          controller: _firstNameController,
-          label: 'First Name',
-        ),
+        _buildTextField(controller: _firstNameController, label: 'First Name'),
         const SizedBox(height: 16),
         _buildTextField(
           controller: _middleNameController,
@@ -1114,10 +1091,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
           onRemove: _removeReminder,
         ),
         const SizedBox(height: 12),
-        Text(
-          'Photo cues',
-          style: Theme.of(context).textTheme.titleSmall,
-        ),
+        Text('Photo cues', style: Theme.of(context).textTheme.titleSmall),
         const SizedBox(height: 8),
         if (_photoCues.isNotEmpty)
           Wrap(
@@ -1149,14 +1123,15 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
             Expanded(
               child: TextField(
                 controller: _photoCueController,
-                decoration: _buildInputDecoration(
-                  'Link or path to a helpful photo',
-                ).copyWith(
-                  suffixIcon: IconButton(
-                    icon: const Icon(Icons.add),
-                    onPressed: _addPhotoCueFromInput,
-                  ),
-                ),
+                decoration:
+                    _buildInputDecoration(
+                      'Link or path to a helpful photo',
+                    ).copyWith(
+                      suffixIcon: IconButton(
+                        icon: const Icon(Icons.add),
+                        onPressed: _addPhotoCueFromInput,
+                      ),
+                    ),
                 onSubmitted: (_) => _addPhotoCueFromInput(),
               ),
             ),
@@ -1178,10 +1153,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
   Widget _buildEditTagsCard() {
     return _buildCard(
       children: [
-        Text(
-          'Tags',
-          style: Theme.of(context).textTheme.titleMedium,
-        ),
+        Text('Tags', style: Theme.of(context).textTheme.titleMedium),
         const SizedBox(height: 12),
         TextField(
           controller: _tagController,
@@ -1235,10 +1207,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
     }
     return _buildCard(
       children: [
-        Text(
-          'Meeting context',
-          style: Theme.of(context).textTheme.titleMedium,
-        ),
+        Text('Meeting context', style: Theme.of(context).textTheme.titleMedium),
         const SizedBox(height: 12),
         _buildDetailLine('First meeting notes', notes),
       ],
@@ -1252,15 +1221,9 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
     }
     return _buildCard(
       children: [
-        Text(
-          'Notes',
-          style: Theme.of(context).textTheme.titleMedium,
-        ),
+        Text('Notes', style: Theme.of(context).textTheme.titleMedium),
         const SizedBox(height: 12),
-        Text(
-          notes,
-          style: Theme.of(context).textTheme.bodyMedium,
-        ),
+        Text(notes, style: Theme.of(context).textTheme.bodyMedium),
       ],
     );
   }
@@ -1367,10 +1330,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
 
     return _buildCard(
       children: [
-        Text(
-          'Recognition cues',
-          style: theme.textTheme.titleMedium,
-        ),
+        Text('Recognition cues', style: theme.textTheme.titleMedium),
         const SizedBox(height: 12),
         ...sections,
       ],
@@ -1383,10 +1343,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
     }
     return _buildCard(
       children: [
-        Text(
-          'Tags',
-          style: Theme.of(context).textTheme.titleMedium,
-        ),
+        Text('Tags', style: Theme.of(context).textTheme.titleMedium),
         const SizedBox(height: 12),
         Wrap(
           spacing: 8,
@@ -1412,10 +1369,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
             ),
           ),
           const SizedBox(height: 4),
-          Text(
-            value,
-            style: theme.textTheme.bodyMedium,
-          ),
+          Text(value, style: theme.textTheme.bodyMedium),
         ],
       ),
     );
@@ -1536,10 +1490,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
           label: '${interaction.durationMinutes} min',
         ),
       if (interaction.markForPrayer)
-        _buildInfoPill(
-          icon: Icons.self_improvement,
-          label: 'Prayer focus',
-        ),
+        _buildInfoPill(icon: Icons.self_improvement, label: 'Prayer focus'),
     ];
 
     return Material(
@@ -1556,8 +1507,9 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
           child: Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: theme.colorScheme.surfaceContainerHighest
-                  .withValues(alpha: 0.4),
+              color: theme.colorScheme.surfaceContainerHighest.withValues(
+                alpha: 0.4,
+              ),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: theme.colorScheme.outlineVariant),
             ),
@@ -1567,10 +1519,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(
-                      mediumIcon,
-                      color: theme.colorScheme.primary,
-                    ),
+                    Icon(mediumIcon, color: theme.colorScheme.primary),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(
@@ -1661,11 +1610,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
                 ),
                 if (metadataPills.isNotEmpty) ...[
                   const SizedBox(height: 12),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: metadataPills,
-                  ),
+                  Wrap(spacing: 8, runSpacing: 8, children: metadataPills),
                 ],
                 if (interaction.followUpAt != null) ...[
                   const SizedBox(height: 12),
@@ -1679,8 +1624,9 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
                       const SizedBox(width: 6),
                       Expanded(
                         child: Text(
-                          _cardFollowUpFormatter
-                              .format(interaction.followUpAt!),
+                          _cardFollowUpFormatter.format(
+                            interaction.followUpAt!,
+                          ),
                           style: theme.textTheme.labelSmall,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -1745,9 +1691,9 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
       return;
     }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Interaction updated')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Interaction updated')));
   }
 
   Future<void> _openInteractionDetails(Interaction interaction) async {
@@ -1792,11 +1738,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            icon,
-            size: 16,
-            color: theme.colorScheme.onSurfaceVariant,
-          ),
+          Icon(icon, size: 16, color: theme.colorScheme.onSurfaceVariant),
           const SizedBox(width: 6),
           Flexible(
             child: Text(
@@ -1903,8 +1845,8 @@ class _InteractionDetailPageState extends State<InteractionDetailPage> {
       final name = contact?.fullName.isNotEmpty == true
           ? contact!.fullName
           : (contact?.nickname?.isNotEmpty == true
-              ? contact!.nickname!
-              : participantId);
+                ? contact!.nickname!
+                : participantId);
       final initial = name.isNotEmpty ? name[0].toUpperCase() : '?';
 
       return Chip(
@@ -1933,9 +1875,7 @@ class _InteractionDetailPageState extends State<InteractionDetailPage> {
             ? BorderSide(color: theme.colorScheme.outlineVariant, width: 0.5)
             : BorderSide.none,
       ),
-      child: Column(
-        children: children,
-      ),
+      child: Column(children: children),
     );
   }
 
@@ -2000,9 +1940,9 @@ class _InteractionDetailPageState extends State<InteractionDetailPage> {
 
     await _refreshInteraction();
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Interaction updated')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Interaction updated')));
   }
 
   @override
@@ -2069,11 +2009,7 @@ class _InteractionDetailPageState extends State<InteractionDetailPage> {
                 ),
               ),
               const SizedBox(height: 12),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: participantBadges,
-              ),
+              Wrap(spacing: 8, runSpacing: 8, children: participantBadges),
               const SizedBox(height: 24),
             ],
 
@@ -2089,7 +2025,8 @@ class _InteractionDetailPageState extends State<InteractionDetailPage> {
             _buildCard(
               children: [
                 _buildDetailTile(
-                  icon: _mediumIcons[_interaction.medium] ??
+                  icon:
+                      _mediumIcons[_interaction.medium] ??
                       Icons.event_note_outlined,
                   title: 'Medium',
                   value: mediumLabel,
@@ -2134,9 +2071,7 @@ class _InteractionDetailPageState extends State<InteractionDetailPage> {
                     padding: const EdgeInsets.all(16.0),
                     child: Text(
                       _interaction.notes!,
-                      style: theme.textTheme.bodyLarge?.copyWith(
-                        height: 1.5,
-                      ),
+                      style: theme.textTheme.bodyLarge?.copyWith(height: 1.5),
                     ),
                   ),
                 ],
@@ -2295,7 +2230,7 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
       (a, b) => a.fullName.toLowerCase().compareTo(b.fullName.toLowerCase()),
     );
     _contactLookup = {
-      for (final contact in _availableContacts) contact.id: contact
+      for (final contact in _availableContacts) contact.id: contact,
     };
     _selectedParticipantIds = {
       widget.contact.id,
@@ -2322,10 +2257,7 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
 
     if (result != null && mounted) {
       setState(() {
-        _selectedParticipantIds = {
-          widget.contact.id,
-          ...result,
-        };
+        _selectedParticipantIds = {widget.contact.id, ...result};
       });
     }
   }
@@ -2353,8 +2285,8 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
     final name = contact.fullName.isNotEmpty
         ? contact.fullName
         : (contact.nickname?.isNotEmpty == true
-            ? contact.nickname!
-            : contact.id);
+              ? contact.nickname!
+              : contact.id);
     final initial = name.isNotEmpty ? name[0].toUpperCase() : '?';
 
     return FilterChip(
@@ -2376,11 +2308,7 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
     // Add primary contact (read-only)
     final primaryContact = _contactLookup[widget.contact.id] ?? widget.contact;
     chips.add(
-      _buildParticipantChip(
-        primaryContact,
-        isSelected: true,
-        isEnabled: false,
-      ),
+      _buildParticipantChip(primaryContact, isSelected: true, isEnabled: false),
     );
 
     // Add selected contacts
@@ -2389,19 +2317,12 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
       final contact = _contactLookup[id];
       if (contact != null) {
         chips.add(
-          _buildParticipantChip(
-            contact,
-            isSelected: true,
-            isEnabled: true,
-          ),
+          _buildParticipantChip(contact, isSelected: true, isEnabled: true),
         );
       } else {
         // Fallback for unknown IDs
         chips.add(
-          Chip(
-            label: Text(id),
-            onDeleted: () => _toggleParticipant(id),
-          ),
+          Chip(label: Text(id), onDeleted: () => _toggleParticipant(id)),
         );
       }
     }
@@ -2409,16 +2330,9 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Participants',
-          style: Theme.of(context).textTheme.titleSmall,
-        ),
+        Text('Participants', style: Theme.of(context).textTheme.titleSmall),
         const SizedBox(height: 8),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: chips,
-        ),
+        Wrap(spacing: 8, runSpacing: 8, children: chips),
         const SizedBox(height: 12),
         OutlinedButton.icon(
           onPressed: _showParticipantSelectionDialog,
@@ -2433,11 +2347,10 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
   void initState() {
     super.initState();
     final initial = widget.initialInteraction;
-    _summaryController =
-        TextEditingController(text: initial != null ? initial.summary : '');
-    _locationController = TextEditingController(
-      text: initial?.location ?? '',
+    _summaryController = TextEditingController(
+      text: initial != null ? initial.summary : '',
     );
+    _locationController = TextEditingController(text: initial?.location ?? '');
     _durationController = TextEditingController(
       text: initial?.durationMinutes != null
           ? initial!.durationMinutes.toString()
@@ -2522,10 +2435,7 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
     _updateSaveEnabled();
   }
 
-  String? _applyManualOccurredTime(
-    String value, {
-    bool shouldUpdate = true,
-  }) {
+  String? _applyManualOccurredTime(String value, {bool shouldUpdate = true}) {
     final text = value.trim();
     if (text.isEmpty) {
       return 'Enter a time.';
@@ -2637,9 +2547,7 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
               _isListening = false;
             });
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Voice capture error: ${error.errorMsg}'),
-              ),
+              SnackBar(content: Text('Voice capture error: ${error.errorMsg}')),
             );
           },
           onStatus: (status) {
@@ -2659,8 +2567,9 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
           if (_sheetActive && mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
-                content:
-                    Text('Speech recognition is unavailable on this device.'),
+                content: Text(
+                  'Speech recognition is unavailable on this device.',
+                ),
               ),
             );
           }
@@ -2733,9 +2642,9 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
       }
     } catch (error) {
       if (_sheetActive && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Voice capture error: $error')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Voice capture error: $error')));
       }
     }
   }
@@ -2762,8 +2671,9 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
 
     final summary = _summaryController.text.trim();
     final durationText = _durationController.text.trim();
-    final durationMinutes =
-        durationText.isEmpty ? null : int.tryParse(durationText);
+    final durationMinutes = durationText.isEmpty
+        ? null
+        : int.tryParse(durationText);
     final notesText = _notesController.text.trim();
     final notes = notesText.isEmpty ? null : notesText;
 
@@ -2790,8 +2700,9 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
     );
 
     final bool isEditing = widget.initialInteraction != null;
-    final previousInteractions =
-        List<Interaction>.from(widget.existingInteractions);
+    final previousInteractions = List<Interaction>.from(
+      widget.existingInteractions,
+    );
     final optimisticInteractions = List<Interaction>.from(previousInteractions);
 
     if (isEditing) {
@@ -2825,8 +2736,9 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
 
       await BackupService().exportBackup();
 
-      final committedInteractions =
-          List<Interaction>.from(optimisticInteractions);
+      final committedInteractions = List<Interaction>.from(
+        optimisticInteractions,
+      );
       if (!isEditing) {
         final pendingIndex = committedInteractions.indexWhere(
           (item) => identical(item, interaction),
@@ -2851,8 +2763,9 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content:
-              Text(isEditing ? 'Interaction updated' : 'Interaction logged'),
+          content: Text(
+            isEditing ? 'Interaction updated' : 'Interaction logged',
+          ),
         ),
       );
 
@@ -2876,9 +2789,7 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Failed to save interaction: $error'),
-        ),
+        SnackBar(content: Text('Failed to save interaction: $error')),
       );
     }
   }
@@ -2996,10 +2907,7 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
                         value: 'in_person',
                         child: Text('In-person'),
                       ),
-                      DropdownMenuItem(
-                        value: 'call',
-                        child: Text('Call'),
-                      ),
+                      DropdownMenuItem(value: 'call', child: Text('Call')),
                       DropdownMenuItem(
                         value: 'message',
                         child: Text('Message'),
@@ -3008,10 +2916,7 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
                         value: 'online',
                         child: Text('Online Meeting'),
                       ),
-                      DropdownMenuItem(
-                        value: 'other',
-                        child: Text('Other'),
-                      ),
+                      DropdownMenuItem(value: 'other', child: Text('Other')),
                     ],
                     onChanged: (value) {
                       if (value == null) return;
@@ -3196,10 +3101,7 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SizedBox(height: 12),
-        Text(
-          'Recent:',
-          style: Theme.of(context).textTheme.labelSmall,
-        ),
+        Text('Recent:', style: Theme.of(context).textTheme.labelSmall),
         const SizedBox(height: 8),
         SingleChildScrollView(
           scrollDirection: Axis.horizontal,
@@ -3208,10 +3110,14 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
               return Padding(
                 padding: const EdgeInsets.only(right: 8),
                 child: ActionChip(
-                  label: Text(interaction.summary,
-                      overflow: TextOverflow.ellipsis),
-                  avatar: Icon(_mediumIcons[interaction.medium] ?? Icons.chat,
-                      size: 16),
+                  label: Text(
+                    interaction.summary,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  avatar: Icon(
+                    _mediumIcons[interaction.medium] ?? Icons.chat,
+                    size: 16,
+                  ),
                   onPressed: () {
                     _fillFromInteraction(interaction);
                   },
@@ -3242,10 +3148,7 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
       _markForPrayer = base.markForPrayer;
 
       // Reset participants to just base contact + those in the reused interaction
-      _selectedParticipantIds = {
-        widget.contact.id,
-        ...base.participantIds,
-      };
+      _selectedParticipantIds = {widget.contact.id, ...base.participantIds};
 
       // Update validation state
       _isSaveEnabled = _calculateSaveEnabled();
@@ -3277,11 +3180,7 @@ class _TimelinePainter extends CustomPainter {
     const iconCenterY = 12.0;
 
     if (!isFirst) {
-      canvas.drawLine(
-        Offset(centerX, 0),
-        Offset(centerX, iconCenterY),
-        paint,
-      );
+      canvas.drawLine(Offset(centerX, 0), Offset(centerX, iconCenterY), paint);
     }
 
     if (!isLast) {

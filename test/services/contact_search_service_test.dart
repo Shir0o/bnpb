@@ -86,12 +86,14 @@ void main() {
       expect(results.first.matchDescription, 'First meeting notes');
     });
 
-    test('empty query returns all contacts with 0 score (normal search)',
-        () async {
-      final results = await service.search('');
-      expect(results.length, 3);
-      expect(results.first.score, 0);
-    });
+    test(
+      'empty query returns all contacts with 0 score (normal search)',
+      () async {
+        final results = await service.search('');
+        expect(results.length, 3);
+        expect(results.first.score, 0);
+      },
+    );
 
     test('empty query returns empty list (context search)', () async {
       final results = await service.searchMeetingContexts('');
@@ -101,18 +103,28 @@ void main() {
     test('getSuggestions returns contacts ranked by recency', () {
       final now = DateTime.now();
       final cRecency = [
-        Contact(id: 'old', firstName: 'Old', interactions: [
-          Interaction(
+        Contact(
+          id: 'old',
+          firstName: 'Old',
+          interactions: [
+            Interaction(
               occurredAt: now.subtract(const Duration(days: 10)),
               summary: 'old',
-              medium: 'call')
-        ]),
-        Contact(id: 'new', firstName: 'New', interactions: [
-          Interaction(
+              medium: 'call',
+            ),
+          ],
+        ),
+        Contact(
+          id: 'new',
+          firstName: 'New',
+          interactions: [
+            Interaction(
               occurredAt: now.subtract(const Duration(days: 1)),
               summary: 'new',
-              medium: 'call')
-        ]),
+              medium: 'call',
+            ),
+          ],
+        ),
         Contact(id: 'none', firstName: 'None', interactions: []),
       ];
       service.index(cRecency);
@@ -128,13 +140,21 @@ void main() {
       final now = DateTime.now();
       // Both interacting "today", but one has more interactions
       final cFrequency = [
-        Contact(id: 'frequent', firstName: 'Frequent', interactions: [
-          Interaction(occurredAt: now, summary: '1', medium: 'call'),
-          Interaction(occurredAt: now, summary: '2', medium: 'call'),
-        ]),
-        Contact(id: 'once', firstName: 'Once', interactions: [
-          Interaction(occurredAt: now, summary: '1', medium: 'call'),
-        ]),
+        Contact(
+          id: 'frequent',
+          firstName: 'Frequent',
+          interactions: [
+            Interaction(occurredAt: now, summary: '1', medium: 'call'),
+            Interaction(occurredAt: now, summary: '2', medium: 'call'),
+          ],
+        ),
+        Contact(
+          id: 'once',
+          firstName: 'Once',
+          interactions: [
+            Interaction(occurredAt: now, summary: '1', medium: 'call'),
+          ],
+        ),
       ];
       service.index(cFrequency);
       final suggestions = service.getSuggestions();

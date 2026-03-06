@@ -29,42 +29,50 @@ void main() {
     mockDBHelper = MockDBHelper();
 
     registerFallbackValue(Contact(id: 'fake', firstName: 'Fake'));
-    registerFallbackValue(Interaction(
-      occurredAt: DateTime.now(),
-      summary: 'fake',
-      medium: 'call',
-    ));
+    registerFallbackValue(
+      Interaction(occurredAt: DateTime.now(), summary: 'fake', medium: 'call'),
+    );
   });
 
-  testWidgets('Saving a new interaction updates the UI list',
-      (WidgetTester tester) async {
+  testWidgets('Saving a new interaction updates the UI list', (
+    WidgetTester tester,
+  ) async {
     final contact = Contact(id: 'c1', firstName: 'John');
 
-    when(() => mockContactService.getInteractions('c1',
-        forceRefresh: any(named: 'forceRefresh'))).thenAnswer((_) async => []);
-    when(() => mockContactService.hasCachedInteractions('c1'))
-        .thenReturn(false);
+    when(
+      () => mockContactService.getInteractions(
+        'c1',
+        forceRefresh: any(named: 'forceRefresh'),
+      ),
+    ).thenAnswer((_) async => []);
+    when(
+      () => mockContactService.hasCachedInteractions('c1'),
+    ).thenReturn(false);
 
     when(() => mockDBHelper.getContacts()).thenAnswer((_) async => []);
-    when(() => mockDBHelper.getRelationshipsForContact('c1'))
-        .thenAnswer((_) async => []);
+    when(
+      () => mockDBHelper.getRelationshipsForContact('c1'),
+    ).thenAnswer((_) async => []);
     when(() => mockDBHelper.getAllTags()).thenAnswer((_) async => []);
 
     // Stub for inserting interaction
-    when(() => mockDBHelper.insertInteraction(any()))
-        .thenAnswer((invocation) async {
+    when(() => mockDBHelper.insertInteraction(any())).thenAnswer((
+      invocation,
+    ) async {
       final interaction = invocation.positionalArguments[0] as Interaction;
       return interaction.copyWith(id: 1);
     });
 
-    await tester.pumpWidget(MaterialApp(
-      home: ContactDetailsPage(
-        contact: contact,
-        onDelete: () async {},
-        contactService: mockContactService,
-        dbHelper: mockDBHelper,
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ContactDetailsPage(
+          contact: contact,
+          onDelete: () async {},
+          contactService: mockContactService,
+          dbHelper: mockDBHelper,
+        ),
       ),
-    ));
+    );
 
     await tester.pumpAndSettle();
 

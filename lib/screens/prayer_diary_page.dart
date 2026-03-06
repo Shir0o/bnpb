@@ -110,9 +110,9 @@ class _PrayerDiaryPageState extends State<PrayerDiaryPage> {
     final message = result == 'updated'
         ? 'Prayer request updated.'
         : 'Prayer request added.';
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   Future<void> _openPrayerRequestDetails(PrayerRequest request) async {
@@ -140,18 +140,13 @@ class _PrayerDiaryPageState extends State<PrayerDiaryPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Prayer diary'),
-      ),
+      appBar: AppBar(title: const Text('Prayer diary')),
       floatingActionButton: FloatingActionButton(
         onPressed: _openLogPrayerRequestSheet,
         tooltip: 'Log prayer request',
         child: const Icon(Icons.add),
       ),
-      body: RefreshIndicator(
-        onRefresh: _loadRequests,
-        child: _buildBody(),
-      ),
+      body: RefreshIndicator(onRefresh: _loadRequests, child: _buildBody()),
     );
   }
 
@@ -205,11 +200,8 @@ class _PrayerDiaryPageState extends State<PrayerDiaryPage> {
         final request = _requests[index];
         return _buildPrayerTile(request);
       },
-      separatorBuilder: (context, index) => const Divider(
-        height: 0,
-        indent: 72,
-        endIndent: 16,
-      ),
+      separatorBuilder: (context, index) =>
+          const Divider(height: 0, indent: 72, endIndent: 16),
     );
   }
 
@@ -220,8 +212,9 @@ class _PrayerDiaryPageState extends State<PrayerDiaryPage> {
         .where((name) => name != 'Unknown contact')
         .join(', ');
 
-    final displayNames =
-        contactNames.isEmpty ? 'Unknown contact' : contactNames;
+    final displayNames = contactNames.isEmpty
+        ? 'Unknown contact'
+        : contactNames;
 
     final details = [
       _formatDate(request.answeredAt ?? request.requestedAt),
@@ -257,9 +250,7 @@ class _PrayerDiaryPageState extends State<PrayerDiaryPage> {
             );
           }).toList();
         },
-        child: Chip(
-          label: Text(request.status.label),
-        ),
+        child: Chip(label: Text(request.status.label)),
       ),
       onTap: () => _openPrayerRequestDetails(request),
     );
@@ -286,10 +277,7 @@ class _PrayerDiaryPageState extends State<PrayerDiaryPage> {
         break;
     }
 
-    final updated = request.copyWith(
-      status: status,
-      answeredAt: answeredAt,
-    );
+    final updated = request.copyWith(status: status, answeredAt: answeredAt);
 
     final previousRequests = List<PrayerRequest>.from(_requests);
     setState(() {
@@ -304,9 +292,9 @@ class _PrayerDiaryPageState extends State<PrayerDiaryPage> {
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(_statusChangeMessage(status))),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(_statusChangeMessage(status))));
     } catch (error) {
       if (!mounted) {
         return;

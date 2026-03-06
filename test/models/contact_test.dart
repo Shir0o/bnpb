@@ -28,7 +28,11 @@ void main() {
       expect(c1.fullName, 'John Doe');
 
       final c2 = Contact(
-          id: '2', firstName: 'Jane', middleName: 'Marie', lastName: 'Smith');
+        id: '2',
+        firstName: 'Jane',
+        middleName: 'Marie',
+        lastName: 'Smith',
+      );
       expect(c2.fullName, 'Jane Marie Smith');
 
       final c3 = Contact(id: '3', firstName: 'Cher');
@@ -49,10 +53,7 @@ void main() {
         tags: ['A'],
       );
 
-      final updated = original.copyWith(
-        firstName: 'Johnny',
-        tags: ['A', 'B'],
-      );
+      final updated = original.copyWith(firstName: 'Johnny', tags: ['A', 'B']);
 
       expect(updated.id, original.id); // Should not change
       expect(updated.firstName, 'Johnny');

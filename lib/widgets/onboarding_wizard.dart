@@ -15,10 +15,7 @@ enum OnboardingFollowUp {
 
 /// Result returned from the onboarding wizard dialog.
 class OnboardingResult {
-  const OnboardingResult({
-    required this.completed,
-    this.followUp,
-  });
+  const OnboardingResult({required this.completed, this.followUp});
 
   /// Whether the user completed (or skipped) the onboarding flow.
   final bool completed;
@@ -97,12 +94,9 @@ class _OnboardingWizardState extends State<OnboardingWizard> {
   }
 
   void _jumpToFollowUp(_OnboardingStep step) {
-    Navigator.of(context).pop(
-      OnboardingResult(
-        completed: true,
-        followUp: step.followUp,
-      ),
-    );
+    Navigator.of(
+      context,
+    ).pop(OnboardingResult(completed: true, followUp: step.followUp));
   }
 
   @override
@@ -121,8 +115,9 @@ class _OnboardingWizardState extends State<OnboardingWizard> {
                 alignment: Alignment.centerRight,
                 child: TextButton(
                   onPressed: () {
-                    Navigator.of(context)
-                        .pop(const OnboardingResult(completed: true));
+                    Navigator.of(
+                      context,
+                    ).pop(const OnboardingResult(completed: true));
                   },
                   child: const Text('Skip'),
                 ),
@@ -178,8 +173,10 @@ class _OnboardingWizardState extends State<OnboardingWizard> {
                 ),
               ),
               Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 16,
+                ),
                 child: Column(
                   children: [
                     Row(
@@ -194,8 +191,9 @@ class _OnboardingWizardState extends State<OnboardingWizard> {
                             shape: BoxShape.circle,
                             color: i == _index
                                 ? theme.colorScheme.primary
-                                : theme.colorScheme.outline
-                                    .withValues(alpha: 0.4),
+                                : theme.colorScheme.outline.withValues(
+                                    alpha: 0.4,
+                                  ),
                           ),
                         ),
                       ),

@@ -30,8 +30,10 @@ class ContactService {
 
   /// Returns cached interactions for a contact if available, otherwise fetches them.
   /// [forceRefresh] will ignore cache and fetch fresh data.
-  Future<List<Interaction>> getInteractions(String contactId,
-      {bool forceRefresh = false}) async {
+  Future<List<Interaction>> getInteractions(
+    String contactId, {
+    bool forceRefresh = false,
+  }) async {
     if (_cachedInteractions.containsKey(contactId) && !forceRefresh) {
       return _cachedInteractions[contactId]!;
     }

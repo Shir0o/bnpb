@@ -22,8 +22,11 @@ class IntegritySpyDBHelper extends MockDBHelper {
   Future<Database> get database async => _db;
 
   @override
-  Future<void> upsertContactFromSync(DatabaseExecutor txn, Contact contact,
-      {required bool isUpdate}) async {
+  Future<void> upsertContactFromSync(
+    DatabaseExecutor txn,
+    Contact contact, {
+    required bool isUpdate,
+  }) async {
     upsertCount++;
   }
 
@@ -35,8 +38,7 @@ class IntegritySpyDBHelper extends MockDBHelper {
     List<String>? contactIds,
     DateTime? updatedSince,
     bool includeDeleted = false,
-  }) async =>
-      [];
+  }) async => [];
 
   Future<void> _createSchema(Database db) async {
     // Minimal schema for SyncCoordinator
@@ -142,8 +144,9 @@ void main() {
 
   test('importChanges skips invalid JSON files', () async {
     final invalidFile = File('${tempDir.path}/invalid_data.json');
-    await invalidFile
-        .writeAsString('{ "version": 1, "contacts": ['); // Incomplete
+    await invalidFile.writeAsString(
+      '{ "version": 1, "contacts": [',
+    ); // Incomplete
 
     final result = await coordinator.importChanges(tempDir);
     expect(result.importedCount, 0);
@@ -160,16 +163,23 @@ void main() {
   test('importChanges processes valid files', () async {
     final validFile = File('${tempDir.path}/valid_data.json');
 
-    final contact =
-        Contact(id: 'c1', firstName: 'Test', updatedAt: DateTime.now());
+    final contact = Contact(
+      id: 'c1',
+      firstName: 'Test',
+      updatedAt: DateTime.now(),
+    );
 
-    await validFile.writeAsString(jsonEncode({
-      'version': 1,
-      'contacts': [contact.toMap()], // Provide 1 contact to trigger upsertCount
-      'interactions': [],
-      'prayerRequests': [],
-      'prayerLists': []
-    }));
+    await validFile.writeAsString(
+      jsonEncode({
+        'version': 1,
+        'contacts': [
+          contact.toMap(),
+        ], // Provide 1 contact to trigger upsertCount
+        'interactions': [],
+        'prayerRequests': [],
+        'prayerLists': [],
+      }),
+    );
 
     final result = await coordinator.importChanges(tempDir);
 

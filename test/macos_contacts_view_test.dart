@@ -12,15 +12,12 @@ void main() {
     FlutterSecureStorage.setMockInitialValues({});
   });
 
-  testWidgets('MacOSContactsView renders correctly',
-      (WidgetTester tester) async {
+  testWidgets('MacOSContactsView renders correctly', (
+    WidgetTester tester,
+  ) async {
     // Pump the widget
     await tester.pumpWidget(
-      const MaterialApp(
-        home: Scaffold(
-          body: MacOSContactsView(),
-        ),
-      ),
+      const MaterialApp(home: Scaffold(body: MacOSContactsView())),
     );
 
     // Initial state is loading

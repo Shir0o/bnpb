@@ -52,14 +52,15 @@ class _RelationshipExplorerPageState extends State<RelationshipExplorerPage> {
       return nickname.isNotEmpty ? nickname : 'Unknown contact';
     }
 
-    final groupedEntries = groupedByTarget.entries
-        .where((entry) => entry.value.length > 1)
-        .toList()
-      ..sort(
-        (a, b) => getDisplayName(a.key)
-            .toLowerCase()
-            .compareTo(getDisplayName(b.key).toLowerCase()),
-      );
+    final groupedEntries =
+        groupedByTarget.entries
+            .where((entry) => entry.value.length > 1)
+            .toList()
+          ..sort(
+            (a, b) => getDisplayName(
+              a.key,
+            ).toLowerCase().compareTo(getDisplayName(b.key).toLowerCase()),
+          );
 
     if (!mounted) return;
     setState(() {
@@ -92,10 +93,7 @@ class _RelationshipExplorerPageState extends State<RelationshipExplorerPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              hubName,
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
+            Text(hubName, style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 12),
             ...entry.value.map((relationship) {
               final sourceName = _displayName(relationship.sourceContactId);
@@ -126,9 +124,7 @@ class _RelationshipExplorerPageState extends State<RelationshipExplorerPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Relationship Explorer'),
-      ),
+      appBar: AppBar(title: const Text('Relationship Explorer')),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(
@@ -163,18 +159,16 @@ class _RelationshipExplorerPageState extends State<RelationshipExplorerPage> {
                             ),
                           )
                         : SliverList(
-                            delegate: SliverChildBuilderDelegate(
-                              (context, index) {
-                                final entry = _groupedEntries[index];
-                                return _buildGroupCard(entry);
-                              },
-                              childCount: _groupedEntries.length,
-                            ),
+                            delegate: SliverChildBuilderDelegate((
+                              context,
+                              index,
+                            ) {
+                              final entry = _groupedEntries[index];
+                              return _buildGroupCard(entry);
+                            }, childCount: _groupedEntries.length),
                           ),
                   ),
-                  const SliverToBoxAdapter(
-                    child: SizedBox(height: 16),
-                  ),
+                  const SliverToBoxAdapter(child: SizedBox(height: 16)),
                 ],
               ),
             ),

@@ -81,25 +81,18 @@ class ExportService {
       label: 'First meeting notes',
       description: 'Context from the very first interaction',
     ),
-    ExportField(
-      id: 'notes',
-      label: 'Notes',
-      description: 'General notes',
-    ),
+    ExportField(id: 'notes', label: 'Notes', description: 'General notes'),
   ];
 
   /// Generates a CSV file for the selected contacts and fields.
-  Future<File> exportCsv(
-    List<Contact> contacts,
-    List<String> fieldIds,
-  ) async {
+  Future<File> exportCsv(List<Contact> contacts, List<String> fieldIds) async {
     final rows = <List<String>>[];
     rows.add(fieldIds.map(_labelForField).toList());
 
     for (final contact in contacts) {
-      rows.add(fieldIds
-          .map((field) => _stringValueForField(contact, field))
-          .toList());
+      rows.add(
+        fieldIds.map((field) => _stringValueForField(contact, field)).toList(),
+      );
     }
 
     final csvContent = const ListToCsvConverter().convert(rows);
@@ -109,16 +102,15 @@ class ExportService {
   }
 
   /// Generates a PDF file containing a table of the selected fields.
-  Future<File> exportPdf(
-    List<Contact> contacts,
-    List<String> fieldIds,
-  ) async {
+  Future<File> exportPdf(List<Contact> contacts, List<String> fieldIds) async {
     final pdf = pw.Document();
     final headers = fieldIds.map(_labelForField).toList();
     final data = contacts
-        .map((contact) => fieldIds
-            .map((field) => _stringValueForField(contact, field))
-            .toList())
+        .map(
+          (contact) => fieldIds
+              .map((field) => _stringValueForField(contact, field))
+              .toList(),
+        )
         .toList();
 
     pdf.addPage(
@@ -152,8 +144,11 @@ class ExportService {
     List<String> fieldIds, {
     List<PrayerList>? prayerLists,
   }) async {
-    final payload = await buildFullExportPayload(contacts, fieldIds,
-        prayerLists: prayerLists);
+    final payload = await buildFullExportPayload(
+      contacts,
+      fieldIds,
+      prayerLists: prayerLists,
+    );
 
     final file = await _createTempFile('contacts_export', 'json');
     await file.writeAsString(jsonEncode(payload));
@@ -167,8 +162,11 @@ class ExportService {
     String passphrase, {
     List<PrayerList>? prayerLists,
   }) async {
-    final payload = await buildFullExportPayload(contacts, fieldIds,
-        prayerLists: prayerLists);
+    final payload = await buildFullExportPayload(
+      contacts,
+      fieldIds,
+      prayerLists: prayerLists,
+    );
 
     final jsonBytes = utf8.encode(jsonEncode(payload));
 

@@ -298,10 +298,7 @@ class _AddContactPageState extends State<AddContactPage>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          label,
-          style: Theme.of(context).textTheme.titleSmall,
-        ),
+        Text(label, style: Theme.of(context).textTheme.titleSmall),
         const SizedBox(height: 8),
         Row(
           children: [
@@ -309,13 +306,15 @@ class _AddContactPageState extends State<AddContactPage>
               child: TextField(
                 controller: controller,
                 decoration:
-                    _buildInputDecoration('Add $label', prefixIcon: leadingIcon)
-                        .copyWith(
-                  suffixIcon: IconButton(
-                    icon: const Icon(Icons.add),
-                    onPressed: onAdd,
-                  ),
-                ),
+                    _buildInputDecoration(
+                      'Add $label',
+                      prefixIcon: leadingIcon,
+                    ).copyWith(
+                      suffixIcon: IconButton(
+                        icon: const Icon(Icons.add),
+                        onPressed: onAdd,
+                      ),
+                    ),
                 onSubmitted: (value) {
                   if (onSubmitted != null) {
                     onSubmitted(value);
@@ -509,15 +508,16 @@ class _AddContactPageState extends State<AddContactPage>
                       Expanded(
                         child: TextField(
                           controller: _photoCueController,
-                          decoration: _buildInputDecoration(
-                            'Link or path to a helpful photo',
-                            prefixIcon: Icons.image_outlined,
-                          ).copyWith(
-                            suffixIcon: IconButton(
-                              icon: const Icon(Icons.add),
-                              onPressed: _addPhotoCueFromInput,
-                            ),
-                          ),
+                          decoration:
+                              _buildInputDecoration(
+                                'Link or path to a helpful photo',
+                                prefixIcon: Icons.image_outlined,
+                              ).copyWith(
+                                suffixIcon: IconButton(
+                                  icon: const Icon(Icons.add),
+                                  onPressed: _addPhotoCueFromInput,
+                                ),
+                              ),
                           onSubmitted: (_) => _addPhotoCueFromInput(),
                         ),
                       ),
@@ -537,24 +537,23 @@ class _AddContactPageState extends State<AddContactPage>
               const SizedBox(height: 16),
               _buildCard(
                 children: [
-                  Text(
-                    'Tags',
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
+                  Text('Tags', style: Theme.of(context).textTheme.titleMedium),
                   const SizedBox(height: 12),
                   Row(
                     children: [
                       Expanded(
                         child: TextField(
                           controller: _tagController,
-                          decoration: _buildInputDecoration('Add a tag',
-                                  prefixIcon: Icons.tag)
-                              .copyWith(
-                            suffixIcon: IconButton(
-                              icon: const Icon(Icons.add),
-                              onPressed: _addTagFromInput,
-                            ),
-                          ),
+                          decoration:
+                              _buildInputDecoration(
+                                'Add a tag',
+                                prefixIcon: Icons.tag,
+                              ).copyWith(
+                                suffixIcon: IconButton(
+                                  icon: const Icon(Icons.add),
+                                  onPressed: _addTagFromInput,
+                                ),
+                              ),
                           onSubmitted: (_) => _addTagFromInput(),
                         ),
                       ),
@@ -603,9 +602,7 @@ class _AddContactPageState extends State<AddContactPage>
   Card _buildCard({required List<Widget> children}) {
     return Card(
       elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(

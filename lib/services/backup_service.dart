@@ -71,8 +71,9 @@ class BackupService {
   /// Ensures the backup directory exists and returns it.
   Future<Directory> ensureBackupDirectoryExists() async {
     final documentsDir = await getApplicationDocumentsDirectory();
-    final backupDir =
-        Directory(p.join(documentsDir.path, StorageConstants.backupDirectory));
+    final backupDir = Directory(
+      p.join(documentsDir.path, StorageConstants.backupDirectory),
+    );
     if (!await backupDir.exists()) {
       await backupDir.create(recursive: true);
     }
@@ -120,14 +121,16 @@ class BackupService {
         )
         .toList();
 
-    final snapshots = await Future.wait(entries.map((file) async {
-      final stat = await file.stat();
-      return BackupSnapshot(
-        path: file.path,
-        modified: stat.modified,
-        bytes: stat.size,
-      );
-    }));
+    final snapshots = await Future.wait(
+      entries.map((file) async {
+        final stat = await file.stat();
+        return BackupSnapshot(
+          path: file.path,
+          modified: stat.modified,
+          bytes: stat.size,
+        );
+      }),
+    );
 
     snapshots.sort((a, b) => b.modified.compareTo(a.modified));
     return snapshots;

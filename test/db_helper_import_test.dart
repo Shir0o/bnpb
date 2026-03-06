@@ -35,17 +35,15 @@ void main() {
       ],
     );
 
-    await helper.upsertContactRowForTest(
-      fakeTxn,
-      contact,
-      isUpdate: false,
-    );
+    await helper.upsertContactRowForTest(fakeTxn, contact, isUpdate: false);
 
     // Expect soft delete (update) instead of hard delete
     final interactionUpdates = fakeTxn.updateCalls
-        .where((call) =>
-            call.table == 'interactions' &&
-            call.values.containsKey('deletedAt'))
+        .where(
+          (call) =>
+              call.table == 'interactions' &&
+              call.values.containsKey('deletedAt'),
+        )
         .toList();
     expect(interactionUpdates, hasLength(1));
     expect(interactionUpdates.first.where, 'id = ?');
@@ -146,26 +144,47 @@ class _FakeBatch implements Batch {
   }
 
   @override
-  void insert(String table, Map<String, Object?> values,
-      {String? nullColumnHack, ConflictAlgorithm? conflictAlgorithm}) {
-    _calls.add(() => _txn.insert(table, values,
-        nullColumnHack: nullColumnHack, conflictAlgorithm: conflictAlgorithm));
+  void insert(
+    String table,
+    Map<String, Object?> values, {
+    String? nullColumnHack,
+    ConflictAlgorithm? conflictAlgorithm,
+  }) {
+    _calls.add(
+      () => _txn.insert(
+        table,
+        values,
+        nullColumnHack: nullColumnHack,
+        conflictAlgorithm: conflictAlgorithm,
+      ),
+    );
   }
 
   @override
-  void update(String table, Map<String, Object?> values,
-      {String? where,
-      List<Object?>? whereArgs,
-      ConflictAlgorithm? conflictAlgorithm}) {
-    _calls.add(() => _txn.update(table, values,
+  void update(
+    String table,
+    Map<String, Object?> values, {
+    String? where,
+    List<Object?>? whereArgs,
+    ConflictAlgorithm? conflictAlgorithm,
+  }) {
+    _calls.add(
+      () => _txn.update(
+        table,
+        values,
         where: where,
         whereArgs: whereArgs,
-        conflictAlgorithm: conflictAlgorithm));
+        conflictAlgorithm: conflictAlgorithm,
+      ),
+    );
   }
 
   @override
-  Future<List<Object?>> commit(
-      {bool? exclusive, bool? noResult, bool? continueOnError}) async {
+  Future<List<Object?>> commit({
+    bool? exclusive,
+    bool? noResult,
+    bool? continueOnError,
+  }) async {
     for (final call in _calls) {
       await call();
     }
@@ -200,16 +219,18 @@ class _FakeBatch implements Batch {
   int get length => _calls.length;
 
   @override
-  void query(String table,
-      {bool? distinct,
-      List<String>? columns,
-      String? where,
-      List<Object?>? whereArgs,
-      String? groupBy,
-      String? having,
-      String? orderBy,
-      int? limit,
-      int? offset}) {
+  void query(
+    String table, {
+    bool? distinct,
+    List<String>? columns,
+    String? where,
+    List<Object?>? whereArgs,
+    String? groupBy,
+    String? having,
+    String? orderBy,
+    int? limit,
+    int? offset,
+  }) {
     throw UnimplementedError();
   }
 
@@ -299,7 +320,7 @@ class _FakeTransaction implements DatabaseExecutor {
     if (sql.contains('SELECT id FROM interactions WHERE id NOT IN')) {
       // Mock finding an orphan
       return [
-        {'id': 999}
+        {'id': 999},
       ];
     }
     return [];

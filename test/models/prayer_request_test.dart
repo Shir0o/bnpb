@@ -5,10 +5,14 @@ void main() {
   group('PrayerRequest', () {
     test('status helper methods work', () {
       expect(PrayerRequestStatus.pending.label, 'Pending');
-      expect(PrayerRequestStatusX.fromStorage('pending'),
-          PrayerRequestStatus.pending);
-      expect(PrayerRequestStatusX.fromStorage('unknown'),
-          PrayerRequestStatus.pending);
+      expect(
+        PrayerRequestStatusX.fromStorage('pending'),
+        PrayerRequestStatus.pending,
+      );
+      expect(
+        PrayerRequestStatusX.fromStorage('unknown'),
+        PrayerRequestStatus.pending,
+      );
     });
 
     test('serialization works correctly', () {

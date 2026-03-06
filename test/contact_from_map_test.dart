@@ -11,10 +11,7 @@ void main() {
   });
 
   test('fromMap preserves provided id', () {
-    final contact = Contact.fromMap({
-      'id': 'contact-123',
-      'firstName': 'Bob',
-    });
+    final contact = Contact.fromMap({'id': 'contact-123', 'firstName': 'Bob'});
 
     expect(contact.firstName, 'Bob');
     expect(contact.id, 'contact-123');

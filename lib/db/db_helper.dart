@@ -208,11 +208,7 @@ class DBHelper {
     ''');
   }
 
-  Future<void> _migrate(
-    Database db,
-    int oldVersion,
-    int newVersion,
-  ) async {
+  Future<void> _migrate(Database db, int oldVersion, int newVersion) async {
     if (oldVersion < 2) {
       await db.execute('ALTER TABLE contacts ADD COLUMN nickname TEXT');
       await db.execute('''
@@ -315,9 +311,7 @@ class DBHelper {
       await db.execute(
         'ALTER TABLE interactions ADD COLUMN durationMinutes INTEGER',
       );
-      await db.execute(
-        'ALTER TABLE interactions ADD COLUMN category TEXT',
-      );
+      await db.execute('ALTER TABLE interactions ADD COLUMN category TEXT');
     }
 
     if (oldVersion < 7) {
@@ -465,39 +459,47 @@ class DBHelper {
     if (oldVersion < 14) {
       // 1. Add columns to contacts
       await db.execute(
-          "ALTER TABLE contacts ADD COLUMN updatedAt TEXT NOT NULL DEFAULT '1970-01-01T00:00:00.000Z'");
+        "ALTER TABLE contacts ADD COLUMN updatedAt TEXT NOT NULL DEFAULT '1970-01-01T00:00:00.000Z'",
+      );
       await db.execute("ALTER TABLE contacts ADD COLUMN deletedAt TEXT");
 
       // 2. Add columns to interactions
       // Not all SQLite versions support adding multiple columns or constraints in ALTER TABLE easily,
       // but adding columns one by one usually works.
       await db.execute(
-          "ALTER TABLE interactions ADD COLUMN syncId TEXT"); // We populate it next
+        "ALTER TABLE interactions ADD COLUMN syncId TEXT",
+      ); // We populate it next
       await db.execute(
-          "ALTER TABLE interactions ADD COLUMN updatedAt TEXT NOT NULL DEFAULT '1970-01-01T00:00:00.000Z'");
+        "ALTER TABLE interactions ADD COLUMN updatedAt TEXT NOT NULL DEFAULT '1970-01-01T00:00:00.000Z'",
+      );
       await db.execute("ALTER TABLE interactions ADD COLUMN deletedAt TEXT");
 
       // Populate syncId for interactions using a random UUID-like string if possible.
       // SQLite's hex(randomblob(16)) gives a 32-char hex string. We can use that as a unique ID.
       await db.execute(
-          "UPDATE interactions SET syncId = lower(hex(randomblob(16))) WHERE syncId IS NULL");
+        "UPDATE interactions SET syncId = lower(hex(randomblob(16))) WHERE syncId IS NULL",
+      );
 
       // Now set NOT NULL constraint for syncId by recreating the table OR just rely on app logic.
       // recreating is safer for strictness but risky for migration code complexity.
       // We will add a unique index to enforce it going forward.
       await db.execute(
-          "CREATE UNIQUE INDEX IF NOT EXISTS idx_interactions_syncId ON interactions(syncId)");
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_interactions_syncId ON interactions(syncId)",
+      );
 
       // 3. Add columns to prayer_requests
       await db.execute("ALTER TABLE prayer_requests ADD COLUMN syncId TEXT");
       await db.execute(
-          "ALTER TABLE prayer_requests ADD COLUMN updatedAt TEXT NOT NULL DEFAULT '1970-01-01T00:00:00.000Z'");
+        "ALTER TABLE prayer_requests ADD COLUMN updatedAt TEXT NOT NULL DEFAULT '1970-01-01T00:00:00.000Z'",
+      );
       await db.execute("ALTER TABLE prayer_requests ADD COLUMN deletedAt TEXT");
 
       await db.execute(
-          "UPDATE prayer_requests SET syncId = lower(hex(randomblob(16))) WHERE syncId IS NULL");
+        "UPDATE prayer_requests SET syncId = lower(hex(randomblob(16))) WHERE syncId IS NULL",
+      );
       await db.execute(
-          "CREATE UNIQUE INDEX IF NOT EXISTS idx_prayer_requests_syncId ON prayer_requests(syncId)");
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_prayer_requests_syncId ON prayer_requests(syncId)",
+      );
     }
 
     if (oldVersion < 15) {
@@ -506,7 +508,8 @@ class DBHelper {
     }
     if (oldVersion < 16) {
       await db.execute(
-          "ALTER TABLE prayer_lists ADD COLUMN updatedAt TEXT NOT NULL DEFAULT '1970-01-01T00:00:00.000Z'");
+        "ALTER TABLE prayer_lists ADD COLUMN updatedAt TEXT NOT NULL DEFAULT '1970-01-01T00:00:00.000Z'",
+      );
       await db.execute('ALTER TABLE prayer_lists ADD COLUMN deletedAt TEXT');
     }
     if (oldVersion < 17) {
@@ -516,7 +519,8 @@ class DBHelper {
 
       if (hasCategory && !hasNotes) {
         await db.execute(
-            'ALTER TABLE interactions RENAME COLUMN category TO notes');
+          'ALTER TABLE interactions RENAME COLUMN category TO notes',
+        );
       }
     }
     if (oldVersion < 18) {
@@ -559,12 +563,11 @@ class DBHelper {
         whereArgs: [listId],
       );
 
-      final contactIds =
-          memberRows.map((m) => m['contactId'] as String).toList();
+      final contactIds = memberRows
+          .map((m) => m['contactId'] as String)
+          .toList();
 
-      lists.add(
-        PrayerList.fromMap(row, contactIds: contactIds),
-      );
+      lists.add(PrayerList.fromMap(row, contactIds: contactIds));
     }
     return lists;
   }
@@ -595,12 +598,11 @@ class DBHelper {
         whereArgs: [listId],
       );
 
-      final contactIds =
-          memberRows.map((m) => m['contactId'] as String).toList();
+      final contactIds = memberRows
+          .map((m) => m['contactId'] as String)
+          .toList();
 
-      lists.add(
-        PrayerList.fromMap(row, contactIds: contactIds),
-      );
+      lists.add(PrayerList.fromMap(row, contactIds: contactIds));
     }
     return lists;
   }
@@ -642,11 +644,10 @@ class DBHelper {
 
       final batch = txn.batch();
       for (final contactId in list.contactIds) {
-        batch.insert(
-          'prayer_list_members',
-          {'listId': list.id, 'contactId': contactId},
-          conflictAlgorithm: ConflictAlgorithm.ignore,
-        );
+        batch.insert('prayer_list_members', {
+          'listId': list.id,
+          'contactId': contactId,
+        }, conflictAlgorithm: ConflictAlgorithm.ignore);
       }
       await batch.commit(noResult: true);
     });
@@ -658,12 +659,7 @@ class DBHelper {
     map['updatedAt'] = DateTime.now().toUtc().toIso8601String();
     map['deletedAt'] = null;
 
-    await db.update(
-      'prayer_lists',
-      map,
-      where: 'id = ?',
-      whereArgs: [list.id],
-    );
+    await db.update('prayer_lists', map, where: 'id = ?', whereArgs: [list.id]);
   }
 
   Future<void> deletePrayerList(String id) async {
@@ -672,7 +668,7 @@ class DBHelper {
       'prayer_lists',
       {
         'deletedAt': DateTime.now().toUtc().toIso8601String(),
-        'updatedAt': DateTime.now().toUtc().toIso8601String()
+        'updatedAt': DateTime.now().toUtc().toIso8601String(),
       },
       where: 'id = ?',
       whereArgs: [id],
@@ -682,11 +678,10 @@ class DBHelper {
   Future<void> addContactToPrayerList(String listId, String contactId) async {
     final db = await database;
     await db.transaction((txn) async {
-      await txn.insert(
-        'prayer_list_members',
-        {'listId': listId, 'contactId': contactId},
-        conflictAlgorithm: ConflictAlgorithm.ignore,
-      );
+      await txn.insert('prayer_list_members', {
+        'listId': listId,
+        'contactId': contactId,
+      }, conflictAlgorithm: ConflictAlgorithm.ignore);
       await txn.update(
         'prayer_lists',
         {'updatedAt': DateTime.now().toUtc().toIso8601String()},
@@ -697,7 +692,9 @@ class DBHelper {
   }
 
   Future<void> removeContactFromPrayerList(
-      String listId, String contactId) async {
+    String listId,
+    String contactId,
+  ) async {
     final db = await database;
     await db.transaction((txn) async {
       await txn.delete(
@@ -753,7 +750,7 @@ class DBHelper {
       'deletedAt': forceNowTimestamps
           ? null
           : contact.deletedAt
-              ?.toIso8601String(), // Revive if previously deleted only for local saves
+                ?.toIso8601String(), // Revive if previously deleted only for local saves
     };
 
     if (isUpdate) {
@@ -789,8 +786,13 @@ class DBHelper {
     Contact contact, {
     required bool isUpdate,
   }) async {
-    await _upsertContactRow(txn, contact,
-        isUpdate: isUpdate, syncNested: false, forceNowTimestamps: false);
+    await _upsertContactRow(
+      txn,
+      contact,
+      isUpdate: isUpdate,
+      syncNested: false,
+      forceNowTimestamps: false,
+    );
   }
 
   @visibleForTesting
@@ -802,11 +804,9 @@ class DBHelper {
     await _upsertContactRow(txn, contact, isUpdate: isUpdate, syncNested: true);
   }
 
-  Future<void> _upsertMeetContext(
-    DatabaseExecutor txn,
-    Contact contact,
-  ) async {
-    final hasContext = contact.firstMeetingNotes != null &&
+  Future<void> _upsertMeetContext(DatabaseExecutor txn, Contact contact) async {
+    final hasContext =
+        contact.firstMeetingNotes != null &&
         contact.firstMeetingNotes!.isNotEmpty;
 
     if (!hasContext) {
@@ -818,14 +818,10 @@ class DBHelper {
       return;
     }
 
-    await txn.insert(
-      'meet_contexts',
-      {
-        'contactId': contact.id,
-        'firstMeetingNotes': contact.firstMeetingNotes,
-      },
-      conflictAlgorithm: ConflictAlgorithm.replace,
-    );
+    await txn.insert('meet_contexts', {
+      'contactId': contact.id,
+      'firstMeetingNotes': contact.firstMeetingNotes,
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   Future<void> _replaceContactTags(
@@ -841,10 +837,7 @@ class DBHelper {
     final batch = (txn as dynamic).batch() as Batch;
     for (final tag in contact.tags.toSet()) {
       if (tag.isEmpty) continue;
-      batch.insert('contact_tags', {
-        'contactId': contact.id,
-        'tag': tag,
-      });
+      batch.insert('contact_tags', {'contactId': contact.id, 'tag': tag});
     }
     await batch.commit(noResult: true);
   }
@@ -867,8 +860,9 @@ class DBHelper {
       where: 'contactId = ?',
       whereArgs: [contact.id],
     );
-    final existingInteractionIds =
-        existingRows.map((row) => row['interactionId'] as int).toSet();
+    final existingInteractionIds = existingRows
+        .map((row) => row['interactionId'] as int)
+        .toSet();
 
     // In a pure replacement model (for Contact editing), we might unlink/delete interactions not in the list.
     // But since we want soft deletes, we should check what is missing.
@@ -969,14 +963,10 @@ class DBHelper {
     final uniqueParticipants = participantIds.toSet();
     final batch = (txn as dynamic).batch() as Batch;
     for (final participant in uniqueParticipants) {
-      batch.insert(
-        'interaction_participants',
-        {
-          'interactionId': interactionId,
-          'contactId': participant,
-        },
-        conflictAlgorithm: ConflictAlgorithm.replace,
-      );
+      batch.insert('interaction_participants', {
+        'interactionId': interactionId,
+        'contactId': participant,
+      }, conflictAlgorithm: ConflictAlgorithm.replace);
     }
     await batch.commit(noResult: true);
   }
@@ -984,14 +974,15 @@ class DBHelper {
   Future<void> _removeOrphanInteractions(DatabaseExecutor txn) async {
     // Soft delete orphans instead of hard delete
     final orphans = await txn.rawQuery(
-        'SELECT id FROM interactions WHERE id NOT IN (SELECT interactionId FROM interaction_participants) AND deletedAt IS NULL');
+      'SELECT id FROM interactions WHERE id NOT IN (SELECT interactionId FROM interaction_participants) AND deletedAt IS NULL',
+    );
 
     for (final row in orphans) {
       await txn.update(
         'interactions',
         {
           'deletedAt': DateTime.now().toUtc().toIso8601String(),
-          'updatedAt': DateTime.now().toUtc().toIso8601String()
+          'updatedAt': DateTime.now().toUtc().toIso8601String(),
         },
         where: 'id = ?',
         whereArgs: [row['id']],
@@ -1064,13 +1055,10 @@ class DBHelper {
 
     final batch = (txn as dynamic).batch() as Batch;
     for (final contactId in participants) {
-      batch.insert(
-        'prayer_request_participants',
-        {
-          'prayerRequestId': requestId,
-          'contactId': contactId,
-        },
-      );
+      batch.insert('prayer_request_participants', {
+        'prayerRequestId': requestId,
+        'contactId': contactId,
+      });
     }
     await batch.commit(noResult: true);
   }
@@ -1095,10 +1083,13 @@ class DBHelper {
       where: 'contactId = ?',
       whereArgs: [contact.id],
     );
-    final existingIds =
-        existingRows.map((r) => r['prayerRequestId'] as int).toSet();
-    final newIds =
-        contact.prayerRequests.map((r) => r.id).whereType<int>().toSet();
+    final existingIds = existingRows
+        .map((r) => r['prayerRequestId'] as int)
+        .toSet();
+    final newIds = contact.prayerRequests
+        .map((r) => r.id)
+        .whereType<int>()
+        .toSet();
 
     final idsToDelete = existingIds.difference(newIds);
     for (final id in idsToDelete) {
@@ -1106,7 +1097,7 @@ class DBHelper {
         'prayer_requests',
         {
           'deletedAt': DateTime.now().toUtc().toIso8601String(),
-          'updatedAt': DateTime.now().toUtc().toIso8601String()
+          'updatedAt': DateTime.now().toUtc().toIso8601String(),
         },
         where: 'id = ?',
         whereArgs: [id],
@@ -1114,10 +1105,7 @@ class DBHelper {
     }
 
     for (final request in contact.prayerRequests) {
-      final participants = {
-        ...request.participantIds,
-        contact.id,
-      }.toList();
+      final participants = {...request.participantIds, contact.id}.toList();
 
       final reqMap = request.toMap(includeId: false);
       reqMap.remove('participantIds');
@@ -1187,13 +1175,15 @@ class DBHelper {
     if (contactRows.isEmpty) return [];
 
     // Gather IDs for batch fetching
-    final retrievedContactIds =
-        contactRows.map((c) => c['id'] as String).toList();
+    final retrievedContactIds = contactRows
+        .map((c) => c['id'] as String)
+        .toList();
     final retrievedContactIdsSet = retrievedContactIds.toSet();
 
     // Check if we fetched all active contacts to use optimized bulk queries
     // This avoids huge IN clauses which can crash SQLite or be slow to parse
-    final isFetchAllActive = contactId == null &&
+    final isFetchAllActive =
+        contactId == null &&
         (contactIds == null || contactIds.isEmpty) &&
         updatedSince == null &&
         !includeDeleted;
@@ -1257,10 +1247,13 @@ class DBHelper {
     }
 
     // We also need to get ALL participants for these interactions to properly populate participantIds
-    final fetchedInteractionIds =
-        participantRows.map((r) => r['id'] as int).toSet();
-    final allParticipantsMap =
-        await _getParticipantsForInteractions(db, fetchedInteractionIds);
+    final fetchedInteractionIds = participantRows
+        .map((r) => r['id'] as int)
+        .toSet();
+    final allParticipantsMap = await _getParticipantsForInteractions(
+      db,
+      fetchedInteractionIds,
+    );
 
     final interactionsByContact = <String, List<Interaction>>{};
     for (final row in participantRows) {
@@ -1307,10 +1300,13 @@ class DBHelper {
       }
     }
 
-    final fetchedPrayerIds =
-        prayerParticipantRows.map((r) => r['id'] as int).toSet();
-    final allPrayerParticipantsMap =
-        await _getParticipantsForPrayerRequests(db, fetchedPrayerIds);
+    final fetchedPrayerIds = prayerParticipantRows
+        .map((r) => r['id'] as int)
+        .toSet();
+    final allPrayerParticipantsMap = await _getParticipantsForPrayerRequests(
+      db,
+      fetchedPrayerIds,
+    );
 
     final requestsByContact = <String, List<PrayerRequest>>{};
     for (final row in prayerParticipantRows) {
@@ -1390,7 +1386,7 @@ class DBHelper {
     }
     final contextMap = {
       for (var r in contextRows)
-        r['contactId'] as String: r['firstMeetingNotes'] as String
+        r['contactId'] as String: r['firstMeetingNotes'] as String,
     };
 
     return contactRows.map((row) {
@@ -1401,10 +1397,12 @@ class DBHelper {
           .map((i) => i.toMap())
           .toList(); // toMap/fromMap roundtrip usually fine but passing objects preferred if constructor allows
       // Actually Contact.fromMap expects List<Map> or similar.
-      contactMap['prayerRequests'] =
-          (requestsByContact[cId] ?? []).map((r) => r.toMap()).toList();
-      contactMap['relationships'] =
-          (relationshipsByContact[cId] ?? []).map((r) => r.toMap()).toList();
+      contactMap['prayerRequests'] = (requestsByContact[cId] ?? [])
+          .map((r) => r.toMap())
+          .toList();
+      contactMap['relationships'] = (relationshipsByContact[cId] ?? [])
+          .map((r) => r.toMap())
+          .toList();
       contactMap['firstMeetingNotes'] = contextMap[cId];
 
       // Re-stitch objects to avoid double serialization if possible, but fromMap is clean
@@ -1412,18 +1410,21 @@ class DBHelper {
 
       // Map DB columns back to Model fields
       if (contactMap['keywords'] != null) {
-        contactMap['recognitionKeywords'] =
-            _parseStringList(contactMap['keywords']);
+        contactMap['recognitionKeywords'] = _parseStringList(
+          contactMap['keywords'],
+        );
         contactMap.remove('keywords');
       }
       if (contactMap['photoCues'] != null) {
-        contactMap['recognitionPhotoUris'] =
-            _parseStringList(contactMap['photoCues']);
+        contactMap['recognitionPhotoUris'] = _parseStringList(
+          contactMap['photoCues'],
+        );
         contactMap.remove('photoCues');
       }
       if (contactMap['reminderCues'] != null) {
-        contactMap['recognitionReminders'] =
-            _parseStringList(contactMap['reminderCues']);
+        contactMap['recognitionReminders'] = _parseStringList(
+          contactMap['reminderCues'],
+        );
         contactMap.remove('reminderCues');
       }
 
@@ -1528,7 +1529,7 @@ class DBHelper {
       'interactions',
       {
         'deletedAt': DateTime.now().toUtc().toIso8601String(),
-        'updatedAt': DateTime.now().toUtc().toIso8601String()
+        'updatedAt': DateTime.now().toUtc().toIso8601String(),
       },
       where: 'id = ?',
       whereArgs: [id],
@@ -1544,8 +1545,9 @@ class DBHelper {
       where: 'contactId = ?',
       whereArgs: [contactId],
     );
-    final interactionIds =
-        participantRows.map((row) => row['interactionId'] as int).toSet();
+    final interactionIds = participantRows
+        .map((row) => row['interactionId'] as int)
+        .toSet();
     if (interactionIds.isEmpty) {
       return const [];
     }
@@ -1595,8 +1597,9 @@ class DBHelper {
         where: 'contactId = ?',
         whereArgs: [contactId],
       );
-      final interactionIds =
-          interactionIdRows.map((r) => r['interactionId'] as int).toList();
+      final interactionIds = interactionIdRows
+          .map((r) => r['interactionId'] as int)
+          .toList();
       if (interactionIds.isEmpty) return [];
 
       final placeholders = List.filled(interactionIds.length, '?').join(',');
@@ -1643,7 +1646,8 @@ class DBHelper {
   }
 
   Future<List<Interaction>> getInteractionsModifiedSince(
-      DateTime? since) async {
+    DateTime? since,
+  ) async {
     return getInteractions(updatedSince: since, includeDeleted: true);
   }
 
@@ -1684,11 +1688,7 @@ class DBHelper {
       WHERE ip.contactId = ? AND i.occurredAt = ? AND i.summary = ? AND i.deletedAt IS NULL
       LIMIT 1
       ''',
-      [
-        contactId,
-        occurredAt.toIso8601String(),
-        summary,
-      ],
+      [contactId, occurredAt.toIso8601String(), summary],
     );
 
     return rows.isNotEmpty;
@@ -1702,7 +1702,7 @@ class DBHelper {
       'contacts',
       {
         'deletedAt': DateTime.now().toUtc().toIso8601String(),
-        'updatedAt': DateTime.now().toUtc().toIso8601String()
+        'updatedAt': DateTime.now().toUtc().toIso8601String(),
       },
       where: 'id = ?',
       whereArgs: [id],
@@ -1771,15 +1771,12 @@ class DBHelper {
   Future<void> deleteRelationship(int id) async {
     final db = await database;
     // Relationship hard delete for now as per schema
-    await db.delete(
-      'relationships',
-      where: 'id = ?',
-      whereArgs: [id],
-    );
+    await db.delete('relationships', where: 'id = ?', whereArgs: [id]);
   }
 
   Future<List<Relationship>> getRelationshipsForContact(
-      String contactId) async {
+    String contactId,
+  ) async {
     final db = await database;
     // We should filter if source/target are deleted?
     // Since FK is ON DELETE CASCADE, if we actually deleted, they'd be gone.
@@ -1816,10 +1813,7 @@ class DBHelper {
 
     int id = -1;
     await db.transaction((txn) async {
-      id = await txn.insert(
-        'prayer_requests',
-        reqMap,
-      );
+      id = await txn.insert('prayer_requests', reqMap);
       await _replacePrayerRequestParticipants(txn, id, request.participantIds);
     });
 
@@ -1846,7 +1840,10 @@ class DBHelper {
         whereArgs: [request.id],
       );
       await _replacePrayerRequestParticipants(
-          txn, request.id!, request.participantIds);
+        txn,
+        request.id!,
+        request.participantIds,
+      );
     });
   }
 
@@ -1857,7 +1854,7 @@ class DBHelper {
       'prayer_requests',
       {
         'deletedAt': DateTime.now().toUtc().toIso8601String(),
-        'updatedAt': DateTime.now().toUtc().toIso8601String()
+        'updatedAt': DateTime.now().toUtc().toIso8601String(),
       },
       where: 'id = ?',
       whereArgs: [id],
@@ -1868,12 +1865,15 @@ class DBHelper {
     String contactId,
   ) async {
     final db = await database;
-    final rows = await db.rawQuery('''
+    final rows = await db.rawQuery(
+      '''
       SELECT pr.* FROM prayer_requests pr
       JOIN prayer_request_participants prp ON pr.id = prp.prayerRequestId
       WHERE prp.contactId = ? AND pr.deletedAt IS NULL
       ORDER BY pr.requestedAt DESC
-    ''', [contactId]);
+    ''',
+      [contactId],
+    );
 
     final requests = rows.map((row) => Map<String, dynamic>.from(row)).toList();
     final ids = requests.map((r) => r['id'] as int).toList();
@@ -1931,7 +1931,8 @@ class DBHelper {
   }
 
   Future<List<PrayerRequest>> getPrayerRequestsModifiedSince(
-      DateTime? since) async {
+    DateTime? since,
+  ) async {
     return getPrayerRequests(updatedSince: since, includeDeleted: true);
   }
 
@@ -1970,9 +1971,7 @@ class DBHelper {
       GROUP BY status
     ''');
 
-    final counts = {
-      for (final status in PrayerRequestStatus.values) status: 0,
-    };
+    final counts = {for (final status in PrayerRequestStatus.values) status: 0};
 
     for (final row in rows) {
       final status = PrayerRequestStatusX.fromStorage(row['status'] as String?);
@@ -2026,9 +2025,10 @@ class DBHelper {
       whereArgs: scopeType != null ? [scopeType.name] : null,
     );
     return rows
-        .map((row) => NotificationPreference.fromMap(
-              Map<String, dynamic>.from(row),
-            ))
+        .map(
+          (row) =>
+              NotificationPreference.fromMap(Map<String, dynamic>.from(row)),
+        )
         .toList();
   }
 
@@ -2079,8 +2079,9 @@ class DBHelper {
     final futures = <Future<List<Map<String, Object?>>>>[];
 
     for (var i = 0; i < values.length; i += batchSize) {
-      final end =
-          (i + batchSize < values.length) ? i + batchSize : values.length;
+      final end = (i + batchSize < values.length)
+          ? i + batchSize
+          : values.length;
       final chunk = values.sublist(i, end);
       final placeholders = List.filled(chunk.length, '?').join(',');
 

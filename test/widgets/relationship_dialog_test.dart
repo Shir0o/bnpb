@@ -5,16 +5,8 @@ import 'package:bnpb/models/relationship.dart';
 import 'package:bnpb/widgets/relationship_dialog.dart';
 
 void main() {
-  final contactA = Contact(
-    id: '1',
-    firstName: 'Alice',
-    lastName: 'Smith',
-  );
-  final contactB = Contact(
-    id: '2',
-    firstName: 'Bob',
-    lastName: 'Jones',
-  );
+  final contactA = Contact(id: '1', firstName: 'Alice', lastName: 'Smith');
+  final contactB = Contact(id: '2', firstName: 'Bob', lastName: 'Jones');
 
   Widget createDialog({
     Relationship? relationship,
@@ -32,12 +24,11 @@ void main() {
     );
   }
 
-  testWidgets('Dialog defaults to Parent and shows correct sentence',
-      (tester) async {
+  testWidgets('Dialog defaults to Parent and shows correct sentence', (
+    tester,
+  ) async {
     Relationship? savedRelationship;
-    await tester.pumpWidget(createDialog(
-      onSave: (r) => savedRelationship = r,
-    ));
+    await tester.pumpWidget(createDialog(onSave: (r) => savedRelationship = r));
 
     expect(find.text('Add Relationship'), findsOneWidget);
     expect(find.text('Parent'), findsOneWidget);
@@ -63,9 +54,7 @@ void main() {
   });
 
   testWidgets('Changing role updates text', (tester) async {
-    await tester.pumpWidget(createDialog(
-      onSave: (_) {},
-    ));
+    await tester.pumpWidget(createDialog(onSave: (_) {}));
 
     // Tap Child
     await tester.tap(find.text('Child'));
@@ -74,11 +63,10 @@ void main() {
     expect(find.text('Bob Jones is the Child of Alice Smith'), findsOneWidget);
   });
 
-  testWidgets('Selecting Other shows text field and updates text',
-      (tester) async {
-    await tester.pumpWidget(createDialog(
-      onSave: (_) {},
-    ));
+  testWidgets('Selecting Other shows text field and updates text', (
+    tester,
+  ) async {
+    await tester.pumpWidget(createDialog(onSave: (_) {}));
 
     // Tap Other
     await tester.tap(find.text('Other'));
@@ -87,7 +75,9 @@ void main() {
     expect(find.byType(TextField), findsNWidgets(2)); // Custom Type + Notes
 
     await tester.enterText(
-        find.widgetWithText(TextField, 'Custom relationship type'), 'Mentor');
+      find.widgetWithText(TextField, 'Custom relationship type'),
+      'Mentor',
+    );
     await tester.pump();
 
     expect(find.text('Bob Jones is the Mentor of Alice Smith'), findsOneWidget);
@@ -103,14 +93,18 @@ void main() {
     );
 
     Relationship? savedRelationship;
-    await tester.pumpWidget(createDialog(
-      relationship: existing,
-      onSave: (r) => savedRelationship = r,
-    ));
+    await tester.pumpWidget(
+      createDialog(
+        relationship: existing,
+        onSave: (r) => savedRelationship = r,
+      ),
+    );
 
     expect(find.text('Edit Relationship'), findsOneWidget);
     expect(
-        find.text('Bob Jones is the Sibling of Alice Smith'), findsOneWidget);
+      find.text('Bob Jones is the Sibling of Alice Smith'),
+      findsOneWidget,
+    );
     expect(find.text('Some notes'), findsOneWidget);
 
     // Check Child chip is NOT selected, Sibling IS selected

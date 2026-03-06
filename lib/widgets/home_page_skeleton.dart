@@ -30,19 +30,22 @@ class HomePageSkeleton extends StatelessWidget {
           Row(
             children: [
               const SkeletonBox(
-                  width: 50,
-                  height: 32,
-                  borderRadius: BorderRadius.all(Radius.circular(8))),
+                width: 50,
+                height: 32,
+                borderRadius: BorderRadius.all(Radius.circular(8)),
+              ),
               const SizedBox(width: 8),
               const SkeletonBox(
-                  width: 80,
-                  height: 32,
-                  borderRadius: BorderRadius.all(Radius.circular(8))),
+                width: 80,
+                height: 32,
+                borderRadius: BorderRadius.all(Radius.circular(8)),
+              ),
               const SizedBox(width: 8),
               const SkeletonBox(
-                  width: 70,
-                  height: 32,
-                  borderRadius: BorderRadius.all(Radius.circular(8))),
+                width: 70,
+                height: 32,
+                borderRadius: BorderRadius.all(Radius.circular(8)),
+              ),
             ],
           ),
           const SizedBox(height: 24),

@@ -10,10 +10,7 @@ import '../db/db_helper.dart';
 
 /// Bottom sheet that lets users choose fields and format when exporting data.
 class ExportOptionsSheet extends StatefulWidget {
-  const ExportOptionsSheet({
-    required this.contacts,
-    super.key,
-  });
+  const ExportOptionsSheet({required this.contacts, super.key});
 
   final List<Contact> contacts;
 
@@ -24,8 +21,9 @@ class ExportOptionsSheet extends StatefulWidget {
 class _ExportOptionsSheetState extends State<ExportOptionsSheet> {
   final ExportService _exportService = ExportService();
   final TextEditingController _passphraseController = TextEditingController();
-  final Set<String> _selectedFields =
-      ExportService.availableFields.map((field) => field.id).toSet();
+  final Set<String> _selectedFields = ExportService.availableFields
+      .map((field) => field.id)
+      .toSet();
 
   bool _isExporting = false;
   String? _error;
@@ -71,8 +69,11 @@ class _ExportOptionsSheetState extends State<ExportOptionsSheet> {
     await _performExport(
       generator: (fields) async {
         final prayerLists = await DBHelper().getPrayerLists();
-        return _exportService.exportJson(widget.contacts, fields,
-            prayerLists: prayerLists);
+        return _exportService.exportJson(
+          widget.contacts,
+          fields,
+          prayerLists: prayerLists,
+        );
       },
       description: 'BNPB JSON export ready to review.',
       successMessage: 'JSON export shared securely.',
@@ -92,8 +93,11 @@ class _ExportOptionsSheetState extends State<ExportOptionsSheet> {
       generator: (fields) async {
         final prayerLists = await DBHelper().getPrayerLists();
         return _exportService.exportEncryptedArchive(
-            widget.contacts, fields, passphrase,
-            prayerLists: prayerLists);
+          widget.contacts,
+          fields,
+          passphrase,
+          prayerLists: prayerLists,
+        );
       },
       description:
           'BNPB encrypted archive. Keep the passphrase safe to decrypt later.',
@@ -208,9 +212,7 @@ class _ExportOptionsSheetState extends State<ExportOptionsSheet> {
                             const SizedBox(height: 8),
                             Text(
                               _error!,
-                              style: TextStyle(
-                                color: theme.colorScheme.error,
-                              ),
+                              style: TextStyle(color: theme.colorScheme.error),
                             ),
                           ],
                         ],
@@ -231,7 +233,8 @@ class _ExportOptionsSheetState extends State<ExportOptionsSheet> {
                                       child: OutlinedButton.icon(
                                         onPressed: _exportCsv,
                                         icon: const Icon(
-                                            Icons.table_chart_outlined),
+                                          Icons.table_chart_outlined,
+                                        ),
                                         label: const Text('Export CSV'),
                                       ),
                                     ),
@@ -240,7 +243,8 @@ class _ExportOptionsSheetState extends State<ExportOptionsSheet> {
                                       child: OutlinedButton.icon(
                                         onPressed: _exportPdf,
                                         icon: const Icon(
-                                            Icons.picture_as_pdf_outlined),
+                                          Icons.picture_as_pdf_outlined,
+                                        ),
                                         label: const Text('Export PDF'),
                                       ),
                                     ),

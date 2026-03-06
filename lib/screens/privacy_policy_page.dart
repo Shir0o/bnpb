@@ -12,9 +12,7 @@ class PrivacyPolicyPage extends StatelessWidget {
     final sections = kPrivacyPolicyText.trim().split('\n\n');
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Privacy & usage'),
-      ),
+      appBar: AppBar(title: const Text('Privacy & usage')),
       body: ListView.separated(
         padding: const EdgeInsets.all(24),
         itemCount: sections.length,

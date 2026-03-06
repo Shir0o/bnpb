@@ -31,9 +31,7 @@ class PeopleCard extends StatelessWidget {
 
     return Card(
       elevation: 1,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       // Optimization: Removed Clip.antiAlias to avoid expensive saveLayer calls.
       // Clipping is handled by InkWell.borderRadius for splashes, and padding for content.
       child: InkWell(
@@ -64,10 +62,7 @@ class PeopleCard extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            displayName,
-                            style: theme.textTheme.titleMedium,
-                          ),
+                          Text(displayName, style: theme.textTheme.titleMedium),
                           if (contact.nickname != null &&
                               contact.nickname!.isNotEmpty &&
                               contact.nickname!.toLowerCase() !=
@@ -170,10 +165,12 @@ class PeopleCard extends StatelessWidget {
                                     // Resize image to display size to save memory
                                     image: ResizeImage(
                                       provider,
-                                      width: (80 *
-                                              MediaQuery.of(context)
-                                                  .devicePixelRatio)
-                                          .toInt(),
+                                      width:
+                                          (80 *
+                                                  MediaQuery.of(
+                                                    context,
+                                                  ).devicePixelRatio)
+                                              .toInt(),
                                     ),
                                     fit: BoxFit.cover,
                                   )
@@ -264,19 +261,15 @@ class PeopleCard extends StatelessWidget {
     }
     if (contact.tags.isNotEmpty) {
       details.addAll(
-        contact.tags.take(3).map(
-              (tag) => _SubtitleChip(
-                icon: Icons.style_outlined,
-                label: tag,
-              ),
+        contact.tags
+            .take(3)
+            .map(
+              (tag) => _SubtitleChip(icon: Icons.style_outlined, label: tag),
             ),
       );
       if (contact.tags.length > 3) {
         details.add(
-          _SubtitleChip(
-            icon: Icons.tag,
-            label: '+${contact.tags.length - 3}',
-          ),
+          _SubtitleChip(icon: Icons.tag, label: '+${contact.tags.length - 3}'),
         );
       }
     }
@@ -296,10 +289,7 @@ class PeopleCard extends StatelessWidget {
 }
 
 class _SubtitleChip extends StatelessWidget {
-  const _SubtitleChip({
-    required this.icon,
-    required this.label,
-  });
+  const _SubtitleChip({required this.icon, required this.label});
 
   final IconData icon;
   final String label;

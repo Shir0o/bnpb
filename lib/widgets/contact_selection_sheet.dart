@@ -142,14 +142,17 @@ class _ContactSelectionSheetState extends State<ContactSelectionSheet> {
                 hintText: 'Search contacts...',
                 prefixIcon: const Icon(Icons.search),
                 filled: true,
-                fillColor: theme.colorScheme.surfaceContainerHighest
-                    .withValues(alpha: 0.3),
+                fillColor: theme.colorScheme.surfaceContainerHighest.withValues(
+                  alpha: 0.3,
+                ),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                   borderSide: BorderSide.none,
                 ),
-                contentPadding:
-                    const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
+                contentPadding: const EdgeInsets.symmetric(
+                  vertical: 0,
+                  horizontal: 16,
+                ),
               ),
             ),
           ),
@@ -162,65 +165,67 @@ class _ContactSelectionSheetState extends State<ContactSelectionSheet> {
               child: _isLoading
                   ? const _ContactSelectionSkeleton(key: ValueKey('loading'))
                   : displayList.isEmpty
-                      ? Center(
-                          key: const ValueKey('empty'),
-                          child: Text(
-                            isSearching
-                                ? 'No matching contacts found'
-                                : 'No contacts found',
-                            style: theme.textTheme.bodyLarge?.copyWith(
-                              color: theme.colorScheme.outline,
+                  ? Center(
+                      key: const ValueKey('empty'),
+                      child: Text(
+                        isSearching
+                            ? 'No matching contacts found'
+                            : 'No contacts found',
+                        style: theme.textTheme.bodyLarge?.copyWith(
+                          color: theme.colorScheme.outline,
+                        ),
+                      ),
+                    )
+                  : ListView.builder(
+                      key: const ValueKey('list'),
+                      itemCount: displayList.length,
+                      itemBuilder: (context, index) {
+                        final match = displayList[index];
+                        final contact = match.contact;
+                        final isSelected = _selectedIds.contains(contact.id);
+                        final isDisabled = widget.disabledIds.contains(
+                          contact.id,
+                        );
+
+                        return ListTile(
+                          leading: CircleAvatar(
+                            backgroundColor: isDisabled
+                                ? theme.colorScheme.surfaceContainerHighest
+                                : theme.colorScheme.primaryContainer,
+                            foregroundColor: isDisabled
+                                ? theme.colorScheme.outline
+                                : theme.colorScheme.onPrimaryContainer,
+                            child: Text(
+                              contact.firstName.isNotEmpty
+                                  ? contact.firstName[0].toUpperCase()
+                                  : '?',
                             ),
                           ),
-                        )
-                      : ListView.builder(
-                          key: const ValueKey('list'),
-                          itemCount: displayList.length,
-                          itemBuilder: (context, index) {
-                            final match = displayList[index];
-                            final contact = match.contact;
-                            final isSelected =
-                                _selectedIds.contains(contact.id);
-                            final isDisabled =
-                                widget.disabledIds.contains(contact.id);
-
-                            return ListTile(
-                              leading: CircleAvatar(
-                                backgroundColor: isDisabled
-                                    ? theme.colorScheme.surfaceContainerHighest
-                                    : theme.colorScheme.primaryContainer,
-                                foregroundColor: isDisabled
-                                    ? theme.colorScheme.outline
-                                    : theme.colorScheme.onPrimaryContainer,
-                                child: Text(contact.firstName.isNotEmpty
-                                    ? contact.firstName[0].toUpperCase()
-                                    : '?'),
-                              ),
-                              title: Text(
-                                contact.fullName,
-                                style: TextStyle(
-                                  color: isDisabled
-                                      ? theme.colorScheme.outline
-                                      : null,
-                                ),
-                              ),
-                              subtitle: match.snippet != null
-                                  ? Text(match.snippet!)
-                                  : (contact.location?.isNotEmpty == true
-                                      ? Text(contact.location!)
-                                      : null),
-                              trailing: Checkbox(
-                                value: isSelected || isDisabled,
-                                onChanged: isDisabled
-                                    ? null
-                                    : (_) => _toggleSelection(contact.id),
-                              ),
-                              onTap: isDisabled
-                                  ? null
-                                  : () => _toggleSelection(contact.id),
-                            );
-                          },
-                        ),
+                          title: Text(
+                            contact.fullName,
+                            style: TextStyle(
+                              color: isDisabled
+                                  ? theme.colorScheme.outline
+                                  : null,
+                            ),
+                          ),
+                          subtitle: match.snippet != null
+                              ? Text(match.snippet!)
+                              : (contact.location?.isNotEmpty == true
+                                    ? Text(contact.location!)
+                                    : null),
+                          trailing: Checkbox(
+                            value: isSelected || isDisabled,
+                            onChanged: isDisabled
+                                ? null
+                                : (_) => _toggleSelection(contact.id),
+                          ),
+                          onTap: isDisabled
+                              ? null
+                              : () => _toggleSelection(contact.id),
+                        );
+                      },
+                    ),
             ),
           ),
         ],
@@ -239,8 +244,11 @@ class _ContactSelectionSkeleton extends StatelessWidget {
         itemCount: 10,
         physics: const NeverScrollableScrollPhysics(),
         itemBuilder: (context, index) => ListTile(
-          leading:
-              const SkeletonBox(width: 40, height: 40, shape: BoxShape.circle),
+          leading: const SkeletonBox(
+            width: 40,
+            height: 40,
+            shape: BoxShape.circle,
+          ),
           title: SkeletonBox(width: 120 + (index % 3 * 20.0), height: 16),
           subtitle: const SkeletonBox(width: 80, height: 12),
           trailing: const SkeletonBox(width: 24, height: 24),

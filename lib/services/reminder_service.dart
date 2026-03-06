@@ -50,8 +50,9 @@ class ReminderService {
 
   Future<void> _doInitialize() async {
     try {
-      const androidSettings =
-          AndroidInitializationSettings('@mipmap/ic_launcher');
+      const androidSettings = AndroidInitializationSettings(
+        '@mipmap/ic_launcher',
+      );
       const iosSettings = DarwinInitializationSettings(
         requestAlertPermission: true,
         requestBadgePermission: true,
@@ -86,29 +87,27 @@ class ReminderService {
   }
 
   Future<void> _requestPlatformPermissions() async {
-    final androidImpl = _plugin.resolvePlatformSpecificImplementation<
-        AndroidFlutterLocalNotificationsPlugin>();
+    final androidImpl = _plugin
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >();
     await androidImpl?.requestNotificationsPermission();
 
     if (await _shouldRequestExactAlarmPermission()) {
       await androidImpl?.requestExactAlarmsPermission();
     }
 
-    final iosImpl = _plugin.resolvePlatformSpecificImplementation<
-        IOSFlutterLocalNotificationsPlugin>();
-    await iosImpl?.requestPermissions(
-      alert: true,
-      badge: true,
-      sound: true,
-    );
+    final iosImpl = _plugin
+        .resolvePlatformSpecificImplementation<
+          IOSFlutterLocalNotificationsPlugin
+        >();
+    await iosImpl?.requestPermissions(alert: true, badge: true, sound: true);
 
-    final macImpl = _plugin.resolvePlatformSpecificImplementation<
-        MacOSFlutterLocalNotificationsPlugin>();
-    await macImpl?.requestPermissions(
-      alert: true,
-      badge: true,
-      sound: true,
-    );
+    final macImpl = _plugin
+        .resolvePlatformSpecificImplementation<
+          MacOSFlutterLocalNotificationsPlugin
+        >();
+    await macImpl?.requestPermissions(alert: true, badge: true, sound: true);
   }
 
   Future<void> _configureLocalTimeZone() async {
@@ -158,10 +157,7 @@ class ReminderService {
         categoryIdentifier: 'reminder',
       );
 
-      final payloadMap = <String, dynamic>{
-        'channel': channel.name,
-        'key': key,
-      };
+      final payloadMap = <String, dynamic>{'channel': channel.name, 'key': key};
       if (contactId != null) {
         payloadMap['contactId'] = contactId;
       }
@@ -187,7 +183,8 @@ class ReminderService {
       } catch (e) {
         if (_isExactAlarmPermissionError(e)) {
           debugPrint(
-              'Exact alarm failed, falling back to inexact scheduling: $e');
+            'Exact alarm failed, falling back to inexact scheduling: $e',
+          );
           await _plugin.zonedSchedule(
             id,
             title,
@@ -317,11 +314,7 @@ class ReminderService {
     }
   }
 
-  bool _markUnsupported(
-    String context,
-    Object error,
-    StackTrace stackTrace,
-  ) {
+  bool _markUnsupported(String context, Object error, StackTrace stackTrace) {
     if (!_isUnsupportedError(error)) {
       return false;
     }
@@ -490,8 +483,10 @@ class ReminderService {
     if (!await _shouldRequestExactAlarmPermission()) {
       return true;
     }
-    final androidImpl = _plugin.resolvePlatformSpecificImplementation<
-        AndroidFlutterLocalNotificationsPlugin>();
+    final androidImpl = _plugin
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >();
     final result = await androidImpl?.requestExactAlarmsPermission();
     return result ?? true;
   }

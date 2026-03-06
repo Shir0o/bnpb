@@ -140,9 +140,7 @@ class _MacOSPrayerDiaryViewState extends State<MacOSPrayerDiaryView> {
       height: 52,
       decoration: const BoxDecoration(
         color: Colors.white,
-        border: Border(
-          bottom: BorderSide(color: Color(0xFFE5E5E5)),
-        ),
+        border: Border(bottom: BorderSide(color: Color(0xFFE5E5E5))),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(
@@ -201,10 +199,7 @@ class _MacOSPrayerDiaryViewState extends State<MacOSPrayerDiaryView> {
                   hoverColor: const Color(0xFF0D7CF2).withAlpha(25),
                 ),
                 padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(
-                  minWidth: 32,
-                  minHeight: 32,
-                ),
+                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
               ),
             ],
           ),
@@ -216,8 +211,9 @@ class _MacOSPrayerDiaryViewState extends State<MacOSPrayerDiaryView> {
   Widget _buildContent() {
     final filteredRequests = _requests.where((req) {
       if (_searchQuery.isEmpty) return true;
-      final matchDescription =
-          req.description.toLowerCase().contains(_searchQuery);
+      final matchDescription = req.description.toLowerCase().contains(
+        _searchQuery,
+      );
       final matchContacts = req.participantIds.any((id) {
         final name = _displayNameForContact(id).toLowerCase();
         return name.contains(_searchQuery);
@@ -234,10 +230,7 @@ class _MacOSPrayerDiaryViewState extends State<MacOSPrayerDiaryView> {
             const SizedBox(height: 16),
             Text(
               'No prayer entries found',
-              style: GoogleFonts.inter(
-                fontSize: 14,
-                color: Colors.grey[600],
-              ),
+              style: GoogleFonts.inter(fontSize: 14, color: Colors.grey[600]),
             ),
           ],
         ),
@@ -265,7 +258,9 @@ class _MacOSPrayerDiaryViewState extends State<MacOSPrayerDiaryView> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildDateHeader(
-                key, requests.first.answeredAt ?? requests.first.requestedAt),
+              key,
+              requests.first.answeredAt ?? requests.first.requestedAt,
+            ),
             ...requests.map((req) => _buildEntry(req)),
           ],
         );
@@ -299,9 +294,7 @@ class _MacOSPrayerDiaryViewState extends State<MacOSPrayerDiaryView> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
       decoration: const BoxDecoration(
-        border: Border(
-          bottom: BorderSide(color: Color(0xFFF5F5F7)),
-        ),
+        border: Border(bottom: BorderSide(color: Color(0xFFF5F5F7))),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -360,8 +353,9 @@ class _MacOSPrayerDiaryViewState extends State<MacOSPrayerDiaryView> {
       if (mounted) {
         setState(() {
           _editingRequestId = null;
-          final index =
-              _requests.indexWhere((r) => r.syncId == updatedRequest.syncId);
+          final index = _requests.indexWhere(
+            (r) => r.syncId == updatedRequest.syncId,
+          );
           if (index != -1) {
             _requests[index] = updatedRequest;
             _sortRequests(_requests);
@@ -371,9 +365,9 @@ class _MacOSPrayerDiaryViewState extends State<MacOSPrayerDiaryView> {
     } catch (e) {
       debugPrint('Error updating prayer request: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to update request: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to update request: $e')));
       }
     }
   }

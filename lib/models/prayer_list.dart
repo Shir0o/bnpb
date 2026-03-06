@@ -11,8 +11,8 @@ class PrayerList {
     List<String>? contactIds,
     DateTime? updatedAt,
     this.deletedAt,
-  })  : contactIds = contactIds ?? const [],
-        updatedAt = updatedAt ?? DateTime.now();
+  }) : contactIds = contactIds ?? const [],
+       updatedAt = updatedAt ?? DateTime.now();
 
   final String id;
   final String name;
@@ -56,8 +56,10 @@ class PrayerList {
     };
   }
 
-  static PrayerList fromMap(Map<String, dynamic> map,
-      {List<String>? contactIds}) {
+  static PrayerList fromMap(
+    Map<String, dynamic> map, {
+    List<String>? contactIds,
+  }) {
     // If contactIds arg is null, try to read from map
     var ids = contactIds;
     if (ids == null && map['contactIds'] != null) {

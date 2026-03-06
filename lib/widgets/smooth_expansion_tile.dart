@@ -35,10 +35,13 @@ class SmoothExpansionTile extends StatefulWidget {
 
 class _SmoothExpansionTileState extends State<SmoothExpansionTile>
     with SingleTickerProviderStateMixin {
-  static final Animatable<double> _easeInTween =
-      CurveTween(curve: Curves.easeIn);
-  static final Animatable<double> _halfTween =
-      Tween<double>(begin: 0.0, end: 0.5);
+  static final Animatable<double> _easeInTween = CurveTween(
+    curve: Curves.easeIn,
+  );
+  static final Animatable<double> _halfTween = Tween<double>(
+    begin: 0.0,
+    end: 0.5,
+  );
 
   late AnimationController _controller;
   late Animation<double> _iconTurns;
@@ -57,7 +60,8 @@ class _SmoothExpansionTileState extends State<SmoothExpansionTile>
     _heightFactor = _controller.drive(CurveTween(curve: widget.curve));
     _iconTurns = _controller.drive(_halfTween.chain(_easeInTween));
 
-    _isExpanded = PageStorage.of(context).readState(context) as bool? ??
+    _isExpanded =
+        PageStorage.of(context).readState(context) as bool? ??
         widget.initiallyExpanded;
     if (_isExpanded) {
       _controller.value = 1.0;

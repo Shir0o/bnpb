@@ -184,9 +184,7 @@ class _MainPageState extends State<MainPage> with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
 
     // Initialize AppLifecycleListener to handle exit requests (MacOS Quit)
-    _listener = AppLifecycleListener(
-      onExitRequested: _onExitRequested,
-    );
+    _listener = AppLifecycleListener(onExitRequested: _onExitRequested);
 
     _pageController = PageController(initialPage: _currentIndex);
 
@@ -277,9 +275,7 @@ class _MainPageState extends State<MainPage> with WidgetsBindingObserver {
       }
       final messenger = ScaffoldMessenger.of(context);
       messenger.clearSnackBars();
-      messenger.showSnackBar(
-        SnackBar(content: Text(message)),
-      );
+      messenger.showSnackBar(SnackBar(content: Text(message)));
     });
   }
 
@@ -360,10 +356,10 @@ class _MainPageState extends State<MainPage> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.inactive) {
-      // Sync on backgrounding (Mobile)
-      SyncService().performSync();
+      // Sync on backgrounding (Mobile) - force it to ensure data is saved.
+      SyncService().performSync(force: true);
     } else if (state == AppLifecycleState.resumed) {
-      // Sync on resume
+      // Sync on resume - use cooldown to avoid "Google logging in" flashes.
       SyncService().performSync();
     }
   }

@@ -96,7 +96,10 @@ class PrayerInsightsEmptyState extends StatelessWidget {
 }
 
 class _HomePageState extends State<HomePage>
-    with WidgetsBindingObserver, TickerProviderStateMixin, AutomaticKeepAliveClientMixin {
+    with
+        WidgetsBindingObserver,
+        TickerProviderStateMixin,
+        AutomaticKeepAliveClientMixin {
   final DBHelper _dbHelper = DBHelper();
   List<Contact> _contacts = [];
   List<Contact> _filteredContacts = [];
@@ -151,23 +154,10 @@ class _HomePageState extends State<HomePage>
   }
 
   Future<void> _performInitialLoad() async {
-    final contactService = ContactService();
-    // Always show skeleton first (implied by default _isInitialLoad = true),
-    // but decide how long to keep it.
-
-    // Default to the long delay for fresh loads
-    Duration minDelay = const Duration(milliseconds: 750);
-
-    // If we have cached contacts, reduce the delay to just mask the rendering
-    // and provide a smooth feel, but still show the skeleton briefly.
-    if (contactService.hasCachedContacts) {
-      minDelay = const Duration(milliseconds: 300);
-    }
-
-    await Future.wait([
-      _fetchContacts(),
-      Future.delayed(minDelay),
-    ]);
+    // Decision: No longer enforcing a minimum delay for the skeleton.
+    // If data is ready instantly (e.g., from cache or fast DB), we transition immediately.
+    // This prevents the "flashing" effect where a skeleton is shown for a fixed duration.
+    await _fetchContacts();
 
     if (mounted) {
       setState(() {
@@ -180,7 +170,12 @@ class _HomePageState extends State<HomePage>
   void didChangeMetrics() {
     super.didChangeMetrics();
     final bottomInset = WidgetsBinding
-        .instance.platformDispatcher.views.first.viewInsets.bottom;
+        .instance
+        .platformDispatcher
+        .views
+        .first
+        .viewInsets
+        .bottom;
     final isKeyboardVisible = bottomInset > 0.0;
 
     // If keyboard was visible and now is not, and we have focus, un-focus to close suggestions.
@@ -192,8 +187,10 @@ class _HomePageState extends State<HomePage>
     _wasKeyboardVisible = isKeyboardVisible;
   }
 
-  Future<void> _fetchContacts(
-      {bool forceRefresh = false, bool useSkeleton = false}) async {
+  Future<void> _fetchContacts({
+    bool forceRefresh = false,
+    bool useSkeleton = false,
+  }) async {
     if (useSkeleton) {
       setState(() {
         _showRefreshSkeleton = true;
@@ -201,13 +198,15 @@ class _HomePageState extends State<HomePage>
     }
 
     // If using skeleton, enforce minimum delay to prevent flashing
-    final minDelay =
-        useSkeleton ? const Duration(milliseconds: 300) : Duration.zero;
+    final minDelay = useSkeleton
+        ? const Duration(milliseconds: 300)
+        : Duration.zero;
 
     await Future.wait([
       (() async {
-        final contacts =
-            await ContactService().getContacts(forceRefresh: forceRefresh);
+        final contacts = await ContactService().getContacts(
+          forceRefresh: forceRefresh,
+        );
         _applyContactsSnapshot(contacts);
         await _loadPrayerInsights();
       })(),
@@ -243,11 +242,9 @@ class _HomePageState extends State<HomePage>
       });
 
     final lookup = {for (final contact in sortedContacts) contact.id: contact};
-    final tags = sortedContacts
-        .expand((contact) => contact.tags)
-        .toSet()
-        .toList()
-      ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+    final tags =
+        sortedContacts.expand((contact) => contact.tags).toSet().toList()
+          ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
 
     _searchService.index(sortedContacts);
 
@@ -317,16 +314,16 @@ class _HomePageState extends State<HomePage>
       if (_searchController.text.trim() != query) {
         return [];
       }
-      _activeMatches = {
-        for (final match in matches) match.contact.id: match,
-      };
+      _activeMatches = {for (final match in matches) match.contact.id: match};
       baseList = matches.map((match) => match.contact).toList();
     }
 
     return baseList
-        .where((contact) =>
-            _selectedTagFilter == null ||
-            contact.tags.contains(_selectedTagFilter))
+        .where(
+          (contact) =>
+              _selectedTagFilter == null ||
+              contact.tags.contains(_selectedTagFilter),
+        )
         .toList();
   }
 
@@ -388,8 +385,10 @@ class _HomePageState extends State<HomePage>
       if (suggestions.isEmpty) {
         return const SizedBox.shrink();
       }
-      return _buildSuggestionsCard(suggestions,
-          key: const ValueKey('suggestions'));
+      return _buildSuggestionsCard(
+        suggestions,
+        key: const ValueKey('suggestions'),
+      );
     }
 
     final suggestions = _filteredContacts
@@ -401,8 +400,10 @@ class _HomePageState extends State<HomePage>
       return const SizedBox.shrink();
     }
 
-    return _buildSuggestionsCard(suggestions,
-        key: ValueKey('results_${suggestions.length}'));
+    return _buildSuggestionsCard(
+      suggestions,
+      key: ValueKey('results_${suggestions.length}'),
+    );
   }
 
   Widget _buildSuggestionsCard(List<ContactMatch> matches, {Key? key}) {
@@ -416,10 +417,7 @@ class _HomePageState extends State<HomePage>
         children: [
           for (int index = 0; index < matches.length; index++) ...[
             if (index != 0)
-              Divider(
-                height: 1,
-                color: theme.colorScheme.outlineVariant,
-              ),
+              Divider(height: 1, color: theme.colorScheme.outlineVariant),
             _SuggestionTile(
               contact: matches[index].contact,
               // If it's a search result, use the active match details.
@@ -440,9 +438,7 @@ class _HomePageState extends State<HomePage>
 
     return Card(
       elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -472,7 +468,9 @@ class _HomePageState extends State<HomePage>
                     const SizedBox(height: 8),
                     ..._pendingPrayerReminders.map((request) {
                       final contactName = _displayNameForContactId(
-                          _contactLookup, request.contactId);
+                        _contactLookup,
+                        request.contactId,
+                      );
                       return ListTile(
                         contentPadding: EdgeInsets.zero,
                         dense: true,
@@ -487,12 +485,16 @@ class _HomePageState extends State<HomePage>
                   ],
                   if (_recentAnsweredPrayers.isNotEmpty) ...[
                     const SizedBox(height: 12),
-                    Text('Answered recently',
-                        style: theme.textTheme.titleSmall),
+                    Text(
+                      'Answered recently',
+                      style: theme.textTheme.titleSmall,
+                    ),
                     const SizedBox(height: 8),
                     ..._recentAnsweredPrayers.map((request) {
                       final contactName = _displayNameForContactId(
-                          _contactLookup, request.contactId);
+                        _contactLookup,
+                        request.contactId,
+                      );
                       return Container(
                         margin: const EdgeInsets.only(bottom: 8),
                         decoration: BoxDecoration(
@@ -524,14 +526,16 @@ class _HomePageState extends State<HomePage>
                   ],
                   if (_prayerFocusInteractions.isNotEmpty) ...[
                     const SizedBox(height: 12),
-                    Text('Prayer focus interactions',
-                        style: theme.textTheme.titleSmall),
+                    Text(
+                      'Prayer focus interactions',
+                      style: theme.textTheme.titleSmall,
+                    ),
                     const SizedBox(height: 8),
                     ..._prayerFocusInteractions.map((interaction) {
                       final primaryContactId =
                           interaction.participantIds.isNotEmpty
-                              ? interaction.participantIds.first
-                              : null;
+                          ? interaction.participantIds.first
+                          : null;
                       final contact = primaryContactId != null
                           ? _contactLookup[primaryContactId]
                           : null;
@@ -598,8 +602,8 @@ class _HomePageState extends State<HomePage>
     for (var contact in contacts) {
       final location =
           (contact.location != null && contact.location!.isNotEmpty)
-              ? contact.location!
-              : 'Unknown';
+          ? contact.location!
+          : 'Unknown';
       grouped.putIfAbsent(location, () => []);
       grouped[location]!.add(contact);
     }
@@ -637,9 +641,9 @@ class _HomePageState extends State<HomePage>
       return;
     }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   Future<void> _openRestoreSheet() async {
@@ -676,18 +680,18 @@ class _HomePageState extends State<HomePage>
 
       if (result == null || result.files.isEmpty) {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('No file selected.')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('No file selected.')));
         return;
       }
 
       final filePath = result.files.single.path;
       if (filePath == null) {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Invalid file.')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Invalid file.')));
         return;
       }
 
@@ -704,9 +708,9 @@ class _HomePageState extends State<HomePage>
       );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to restore contacts: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to restore contacts: $e')));
     }
   }
 
@@ -736,8 +740,9 @@ class _HomePageState extends State<HomePage>
 
   Future<void> _deleteContact(String id) async {
     final previousContacts = List<Contact>.from(_contacts);
-    final optimisticContacts =
-        previousContacts.where((contact) => contact.id != id).toList();
+    final optimisticContacts = previousContacts
+        .where((contact) => contact.id != id)
+        .toList();
 
     _applyContactsSnapshot(optimisticContacts);
 
@@ -767,16 +772,16 @@ class _HomePageState extends State<HomePage>
 
     Navigator.of(context)
         .push(
-      MaterialPageRoute(
-        builder: (context) => ContactDetailsPage(
-          contact: contact,
-          onDelete: () => _deleteContact(contact.id),
-        ),
-      ),
-    )
+          MaterialPageRoute(
+            builder: (context) => ContactDetailsPage(
+              contact: contact,
+              onDelete: () => _deleteContact(contact.id),
+            ),
+          ),
+        )
         .then((_) {
-      unawaited(_fetchContacts(useSkeleton: true));
-    });
+          unawaited(_fetchContacts(useSkeleton: true));
+        });
   }
 
   @override
@@ -808,9 +813,7 @@ class _HomePageState extends State<HomePage>
             tooltip: 'Prayer diary',
             onPressed: () {
               Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => const PrayerDiaryPage(),
-                ),
+                MaterialPageRoute(builder: (_) => const PrayerDiaryPage()),
               );
             },
           ),
@@ -829,9 +832,7 @@ class _HomePageState extends State<HomePage>
             onPressed: () {
               Navigator.of(context).push(
                 MaterialPageRoute(
-                  builder: (context) => MetAtLookupPage(
-                    contacts: _contacts,
-                  ),
+                  builder: (context) => MetAtLookupPage(contacts: _contacts),
                 ),
               );
             },
@@ -886,7 +887,9 @@ class _HomePageState extends State<HomePage>
                                 .secondaryContainer
                                 .withValues(alpha: 0.3),
                             contentPadding: const EdgeInsets.symmetric(
-                                vertical: 0, horizontal: 16),
+                              vertical: 0,
+                              horizontal: 16,
+                            ),
                           ),
                         ),
                       ),
@@ -918,8 +921,9 @@ class _HomePageState extends State<HomePage>
                                       const SizedBox(width: 8),
                                       ..._availableTags.map((tag) {
                                         return Padding(
-                                          padding:
-                                              const EdgeInsets.only(right: 8),
+                                          padding: const EdgeInsets.only(
+                                            right: 8,
+                                          ),
                                           child: FilterChip(
                                             label: Text(tag),
                                             selected: _selectedTagFilter == tag,
@@ -941,107 +945,113 @@ class _HomePageState extends State<HomePage>
                         SliverPadding(
                           padding: const EdgeInsets.symmetric(horizontal: 16),
                           sliver: SliverList(
-                            delegate: SliverChildBuilderDelegate(
-                              (context, index) {
-                                final entry = groupedEntries[index];
-                                final location = entry.key;
-                                final contactsInLocation = entry.value;
-                                final isExpanded =
-                                    _expandedLocations.contains(location);
+                            delegate: SliverChildBuilderDelegate((
+                              context,
+                              index,
+                            ) {
+                              final entry = groupedEntries[index];
+                              final location = entry.key;
+                              final contactsInLocation = entry.value;
+                              final isExpanded = _expandedLocations.contains(
+                                location,
+                              );
 
-                                return Padding(
-                                  padding: const EdgeInsets.only(bottom: 12),
-                                  child: SmoothExpansionTile(
-                                    key: PageStorageKey<String>(location),
-                                    tilePadding: EdgeInsets.zero,
-                                    title: Text(location),
-                                    childrenPadding:
-                                        const EdgeInsets.only(top: 8),
-                                    initiallyExpanded: isExpanded,
-                                    duration: const Duration(milliseconds: 400),
-                                    reverseDuration:
-                                        const Duration(milliseconds: 600),
-                                    curve: Curves.fastOutSlowIn,
-                                    onExpansionChanged: (isExpanded) {
-                                      if (isExpanded) {
-                                        setState(() {
-                                          _expandedLocations.add(location);
-                                          _loadingLocations.add(location);
-                                        });
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 12),
+                                child: SmoothExpansionTile(
+                                  key: PageStorageKey<String>(location),
+                                  tilePadding: EdgeInsets.zero,
+                                  title: Text(location),
+                                  childrenPadding: const EdgeInsets.only(
+                                    top: 8,
+                                  ),
+                                  initiallyExpanded: isExpanded,
+                                  duration: const Duration(milliseconds: 400),
+                                  reverseDuration: const Duration(
+                                    milliseconds: 600,
+                                  ),
+                                  curve: Curves.fastOutSlowIn,
+                                  onExpansionChanged: (isExpanded) {
+                                    if (isExpanded) {
+                                      setState(() {
+                                        _expandedLocations.add(location);
+                                        _loadingLocations.add(location);
+                                      });
 
-                                        // Simulate network delay
-                                        Future.delayed(
-                                            const Duration(milliseconds: 500),
-                                            () {
+                                      // Simulate network delay
+                                      Future.delayed(
+                                        const Duration(milliseconds: 500),
+                                        () {
                                           if (mounted) {
                                             setState(() {
-                                              _loadingLocations
-                                                  .remove(location);
+                                              _loadingLocations.remove(
+                                                location,
+                                              );
                                             });
                                           }
-                                        });
-                                      } else {
-                                        setState(() {
-                                          _expandedLocations.remove(location);
-                                          _loadingLocations.remove(location);
-                                        });
-                                      }
-                                    },
-                                    itemCount: _loadingLocations
-                                            .contains(location)
-                                        ? 1
-                                        : (isExpanded
+                                        },
+                                      );
+                                    } else {
+                                      setState(() {
+                                        _expandedLocations.remove(location);
+                                        _loadingLocations.remove(location);
+                                      });
+                                    }
+                                  },
+                                  itemCount:
+                                      _loadingLocations.contains(location)
+                                      ? 1
+                                      : (isExpanded
                                             ? contactsInLocation.length
                                             : (contactsInLocation.length > 5
-                                                ? 5
-                                                : contactsInLocation.length)),
-                                    itemBuilder: (context, index) {
-                                      if (_loadingLocations
-                                          .contains(location)) {
-                                        return SkeletonLoader(
-                                          child: Column(
-                                            children: const [
-                                              Padding(
-                                                padding:
-                                                    EdgeInsets.only(bottom: 12),
-                                                child: ContactItemSkeleton(),
+                                                  ? 5
+                                                  : contactsInLocation.length)),
+                                  itemBuilder: (context, index) {
+                                    if (_loadingLocations.contains(location)) {
+                                      return SkeletonLoader(
+                                        child: Column(
+                                          children: const [
+                                            Padding(
+                                              padding: EdgeInsets.only(
+                                                bottom: 12,
                                               ),
-                                              Padding(
-                                                padding:
-                                                    EdgeInsets.only(bottom: 12),
-                                                child: ContactItemSkeleton(),
+                                              child: ContactItemSkeleton(),
+                                            ),
+                                            Padding(
+                                              padding: EdgeInsets.only(
+                                                bottom: 12,
                                               ),
-                                              Padding(
-                                                padding:
-                                                    EdgeInsets.only(bottom: 12),
-                                                child: ContactItemSkeleton(),
+                                              child: ContactItemSkeleton(),
+                                            ),
+                                            Padding(
+                                              padding: EdgeInsets.only(
+                                                bottom: 12,
                                               ),
-                                            ],
-                                          ),
-                                        );
-                                      }
-
-                                      final contact = contactsInLocation[index];
-                                      final match = _activeMatches[contact.id];
-                                      return Padding(
-                                        padding:
-                                            const EdgeInsets.only(bottom: 12),
-                                        child: PeopleCard(
-                                          contact: contact,
-                                          onTap: () =>
-                                              _navigateToContactDetails(
-                                                  contact),
-                                          highlightLabel:
-                                              match?.matchDescription,
-                                          highlightText: match?.snippet,
+                                              child: ContactItemSkeleton(),
+                                            ),
+                                          ],
                                         ),
                                       );
-                                    },
-                                  ),
-                                );
-                              },
-                              childCount: groupedEntries.length,
-                            ),
+                                    }
+
+                                    final contact = contactsInLocation[index];
+                                    final match = _activeMatches[contact.id];
+                                    return Padding(
+                                      padding: const EdgeInsets.only(
+                                        bottom: 12,
+                                      ),
+                                      child: PeopleCard(
+                                        contact: contact,
+                                        onTap: () =>
+                                            _navigateToContactDetails(contact),
+                                        highlightLabel: match?.matchDescription,
+                                        highlightText: match?.snippet,
+                                      ),
+                                    );
+                                  },
+                                ),
+                              );
+                            }, childCount: groupedEntries.length),
                           ),
                         )
                       else
@@ -1056,19 +1066,18 @@ class _HomePageState extends State<HomePage>
                                   Icon(
                                     Icons.person_off_outlined,
                                     size: 48,
-                                    color:
-                                        Theme.of(context).colorScheme.outline,
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.outline,
                                   ),
                                   const SizedBox(height: 16),
                                   Text(
                                     'No contacts found',
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .bodyLarge
+                                    style: Theme.of(context).textTheme.bodyLarge
                                         ?.copyWith(
-                                          color: Theme.of(context)
-                                              .colorScheme
-                                              .outline,
+                                          color: Theme.of(
+                                            context,
+                                          ).colorScheme.outline,
                                         ),
                                   ),
                                 ],
@@ -1077,9 +1086,7 @@ class _HomePageState extends State<HomePage>
                           ),
                         ),
                     ],
-                    const SliverToBoxAdapter(
-                      child: SizedBox(height: 80),
-                    ),
+                    const SliverToBoxAdapter(child: SizedBox(height: 80)),
                   ],
                 ),
               ),
@@ -1088,7 +1095,9 @@ class _HomePageState extends State<HomePage>
   }
 
   String _displayNameForContactId(
-      Map<String, Contact> lookup, String contactId) {
+    Map<String, Contact> lookup,
+    String contactId,
+  ) {
     final contact = lookup[contactId];
     if (contact == null) {
       return 'Unknown contact';

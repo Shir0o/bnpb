@@ -88,8 +88,8 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
     final biometricEnabled = await _securityService.isBiometricEnabled();
     final biometricAvailable = await _securityService.canUseBiometrics();
     final reminderService = ReminderService();
-    final supportsExactAlarmPermission =
-        await reminderService.isExactAlarmPermissionRelevant();
+    final supportsExactAlarmPermission = await reminderService
+        .isExactAlarmPermissionRelevant();
     final exactAlarmOptIn = await reminderService.isExactAlarmOptInEnabled();
 
     if (!mounted) {
@@ -112,15 +112,11 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Notification settings'),
-      ),
+      appBar: AppBar(title: const Text('Notification settings')),
       body: RefreshIndicator(
         onRefresh: _load,
         child: ListView(
@@ -184,7 +180,8 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
               ...ReminderChannel.values.map((channel) {
                 final preference = _globalDefaults[channel];
                 final enabled = preference?.enabled ?? true;
-                final leadTime = preference?.leadTime ??
+                final leadTime =
+                    preference?.leadTime ??
                     _fallbackLeadTimeFor(channel: channel);
                 return _PreferenceControl(
                   title: channel.label,
@@ -244,17 +241,20 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
               FilledButton.icon(
                 onPressed: _isPurging ? null : _promptForPasscode,
                 icon: Icon(
-                    _hasPasscode ? Icons.password : Icons.enhanced_encryption),
-                label:
-                    Text(_hasPasscode ? 'Update passcode' : 'Create passcode'),
+                  _hasPasscode ? Icons.password : Icons.enhanced_encryption,
+                ),
+                label: Text(
+                  _hasPasscode ? 'Update passcode' : 'Create passcode',
+                ),
               ),
               if (_hasPasscode)
                 Padding(
                   padding: const EdgeInsets.only(top: 8),
                   child: OutlinedButton.icon(
                     onPressed: _isPurging ? null : _removePasscode,
-                    icon:
-                        const Icon(Icons.no_encryption_gmailerrorred_outlined),
+                    icon: const Icon(
+                      Icons.no_encryption_gmailerrorred_outlined,
+                    ),
                     label: const Text('Remove passcode'),
                   ),
                 ),
@@ -283,8 +283,9 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
                 icon: const Icon(Icons.delete_forever_outlined),
                 style: FilledButton.styleFrom(
                   backgroundColor: Theme.of(context).colorScheme.errorContainer,
-                  foregroundColor:
-                      Theme.of(context).colorScheme.onErrorContainer,
+                  foregroundColor: Theme.of(
+                    context,
+                  ).colorScheme.onErrorContainer,
                 ),
                 label: const Text('Securely purge all data'),
               ),
@@ -344,10 +345,7 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
     );
   }
 
-  Future<void> _toggleExactAlarmOptIn(
-    BuildContext context,
-    bool value,
-  ) async {
+  Future<void> _toggleExactAlarmOptIn(BuildContext context, bool value) async {
     final reminderService = ReminderService();
     if (value) {
       final confirmed = await showDialog<bool>(
@@ -535,14 +533,16 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
                   TextField(
                     controller: passcodeController,
                     obscureText: true,
-                    decoration:
-                        const InputDecoration(labelText: 'New passcode'),
+                    decoration: const InputDecoration(
+                      labelText: 'New passcode',
+                    ),
                   ),
                   TextField(
                     controller: confirmController,
                     obscureText: true,
-                    decoration:
-                        const InputDecoration(labelText: 'Confirm passcode'),
+                    decoration: const InputDecoration(
+                      labelText: 'Confirm passcode',
+                    ),
                   ),
                   if (error != null)
                     Padding(
@@ -635,9 +635,9 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
       await _securityService.setPasscode(null);
       await _refreshSecurityState();
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Passcode removed.')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Passcode removed.')));
       }
     }
   }
@@ -657,8 +657,9 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content:
-                Text('Biometric authentication is unavailable on this device.'),
+            content: Text(
+              'Biometric authentication is unavailable on this device.',
+            ),
           ),
         );
       }
@@ -745,9 +746,9 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to purge data: $error')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to purge data: $error')));
     } finally {
       if (mounted) {
         setState(() {
@@ -776,9 +777,9 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
       return;
     }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   Widget _buildContactSection(BuildContext context) {
@@ -805,8 +806,9 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
           title: const Text('Contact overrides'),
           subtitle: const Text('Override reminders for a specific person.'),
           children: _contacts.map((contact) {
-            final displayName =
-                contact.fullName.isEmpty ? 'Unnamed contact' : contact.fullName;
+            final displayName = contact.fullName.isEmpty
+                ? 'Unnamed contact'
+                : contact.fullName;
             return ExpansionTile(
               title: Text(displayName),
               childrenPadding: const EdgeInsets.only(
@@ -976,15 +978,16 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
     });
 
     try {
-      final preference = (existing ??
-              NotificationPreference(
-                scopeType: scopeType,
-                scopeId: scopeId,
-                channel: channel,
-                enabled: enabled,
-                leadTime: leadTime,
-              ))
-          .copyWith(enabled: enabled, leadTime: leadTime);
+      final preference =
+          (existing ??
+                  NotificationPreference(
+                    scopeType: scopeType,
+                    scopeId: scopeId,
+                    channel: channel,
+                    enabled: enabled,
+                    leadTime: leadTime,
+                  ))
+              .copyWith(enabled: enabled, leadTime: leadTime);
       final saved = await _preferencesRepository.savePreference(preference);
       if (!mounted) {
         return;
@@ -998,8 +1001,8 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
         if (scopeType == NotificationScopeType.global) {
           final globalMutable =
               Map<ReminderChannel, NotificationPreference>.from(
-            _globalDefaults,
-          );
+                _globalDefaults,
+              );
           globalMutable[channel] = saved;
           _globalDefaults = globalMutable;
         }
@@ -1196,10 +1199,7 @@ class _PreferenceControl extends StatelessWidget {
                   children: [
                     Text(title, style: theme.textTheme.titleSmall),
                     const SizedBox(height: 4),
-                    Text(
-                      subtitle,
-                      style: theme.textTheme.bodySmall,
-                    ),
+                    Text(subtitle, style: theme.textTheme.bodySmall),
                   ],
                 ),
               ),
@@ -1280,7 +1280,8 @@ String _formatLeadTime(ReminderChannel channel, Duration duration) {
     }
   }
 
-  final isAfter = channel == ReminderChannel.prayerUpdate ||
+  final isAfter =
+      channel == ReminderChannel.prayerUpdate ||
       channel == ReminderChannel.weeklyReview ||
       channel == ReminderChannel.monthlyReview;
   final qualifier = isAfter ? 'after' : 'before';

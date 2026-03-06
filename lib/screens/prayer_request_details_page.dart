@@ -113,9 +113,9 @@ class _PrayerRequestDetailsPageState extends State<PrayerRequestDetailsPage> {
       final message = result == 'updated'
           ? 'Prayer request updated.'
           : 'Prayer request saved.';
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
     }
   }
 
@@ -133,8 +133,8 @@ class _PrayerRequestDetailsPageState extends State<PrayerRequestDetailsPage> {
       final name = contact.fullName.isNotEmpty
           ? contact.fullName
           : (contact.nickname?.isNotEmpty == true
-              ? contact.nickname!
-              : 'Unnamed');
+                ? contact.nickname!
+                : 'Unnamed');
       final initial = name.isNotEmpty ? name[0].toUpperCase() : '?';
 
       return Chip(
@@ -163,9 +163,7 @@ class _PrayerRequestDetailsPageState extends State<PrayerRequestDetailsPage> {
             ? BorderSide(color: theme.colorScheme.outlineVariant, width: 0.5)
             : BorderSide.none,
       ),
-      child: Column(
-        children: children,
-      ),
+      child: Column(children: children),
     );
   }
 
@@ -264,11 +262,7 @@ class _PrayerRequestDetailsPageState extends State<PrayerRequestDetailsPage> {
                 ),
               ),
               const SizedBox(height: 12),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: participantBadges,
-              ),
+              Wrap(spacing: 8, runSpacing: 8, children: participantBadges),
               const SizedBox(height: 24),
             ],
 
@@ -322,9 +316,7 @@ class _PrayerRequestDetailsPageState extends State<PrayerRequestDetailsPage> {
                     padding: const EdgeInsets.all(16.0),
                     child: Text(
                       _request.reflectionNotes!,
-                      style: theme.textTheme.bodyLarge?.copyWith(
-                        height: 1.5,
-                      ),
+                      style: theme.textTheme.bodyLarge?.copyWith(height: 1.5),
                     ),
                   ),
                 ],

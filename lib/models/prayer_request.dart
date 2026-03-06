@@ -55,8 +55,8 @@ class PrayerRequest {
     this.reflectionNotes,
     DateTime? updatedAt,
     this.deletedAt,
-  })  : syncId = syncId ?? const Uuid().v4(),
-        updatedAt = updatedAt ?? DateTime.now();
+  }) : syncId = syncId ?? const Uuid().v4(),
+       updatedAt = updatedAt ?? DateTime.now();
 
   /// Row identifier when persisted.
   final int? id;
@@ -156,8 +156,10 @@ class PrayerRequest {
     return PrayerRequest(
       id: map['id'] as int?,
       syncId: map['syncId'] as String?,
-      participantIds:
-          _parseParticipantIds(map['participantIds'], map['contactId']),
+      participantIds: _parseParticipantIds(
+        map['participantIds'],
+        map['contactId'],
+      ),
       interactionId: map['interactionId'] as int?,
       description: map['description'] as String,
       status: PrayerRequestStatusX.fromStorage(map['status'] as String?),
@@ -177,7 +179,9 @@ class PrayerRequest {
   }
 
   static List<String> _parseParticipantIds(
-      dynamic value, dynamic legacyContactId) {
+    dynamic value,
+    dynamic legacyContactId,
+  ) {
     if (value is List<String>) {
       return value;
     }

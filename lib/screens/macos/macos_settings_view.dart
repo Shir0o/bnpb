@@ -57,7 +57,7 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
     _addLog('Starting manual sync...', color: const Color(0xFF60A5FA));
 
     try {
-      await _syncService.performSync();
+      await _syncService.performSync(force: true);
       _addLog('Sync completed successfully.', color: const Color(0xFF4ADE80));
     } catch (e) {
       _addLog('Sync failed: $e', color: const Color(0xFFEF4444));
@@ -106,9 +106,9 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
     } else {
       final error = _googleDriveService.lastSignInError;
       if (error != null && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(error)),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error)));
       }
     }
   }
@@ -179,7 +179,8 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
         builder: (context) => AlertDialog(
           title: const Text('Restore Backup?'),
           content: Text(
-              'This will overwrite your current data with the selected backup:\n\n${p.basename(path)}'),
+            'This will overwrite your current data with the selected backup:\n\n${p.basename(path)}',
+          ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context, false),
@@ -196,8 +197,10 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
       if (confirmed == true) {
         if (!mounted) return;
         await _showLoading(
-          () => _backupService.restoreBackup(snapshot,
-              messenger: ScaffoldMessenger.of(context)),
+          () => _backupService.restoreBackup(
+            snapshot,
+            messenger: ScaffoldMessenger.of(context),
+          ),
           'Restoring backup...',
         );
         await _loadSettings();
@@ -210,9 +213,9 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error restoring backup: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error restoring backup: $e')));
       }
     }
   }
@@ -256,7 +259,9 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
               width: 14,
               height: 14,
               child: CircularProgressIndicator(
-                  strokeWidth: 2, color: Color(0xFF3B82F6)),
+                strokeWidth: 2,
+                color: Color(0xFF3B82F6),
+              ),
             ),
             const SizedBox(width: 8),
             Text(
@@ -282,8 +287,11 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
         ),
         child: Row(
           children: [
-            const Icon(Icons.sync_problem,
-                size: 16, color: Color(0xFFB91C1C)), // red-700
+            const Icon(
+              Icons.sync_problem,
+              size: 16,
+              color: Color(0xFFB91C1C),
+            ), // red-700
             const SizedBox(width: 8),
             Text(
               'Sync Failed',
@@ -307,8 +315,11 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
       ),
       child: Row(
         children: [
-          const Icon(Icons.cloud_done,
-              size: 16, color: Color(0xFF15803D)), // green-700
+          const Icon(
+            Icons.cloud_done,
+            size: 16,
+            color: Color(0xFF15803D),
+          ), // green-700
           const SizedBox(width: 8),
           Text(
             'Synced',
@@ -392,31 +403,38 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
                                 mainAxisAlignment:
                                     MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Text('Sync Method',
-                                      style: GoogleFonts.inter(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w600,
-                                          color: Colors.black)),
+                                  Text(
+                                    'Sync Method',
+                                    style: GoogleFonts.inter(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.black,
+                                    ),
+                                  ),
                                   SegmentedButton<SyncType>(
                                     segments: const [
                                       ButtonSegment(
                                         value: SyncType.local,
                                         label: Text('Local'),
-                                        icon: Icon(Icons.folder_outlined,
-                                            size: 14),
+                                        icon: Icon(
+                                          Icons.folder_outlined,
+                                          size: 14,
+                                        ),
                                       ),
                                       ButtonSegment(
                                         value: SyncType.googleDrive,
                                         label: Text('Drive'),
-                                        icon: Icon(Icons.cloud_outlined,
-                                            size: 14),
+                                        icon: Icon(
+                                          Icons.cloud_outlined,
+                                          size: 14,
+                                        ),
                                       ),
                                     ],
                                     selected: {_syncType},
                                     onSelectionChanged:
                                         (Set<SyncType> newSelection) {
-                                      _setSyncType(newSelection.first);
-                                    },
+                                          _setSyncType(newSelection.first);
+                                        },
                                     style: ButtonStyle(
                                       textStyle: WidgetStateProperty.all(
                                         GoogleFonts.inter(fontSize: 12),
@@ -443,21 +461,26 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
                                       children: [
                                         Row(
                                           children: [
-                                            Text('Backup Location',
-                                                style: GoogleFonts.inter(
-                                                    fontSize: 14,
-                                                    fontWeight: FontWeight.w600,
-                                                    color: _syncPath == null
-                                                        ? const Color(
-                                                            0xFF7F1D1D) // red-900
-                                                        : Colors.black)),
+                                            Text(
+                                              'Backup Location',
+                                              style: GoogleFonts.inter(
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.w600,
+                                                color: _syncPath == null
+                                                    ? const Color(
+                                                        0xFF7F1D1D,
+                                                      ) // red-900
+                                                    : Colors.black,
+                                              ),
+                                            ),
                                             if (_syncPath == null) ...[
                                               const SizedBox(width: 8),
-                                              const Icon(Icons.error,
-                                                  size: 18,
-                                                  color: Color(
-                                                      0xFFDC2626)), // red-600
-                                            ]
+                                              const Icon(
+                                                Icons.error,
+                                                size: 18,
+                                                color: Color(0xFFDC2626),
+                                              ), // red-600
+                                            ],
                                           ],
                                         ),
                                         if (_syncPath == null) ...[
@@ -465,23 +488,25 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
                                           Text(
                                             'Path not found or invalid permissions.',
                                             style: GoogleFonts.inter(
-                                                fontSize: 12,
-                                                color: const Color(
-                                                    0xFFB91C1C)), // red-700
+                                              fontSize: 12,
+                                              color: const Color(0xFFB91C1C),
+                                            ), // red-700
                                           ),
                                           const SizedBox(height: 8),
                                           Text(
                                             'Not Configured',
                                             style: GoogleFonts.ibmPlexMono(
-                                                fontSize: 12,
-                                                color: const Color(
-                                                    0xFF991B1B)), // red-800
+                                              fontSize: 12,
+                                              color: const Color(0xFF991B1B),
+                                            ), // red-800
                                           ),
                                         ] else ...[
                                           const SizedBox(height: 8),
                                           _buildPathBadge(
-                                              _syncPath!, Icons.folder),
-                                        ]
+                                            _syncPath!,
+                                            Icons.folder,
+                                          ),
+                                        ],
                                       ],
                                     ),
                                   ),
@@ -521,31 +546,38 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
                                 mainAxisAlignment:
                                     MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Text('Sync Method',
-                                      style: GoogleFonts.inter(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w600,
-                                          color: Colors.black)),
+                                  Text(
+                                    'Sync Method',
+                                    style: GoogleFonts.inter(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.black,
+                                    ),
+                                  ),
                                   SegmentedButton<SyncType>(
                                     segments: const [
                                       ButtonSegment(
                                         value: SyncType.local,
                                         label: Text('Local'),
-                                        icon: Icon(Icons.folder_outlined,
-                                            size: 14),
+                                        icon: Icon(
+                                          Icons.folder_outlined,
+                                          size: 14,
+                                        ),
                                       ),
                                       ButtonSegment(
                                         value: SyncType.googleDrive,
                                         label: Text('Drive'),
-                                        icon: Icon(Icons.cloud_outlined,
-                                            size: 14),
+                                        icon: Icon(
+                                          Icons.cloud_outlined,
+                                          size: 14,
+                                        ),
                                       ),
                                     ],
                                     selected: {_syncType},
                                     onSelectionChanged:
                                         (Set<SyncType> newSelection) {
-                                      _setSyncType(newSelection.first);
-                                    },
+                                          _setSyncType(newSelection.first);
+                                        },
                                     style: ButtonStyle(
                                       textStyle: WidgetStateProperty.all(
                                         GoogleFonts.inter(fontSize: 12),
@@ -626,7 +658,11 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
                         boxShadow: const [
                           BoxShadow(
                             color: Color.fromRGBO(
-                                0, 0, 0, 0.2), // shadow-inner approx
+                              0,
+                              0,
+                              0,
+                              0.2,
+                            ), // shadow-inner approx
                             offset: Offset(0, 2),
                             blurRadius: 4,
                             // inset: true, // Removed as not supported
@@ -638,16 +674,22 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
                         children: [
                           Container(
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 16, vertical: 8),
+                              horizontal: 16,
+                              vertical: 8,
+                            ),
                             decoration: const BoxDecoration(
                               color: Color(0xFF252526),
                               border: Border(
-                                  bottom: BorderSide(color: Color(0xFF374151))),
+                                bottom: BorderSide(color: Color(0xFF374151)),
+                              ),
                             ),
                             child: Row(
                               children: [
-                                const Icon(Icons.terminal,
-                                    size: 14, color: Color(0xFF9CA3AF)),
+                                const Icon(
+                                  Icons.terminal,
+                                  size: 14,
+                                  color: Color(0xFF9CA3AF),
+                                ),
                                 const SizedBox(width: 8),
                                 Text(
                                   'Activity Log',
@@ -660,12 +702,15 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
                                 Material(
                                   color: Colors.transparent,
                                   child: InkWell(
-                                    onTap:
-                                        _isSyncing ? null : _performManualSync,
+                                    onTap: _isSyncing
+                                        ? null
+                                        : _performManualSync,
                                     borderRadius: BorderRadius.circular(4),
                                     child: Padding(
                                       padding: const EdgeInsets.symmetric(
-                                          horizontal: 8, vertical: 4),
+                                        horizontal: 8,
+                                        vertical: 4,
+                                      ),
                                       child: Row(
                                         children: [
                                           if (_isSyncing)
@@ -678,9 +723,11 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
                                               ),
                                             )
                                           else
-                                            const Icon(Icons.refresh,
-                                                size: 14,
-                                                color: Color(0xFF60A5FA)),
+                                            const Icon(
+                                              Icons.refresh,
+                                              size: 14,
+                                              color: Color(0xFF60A5FA),
+                                            ),
                                           const SizedBox(width: 6),
                                           Text(
                                             _isSyncing
@@ -723,8 +770,11 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
                       children: [
                         _buildIndicator('File System', Colors.green),
                         const SizedBox(width: 24),
-                        _buildIndicator('Background Task', Colors.yellow,
-                            isDimmed: true),
+                        _buildIndicator(
+                          'Background Task',
+                          Colors.yellow,
+                          isDimmed: true,
+                        ),
                         const SizedBox(width: 24),
                         _buildIndicator('Network', Colors.red, isDimmed: true),
                       ],
@@ -782,33 +832,48 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 if (isError)
-                  Row(children: [
-                    Text(title,
+                  Row(
+                    children: [
+                      Text(
+                        title,
                         style: GoogleFonts.inter(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: const Color(0xFF7F1D1D))),
-                    const SizedBox(width: 8),
-                    const Icon(Icons.error, size: 18, color: Color(0xFFDC2626)),
-                  ])
-                else
-                  Text(title,
-                      style: GoogleFonts.inter(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
-                          color: Colors.black)),
+                          color: const Color(0xFF7F1D1D),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      const Icon(
+                        Icons.error,
+                        size: 18,
+                        color: Color(0xFFDC2626),
+                      ),
+                    ],
+                  )
+                else
+                  Text(
+                    title,
+                    style: GoogleFonts.inter(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black,
+                    ),
+                  ),
                 if (description != null) ...[
                   const SizedBox(height: 4),
-                  Text(description,
-                      style: GoogleFonts.inter(
-                          fontSize: 12,
-                          color: const Color(0xFF6B7280))), // gray-500
+                  Text(
+                    description,
+                    style: GoogleFonts.inter(
+                      fontSize: 12,
+                      color: const Color(0xFF6B7280),
+                    ),
+                  ), // gray-500
                 ],
                 if (content != null) ...[
                   if (description == null && !isError)
                     const SizedBox(height: 4),
                   content,
-                ]
+                ],
               ],
             ),
           ),
@@ -836,7 +901,9 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
             child: Text(
               path,
               style: GoogleFonts.ibmPlexMono(
-                  fontSize: 12, color: const Color(0xFF6B7280)),
+                fontSize: 12,
+                color: const Color(0xFF6B7280),
+              ),
               overflow: TextOverflow.ellipsis,
             ),
           ),
@@ -845,11 +912,13 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
     );
   }
 
-  Widget _buildActionButton(String label,
-      {bool isDestructive = false,
-      bool isPrimary = false,
-      IconData? icon,
-      VoidCallback? onTap}) {
+  Widget _buildActionButton(
+    String label, {
+    bool isDestructive = false,
+    bool isPrimary = false,
+    IconData? icon,
+    VoidCallback? onTap,
+  }) {
     Color textColor;
     Color borderColor;
     Color backgroundColor = Colors.white;
@@ -863,7 +932,8 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
       borderColor = const Color(0xFFE5E7EB); // gray-200
     } else {
       textColor = const Color(
-          0xFF0D7CF2); // primary blue for action text usually, or gray-700
+        0xFF0D7CF2,
+      ); // primary blue for action text usually, or gray-700
       borderColor = const Color(0xFFE5E7EB); // gray-200
       // Stitch design shows "Export JSON..." as text-primary (blue) with white bg
       // "Fix Path..." is red-700
@@ -1021,7 +1091,7 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
                       color: Color.fromRGBO(34, 197, 94, 0.6),
                       blurRadius: 8,
                       spreadRadius: 0,
-                    )
+                    ),
                   ]
                 : null,
           ),
@@ -1049,29 +1119,46 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Google Account',
-                    style: GoogleFonts.inter(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.black)),
+                Text(
+                  'Google Account',
+                  style: GoogleFonts.inter(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black,
+                  ),
+                ),
                 const SizedBox(height: 4),
                 if (_googleUser != null)
-                  Text(_googleUser!.email,
-                      style: GoogleFonts.inter(
-                          fontSize: 12, color: const Color(0xFF6B7280)))
+                  Text(
+                    _googleUser!.email,
+                    style: GoogleFonts.inter(
+                      fontSize: 12,
+                      color: const Color(0xFF6B7280),
+                    ),
+                  )
                 else
-                  Text('Sign in to sync your data across devices.',
-                      style: GoogleFonts.inter(
-                          fontSize: 12, color: const Color(0xFF6B7280))),
+                  Text(
+                    'Sign in to sync your data across devices.',
+                    style: GoogleFonts.inter(
+                      fontSize: 12,
+                      color: const Color(0xFF6B7280),
+                    ),
+                  ),
               ],
             ),
           ),
           if (_googleUser != null)
-            _buildActionButton('Sign Out',
-                isDestructive: true, onTap: _signOutGoogle)
+            _buildActionButton(
+              'Sign Out',
+              isDestructive: true,
+              onTap: _signOutGoogle,
+            )
           else
-            _buildActionButton('Sign In',
-                isPrimary: true, onTap: _signInWithGoogle),
+            _buildActionButton(
+              'Sign In',
+              isPrimary: true,
+              onTap: _signInWithGoogle,
+            ),
         ],
       ),
     );

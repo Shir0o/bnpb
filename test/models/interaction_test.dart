@@ -18,7 +18,7 @@ void main() {
         'category': 'Social',
         'participantIds': ['p1', 'p2'],
         'attachments': [
-          {'uri': 'file.jpg', 'source': 'local', 'label': 'Photo'}
+          {'uri': 'file.jpg', 'source': 'local', 'label': 'Photo'},
         ],
       };
 
@@ -39,7 +39,9 @@ void main() {
         medium: 'phone',
         attachments: [
           AttachmentReference(
-              uri: 'http://test.com', source: AttachmentSource.cloud),
+            uri: 'http://test.com',
+            source: AttachmentSource.cloud,
+          ),
         ],
       );
 
@@ -84,7 +86,7 @@ extension InteractioHelper on Interaction {
       'occurredAt': DateTime.now().toIso8601String(),
       'summary': '',
       'medium': '',
-      'markForPrayer': value
+      'markForPrayer': value,
     };
     return Interaction.fromMap(map).markForPrayer;
   }

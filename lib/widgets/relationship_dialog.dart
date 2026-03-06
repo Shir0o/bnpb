@@ -37,12 +37,14 @@ class _RelationshipDialogState extends State<RelationshipDialog> {
       selectedContactId = widget.relationship!.targetContactId;
       // We assume the parent passed a valid list including the target contact if editing.
     } else {
-      selectedContactId =
-          dropdownContacts.isNotEmpty ? dropdownContacts.first.id : null;
+      selectedContactId = dropdownContacts.isNotEmpty
+          ? dropdownContacts.first.id
+          : null;
     }
 
-    notesController =
-        TextEditingController(text: widget.relationship?.notes ?? '');
+    notesController = TextEditingController(
+      text: widget.relationship?.notes ?? '',
+    );
     otherTypeController = TextEditingController();
 
     if (widget.relationship != null) {
@@ -67,8 +69,9 @@ class _RelationshipDialogState extends State<RelationshipDialog> {
   String getTargetName() {
     if (selectedContactId == null) return 'selected contact';
     try {
-      final contact =
-          dropdownContacts.firstWhere((c) => c.id == selectedContactId);
+      final contact = dropdownContacts.firstWhere(
+        (c) => c.id == selectedContactId,
+      );
       return contact.fullName.isNotEmpty
           ? contact.fullName
           : (contact.nickname ?? 'Selected Contact');
@@ -127,11 +130,12 @@ class _RelationshipDialogState extends State<RelationshipDialog> {
               },
             ),
             const SizedBox(height: 16),
-            Text('Role',
-                style: Theme.of(context)
-                    .textTheme
-                    .bodyMedium
-                    ?.copyWith(fontWeight: FontWeight.bold)),
+            Text(
+              'Role',
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 8),
             Wrap(
               spacing: 8.0,
@@ -170,17 +174,19 @@ class _RelationshipDialogState extends State<RelationshipDialog> {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(Icons.info_outline,
-                      size: 20,
-                      color:
-                          Theme.of(context).colorScheme.onSecondaryContainer),
+                  Icon(
+                    Icons.info_outline,
+                    size: 20,
+                    color: Theme.of(context).colorScheme.onSecondaryContainer,
+                  ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       getRoleDescription(),
                       style: TextStyle(
-                        color:
-                            Theme.of(context).colorScheme.onSecondaryContainer,
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onSecondaryContainer,
                         fontWeight: FontWeight.w500,
                       ),
                     ),

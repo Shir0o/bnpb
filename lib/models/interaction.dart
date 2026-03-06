@@ -36,11 +36,7 @@ class AttachmentReference {
   }
 
   Map<String, dynamic> toMap() {
-    return {
-      'uri': uri,
-      'source': source.name,
-      'label': label,
-    };
+    return {'uri': uri, 'source': source.name, 'label': label};
   }
 
   static AttachmentReference fromMap(Map<String, dynamic> map) {
@@ -77,8 +73,8 @@ class Interaction {
     this.participantIds = const [],
     DateTime? updatedAt,
     this.deletedAt,
-  })  : syncId = syncId ?? const Uuid().v4(),
-        updatedAt = updatedAt ?? DateTime.now();
+  }) : syncId = syncId ?? const Uuid().v4(),
+       updatedAt = updatedAt ?? DateTime.now();
 
   final int? id;
   final String syncId;
@@ -152,8 +148,9 @@ class Interaction {
       'summary': summary,
       'medium': medium,
       'location': location,
-      'attachments':
-          attachments.map((attachment) => attachment.toMap()).toList(),
+      'attachments': attachments
+          .map((attachment) => attachment.toMap())
+          .toList(),
       'markForPrayer': markForPrayer,
       'followUpAt': followUpAt?.toIso8601String(),
       'durationMinutes': durationMinutes,
@@ -174,13 +171,17 @@ class Interaction {
     if (rawAttachments is String && rawAttachments.isNotEmpty) {
       final decoded = jsonDecode(rawAttachments) as List<dynamic>;
       parsedAttachments = decoded
-          .map((entry) =>
-              AttachmentReference.fromMap(Map<String, dynamic>.from(entry)))
+          .map(
+            (entry) =>
+                AttachmentReference.fromMap(Map<String, dynamic>.from(entry)),
+          )
           .toList();
     } else if (rawAttachments is List) {
       parsedAttachments = rawAttachments
-          .map((entry) =>
-              AttachmentReference.fromMap(Map<String, dynamic>.from(entry)))
+          .map(
+            (entry) =>
+                AttachmentReference.fromMap(Map<String, dynamic>.from(entry)),
+          )
           .toList();
     } else {
       parsedAttachments = const [];

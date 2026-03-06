@@ -124,7 +124,8 @@ class SyncCoordinator {
     await _updateLastExportTime(now);
 
     return SyncResult(
-      exportedCount: contacts.length +
+      exportedCount:
+          contacts.length +
           interactions.length +
           prayers.length +
           prayerLists.length,
@@ -154,13 +155,17 @@ class SyncCoordinator {
     final deviceId = await getDeviceId();
     final processed = await _getProcessedFiles();
 
-    final files =
-        await syncDir.list().where((f) => f is File).cast<File>().where((f) {
-      final name = p.basename(f.path);
-      return name.endsWith('_data.json') &&
-          !name.startsWith(deviceId) && // Ignore own files
-          !processed.contains(name);
-    }).toList();
+    final files = await syncDir
+        .list()
+        .where((f) => f is File)
+        .cast<File>()
+        .where((f) {
+          final name = p.basename(f.path);
+          return name.endsWith('_data.json') &&
+              !name.startsWith(deviceId) && // Ignore own files
+              !processed.contains(name);
+        })
+        .toList();
 
     // Sort by timestamp in filename to apply in order
     // Filename format: deviceId_timestamp_data.json
@@ -263,15 +268,20 @@ class SyncCoordinator {
   }
 
   Future<void> _mergeContact(Contact remote) async {
-    final localContacts =
-        await _db.getContacts(contactId: remote.id, includeDeleted: true);
+    final localContacts = await _db.getContacts(
+      contactId: remote.id,
+      includeDeleted: true,
+    );
     final local = localContacts.isNotEmpty ? localContacts.first : null;
 
     if (local == null) {
       // New or previously hard-deleted locally (shouldn't happen with soft deletes)
       // If remote is deleted, we just insert the tombstone for consistency.
-      await _db.upsertContactFromSync(await _db.database, remote,
-          isUpdate: false);
+      await _db.upsertContactFromSync(
+        await _db.database,
+        remote,
+        isUpdate: false,
+      );
     } else {
       // Local exists (could be alive or deleted).
       // Compare timestamps.
@@ -280,8 +290,11 @@ class SyncCoordinator {
 
       if (remoteTime.isAfter(localTime)) {
         // Remote is newer. Overwrite.
-        await _db.upsertContactFromSync(await _db.database, remote,
-            isUpdate: true);
+        await _db.upsertContactFromSync(
+          await _db.database,
+          remote,
+          isUpdate: true,
+        );
       }
       // If local is new, keep local.
       // If equal, do nothing.
@@ -398,8 +411,11 @@ class SyncCoordinator {
     }
   }
 
-  Future<void> _replaceParticipants(DatabaseExecutor txn, int interactionId,
-      List<String> participantIds) async {
+  Future<void> _replaceParticipants(
+    DatabaseExecutor txn,
+    int interactionId,
+    List<String> participantIds,
+  ) async {
     await txn.delete(
       'interaction_participants',
       where: 'interactionId = ?',
@@ -409,23 +425,23 @@ class SyncCoordinator {
     final uniqueParticipants = participantIds.toSet();
     for (final participant in uniqueParticipants) {
       try {
-        await txn.insert(
-          'interaction_participants',
-          {
-            'interactionId': interactionId,
-            'contactId': participant,
-          },
-          conflictAlgorithm: ConflictAlgorithm.replace,
-        );
+        await txn.insert('interaction_participants', {
+          'interactionId': interactionId,
+          'contactId': participant,
+        }, conflictAlgorithm: ConflictAlgorithm.replace);
       } catch (e) {
         debugPrint(
-            'Skipping participant $participant for interaction $interactionId due to error: $e');
+          'Skipping participant $participant for interaction $interactionId due to error: $e',
+        );
       }
     }
   }
 
   Future<void> _replacePrayerParticipants(
-      DatabaseExecutor txn, int requestId, List<String> participantIds) async {
+    DatabaseExecutor txn,
+    int requestId,
+    List<String> participantIds,
+  ) async {
     await txn.delete(
       'prayer_request_participants',
       where: 'prayerRequestId = ?',
@@ -437,21 +453,21 @@ class SyncCoordinator {
       try {
         await txn.insert(
           'prayer_request_participants',
-          {
-            'prayerRequestId': requestId,
-            'contactId': participant,
-          },
+          {'prayerRequestId': requestId, 'contactId': participant},
           conflictAlgorithm: ConflictAlgorithm.replace,
         );
       } catch (e) {
         debugPrint(
-            'Skipping participant $participant for prayer request $requestId due to error: $e');
+          'Skipping participant $participant for prayer request $requestId due to error: $e',
+        );
       }
     }
   }
 
   Future<void> _mergePrayerRequest(
-      PrayerRequest remote, String? interactionSyncId) async {
+    PrayerRequest remote,
+    String? interactionSyncId,
+  ) async {
     // Similar logic using syncId
 
     final db = await _db.database;
@@ -464,8 +480,9 @@ class SyncCoordinator {
     // Resolve interactionLink
     int? localInteractionId;
     if (interactionSyncId != null) {
-      localInteractionId =
-          await _getLocalInteractionIdBySyncId(interactionSyncId);
+      localInteractionId = await _getLocalInteractionIdBySyncId(
+        interactionSyncId,
+      );
     }
 
     if (rows.isEmpty) {
@@ -503,8 +520,12 @@ class SyncCoordinator {
           map.remove('interactionId');
         }
 
-        await db.update('prayer_requests', map,
-            where: 'id = ?', whereArgs: [localId]);
+        await db.update(
+          'prayer_requests',
+          map,
+          where: 'id = ?',
+          whereArgs: [localId],
+        );
         await _replacePrayerParticipants(db, localId, remote.participantIds);
       }
     }
@@ -566,16 +587,18 @@ class SyncCoordinator {
     );
 
     // Update members: remove old, add new
-    await db.delete('prayer_list_members',
-        where: 'listId = ?', whereArgs: [list.id]);
+    await db.delete(
+      'prayer_list_members',
+      where: 'listId = ?',
+      whereArgs: [list.id],
+    );
 
     if (list.deletedAt == null) {
       for (final cid in list.contactIds) {
-        await db.insert(
-          'prayer_list_members',
-          {'listId': list.id, 'contactId': cid},
-          conflictAlgorithm: ConflictAlgorithm.ignore,
-        );
+        await db.insert('prayer_list_members', {
+          'listId': list.id,
+          'contactId': cid,
+        }, conflictAlgorithm: ConflictAlgorithm.ignore);
       }
     }
   }

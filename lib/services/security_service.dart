@@ -97,7 +97,9 @@ class SecurityService {
     final salt = _generateSalt();
     final hash = _hashPasscode(passcode, salt);
     await _secureStorage.write(
-        key: _passwordSaltKey, value: base64Encode(salt));
+      key: _passwordSaltKey,
+      value: base64Encode(salt),
+    );
     await _secureStorage.write(key: _passwordHashKey, value: hash);
   }
 
@@ -166,11 +168,13 @@ class SecurityService {
   /// credentials. Returns `true` when data was removed.
   Future<bool> secureDeleteAllData() async {
     final databasesPath = await getDatabasesPath();
-    final dbFile =
-        File(p.join(databasesPath, StorageConstants.databaseFileName));
+    final dbFile = File(
+      p.join(databasesPath, StorageConstants.databaseFileName),
+    );
     final docsDir = await getApplicationDocumentsDirectory();
-    final backupDir =
-        Directory(p.join(docsDir.path, StorageConstants.backupDirectory));
+    final backupDir = Directory(
+      p.join(docsDir.path, StorageConstants.backupDirectory),
+    );
 
     var removedAnything = false;
 
@@ -197,8 +201,9 @@ class SecurityService {
 
   Future<void> closeDatabases() async {
     final databasesPath = await getDatabasesPath();
-    final dbFile =
-        File(p.join(databasesPath, StorageConstants.databaseFileName));
+    final dbFile = File(
+      p.join(databasesPath, StorageConstants.databaseFileName),
+    );
     final dbPath = dbFile.path;
     try {
       await databaseFactory.deleteDatabase(dbPath);

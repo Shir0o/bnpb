@@ -53,9 +53,7 @@ class _MetAtLookupPageState extends State<MetAtLookupPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Where did we meet?'),
-      ),
+      appBar: AppBar(title: const Text('Where did we meet?')),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(

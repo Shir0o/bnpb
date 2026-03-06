@@ -94,106 +94,111 @@ void main() {
     });
 
     test(
-        'buildFullExportPayload de-duplicates shared data and includes participants',
-        () async {
-      final now = DateTime.now().toUtc();
-      final interaction = Interaction(
-        id: 1,
-        occurredAt: now,
-        summary: 'Shared Interaction',
-        medium: 'In person',
-        participantIds: ['c1', 'c2'],
-      );
-
-      final prayer = PrayerRequest(
-        id: 10,
-        participantIds: ['c1', 'c2'],
-        description: 'Shared Prayer',
-        status: PrayerRequestStatus.pending,
-        requestedAt: now,
-        interactionId: 1,
-      );
-
-      final contact1 = Contact(
-        id: 'c1',
-        firstName: 'Alice',
-        interactions: [interaction],
-        prayerRequests: [prayer],
-      );
-
-      final contact2 = Contact(
-        id: 'c2',
-        firstName: 'Bob',
-        interactions: [interaction],
-        prayerRequests: [prayer],
-      );
-
-      final service = ExportService();
-      final payload = await service.buildFullExportPayload(
-        [contact1, contact2],
-        ['firstName'],
-      );
-
-      expect(payload['version'], 2);
-      expect(payload['contacts'], hasLength(2));
-      expect(payload['interactions'], hasLength(1)); // De-duplicated
-      expect(payload['prayerRequests'], hasLength(1)); // De-duplicated
-
-      final interactionJson = (payload['interactions'] as List).first;
-      expect(interactionJson['summary'], 'Shared Interaction');
-      expect(interactionJson['participantIds'], containsAll(['c1', 'c2']));
-
-      final prayerJson = (payload['prayerRequests'] as List).first;
-      expect(prayerJson['description'], 'Shared Prayer');
-      expect(prayerJson['participantIds'], containsAll(['c1', 'c2']));
-      expect(prayerJson['interactionSyncId'], interaction.syncId);
-    });
-    group('buildFullExportPayload', () {
-      test('correctly de-duplicates interactions and prayer requests',
-          () async {
+      'buildFullExportPayload de-duplicates shared data and includes participants',
+      () async {
+        final now = DateTime.now().toUtc();
         final interaction = Interaction(
           id: 1,
-          occurredAt: DateTime.now(),
+          occurredAt: now,
           summary: 'Shared Interaction',
-          medium: 'face_to_face',
-          participantIds: ['contact-1', 'contact-2'],
+          medium: 'In person',
+          participantIds: ['c1', 'c2'],
         );
 
-        final prayerRequest = PrayerRequest(
-          id: 1,
-          participantIds: ['contact-1', 'contact-2'],
+        final prayer = PrayerRequest(
+          id: 10,
+          participantIds: ['c1', 'c2'],
           description: 'Shared Prayer',
           status: PrayerRequestStatus.pending,
-          requestedAt: DateTime.now(),
+          requestedAt: now,
           interactionId: 1,
         );
 
         final contact1 = Contact(
-          id: 'contact-1',
-          firstName: 'Contact',
-          lastName: 'One',
+          id: 'c1',
+          firstName: 'Alice',
           interactions: [interaction],
-          prayerRequests: [prayerRequest],
+          prayerRequests: [prayer],
         );
 
         final contact2 = Contact(
-          id: 'contact-2',
-          firstName: 'Contact',
-          lastName: 'Two',
+          id: 'c2',
+          firstName: 'Bob',
           interactions: [interaction],
-          prayerRequests: [prayerRequest],
+          prayerRequests: [prayer],
         );
 
-        final payload = await ExportService().buildFullExportPayload(
+        final service = ExportService();
+        final payload = await service.buildFullExportPayload(
           [contact1, contact2],
-          [],
+          ['firstName'],
         );
 
-        expect(payload['interactions'], hasLength(1));
-        expect(payload['prayerRequests'], hasLength(1));
-        expect(payload['prayerRequests'][0]['interactionSyncId'],
-            interaction.syncId);
-      });
+        expect(payload['version'], 2);
+        expect(payload['contacts'], hasLength(2));
+        expect(payload['interactions'], hasLength(1)); // De-duplicated
+        expect(payload['prayerRequests'], hasLength(1)); // De-duplicated
+
+        final interactionJson = (payload['interactions'] as List).first;
+        expect(interactionJson['summary'], 'Shared Interaction');
+        expect(interactionJson['participantIds'], containsAll(['c1', 'c2']));
+
+        final prayerJson = (payload['prayerRequests'] as List).first;
+        expect(prayerJson['description'], 'Shared Prayer');
+        expect(prayerJson['participantIds'], containsAll(['c1', 'c2']));
+        expect(prayerJson['interactionSyncId'], interaction.syncId);
+      },
+    );
+    group('buildFullExportPayload', () {
+      test(
+        'correctly de-duplicates interactions and prayer requests',
+        () async {
+          final interaction = Interaction(
+            id: 1,
+            occurredAt: DateTime.now(),
+            summary: 'Shared Interaction',
+            medium: 'face_to_face',
+            participantIds: ['contact-1', 'contact-2'],
+          );
+
+          final prayerRequest = PrayerRequest(
+            id: 1,
+            participantIds: ['contact-1', 'contact-2'],
+            description: 'Shared Prayer',
+            status: PrayerRequestStatus.pending,
+            requestedAt: DateTime.now(),
+            interactionId: 1,
+          );
+
+          final contact1 = Contact(
+            id: 'contact-1',
+            firstName: 'Contact',
+            lastName: 'One',
+            interactions: [interaction],
+            prayerRequests: [prayerRequest],
+          );
+
+          final contact2 = Contact(
+            id: 'contact-2',
+            firstName: 'Contact',
+            lastName: 'Two',
+            interactions: [interaction],
+            prayerRequests: [prayerRequest],
+          );
+
+          final payload = await ExportService().buildFullExportPayload([
+            contact1,
+            contact2,
+          ], []);
+
+          expect(payload['interactions'], hasLength(1));
+          expect(payload['prayerRequests'], hasLength(1));
+          expect(
+            payload['prayerRequests'][0]['interactionSyncId'],
+            interaction.syncId,
+          );
+        },
+      );
     });
   });
 }

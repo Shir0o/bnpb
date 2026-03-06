@@ -161,11 +161,7 @@ class AddContactCard extends StatelessWidget {
                         .solid, // Again, mimicking dashed visually or using simple border
                   ),
                 ),
-                child: Icon(
-                  Icons.add,
-                  size: 32,
-                  color: Colors.grey[300],
-                ),
+                child: Icon(Icons.add, size: 32, color: Colors.grey[300]),
               ),
               const SizedBox(height: 12),
               Text(
@@ -179,10 +175,7 @@ class AddContactCard extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               // Spacer to align with contact card text height
-              Text(
-                '',
-                style: GoogleFonts.inter(fontSize: 11),
-              ),
+              Text('', style: GoogleFonts.inter(fontSize: 11)),
             ],
           ),
         ),

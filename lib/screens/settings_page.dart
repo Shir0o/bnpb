@@ -77,8 +77,8 @@ class _SettingsPageState extends State<SettingsPage>
     _biometricEnabled = await _securityService.isBiometricEnabled();
     _biometricAvailable = await _securityService.canUseBiometrics();
     final reminderService = ReminderService();
-    _supportsExactAlarmPermission =
-        await reminderService.isExactAlarmPermissionRelevant();
+    _supportsExactAlarmPermission = await reminderService
+        .isExactAlarmPermissionRelevant();
     _exactAlarmOptIn = await reminderService.isExactAlarmOptInEnabled();
 
     final elapsed = stopwatch.elapsedMilliseconds;
@@ -102,9 +102,7 @@ class _SettingsPageState extends State<SettingsPage>
   Widget build(BuildContext context) {
     super.build(context);
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Settings'),
-      ),
+      appBar: AppBar(title: const Text('Settings')),
       body: AnimatedSwitcher(
         duration: const Duration(milliseconds: 300),
         child: _buildBody(),
@@ -169,9 +167,9 @@ class _SettingsPageState extends State<SettingsPage>
       child: Text(
         title.toUpperCase(),
         style: Theme.of(context).textTheme.labelMedium?.copyWith(
-              color: Theme.of(context).colorScheme.primary,
-              fontWeight: FontWeight.bold,
-            ),
+          color: Theme.of(context).colorScheme.primary,
+          fontWeight: FontWeight.bold,
+        ),
       ),
     );
   }
@@ -255,7 +253,8 @@ class _SettingsPageState extends State<SettingsPage>
             leading: _googleUser != null
                 ? CircleAvatar(
                     backgroundImage: NetworkImage(_googleUser!.photoUrl ?? ''),
-                    radius: 12)
+                    radius: 12,
+                  )
                 : const Icon(Icons.account_circle_outlined),
             title: Text(_googleUser?.displayName ?? 'Sign in to sync'),
             subtitle: Text(_googleUser?.email ?? 'Google Drive integration'),
@@ -267,9 +266,7 @@ class _SettingsPageState extends State<SettingsPage>
                   if (user == null && mounted) {
                     final error = GoogleDriveService().lastSignInError;
                     if (error != null) {
-                      messenger.showSnackBar(
-                        SnackBar(content: Text(error)),
-                      );
+                      messenger.showSnackBar(SnackBar(content: Text(error)));
                     }
                   }
                 } else {
@@ -340,16 +337,18 @@ class _SettingsPageState extends State<SettingsPage>
   Future<void> _performSync() async {
     setState(() => _isUpdating = true);
     try {
-      await SyncService().performSync();
+      await SyncService().performSync(force: true);
       await _loadSyncState();
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(const SnackBar(content: Text('Sync complete')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Sync complete')));
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Sync failed: $e')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Sync failed: $e')));
       }
     } finally {
       if (mounted) setState(() => _isUpdating = false);
@@ -357,7 +356,10 @@ class _SettingsPageState extends State<SettingsPage>
   }
 
   Future<void> _setGlobalPreference(
-      ReminderChannel channel, bool enabled, Duration leadTime) async {
+    ReminderChannel channel,
+    bool enabled,
+    Duration leadTime,
+  ) async {
     final pref = NotificationPreference(
       scopeType: NotificationScopeType.global,
       scopeId: NotificationPreference.globalScopeId,
@@ -380,8 +382,8 @@ class _SettingsPageState extends State<SettingsPage>
     }
 
     final reminderService = ReminderService();
-    final supportsExactAlarmPermission =
-        await reminderService.isExactAlarmPermissionRelevant();
+    final supportsExactAlarmPermission = await reminderService
+        .isExactAlarmPermissionRelevant();
     final exactAlarmOptIn = await reminderService.isExactAlarmOptInEnabled();
 
     if (mounted) {
@@ -393,8 +395,12 @@ class _SettingsPageState extends State<SettingsPage>
     }
   }
 
-  void _showLeadTimePicker(BuildContext context, ReminderChannel channel,
-      bool enabled, Duration current) {
+  void _showLeadTimePicker(
+    BuildContext context,
+    ReminderChannel channel,
+    bool enabled,
+    Duration current,
+  ) {
     final options = _leadTimeOptions(channel, current);
     showModalBottomSheet(
       context: context,
@@ -402,14 +408,16 @@ class _SettingsPageState extends State<SettingsPage>
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: options
-              .map((opt) => ListTile(
-                    title: Text(_formatLeadTime(channel, opt)),
-                    trailing: opt == current ? const Icon(Icons.check) : null,
-                    onTap: () async {
-                      Navigator.pop(context);
-                      await _setGlobalPreference(channel, enabled, opt);
-                    },
-                  ))
+              .map(
+                (opt) => ListTile(
+                  title: Text(_formatLeadTime(channel, opt)),
+                  trailing: opt == current ? const Icon(Icons.check) : null,
+                  onTap: () async {
+                    Navigator.pop(context);
+                    await _setGlobalPreference(channel, enabled, opt);
+                  },
+                ),
+              )
               .toList(),
         ),
       ),
@@ -423,9 +431,8 @@ class _SettingsPageState extends State<SettingsPage>
       const Duration(minutes: 30),
       const Duration(hours: 1),
       const Duration(days: 1),
-      current
-    }.toList()
-      ..sort();
+      current,
+    }.toList()..sort();
   }
 
   String _formatLeadTime(ReminderChannel channel, Duration d) {
@@ -444,14 +451,17 @@ class _SettingsPageState extends State<SettingsPage>
         builder: (context) => AlertDialog(
           title: const Text('Enable Exact Alarms?'),
           content: const Text(
-              'This ensures reminders fire at the precise minute on Android 12+.'),
+            'This ensures reminders fire at the precise minute on Android 12+.',
+          ),
           actions: [
             TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: const Text('Cancel')),
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel'),
+            ),
             TextButton(
-                onPressed: () => Navigator.pop(context, true),
-                child: const Text('Enable')),
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Enable'),
+            ),
           ],
         ),
       );
@@ -471,16 +481,19 @@ class _SettingsPageState extends State<SettingsPage>
       builder: (context) => AlertDialog(
         title: const Text('Set Passcode'),
         content: TextField(
-            controller: controller,
-            obscureText: true,
-            keyboardType: TextInputType.number),
+          controller: controller,
+          obscureText: true,
+          keyboardType: TextInputType.number,
+        ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel')),
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
           TextButton(
-              onPressed: () => Navigator.pop(context, controller.text),
-              child: const Text('Save')),
+            onPressed: () => Navigator.pop(context, controller.text),
+            child: const Text('Save'),
+          ),
         ],
       ),
     );
@@ -514,15 +527,18 @@ class _SettingsPageState extends State<SettingsPage>
       builder: (context) => AlertDialog(
         title: const Text('Purge All Data?'),
         content: const Text(
-            'This will delete all contacts, interactions, and settings. This cannot be undone.'),
+          'This will delete all contacts, interactions, and settings. This cannot be undone.',
+        ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Cancel')),
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
           TextButton(
-              onPressed: () => Navigator.pop(context, true),
-              style: TextButton.styleFrom(foregroundColor: Colors.red),
-              child: const Text('Purge')),
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Purge'),
+          ),
         ],
       ),
     );
@@ -537,9 +553,10 @@ class _SettingsPageState extends State<SettingsPage>
   Future<void> _openExportOptions() async {
     if (_contacts.isEmpty) return;
     showModalBottomSheet(
-        context: context,
-        isScrollControlled: true,
-        builder: (context) => ExportOptionsSheet(contacts: _contacts));
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => ExportOptionsSheet(contacts: _contacts),
+    );
   }
 }
 
@@ -556,7 +573,10 @@ class _SettingsSkeleton extends StatelessWidget {
           10,
           (index) => ListTile(
             leading: const SkeletonBox(
-                width: 24, height: 24, shape: BoxShape.circle),
+              width: 24,
+              height: 24,
+              shape: BoxShape.circle,
+            ),
             title: SkeletonBox(width: 120 + (index % 4 * 30.0), height: 16),
             subtitle: const SkeletonBox(width: 200, height: 12),
           ),

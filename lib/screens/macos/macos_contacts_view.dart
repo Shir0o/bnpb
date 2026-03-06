@@ -104,9 +104,7 @@ class _MacOSContactsViewState extends State<MacOSContactsView> {
           padding: const EdgeInsets.symmetric(horizontal: 16),
           decoration: const BoxDecoration(
             color: Colors.white,
-            border: Border(
-              bottom: BorderSide(color: Color(0xFFE5E5E5)),
-            ),
+            border: Border(bottom: BorderSide(color: Color(0xFFE5E5E5))),
           ),
           child: Row(
             children: [
@@ -141,12 +139,16 @@ class _MacOSContactsViewState extends State<MacOSContactsView> {
                   controller: _searchController,
                   decoration: const InputDecoration(
                     hintText: 'Search',
-                    prefixIcon:
-                        Icon(Icons.search, size: 18, color: Colors.grey),
+                    prefixIcon: Icon(
+                      Icons.search,
+                      size: 18,
+                      color: Colors.grey,
+                    ),
                     border: InputBorder.none,
                     isDense: true,
                     contentPadding: EdgeInsets.symmetric(
-                        vertical: 8), // Adjusted for alignment
+                      vertical: 8,
+                    ), // Adjusted for alignment
                   ),
                   style: GoogleFonts.inter(fontSize: 13),
                   textAlignVertical: TextAlignVertical.center,
@@ -209,11 +211,12 @@ class _MacOSContactsViewState extends State<MacOSContactsView> {
                     padding: const EdgeInsets.all(24),
                     gridDelegate:
                         const SliverGridDelegateWithMaxCrossAxisExtent(
-                      maxCrossAxisExtent: 180,
-                      mainAxisSpacing: 24,
-                      crossAxisSpacing: 16,
-                      childAspectRatio: 0.85, // Adjust based on card content
-                    ),
+                          maxCrossAxisExtent: 180,
+                          mainAxisSpacing: 24,
+                          crossAxisSpacing: 16,
+                          childAspectRatio:
+                              0.85, // Adjust based on card content
+                        ),
                     itemCount: filtered.length + 1,
                     itemBuilder: (context, index) {
                       if (index == filtered.length) {
@@ -254,7 +257,7 @@ class _MacOSContactsViewState extends State<MacOSContactsView> {
                   color: Colors.black.withValues(alpha: 0.1),
                   blurRadius: 2,
                   offset: const Offset(0, 1),
-                )
+                ),
               ]
             : null,
       ),

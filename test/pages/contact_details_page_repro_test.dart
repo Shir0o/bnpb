@@ -49,8 +49,9 @@ void main() {
     registerFallbackValue(fallbackRelationship);
   });
 
-  testWidgets('ContactDetailsPage renders contact details correctly',
-      (WidgetTester tester) async {
+  testWidgets('ContactDetailsPage renders contact details correctly', (
+    WidgetTester tester,
+  ) async {
     debugPrint('START: Test Method Started');
     try {
       // 1. Prepare Test Data
@@ -67,29 +68,40 @@ void main() {
       // 2. Setup Stubs with specific arguments to ensure matching
 
       // ContactService Stubs
-      when(() => mockContactService.hasCachedInteractions('123'))
-          .thenReturn(false);
-      when(() => mockContactService.hasCachedInteractions(any()))
-          .thenReturn(false);
+      when(
+        () => mockContactService.hasCachedInteractions('123'),
+      ).thenReturn(false);
+      when(
+        () => mockContactService.hasCachedInteractions(any()),
+      ).thenReturn(false);
 
-      when(() => mockContactService.getInteractions('123',
-              forceRefresh: any(named: 'forceRefresh')))
-          .thenAnswer((_) async => []);
-      when(() => mockContactService.getInteractions(any(),
-              forceRefresh: any(named: 'forceRefresh')))
-          .thenAnswer((_) async => []);
+      when(
+        () => mockContactService.getInteractions(
+          '123',
+          forceRefresh: any(named: 'forceRefresh'),
+        ),
+      ).thenAnswer((_) async => []);
+      when(
+        () => mockContactService.getInteractions(
+          any(),
+          forceRefresh: any(named: 'forceRefresh'),
+        ),
+      ).thenAnswer((_) async => []);
 
       // DBHelper Stubs
       when(() => mockDBHelper.getContacts()).thenAnswer((_) async => []);
-      when(() => mockDBHelper.getContacts(contactId: any(named: 'contactId')))
-          .thenAnswer((_) async => []);
+      when(
+        () => mockDBHelper.getContacts(contactId: any(named: 'contactId')),
+      ).thenAnswer((_) async => []);
 
       when(() => mockDBHelper.getAllTags()).thenAnswer((_) async => []);
 
-      when(() => mockDBHelper.getRelationshipsForContact('123'))
-          .thenAnswer((_) async => []);
-      when(() => mockDBHelper.getRelationshipsForContact(any()))
-          .thenAnswer((_) async => []);
+      when(
+        () => mockDBHelper.getRelationshipsForContact('123'),
+      ).thenAnswer((_) async => []);
+      when(
+        () => mockDBHelper.getRelationshipsForContact(any()),
+      ).thenAnswer((_) async => []);
 
       debugPrint('STEP: Stubs Setup Complete');
 

@@ -81,8 +81,9 @@ void main() {
     expect(backup.path, endsWith('.db'));
 
     // Verify it is in the backup directory
-    final backupDir =
-        Directory(p.join(tempDir.path, StorageConstants.backupDirectory));
+    final backupDir = Directory(
+      p.join(tempDir.path, StorageConstants.backupDirectory),
+    );
     expect(p.isWithin(backupDir.path, backup.path), isTrue);
   });
 

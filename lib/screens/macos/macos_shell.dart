@@ -32,9 +32,9 @@ class _MacOSShellState extends State<MacOSShell> {
     return CallbackShortcuts(
       bindings: {
         const SingleActivator(LogicalKeyboardKey.keyR, meta: true): () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Syncing...')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('Syncing...')));
           SyncService().performSync();
         },
       },
@@ -62,15 +62,21 @@ class _MacOSShellState extends State<MacOSShell> {
                         Padding(
                           padding: const EdgeInsets.only(right: 8),
                           child: _buildTrafficLight(
-                              const Color(0xFFFF5F57), const Color(0xFFE0443E)),
+                            const Color(0xFFFF5F57),
+                            const Color(0xFFE0443E),
+                          ),
                         ),
                         Padding(
                           padding: const EdgeInsets.only(right: 8),
                           child: _buildTrafficLight(
-                              const Color(0xFFFEBC2E), const Color(0xFFD89E24)),
+                            const Color(0xFFFEBC2E),
+                            const Color(0xFFD89E24),
+                          ),
                         ),
                         _buildTrafficLight(
-                            const Color(0xFF28C840), const Color(0xFF1AAB29)),
+                          const Color(0xFF28C840),
+                          const Color(0xFF1AAB29),
+                        ),
                       ],
                     ),
                   ),
@@ -78,19 +84,37 @@ class _MacOSShellState extends State<MacOSShell> {
                   Expanded(
                     child: ListView(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 8),
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
                       children: [
                         _buildSectionHeader('Library'),
-                        _buildNavItem(0, Icons.format_list_bulleted,
-                            'Prayer List', _selectedIndex == 0),
                         _buildNavItem(
-                            1, Icons.book, 'Prayer Diary', _selectedIndex == 1),
+                          0,
+                          Icons.format_list_bulleted,
+                          'Prayer List',
+                          _selectedIndex == 0,
+                        ),
                         _buildNavItem(
-                            2, Icons.group, 'Contacts', _selectedIndex == 2),
+                          1,
+                          Icons.book,
+                          'Prayer Diary',
+                          _selectedIndex == 1,
+                        ),
+                        _buildNavItem(
+                          2,
+                          Icons.group,
+                          'Contacts',
+                          _selectedIndex == 2,
+                        ),
                         const SizedBox(height: 24),
                         _buildSectionHeader('System'),
-                        _buildNavItem(3, Icons.settings, 'Sync & Settings',
-                            _selectedIndex == 3),
+                        _buildNavItem(
+                          3,
+                          Icons.settings,
+                          'Sync & Settings',
+                          _selectedIndex == 3,
+                        ),
                       ],
                     ),
                   ),
@@ -182,7 +206,7 @@ class _MacOSShellState extends State<MacOSShell> {
                         color: Color.fromRGBO(0, 0, 0, 0.05), // shadow-sm
                         offset: Offset(0, 1),
                         blurRadius: 2,
-                      )
+                      ),
                     ]
                   : null,
             ),

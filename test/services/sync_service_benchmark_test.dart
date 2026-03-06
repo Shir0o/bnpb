@@ -56,10 +56,12 @@ void main() {
 
     when(() => mockDrive.isSignedIn()).thenAnswer((_) async => true);
     when(() => mockCoordinator.getProcessedFiles()).thenAnswer((_) async => {});
-    when(() => mockCoordinator.getDeviceId())
-        .thenAnswer((_) async => 'test_device');
+    when(
+      () => mockCoordinator.getDeviceId(),
+    ).thenAnswer((_) async => 'test_device');
     when(() => mockCoordinator.importChanges(any())).thenAnswer(
-        (_) async => const SyncResult(exportedCount: 0, importedCount: 0));
+      (_) async => const SyncResult(exportedCount: 0, importedCount: 0),
+    );
   });
 
   tearDown(() {
@@ -71,21 +73,24 @@ void main() {
   test('Sync Benchmark: Measures execution time of sync operations', () async {
     // 1. Setup simulated remote files (10 files)
     final remoteFiles = List.generate(
-        10,
-        (i) => drive.File()
-          ..id = 'id_$i'
-          ..name = 'file_$i.json');
+      10,
+      (i) => drive.File()
+        ..id = 'id_$i'
+        ..name = 'file_$i.json',
+    );
     when(() => mockDrive.listSyncFiles()).thenAnswer((_) async => remoteFiles);
 
     // Simulate 50ms delay per download
-    when(() => mockDrive.downloadFile(any(), any()))
-        .thenAnswer((invocation) async {
+    when(() => mockDrive.downloadFile(any(), any())).thenAnswer((
+      invocation,
+    ) async {
       await Future.delayed(const Duration(milliseconds: 50));
     });
 
     // Simulate export creating 10 new local files
-    when(() => mockCoordinator.exportChanges(any()))
-        .thenAnswer((invocation) async {
+    when(() => mockCoordinator.exportChanges(any())).thenAnswer((
+      invocation,
+    ) async {
       final dir = invocation.positionalArguments[0] as Directory;
       for (var i = 0; i < 10; i++) {
         File(p.join(dir.path, 'new_export_$i.json')).createSync();
@@ -94,8 +99,9 @@ void main() {
     });
 
     // Simulate 50ms delay per upload
-    when(() => mockDrive.uploadFile(any(), any()))
-        .thenAnswer((invocation) async {
+    when(() => mockDrive.uploadFile(any(), any())).thenAnswer((
+      invocation,
+    ) async {
       await Future.delayed(const Duration(milliseconds: 50));
     });
 
@@ -104,8 +110,11 @@ void main() {
     stopwatch.stop();
 
     debugPrint('Sync execution time: ${stopwatch.elapsedMilliseconds}ms');
-    expect(stopwatch.elapsedMilliseconds, lessThan(600),
-        reason: 'Sync should be parallelized');
+    expect(
+      stopwatch.elapsedMilliseconds,
+      lessThan(600),
+      reason: 'Sync should be parallelized',
+    );
 
     // Expectation: Sequential ~1000ms+ (overhead).
     // We don't assert here, just print.

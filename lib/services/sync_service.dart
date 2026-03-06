@@ -38,6 +38,7 @@ class SyncService {
       StreamController<void>.broadcast();
 
   bool _isSyncing = false;
+  DateTime? _lastSyncTime;
 
   Stream<void> get onSyncComplete => _syncCompleteController.stream;
 
@@ -67,14 +68,31 @@ class SyncService {
 
   Future<void> setSyncType(SyncType type) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_prefKeySyncType,
-        type == SyncType.googleDrive ? 'googleDrive' : 'local');
+    await prefs.setString(
+      _prefKeySyncType,
+      type == SyncType.googleDrive ? 'googleDrive' : 'local',
+    );
   }
 
   /// Performs a full sync: Import then Export.
-  Future<void> performSync() async {
+  /// [force] will skip the cooldown check.
+  Future<void> performSync({bool force = false}) async {
     if (_isSyncing) return;
+
+    // Cooldown logic: avoid syncing more than once every 5 minutes automatically.
+    // This prevents the "flash" effect on every app resume.
+    final now = DateTime.now();
+    if (!force &&
+        _lastSyncTime != null &&
+        now.difference(_lastSyncTime!).inMinutes < 5) {
+      if (kDebugMode) {
+        print('Sync skipped: cooldown active.');
+      }
+      return;
+    }
+
     _isSyncing = true;
+    _lastSyncTime = now;
     final syncType = await getSyncType();
 
     try {
@@ -267,8 +285,10 @@ class SyncService {
   }
 
   Future<void> _processInBatches<T>(
-      List<T> items, Future<void> Function(T) process,
-      {int batchSize = 5}) async {
+    List<T> items,
+    Future<void> Function(T) process, {
+    int batchSize = 5,
+  }) async {
     for (var i = 0; i < items.length; i += batchSize) {
       final end = (i + batchSize < items.length) ? i + batchSize : items.length;
       final batch = items.sublist(i, end);
