@@ -19,6 +19,7 @@ class MacOSShell extends StatefulWidget {
 
 class _MacOSShellState extends State<MacOSShell> {
   int _selectedIndex = 0;
+  late final PageController _pageController;
 
   final List<GlobalKey<NavigatorState>> _navigatorKeys = [
     GlobalKey<NavigatorState>(),
@@ -26,6 +27,18 @@ class _MacOSShellState extends State<MacOSShell> {
     GlobalKey<NavigatorState>(),
     GlobalKey<NavigatorState>(),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController(initialPage: _selectedIndex);
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -123,13 +136,18 @@ class _MacOSShellState extends State<MacOSShell> {
             ),
             // Main Content Area
             Expanded(
-              child: IndexedStack(
-                index: _selectedIndex,
+              // Optimization: Replaced IndexedStack with a lazy-loading PageView.
+              // IndexedStack instantiates and builds all children immediately, causing a spike
+              // in memory and initialization overhead on startup. PageView with AutomaticKeepAliveClientMixin
+              // on its children preserves state while only building pages as they are navigated to.
+              child: PageView(
+                controller: _pageController,
+                physics: const NeverScrollableScrollPhysics(),
                 children: [
-                  _buildNavigator(0, const MacOSActiveContactsView()),
-                  _buildNavigator(1, const MacOSPrayerDiaryView()),
-                  _buildNavigator(2, const MacOSContactsView()),
-                  _buildNavigator(3, const MacOSSettingsView()),
+                  _KeepAlivePage(child: _buildNavigator(0, const MacOSActiveContactsView())),
+                  _KeepAlivePage(child: _buildNavigator(1, const MacOSPrayerDiaryView())),
+                  _KeepAlivePage(child: _buildNavigator(2, const MacOSContactsView())),
+                  _KeepAlivePage(child: _buildNavigator(3, const MacOSSettingsView())),
                 ],
               ),
             ),
@@ -191,6 +209,7 @@ class _MacOSShellState extends State<MacOSShell> {
             setState(() {
               _selectedIndex = index;
             });
+            _pageController.jumpToPage(index);
           },
           borderRadius: BorderRadius.circular(6),
           child: Container(
@@ -232,5 +251,25 @@ class _MacOSShellState extends State<MacOSShell> {
         ),
       ),
     );
+  }
+}
+
+class _KeepAlivePage extends StatefulWidget {
+  final Widget child;
+
+  const _KeepAlivePage({required this.child});
+
+  @override
+  State<_KeepAlivePage> createState() => _KeepAlivePageState();
+}
+
+class _KeepAlivePageState extends State<_KeepAlivePage> with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    return widget.child;
   }
 }

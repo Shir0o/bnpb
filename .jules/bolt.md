@@ -17,3 +17,7 @@ Action: Wrap the child of `InkWell` in a `RepaintBoundary` to cache the complex 
 2025-02-18 - Optimized Contact Parsing
 Learning: Converting DB rows to Maps, then to Objects, then back to Maps for parent objects, and finally back to Objects is a massive waste of CPU and Memory.
 Action: Modified `Contact.fromMap` to accept `List<Interaction>` (and other child lists) directly, bypassing the intermediate Map transformation in `DBHelper`.
+
+2025-02-18 - Optimized Eager Instantiation in MacOSShell
+Learning: IndexedStack instantiates and builds all of its children immediately on startup, which causes a spike in memory and initialization overhead.
+Action: Replace IndexedStack with a PageView with NeverScrollableScrollPhysics and wrap children in AutomaticKeepAliveClientMixin to preserve state while deferring widget building until the tab is first visited.
