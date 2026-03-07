@@ -17,3 +17,7 @@ Action: Wrap the child of `InkWell` in a `RepaintBoundary` to cache the complex 
 2025-02-18 - Optimized Contact Parsing
 Learning: Converting DB rows to Maps, then to Objects, then back to Maps for parent objects, and finally back to Objects is a massive waste of CPU and Memory.
 Action: Modified `Contact.fromMap` to accept `List<Interaction>` (and other child lists) directly, bypassing the intermediate Map transformation in `DBHelper`.
+
+2025-02-18 - Eliminated Artificial Network Delay in UI State Transition
+**Learning:** Hardcoding a `Future.delayed` to simulate a network delay and display a `SkeletonLoader` when the underlying data is already available synchronously in memory creates an unnecessary, artificial bottleneck that actively degrades the perceived performance of the UI.
+**Action:** Removed the 500ms delay and SkeletonLoader entirely. Data is now rendered instantaneously when expanding list tiles, improving UI responsiveness dramatically.

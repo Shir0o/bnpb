@@ -24,8 +24,6 @@ import 'prayer_diary_page.dart';
 import 'prayer_request_details_page.dart';
 import 'prayer_lists_page.dart';
 import '../widgets/smooth_expansion_tile.dart';
-import '../widgets/contact_item_skeleton.dart';
-import '../widgets/skeleton_loader.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -120,8 +118,6 @@ class _HomePageState extends State<HomePage>
   Map<String, ContactMatch> _activeMatches = {};
 
   final Set<String> _expandedLocations = <String>{};
-  final Set<String> _loadingLocations =
-      <String>{}; // Track locations currently showing skeleton
 
   bool _isInitialLoad = true;
   bool _showRefreshSkeleton = false;
@@ -972,68 +968,23 @@ class _HomePageState extends State<HomePage>
                                   ),
                                   curve: Curves.fastOutSlowIn,
                                   onExpansionChanged: (isExpanded) {
-                                    if (isExpanded) {
-                                      setState(() {
+                                    setState(() {
+                                      if (isExpanded) {
                                         _expandedLocations.add(location);
-                                        _loadingLocations.add(location);
-                                      });
-
-                                      // Simulate network delay
-                                      Future.delayed(
-                                        const Duration(milliseconds: 500),
-                                        () {
-                                          if (mounted) {
-                                            setState(() {
-                                              _loadingLocations.remove(
-                                                location,
-                                              );
-                                            });
-                                          }
-                                        },
-                                      );
-                                    } else {
-                                      setState(() {
+                                      } else {
                                         _expandedLocations.remove(location);
-                                        _loadingLocations.remove(location);
-                                      });
-                                    }
+                                      }
+                                    });
                                   },
-                                  itemCount:
-                                      _loadingLocations.contains(location)
-                                      ? 1
-                                      : (isExpanded
-                                            ? contactsInLocation.length
-                                            : (contactsInLocation.length > 5
-                                                  ? 5
-                                                  : contactsInLocation.length)),
+                                  // Optimization: Removed artificial 500ms Future.delayed network simulation
+                                  // and SkeletonLoader. Since contacts are already loaded in memory (contactsInLocation),
+                                  // rendering them immediately makes the UI significantly faster and more responsive.
+                                  itemCount: isExpanded
+                                      ? contactsInLocation.length
+                                      : (contactsInLocation.length > 5
+                                            ? 5
+                                            : contactsInLocation.length),
                                   itemBuilder: (context, index) {
-                                    if (_loadingLocations.contains(location)) {
-                                      return SkeletonLoader(
-                                        child: Column(
-                                          children: const [
-                                            Padding(
-                                              padding: EdgeInsets.only(
-                                                bottom: 12,
-                                              ),
-                                              child: ContactItemSkeleton(),
-                                            ),
-                                            Padding(
-                                              padding: EdgeInsets.only(
-                                                bottom: 12,
-                                              ),
-                                              child: ContactItemSkeleton(),
-                                            ),
-                                            Padding(
-                                              padding: EdgeInsets.only(
-                                                bottom: 12,
-                                              ),
-                                              child: ContactItemSkeleton(),
-                                            ),
-                                          ],
-                                        ),
-                                      );
-                                    }
-
                                     final contact = contactsInLocation[index];
                                     final match = _activeMatches[contact.id];
                                     return Padding(
