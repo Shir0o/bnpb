@@ -423,18 +423,14 @@ class SyncCoordinator {
     );
 
     final uniqueParticipants = participantIds.toSet();
+    final batch = (txn as dynamic).batch() as Batch;
     for (final participant in uniqueParticipants) {
-      try {
-        await txn.insert('interaction_participants', {
-          'interactionId': interactionId,
-          'contactId': participant,
-        }, conflictAlgorithm: ConflictAlgorithm.replace);
-      } catch (e) {
-        debugPrint(
-          'Skipping participant $participant for interaction $interactionId due to error: $e',
-        );
-      }
+      batch.insert('interaction_participants', {
+        'interactionId': interactionId,
+        'contactId': participant,
+      }, conflictAlgorithm: ConflictAlgorithm.replace);
     }
+    await batch.commit(noResult: true);
   }
 
   Future<void> _replacePrayerParticipants(
@@ -449,19 +445,15 @@ class SyncCoordinator {
     );
 
     final uniqueParticipants = participantIds.toSet();
+    final batch = (txn as dynamic).batch() as Batch;
     for (final participant in uniqueParticipants) {
-      try {
-        await txn.insert(
-          'prayer_request_participants',
-          {'prayerRequestId': requestId, 'contactId': participant},
-          conflictAlgorithm: ConflictAlgorithm.replace,
-        );
-      } catch (e) {
-        debugPrint(
-          'Skipping participant $participant for prayer request $requestId due to error: $e',
-        );
-      }
+      batch.insert(
+        'prayer_request_participants',
+        {'prayerRequestId': requestId, 'contactId': participant},
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
     }
+    await batch.commit(noResult: true);
   }
 
   Future<void> _mergePrayerRequest(
@@ -594,12 +586,14 @@ class SyncCoordinator {
     );
 
     if (list.deletedAt == null) {
+      final batch = (db as dynamic).batch() as Batch;
       for (final cid in list.contactIds) {
-        await db.insert('prayer_list_members', {
+        batch.insert('prayer_list_members', {
           'listId': list.id,
           'contactId': cid,
         }, conflictAlgorithm: ConflictAlgorithm.ignore);
       }
+      await batch.commit(noResult: true);
     }
   }
 }
