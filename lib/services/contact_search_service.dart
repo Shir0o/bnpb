@@ -30,6 +30,9 @@ class ContactSearchService {
   List<_IndexedContact>? _cachedGeneralIndex;
   List<_IndexedContact>? _cachedMeetingIndex;
 
+  // Optimization: Cache DateFormat to avoid expensive repeated instantiation.
+  static final _dateFormatter = DateFormat.yMMMd();
+
   void index(List<Contact> contacts) {
     _contacts = List<Contact>.from(contacts);
     _cachedGeneralIndex = null;
@@ -45,9 +48,8 @@ class ContactSearchService {
   }
 
   static List<_IndexedContact> _buildGeneralIndex(List<Contact> contacts) {
-    final formatter = DateFormat.yMMMd();
     return contacts.map((contact) {
-      final fields = _buildGeneralFields(contact, formatter);
+      final fields = _buildGeneralFields(contact, _dateFormatter);
       final combinedText = fields.expand((field) => field.values).join(' ');
       return _IndexedContact(
         contact: contact,
@@ -136,7 +138,6 @@ class ContactSearchService {
   static List<_IndexedContact> _buildMeetingContextIndex(
     List<Contact> contacts,
   ) {
-    final formatter = DateFormat.yMMMd();
     return contacts.map((contact) {
       final segments = <_SearchField>[];
 
@@ -157,7 +158,7 @@ class ContactSearchService {
         parts.add(interaction.summary);
         segments.add(
           _SearchField(
-            label: 'Interaction on ${formatter.format(interaction.occurredAt)}',
+            label: 'Interaction on ${_dateFormatter.format(interaction.occurredAt)}',
             values: parts,
           ),
         );
@@ -359,12 +360,10 @@ class ContactSearchService {
       return a.contact.fullName.compareTo(b.contact.fullName);
     });
 
-    final formatter = DateFormat.yMMMd();
-
     return scoredContacts.take(limit).map((s) {
       String? description;
       if (s.lastInteraction != null) {
-        description = 'Last met ${formatter.format(s.lastInteraction!)}';
+        description = 'Last met ${_dateFormatter.format(s.lastInteraction!)}';
       } else if (s.interactionCount > 0) {
         // Should catch cases where interaction might exist but date is null?
         // Ideally checking interactions.isNotEmpty covers it, but defensively:

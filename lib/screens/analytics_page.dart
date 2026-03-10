@@ -37,6 +37,7 @@ class _AnalyticsPageState extends State<AnalyticsPage>
     with AutomaticKeepAliveClientMixin {
   final AnalyticsRepository _repository = AnalyticsRepository();
   final DateFormat _dateLabelFormatter = DateFormat.yMMMd();
+  final DateFormat _monthDayFormatter = DateFormat.Md();
 
   AnalyticsSummary? _summary;
   bool _isLoading = true;
@@ -509,7 +510,7 @@ class _AnalyticsPageState extends State<AnalyticsPage>
                             return Padding(
                               padding: const EdgeInsets.only(top: 6),
                               child: Text(
-                                DateFormat.Md().format(date),
+                                _monthDayFormatter.format(date),
                                 style: Theme.of(context).textTheme.bodySmall,
                               ),
                             );
