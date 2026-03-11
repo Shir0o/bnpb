@@ -305,16 +305,15 @@ class _AddContactPageState extends State<AddContactPage>
             Expanded(
               child: TextField(
                 controller: controller,
-                decoration:
-                    _buildInputDecoration(
-                      'Add $label',
-                      prefixIcon: leadingIcon,
-                    ).copyWith(
-                      suffixIcon: IconButton(
-                        icon: const Icon(Icons.add),
-                        onPressed: onAdd,
-                      ),
-                    ),
+                decoration: _buildInputDecoration(
+                  'Add $label',
+                  prefixIcon: leadingIcon,
+                ).copyWith(
+                  suffixIcon: IconButton(
+                    icon: const Icon(Icons.add),
+                    onPressed: onAdd,
+                  ),
+                ),
                 onSubmitted: (value) {
                   if (onSubmitted != null) {
                     onSubmitted(value);
@@ -508,16 +507,15 @@ class _AddContactPageState extends State<AddContactPage>
                       Expanded(
                         child: TextField(
                           controller: _photoCueController,
-                          decoration:
-                              _buildInputDecoration(
-                                'Link or path to a helpful photo',
-                                prefixIcon: Icons.image_outlined,
-                              ).copyWith(
-                                suffixIcon: IconButton(
-                                  icon: const Icon(Icons.add),
-                                  onPressed: _addPhotoCueFromInput,
-                                ),
-                              ),
+                          decoration: _buildInputDecoration(
+                            'Link or path to a helpful photo',
+                            prefixIcon: Icons.image_outlined,
+                          ).copyWith(
+                            suffixIcon: IconButton(
+                              icon: const Icon(Icons.add),
+                              onPressed: _addPhotoCueFromInput,
+                            ),
+                          ),
                           onSubmitted: (_) => _addPhotoCueFromInput(),
                         ),
                       ),
@@ -544,16 +542,15 @@ class _AddContactPageState extends State<AddContactPage>
                       Expanded(
                         child: TextField(
                           controller: _tagController,
-                          decoration:
-                              _buildInputDecoration(
-                                'Add a tag',
-                                prefixIcon: Icons.tag,
-                              ).copyWith(
-                                suffixIcon: IconButton(
-                                  icon: const Icon(Icons.add),
-                                  onPressed: _addTagFromInput,
-                                ),
-                              ),
+                          decoration: _buildInputDecoration(
+                            'Add a tag',
+                            prefixIcon: Icons.tag,
+                          ).copyWith(
+                            suffixIcon: IconButton(
+                              icon: const Icon(Icons.add),
+                              onPressed: _addTagFromInput,
+                            ),
+                          ),
                           onSubmitted: (_) => _addTagFromInput(),
                         ),
                       ),

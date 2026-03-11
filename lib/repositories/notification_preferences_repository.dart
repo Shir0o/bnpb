@@ -5,7 +5,7 @@ import '../models/notification_preference.dart';
 /// preferences.
 class NotificationPreferencesRepository {
   NotificationPreferencesRepository({DBHelper? dbHelper})
-    : _dbHelper = dbHelper ?? DBHelper();
+      : _dbHelper = dbHelper ?? DBHelper();
 
   final DBHelper _dbHelper;
 

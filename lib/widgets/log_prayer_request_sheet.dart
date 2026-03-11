@@ -127,9 +127,8 @@ class _LogPrayerRequestSheetState extends State<LogPrayerRequestSheet> {
       builder: (context) => ContactSelectionSheet(
         title: 'Select Contacts',
         initialSelectedIds: _selectedParticipantIds,
-        disabledIds: widget.initialContact != null
-            ? {widget.initialContact!.id}
-            : {},
+        disabledIds:
+            widget.initialContact != null ? {widget.initialContact!.id} : {},
       ),
     );
 

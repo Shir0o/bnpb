@@ -33,7 +33,20 @@ class GoogleDriveService {
     if (_currentUser != null) return _currentUser;
     if (_triedSilentSignIn) return null;
 
-    _currentUser = await _googleSignIn.signInSilently();
+    try {
+      // Use a timeout to prevent hanging on poor connections.
+      // Silent sign-in should be fast; if it's not, we'd rather skip it than block.
+      _currentUser = await _googleSignIn.signInSilently().timeout(
+            const Duration(seconds: 5),
+            onTimeout: () => null,
+          );
+    } catch (e) {
+      if (kDebugMode) {
+        print('Silent sign-in failed/timed out: $e');
+      }
+      _currentUser = null;
+    }
+
     _triedSilentSignIn = true;
     return _currentUser;
   }
@@ -74,10 +87,26 @@ class GoogleDriveService {
     return await _googleSignIn.isSignedIn();
   }
 
+  /// Checks if there is basic internet connectivity.
+  Future<bool> _hasConnectivity() async {
+    try {
+      final result = await InternetAddress.lookup('google.com').timeout(
+        const Duration(seconds: 3),
+      );
+      return result.isNotEmpty && result[0].rawAddress.isNotEmpty;
+    } catch (_) {
+      return false;
+    }
+  }
+
   /// Ensures the Drive API client is initialized.
   /// This may trigger a keychain access prompt on macOS.
   /// Silent by default; will NOT trigger interactive sign-in dialog.
   Future<void> _ensureApiInitialized() async {
+    if (!await _hasConnectivity()) {
+      throw Exception('No internet connection');
+    }
+
     if (_driveApi != null) {
       try {
         final _ = await _googleSignIn.authenticatedClient();
@@ -112,7 +141,9 @@ class GoogleDriveService {
 
     final query =
         "name = '$folderName' and mimeType = 'application/vnd.google-apps.folder' and trashed = false";
-    final folderList = await _driveApi!.files.list(q: query);
+    final folderList = await _driveApi!.files.list(q: query).timeout(
+          const Duration(seconds: 10),
+        );
 
     if (folderList.files != null && folderList.files!.isNotEmpty) {
       return folderList.files!.first.id;
@@ -122,7 +153,9 @@ class GoogleDriveService {
       ..name = folderName
       ..mimeType = 'application/vnd.google-apps.folder';
 
-    final createdFolder = await _driveApi!.files.create(folder);
+    final createdFolder = await _driveApi!.files
+        .create(folder)
+        .timeout(const Duration(seconds: 15));
     return createdFolder.id;
   }
 
@@ -140,7 +173,9 @@ class GoogleDriveService {
 
     final query =
         "name = '$remoteName' and '$folderId' in parents and trashed = false";
-    final existingFiles = await _driveApi!.files.list(q: query);
+    final existingFiles = await _driveApi!.files
+        .list(q: query)
+        .timeout(const Duration(seconds: 10));
 
     final driveFile = drive.File()..name = remoteName;
 
@@ -148,17 +183,21 @@ class GoogleDriveService {
 
     if (existingFiles.files != null && existingFiles.files!.isNotEmpty) {
       // Update existing file
-      await _driveApi!.files.update(
-        driveFile,
-        existingFiles.files!.first.id!,
-        uploadMedia: media,
-      );
+      await _driveApi!.files
+          .update(
+            driveFile,
+            existingFiles.files!.first.id!,
+            uploadMedia: media,
+          )
+          .timeout(const Duration(seconds: 30));
     } else {
       // Create new file
       if (folderId != null) {
         driveFile.parents = [folderId];
       }
-      await _driveApi!.files.create(driveFile, uploadMedia: media);
+      await _driveApi!.files
+          .create(driveFile, uploadMedia: media)
+          .timeout(const Duration(seconds: 30));
     }
   }
 
@@ -182,10 +221,12 @@ class GoogleDriveService {
     }
 
     final query = "'$folderId' in parents and trashed = false";
-    final fileList = await _driveApi!.files.list(
-      q: query,
-      $fields: 'files(id, name, modifiedTime, size)',
-    );
+    final fileList = await _driveApi!.files
+        .list(
+          q: query,
+          $fields: 'files(id, name, modifiedTime, size)',
+        )
+        .timeout(const Duration(seconds: 15));
 
     if (kDebugMode) {
       debugPrint(
@@ -205,13 +246,12 @@ class GoogleDriveService {
       throw Exception('Not signed in to Google Drive');
     }
 
-    // To download content we use get() with downloadOptions: drive.DownloadOptions.fullMedia
-    final mediaResponse =
-        await _driveApi!.files.get(
-              fileId,
-              downloadOptions: drive.DownloadOptions.fullMedia,
-            )
-            as drive.Media;
+    final mediaResponse = await _driveApi!.files
+        .get(
+          fileId,
+          downloadOptions: drive.DownloadOptions.fullMedia,
+        )
+        .timeout(const Duration(seconds: 30)) as drive.Media;
 
     final sink = targetFile.openWrite();
     try {

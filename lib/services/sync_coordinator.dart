@@ -124,8 +124,7 @@ class SyncCoordinator {
     await _updateLastExportTime(now);
 
     return SyncResult(
-      exportedCount:
-          contacts.length +
+      exportedCount: contacts.length +
           interactions.length +
           prayers.length +
           prayerLists.length,
@@ -155,17 +154,13 @@ class SyncCoordinator {
     final deviceId = await getDeviceId();
     final processed = await _getProcessedFiles();
 
-    final files = await syncDir
-        .list()
-        .where((f) => f is File)
-        .cast<File>()
-        .where((f) {
-          final name = p.basename(f.path);
-          return name.endsWith('_data.json') &&
-              !name.startsWith(deviceId) && // Ignore own files
-              !processed.contains(name);
-        })
-        .toList();
+    final files =
+        await syncDir.list().where((f) => f is File).cast<File>().where((f) {
+      final name = p.basename(f.path);
+      return name.endsWith('_data.json') &&
+          !name.startsWith(deviceId) && // Ignore own files
+          !processed.contains(name);
+    }).toList();
 
     // Sort by timestamp in filename to apply in order
     // Filename format: deviceId_timestamp_data.json
@@ -425,10 +420,13 @@ class SyncCoordinator {
     final uniqueParticipants = participantIds.toSet();
     final batch = (txn as dynamic).batch() as Batch;
     for (final participant in uniqueParticipants) {
-      batch.insert('interaction_participants', {
-        'interactionId': interactionId,
-        'contactId': participant,
-      }, conflictAlgorithm: ConflictAlgorithm.replace);
+      batch.insert(
+          'interaction_participants',
+          {
+            'interactionId': interactionId,
+            'contactId': participant,
+          },
+          conflictAlgorithm: ConflictAlgorithm.replace);
     }
     await batch.commit(noResult: true);
   }
@@ -588,10 +586,13 @@ class SyncCoordinator {
     if (list.deletedAt == null) {
       final batch = (db as dynamic).batch() as Batch;
       for (final cid in list.contactIds) {
-        batch.insert('prayer_list_members', {
-          'listId': list.id,
-          'contactId': cid,
-        }, conflictAlgorithm: ConflictAlgorithm.ignore);
+        batch.insert(
+            'prayer_list_members',
+            {
+              'listId': list.id,
+              'contactId': cid,
+            },
+            conflictAlgorithm: ConflictAlgorithm.ignore);
       }
       await batch.commit(noResult: true);
     }

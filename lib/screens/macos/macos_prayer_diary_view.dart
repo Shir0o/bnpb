@@ -212,8 +212,8 @@ class _MacOSPrayerDiaryViewState extends State<MacOSPrayerDiaryView> {
     final filteredRequests = _requests.where((req) {
       if (_searchQuery.isEmpty) return true;
       final matchDescription = req.description.toLowerCase().contains(
-        _searchQuery,
-      );
+            _searchQuery,
+          );
       final matchContacts = req.participantIds.any((id) {
         final name = _displayNameForContact(id).toLowerCase();
         return name.contains(_searchQuery);

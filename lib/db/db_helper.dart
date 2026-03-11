@@ -563,9 +563,8 @@ class DBHelper {
         whereArgs: [listId],
       );
 
-      final contactIds = memberRows
-          .map((m) => m['contactId'] as String)
-          .toList();
+      final contactIds =
+          memberRows.map((m) => m['contactId'] as String).toList();
 
       lists.add(PrayerList.fromMap(row, contactIds: contactIds));
     }
@@ -598,9 +597,8 @@ class DBHelper {
         whereArgs: [listId],
       );
 
-      final contactIds = memberRows
-          .map((m) => m['contactId'] as String)
-          .toList();
+      final contactIds =
+          memberRows.map((m) => m['contactId'] as String).toList();
 
       lists.add(PrayerList.fromMap(row, contactIds: contactIds));
     }
@@ -644,10 +642,13 @@ class DBHelper {
 
       final batch = txn.batch();
       for (final contactId in list.contactIds) {
-        batch.insert('prayer_list_members', {
-          'listId': list.id,
-          'contactId': contactId,
-        }, conflictAlgorithm: ConflictAlgorithm.ignore);
+        batch.insert(
+            'prayer_list_members',
+            {
+              'listId': list.id,
+              'contactId': contactId,
+            },
+            conflictAlgorithm: ConflictAlgorithm.ignore);
       }
       await batch.commit(noResult: true);
     });
@@ -678,10 +679,13 @@ class DBHelper {
   Future<void> addContactToPrayerList(String listId, String contactId) async {
     final db = await database;
     await db.transaction((txn) async {
-      await txn.insert('prayer_list_members', {
-        'listId': listId,
-        'contactId': contactId,
-      }, conflictAlgorithm: ConflictAlgorithm.ignore);
+      await txn.insert(
+          'prayer_list_members',
+          {
+            'listId': listId,
+            'contactId': contactId,
+          },
+          conflictAlgorithm: ConflictAlgorithm.ignore);
       await txn.update(
         'prayer_lists',
         {'updatedAt': DateTime.now().toUtc().toIso8601String()},
@@ -750,7 +754,7 @@ class DBHelper {
       'deletedAt': forceNowTimestamps
           ? null
           : contact.deletedAt
-                ?.toIso8601String(), // Revive if previously deleted only for local saves
+              ?.toIso8601String(), // Revive if previously deleted only for local saves
     };
 
     if (isUpdate) {
@@ -805,8 +809,7 @@ class DBHelper {
   }
 
   Future<void> _upsertMeetContext(DatabaseExecutor txn, Contact contact) async {
-    final hasContext =
-        contact.firstMeetingNotes != null &&
+    final hasContext = contact.firstMeetingNotes != null &&
         contact.firstMeetingNotes!.isNotEmpty;
 
     if (!hasContext) {
@@ -818,10 +821,13 @@ class DBHelper {
       return;
     }
 
-    await txn.insert('meet_contexts', {
-      'contactId': contact.id,
-      'firstMeetingNotes': contact.firstMeetingNotes,
-    }, conflictAlgorithm: ConflictAlgorithm.replace);
+    await txn.insert(
+        'meet_contexts',
+        {
+          'contactId': contact.id,
+          'firstMeetingNotes': contact.firstMeetingNotes,
+        },
+        conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   Future<void> _replaceContactTags(
@@ -860,9 +866,8 @@ class DBHelper {
       where: 'contactId = ?',
       whereArgs: [contact.id],
     );
-    final existingInteractionIds = existingRows
-        .map((row) => row['interactionId'] as int)
-        .toSet();
+    final existingInteractionIds =
+        existingRows.map((row) => row['interactionId'] as int).toSet();
 
     // In a pure replacement model (for Contact editing), we might unlink/delete interactions not in the list.
     // But since we want soft deletes, we should check what is missing.
@@ -963,10 +968,13 @@ class DBHelper {
     final uniqueParticipants = participantIds.toSet();
     final batch = (txn as dynamic).batch() as Batch;
     for (final participant in uniqueParticipants) {
-      batch.insert('interaction_participants', {
-        'interactionId': interactionId,
-        'contactId': participant,
-      }, conflictAlgorithm: ConflictAlgorithm.replace);
+      batch.insert(
+          'interaction_participants',
+          {
+            'interactionId': interactionId,
+            'contactId': participant,
+          },
+          conflictAlgorithm: ConflictAlgorithm.replace);
     }
     await batch.commit(noResult: true);
   }
@@ -1083,13 +1091,10 @@ class DBHelper {
       where: 'contactId = ?',
       whereArgs: [contact.id],
     );
-    final existingIds = existingRows
-        .map((r) => r['prayerRequestId'] as int)
-        .toSet();
-    final newIds = contact.prayerRequests
-        .map((r) => r.id)
-        .whereType<int>()
-        .toSet();
+    final existingIds =
+        existingRows.map((r) => r['prayerRequestId'] as int).toSet();
+    final newIds =
+        contact.prayerRequests.map((r) => r.id).whereType<int>().toSet();
 
     final idsToDelete = existingIds.difference(newIds);
     for (final id in idsToDelete) {
@@ -1175,15 +1180,13 @@ class DBHelper {
     if (contactRows.isEmpty) return [];
 
     // Gather IDs for batch fetching
-    final retrievedContactIds = contactRows
-        .map((c) => c['id'] as String)
-        .toList();
+    final retrievedContactIds =
+        contactRows.map((c) => c['id'] as String).toList();
     final retrievedContactIdsSet = retrievedContactIds.toSet();
 
     // Check if we fetched all active contacts to use optimized bulk queries
     // This avoids huge IN clauses which can crash SQLite or be slow to parse
-    final isFetchAllActive =
-        contactId == null &&
+    final isFetchAllActive = contactId == null &&
         (contactIds == null || contactIds.isEmpty) &&
         updatedSince == null &&
         !includeDeleted;
@@ -1247,9 +1250,8 @@ class DBHelper {
     }
 
     // We also need to get ALL participants for these interactions to properly populate participantIds
-    final fetchedInteractionIds = participantRows
-        .map((r) => r['id'] as int)
-        .toSet();
+    final fetchedInteractionIds =
+        participantRows.map((r) => r['id'] as int).toSet();
     final allParticipantsMap = await _getParticipantsForInteractions(
       db,
       fetchedInteractionIds,
@@ -1300,9 +1302,8 @@ class DBHelper {
       }
     }
 
-    final fetchedPrayerIds = prayerParticipantRows
-        .map((r) => r['id'] as int)
-        .toSet();
+    final fetchedPrayerIds =
+        prayerParticipantRows.map((r) => r['id'] as int).toSet();
     final allPrayerParticipantsMap = await _getParticipantsForPrayerRequests(
       db,
       fetchedPrayerIds,
@@ -1397,12 +1398,10 @@ class DBHelper {
           .map((i) => i.toMap())
           .toList(); // toMap/fromMap roundtrip usually fine but passing objects preferred if constructor allows
       // Actually Contact.fromMap expects List<Map> or similar.
-      contactMap['prayerRequests'] = (requestsByContact[cId] ?? [])
-          .map((r) => r.toMap())
-          .toList();
-      contactMap['relationships'] = (relationshipsByContact[cId] ?? [])
-          .map((r) => r.toMap())
-          .toList();
+      contactMap['prayerRequests'] =
+          (requestsByContact[cId] ?? []).map((r) => r.toMap()).toList();
+      contactMap['relationships'] =
+          (relationshipsByContact[cId] ?? []).map((r) => r.toMap()).toList();
       contactMap['firstMeetingNotes'] = contextMap[cId];
 
       // Re-stitch objects to avoid double serialization if possible, but fromMap is clean
@@ -1545,9 +1544,8 @@ class DBHelper {
       where: 'contactId = ?',
       whereArgs: [contactId],
     );
-    final interactionIds = participantRows
-        .map((row) => row['interactionId'] as int)
-        .toSet();
+    final interactionIds =
+        participantRows.map((row) => row['interactionId'] as int).toSet();
     if (interactionIds.isEmpty) {
       return const [];
     }
@@ -1597,9 +1595,8 @@ class DBHelper {
         where: 'contactId = ?',
         whereArgs: [contactId],
       );
-      final interactionIds = interactionIdRows
-          .map((r) => r['interactionId'] as int)
-          .toList();
+      final interactionIds =
+          interactionIdRows.map((r) => r['interactionId'] as int).toList();
       if (interactionIds.isEmpty) return [];
 
       final placeholders = List.filled(interactionIds.length, '?').join(',');
@@ -2079,9 +2076,8 @@ class DBHelper {
     final futures = <Future<List<Map<String, Object?>>>>[];
 
     for (var i = 0; i < values.length; i += batchSize) {
-      final end = (i + batchSize < values.length)
-          ? i + batchSize
-          : values.length;
+      final end =
+          (i + batchSize < values.length) ? i + batchSize : values.length;
       final chunk = values.sublist(i, end);
       final placeholders = List.filled(chunk.length, '?').join(',');
 

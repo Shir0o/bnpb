@@ -144,10 +144,15 @@ class _MacOSShellState extends State<MacOSShell> {
                 controller: _pageController,
                 physics: const NeverScrollableScrollPhysics(),
                 children: [
-                  _KeepAlivePage(child: _buildNavigator(0, const MacOSActiveContactsView())),
-                  _KeepAlivePage(child: _buildNavigator(1, const MacOSPrayerDiaryView())),
-                  _KeepAlivePage(child: _buildNavigator(2, const MacOSContactsView())),
-                  _KeepAlivePage(child: _buildNavigator(3, const MacOSSettingsView())),
+                  _KeepAlivePage(
+                      child:
+                          _buildNavigator(0, const MacOSActiveContactsView())),
+                  _KeepAlivePage(
+                      child: _buildNavigator(1, const MacOSPrayerDiaryView())),
+                  _KeepAlivePage(
+                      child: _buildNavigator(2, const MacOSContactsView())),
+                  _KeepAlivePage(
+                      child: _buildNavigator(3, const MacOSSettingsView())),
                 ],
               ),
             ),
@@ -263,7 +268,8 @@ class _KeepAlivePage extends StatefulWidget {
   State<_KeepAlivePage> createState() => _KeepAlivePageState();
 }
 
-class _KeepAlivePageState extends State<_KeepAlivePage> with AutomaticKeepAliveClientMixin {
+class _KeepAlivePageState extends State<_KeepAlivePage>
+    with AutomaticKeepAliveClientMixin {
   @override
   bool get wantKeepAlive => true;
 

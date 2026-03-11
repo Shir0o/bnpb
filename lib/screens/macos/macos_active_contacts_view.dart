@@ -87,9 +87,8 @@ class _MacOSActiveContactsViewState extends State<MacOSActiveContactsView> {
       nextSelected = loadedContacts.first;
     } else if (loadedContacts.isNotEmpty && _selectedContact != null) {
       // Refresh the selected contact data if it's in the list
-      final found = loadedContacts
-          .where((c) => c.id == _selectedContact!.id)
-          .firstOrNull;
+      final found =
+          loadedContacts.where((c) => c.id == _selectedContact!.id).firstOrNull;
       if (found != null) {
         nextSelected = found;
       } else {
@@ -237,9 +236,8 @@ class _MacOSActiveContactsViewState extends State<MacOSActiveContactsView> {
   Widget _buildContactTile(Contact contact, bool isSelected) {
     // Determine last update
     // Interactions are sorted (newest first)
-    final lastInteraction = contact.interactions.isNotEmpty
-        ? contact.interactions.first
-        : null;
+    final lastInteraction =
+        contact.interactions.isNotEmpty ? contact.interactions.first : null;
     final lastRequest = contact.prayerRequests.isNotEmpty
         ? contact.prayerRequests.last
         : null; // Ideally requests should be sorted

@@ -77,8 +77,8 @@ class _SettingsPageState extends State<SettingsPage>
     _biometricEnabled = await _securityService.isBiometricEnabled();
     _biometricAvailable = await _securityService.canUseBiometrics();
     final reminderService = ReminderService();
-    _supportsExactAlarmPermission = await reminderService
-        .isExactAlarmPermissionRelevant();
+    _supportsExactAlarmPermission =
+        await reminderService.isExactAlarmPermissionRelevant();
     _exactAlarmOptIn = await reminderService.isExactAlarmOptInEnabled();
 
     final elapsed = stopwatch.elapsedMilliseconds;
@@ -167,9 +167,9 @@ class _SettingsPageState extends State<SettingsPage>
       child: Text(
         title.toUpperCase(),
         style: Theme.of(context).textTheme.labelMedium?.copyWith(
-          color: Theme.of(context).colorScheme.primary,
-          fontWeight: FontWeight.bold,
-        ),
+              color: Theme.of(context).colorScheme.primary,
+              fontWeight: FontWeight.bold,
+            ),
       ),
     );
   }
@@ -382,8 +382,8 @@ class _SettingsPageState extends State<SettingsPage>
     }
 
     final reminderService = ReminderService();
-    final supportsExactAlarmPermission = await reminderService
-        .isExactAlarmPermissionRelevant();
+    final supportsExactAlarmPermission =
+        await reminderService.isExactAlarmPermissionRelevant();
     final exactAlarmOptIn = await reminderService.isExactAlarmOptInEnabled();
 
     if (mounted) {
@@ -432,7 +432,8 @@ class _SettingsPageState extends State<SettingsPage>
       const Duration(hours: 1),
       const Duration(days: 1),
       current,
-    }.toList()..sort();
+    }.toList()
+      ..sort();
   }
 
   String _formatLeadTime(ReminderChannel channel, Duration d) {

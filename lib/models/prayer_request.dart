@@ -55,8 +55,8 @@ class PrayerRequest {
     this.reflectionNotes,
     DateTime? updatedAt,
     this.deletedAt,
-  }) : syncId = syncId ?? const Uuid().v4(),
-       updatedAt = updatedAt ?? DateTime.now();
+  })  : syncId = syncId ?? const Uuid().v4(),
+        updatedAt = updatedAt ?? DateTime.now();
 
   /// Row identifier when persisted.
   final int? id;

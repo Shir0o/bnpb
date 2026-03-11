@@ -166,12 +166,7 @@ class _HomePageState extends State<HomePage>
   void didChangeMetrics() {
     super.didChangeMetrics();
     final bottomInset = WidgetsBinding
-        .instance
-        .platformDispatcher
-        .views
-        .first
-        .viewInsets
-        .bottom;
+        .instance.platformDispatcher.views.first.viewInsets.bottom;
     final isKeyboardVisible = bottomInset > 0.0;
 
     // If keyboard was visible and now is not, and we have focus, un-focus to close suggestions.
@@ -194,9 +189,8 @@ class _HomePageState extends State<HomePage>
     }
 
     // If using skeleton, enforce minimum delay to prevent flashing
-    final minDelay = useSkeleton
-        ? const Duration(milliseconds: 300)
-        : Duration.zero;
+    final minDelay =
+        useSkeleton ? const Duration(milliseconds: 300) : Duration.zero;
 
     await Future.wait([
       (() async {
@@ -238,9 +232,11 @@ class _HomePageState extends State<HomePage>
       });
 
     final lookup = {for (final contact in sortedContacts) contact.id: contact};
-    final tags =
-        sortedContacts.expand((contact) => contact.tags).toSet().toList()
-          ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+    final tags = sortedContacts
+        .expand((contact) => contact.tags)
+        .toSet()
+        .toList()
+      ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
 
     _searchService.index(sortedContacts);
 
@@ -530,8 +526,8 @@ class _HomePageState extends State<HomePage>
                     ..._prayerFocusInteractions.map((interaction) {
                       final primaryContactId =
                           interaction.participantIds.isNotEmpty
-                          ? interaction.participantIds.first
-                          : null;
+                              ? interaction.participantIds.first
+                              : null;
                       final contact = primaryContactId != null
                           ? _contactLookup[primaryContactId]
                           : null;
@@ -598,8 +594,8 @@ class _HomePageState extends State<HomePage>
     for (var contact in contacts) {
       final location =
           (contact.location != null && contact.location!.isNotEmpty)
-          ? contact.location!
-          : 'Unknown';
+              ? contact.location!
+              : 'Unknown';
       grouped.putIfAbsent(location, () => []);
       grouped[location]!.add(contact);
     }
@@ -736,9 +732,8 @@ class _HomePageState extends State<HomePage>
 
   Future<void> _deleteContact(String id) async {
     final previousContacts = List<Contact>.from(_contacts);
-    final optimisticContacts = previousContacts
-        .where((contact) => contact.id != id)
-        .toList();
+    final optimisticContacts =
+        previousContacts.where((contact) => contact.id != id).toList();
 
     _applyContactsSnapshot(optimisticContacts);
 
@@ -768,16 +763,16 @@ class _HomePageState extends State<HomePage>
 
     Navigator.of(context)
         .push(
-          MaterialPageRoute(
-            builder: (context) => ContactDetailsPage(
-              contact: contact,
-              onDelete: () => _deleteContact(contact.id),
-            ),
-          ),
-        )
+      MaterialPageRoute(
+        builder: (context) => ContactDetailsPage(
+          contact: contact,
+          onDelete: () => _deleteContact(contact.id),
+        ),
+      ),
+    )
         .then((_) {
-          unawaited(_fetchContacts(useSkeleton: true));
-        });
+      unawaited(_fetchContacts(useSkeleton: true));
+    });
   }
 
   @override
@@ -1026,7 +1021,9 @@ class _HomePageState extends State<HomePage>
                                   const SizedBox(height: 16),
                                   Text(
                                     'No contacts found',
-                                    style: Theme.of(context).textTheme.bodyLarge
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodyLarge
                                         ?.copyWith(
                                           color: Theme.of(
                                             context,

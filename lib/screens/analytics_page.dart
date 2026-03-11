@@ -377,14 +377,15 @@ class _AnalyticsPageState extends State<AnalyticsPage>
                             entry.value.totalMinutes,
                             entry.value.interactionCount,
                           );
-                          final percentage = totalValue == 0
-                              ? 0
-                              : (value / totalValue) * 100;
+                          final percentage =
+                              totalValue == 0 ? 0 : (value / totalValue) * 100;
                           return PieChartSectionData(
                             value: value,
                             title: '${percentage.toStringAsFixed(1)}%',
                             radius: sectionRadius,
-                            titleStyle: Theme.of(context).textTheme.bodyMedium
+                            titleStyle: Theme.of(context)
+                                .textTheme
+                                .bodyMedium
                                 ?.copyWith(fontWeight: FontWeight.bold),
                           );
                         }).toList(),
@@ -672,8 +673,8 @@ class _EmptyAnalyticsCard extends StatelessWidget {
             Text(
               message,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Theme.of(context).colorScheme.outline,
-              ),
+                    color: Theme.of(context).colorScheme.outline,
+                  ),
             ),
           ],
         ),

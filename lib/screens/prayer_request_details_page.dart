@@ -133,8 +133,8 @@ class _PrayerRequestDetailsPageState extends State<PrayerRequestDetailsPage> {
       final name = contact.fullName.isNotEmpty
           ? contact.fullName
           : (contact.nickname?.isNotEmpty == true
-                ? contact.nickname!
-                : 'Unnamed');
+              ? contact.nickname!
+              : 'Unnamed');
       final initial = name.isNotEmpty ? name[0].toUpperCase() : '?';
 
       return Chip(

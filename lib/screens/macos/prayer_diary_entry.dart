@@ -64,8 +64,7 @@ class _PrayerDiaryEntryState extends State<PrayerDiaryEntry> {
       description: _descriptionController.text,
       status: _status,
       // answeredAt logic could be handled here or in the parent
-      answeredAt:
-          _status == PrayerRequestStatus.answered &&
+      answeredAt: _status == PrayerRequestStatus.answered &&
               widget.request.status != PrayerRequestStatus.answered
           ? DateTime.now()
           : widget.request.answeredAt,
