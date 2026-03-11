@@ -34,9 +34,12 @@ class _PrayerRequestDetailsPageState extends State<PrayerRequestDetailsPage> {
   bool _isLoadingContacts = false;
   bool _didUpdate = false;
 
+  late final DateFormat _dateFormat;
+
   @override
   void initState() {
     super.initState();
+    _dateFormat = DateFormat.yMMMd();
     _request = widget.request;
     _contacts = List.from(widget.initialContacts);
     _loadContacts();
@@ -120,7 +123,7 @@ class _PrayerRequestDetailsPageState extends State<PrayerRequestDetailsPage> {
   }
 
   String _formatDate(DateTime date) {
-    return DateFormat.yMMMd().format(date);
+    return _dateFormat.format(date);
   }
 
   List<Widget> _buildParticipantBadges() {

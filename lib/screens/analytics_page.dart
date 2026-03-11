@@ -36,7 +36,8 @@ class AnalyticsPage extends StatefulWidget {
 class _AnalyticsPageState extends State<AnalyticsPage>
     with AutomaticKeepAliveClientMixin {
   final AnalyticsRepository _repository = AnalyticsRepository();
-  final DateFormat _dateLabelFormatter = DateFormat.yMMMd();
+  late final DateFormat _dateLabelFormatter;
+  late final DateFormat _timelineLabelFormatter;
 
   AnalyticsSummary? _summary;
   bool _isLoading = true;
@@ -45,6 +46,8 @@ class _AnalyticsPageState extends State<AnalyticsPage>
   @override
   void initState() {
     super.initState();
+    _dateLabelFormatter = DateFormat.yMMMd();
+    _timelineLabelFormatter = DateFormat.Md();
     _loadSummary();
   }
 
@@ -509,7 +512,7 @@ class _AnalyticsPageState extends State<AnalyticsPage>
                             return Padding(
                               padding: const EdgeInsets.only(top: 6),
                               child: Text(
-                                DateFormat.Md().format(date),
+                                _timelineLabelFormatter.format(date),
                                 style: Theme.of(context).textTheme.bodySmall,
                               ),
                             );
