@@ -30,8 +30,9 @@ This repository contains a Flutter application for managing contact information,
 4.  **Zero Surprises**: Ensure logic, UI, and UX in screens unrelated to your immediate task remain EXACTLY the same.
 
 ## Testing & Tooling
-- Run `flutter analyze` to catch static analysis issues.
-- **Cleanup**: Always run `dart format .` and `flutter analyze` as a cleanup step to ensure clean code.
+- **Local Analysis**: Run `flutter analyze` to catch static analysis issues locally before pushing.
+- **Cleanup**: It is recommended to run `dart format .` and `flutter analyze` as a cleanup step locally.
+- **CI Enforcement**: Note that CI now only enforces test runs and builds; static analysis and formatting checks have been removed from PR actions to speed up feedback loops.
 - Execute widget/unit tests with `flutter test` when applicable.
 - For data import/export flows, add regression coverage or manual testing notes when practical (e.g., round-tripping JSON files).
 

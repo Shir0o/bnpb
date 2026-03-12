@@ -102,17 +102,36 @@ class GoogleDriveService {
   /// Ensures the Drive API client is initialized.
   /// This may trigger a keychain access prompt on macOS.
   /// Silent by default; will NOT trigger interactive sign-in dialog.
-  Future<void> _ensureApiInitialized() async {
+  Future<void> _ensureApiInitialized({bool force = false}) async {
     if (!await _hasConnectivity()) {
       throw Exception('No internet connection');
     }
 
-    if (_driveApi != null) {
+    // If already initialized and not forcing, we can do a quick check
+    if (_driveApi != null && !force) {
       try {
-        final _ = await _googleSignIn.authenticatedClient();
-        return; // still good
+        // Just verify we still have an authenticated user/client
+        final user = await currentUser;
+        if (user != null) {
+          return; // Still good
+        }
       } catch (_) {
-        _driveApi = null; // force re-init
+        // Fall through to re-init
+      }
+    }
+
+    // If forcing, we try to re-authenticate silently to refresh tokens
+    if (force) {
+      try {
+        _currentUser =
+            await _googleSignIn.signInSilently(reAuthenticate: true).timeout(
+                  const Duration(seconds: 10),
+                  onTimeout: () => _currentUser,
+                );
+      } catch (e) {
+        if (kDebugMode) {
+          print('Forced re-authentication failed: $e');
+        }
       }
     }
 
@@ -120,43 +139,73 @@ class GoogleDriveService {
     final user = await currentUser;
 
     if (user != null) {
-      final authClient = await _googleSignIn.authenticatedClient();
-      if (authClient != null) {
-        _driveApi = drive.DriveApi(authClient);
-      } else {
-        // Force a re-authentication state if we have a user but no client
-        _currentUser = null;
-        await _googleSignIn.signOut();
-        throw Exception('Not signed in to Google Drive (Token expired)');
+      try {
+        final authClient = await _googleSignIn.authenticatedClient();
+        if (authClient != null) {
+          _driveApi = drive.DriveApi(authClient);
+        } else {
+          // Force a re-authentication state if we have a user but no client
+          _currentUser = null;
+          _driveApi = null;
+          await _googleSignIn.signOut();
+          throw Exception('Not signed in to Google Drive (Token expired)');
+        }
+      } catch (e) {
+        _driveApi = null;
+        if (kDebugMode) {
+          print('Error getting authenticated client: $e');
+        }
+        throw Exception('Failed to initialize Google Drive client: $e');
       }
     } else {
+      _driveApi = null;
       throw Exception('Not signed in to Google Drive (Silent sign-in failed)');
+    }
+  }
+
+  /// Executes a Drive API call with a single retry if it fails due to an invalid token.
+  Future<T> _executeWithRetry<T>(Future<T> Function() action) async {
+    try {
+      await _ensureApiInitialized();
+      return await action();
+    } catch (e) {
+      final errorStr = e.toString();
+      if (errorStr.contains('invalid_token') ||
+          errorStr.contains('401') ||
+          errorStr.contains('Access was denied')) {
+        if (kDebugMode) {
+          print('Drive API call failed with auth error, retrying: $e');
+        }
+        // Force re-initialization of API client
+        await _ensureApiInitialized(force: true);
+        return await action();
+      }
+      rethrow;
     }
   }
 
   /// Finds a folder by name, or creates it if it doesn't exist.
   Future<String?> _getOrCreateFolder(String folderName) async {
-    // API must be initialized by caller
-    if (_driveApi == null) return null;
+    return await _executeWithRetry(() async {
+      final query =
+          "name = '$folderName' and mimeType = 'application/vnd.google-apps.folder' and trashed = false";
+      final folderList = await _driveApi!.files.list(q: query).timeout(
+            const Duration(seconds: 10),
+          );
 
-    final query =
-        "name = '$folderName' and mimeType = 'application/vnd.google-apps.folder' and trashed = false";
-    final folderList = await _driveApi!.files.list(q: query).timeout(
-          const Duration(seconds: 10),
-        );
+      if (folderList.files != null && folderList.files!.isNotEmpty) {
+        return folderList.files!.first.id;
+      }
 
-    if (folderList.files != null && folderList.files!.isNotEmpty) {
-      return folderList.files!.first.id;
-    }
+      final folder = drive.File()
+        ..name = folderName
+        ..mimeType = 'application/vnd.google-apps.folder';
 
-    final folder = drive.File()
-      ..name = folderName
-      ..mimeType = 'application/vnd.google-apps.folder';
-
-    final createdFolder = await _driveApi!.files
-        .create(folder)
-        .timeout(const Duration(seconds: 15));
-    return createdFolder.id;
+      final createdFolder = await _driveApi!.files
+          .create(folder)
+          .timeout(const Duration(seconds: 15));
+      return createdFolder.id;
+    });
   }
 
   Future<void> uploadFile(
@@ -164,54 +213,43 @@ class GoogleDriveService {
     String remoteName, {
     String folderName = 'BNPB-Sync',
   }) async {
-    await _ensureApiInitialized();
-    if (_driveApi == null) {
-      throw Exception('Not signed in to Google Drive');
-    }
-
     final folderId = await _getOrCreateFolder(folderName);
 
-    final query =
-        "name = '$remoteName' and '$folderId' in parents and trashed = false";
-    final existingFiles = await _driveApi!.files
-        .list(q: query)
-        .timeout(const Duration(seconds: 10));
+    await _executeWithRetry(() async {
+      final query =
+          "name = '$remoteName' and '$folderId' in parents and trashed = false";
+      final existingFiles = await _driveApi!.files
+          .list(q: query)
+          .timeout(const Duration(seconds: 10));
 
-    final driveFile = drive.File()..name = remoteName;
+      final driveFile = drive.File()..name = remoteName;
 
-    final media = drive.Media(localFile.openRead(), localFile.lengthSync());
+      final media = drive.Media(localFile.openRead(), localFile.lengthSync());
 
-    if (existingFiles.files != null && existingFiles.files!.isNotEmpty) {
-      // Update existing file
-      await _driveApi!.files
-          .update(
-            driveFile,
-            existingFiles.files!.first.id!,
-            uploadMedia: media,
-          )
-          .timeout(const Duration(seconds: 30));
-    } else {
-      // Create new file
-      if (folderId != null) {
-        driveFile.parents = [folderId];
+      if (existingFiles.files != null && existingFiles.files!.isNotEmpty) {
+        // Update existing file
+        await _driveApi!.files
+            .update(
+              driveFile,
+              existingFiles.files!.first.id!,
+              uploadMedia: media,
+            )
+            .timeout(const Duration(seconds: 30));
+      } else {
+        // Create new file
+        if (folderId != null) {
+          driveFile.parents = [folderId];
+        }
+        await _driveApi!.files
+            .create(driveFile, uploadMedia: media)
+            .timeout(const Duration(seconds: 30));
       }
-      await _driveApi!.files
-          .create(driveFile, uploadMedia: media)
-          .timeout(const Duration(seconds: 30));
-    }
+    });
   }
 
   Future<List<drive.File>> listSyncFiles({
     String folderName = 'BNPB-Sync',
   }) async {
-    await _ensureApiInitialized();
-    if (_driveApi == null) {
-      if (kDebugMode) {
-        print('listSyncFiles: _driveApi is null, returning empty list');
-      }
-      return [];
-    }
-
     final folderId = await _getOrCreateFolder(folderName);
     if (folderId == null) {
       if (kDebugMode) {
@@ -220,44 +258,43 @@ class GoogleDriveService {
       return [];
     }
 
-    final query = "'$folderId' in parents and trashed = false";
-    final fileList = await _driveApi!.files
-        .list(
-          q: query,
-          $fields: 'files(id, name, modifiedTime, size)',
-        )
-        .timeout(const Duration(seconds: 15));
+    return await _executeWithRetry(() async {
+      final query = "'$folderId' in parents and trashed = false";
+      final fileList = await _driveApi!.files
+          .list(
+            q: query,
+            $fields: 'files(id, name, modifiedTime, size)',
+          )
+          .timeout(const Duration(seconds: 15));
 
-    if (kDebugMode) {
-      debugPrint(
-        'listSyncFiles: Found ${fileList.files?.length ?? 0} files in Drive',
-      );
-      for (final f in fileList.files ?? []) {
-        debugPrint('  - ${f.name}');
+      if (kDebugMode) {
+        debugPrint(
+          'listSyncFiles: Found ${fileList.files?.length ?? 0} files in Drive',
+        );
+        for (final f in fileList.files ?? []) {
+          debugPrint('  - ${f.name}');
+        }
       }
-    }
 
-    return fileList.files ?? [];
+      return fileList.files ?? [];
+    });
   }
 
   Future<void> downloadFile(String fileId, File targetFile) async {
-    await _ensureApiInitialized();
-    if (_driveApi == null) {
-      throw Exception('Not signed in to Google Drive');
-    }
+    await _executeWithRetry(() async {
+      final mediaResponse = await _driveApi!.files
+          .get(
+            fileId,
+            downloadOptions: drive.DownloadOptions.fullMedia,
+          )
+          .timeout(const Duration(seconds: 30)) as drive.Media;
 
-    final mediaResponse = await _driveApi!.files
-        .get(
-          fileId,
-          downloadOptions: drive.DownloadOptions.fullMedia,
-        )
-        .timeout(const Duration(seconds: 30)) as drive.Media;
-
-    final sink = targetFile.openWrite();
-    try {
-      await sink.addStream(mediaResponse.stream);
-    } finally {
-      await sink.close();
-    }
+      final sink = targetFile.openWrite();
+      try {
+        await sink.addStream(mediaResponse.stream);
+      } finally {
+        await sink.close();
+      }
+    });
   }
 }
