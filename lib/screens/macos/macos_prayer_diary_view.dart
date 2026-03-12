@@ -17,6 +17,9 @@ class MacOSPrayerDiaryView extends StatefulWidget {
 }
 
 class _MacOSPrayerDiaryViewState extends State<MacOSPrayerDiaryView> {
+  // Optimization: Cache DateFormat to avoid expensive parsing during build loops
+  static final _monthDayYearFormat = DateFormat('MMMM d, y');
+
   final DBHelper _dbHelper = DBHelper();
   final Map<String, Contact> _contactLookup = {};
   List<Contact> _contacts = [];
@@ -288,7 +291,7 @@ class _MacOSPrayerDiaryViewState extends State<MacOSPrayerDiaryView> {
     if (title == 'Older') {
       dateStr = '';
     } else {
-      dateStr = DateFormat('MMMM d, y').format(date);
+      dateStr = _monthDayYearFormat.format(date);
     }
 
     return Container(

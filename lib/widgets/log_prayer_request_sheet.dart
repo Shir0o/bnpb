@@ -34,6 +34,9 @@ class LogPrayerRequestSheet extends StatefulWidget {
 }
 
 class _LogPrayerRequestSheetState extends State<LogPrayerRequestSheet> {
+  // Optimization: Cache DateFormat to avoid expensive parsing during build loops
+  static final _dateFormat = DateFormat.yMMMd();
+
   late final TextEditingController _descriptionController;
   late final TextEditingController _reflectionController;
   late final TextEditingController _categoryController;
@@ -227,7 +230,7 @@ class _LogPrayerRequestSheetState extends State<LogPrayerRequestSheet> {
   }
 
   String _formatDate(DateTime date) {
-    return DateFormat.yMMMd().format(date);
+    return _dateFormat.format(date);
   }
 
   IconData _statusIcon(PrayerRequestStatus status) {

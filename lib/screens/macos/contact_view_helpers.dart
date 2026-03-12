@@ -17,6 +17,10 @@ Color getAvatarColor(String text) {
   return colors[text.codeUnitAt(0) % colors.length];
 }
 
+// Optimization: Cache DateFormat instances to avoid expensive initialization on every call
+final _monthDayFormat = DateFormat('MMM d');
+final _timeFormat = DateFormat('h:mm a');
+
 /// Formats a date into a human-readable string (Today, Yesterday, MMM d).
 String formatDate(DateTime date) {
   final now = DateTime.now();
@@ -28,13 +32,13 @@ String formatDate(DateTime date) {
   } else if (input == today.subtract(const Duration(days: 1))) {
     return 'Yesterday';
   } else {
-    return DateFormat('MMM d').format(date);
+    return _monthDayFormat.format(date);
   }
 }
 
 /// Formats a time into a human-readable string (h:mm a).
 String formatTime(DateTime date) {
-  return DateFormat('h:mm a').format(date);
+  return _timeFormat.format(date);
 }
 
 /// Returns an icon representing the communication medium.
