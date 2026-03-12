@@ -31,20 +31,25 @@ class _SecurityGateState extends State<SecurityGate> {
   }
 
   Future<void> _evaluate() async {
+    // 1. Quick check: Is a passcode even set?
     final hasPasscode = await _securityService.hasPasscode();
     if (!hasPasscode) {
-      setState(() {
-        _status = _GateStatus.unlocked;
-      });
+      if (mounted) {
+        setState(() {
+          _status = _GateStatus.unlocked;
+        });
+      }
       return;
     }
 
+    // 2. If it is locked, we need to show either the lock screen or biometrics.
     final biometricsEnabled = await _securityService.isBiometricEnabled();
     final canUseBiometrics = await _securityService.canUseBiometrics();
 
     if (biometricsEnabled && canUseBiometrics) {
+      // Trigger biometrics. Note: This might show a platform dialog.
       final unlocked = await _securityService.authenticateWithBiometrics();
-      if (unlocked) {
+      if (unlocked && mounted) {
         setState(() {
           _status = _GateStatus.unlocked;
         });
@@ -52,12 +57,14 @@ class _SecurityGateState extends State<SecurityGate> {
       }
     }
 
-    setState(() {
-      _status = _GateStatus.locked;
-      _biometricsAvailable = canUseBiometrics;
-      _biometricsEnabled = biometricsEnabled && canUseBiometrics;
-      _error = null;
-    });
+    if (mounted) {
+      setState(() {
+        _status = _GateStatus.locked;
+        _biometricsAvailable = canUseBiometrics;
+        _biometricsEnabled = biometricsEnabled && canUseBiometrics;
+        _error = null;
+      });
+    }
   }
 
   Future<void> _unlockWithPasscode(String value) async {

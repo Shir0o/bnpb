@@ -1892,8 +1892,8 @@ class DBHelper {
   }) async {
     final db = await database;
     final orderBy = latestAnsweredFirst
-        ? 'COALESCE(answeredAt, requestedAt) DESC'
-        : 'requestedAt DESC';
+        ? 'CASE WHEN status = "pending" THEN 0 ELSE 1 END, COALESCE(answeredAt, requestedAt) DESC'
+        : 'CASE WHEN status = "pending" THEN 0 ELSE 1 END, requestedAt DESC';
 
     String where = includeDeleted ? '1 = 1' : 'deletedAt IS NULL';
     List<Object> whereArgs = [];
