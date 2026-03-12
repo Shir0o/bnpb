@@ -28,6 +28,9 @@ class PrayerDiaryEntry extends StatefulWidget {
 }
 
 class _PrayerDiaryEntryState extends State<PrayerDiaryEntry> {
+  // Optimization: Cache DateFormat to avoid expensive parsing during build loops
+  static final _timeFormat = DateFormat('h:mm a');
+
   late TextEditingController _descriptionController;
   late PrayerRequestStatus _status;
   // Duration? _duration; // Future feature: track duration
@@ -91,9 +94,7 @@ class _PrayerDiaryEntryState extends State<PrayerDiaryEntry> {
   }
 
   Widget _buildViewMode() {
-    final timeStr = DateFormat(
-      'h:mm a',
-    ).format(widget.request.answeredAt ?? widget.request.requestedAt);
+    final timeStr = _timeFormat.format(widget.request.answeredAt ?? widget.request.requestedAt);
     final contactNames = widget.contacts.isEmpty
         ? 'Unknown'
         : widget.contacts.map((c) => c.displayName).join(', ');
@@ -261,9 +262,7 @@ class _PrayerDiaryEntryState extends State<PrayerDiaryEntry> {
   }
 
   Widget _buildEditMode() {
-    final timeStr = DateFormat(
-      'h:mm a',
-    ).format(widget.request.answeredAt ?? widget.request.requestedAt);
+    final timeStr = _timeFormat.format(widget.request.answeredAt ?? widget.request.requestedAt);
     final contactNamesLabel = widget.contacts.isEmpty
         ? 'Unknown'
         : widget.contacts.map((c) => c.displayName).join(', ');

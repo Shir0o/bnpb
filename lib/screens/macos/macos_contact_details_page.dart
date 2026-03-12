@@ -25,6 +25,9 @@ class MacOSContactDetailsPage extends StatefulWidget {
 }
 
 class _MacOSContactDetailsPageState extends State<MacOSContactDetailsPage> {
+  // Optimization: Cache DateFormat to avoid expensive parsing during build loops
+  static final _dateFormat = DateFormat.yMMMd();
+
   final _formKey = GlobalKey<FormState>();
 
   // Controllers
@@ -867,7 +870,7 @@ class _MacOSContactDetailsPageState extends State<MacOSContactDetailsPage> {
                           Expanded(
                             flex: 2,
                             child: Text(
-                              DateFormat.yMMMd().format(interaction.occurredAt),
+                              _dateFormat.format(interaction.occurredAt),
                               style: GoogleFonts.inter(
                                 fontSize: 12,
                                 color: Colors.grey[900],
