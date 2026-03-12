@@ -25,3 +25,7 @@ Action: Replace IndexedStack with a PageView with NeverScrollableScrollPhysics a
 2025-02-18 - Optimized String Interpolation in Contact
 **Learning:** Instantiating throwaway collections (like Lists) and using `.where()` + `.join()` for simple string concatenation in frequently accessed getters (like `fullName`) causes significant memory allocation and execution overhead.
 **Action:** Replace dynamically allocated lists and joins with direct boolean condition checks and string interpolation (`'$firstName ${lastName!}'`). In Dart, benchmarks show this structural fast-path approach can be ~5x faster.
+
+2025-02-18 - Optimized DateFormat Instantiations
+Learning: Creating `DateFormat` instances repeatedly inside widget build loops or list builders is computationally expensive and creates unnecessary garbage collection pressure, as each instance parses its skeleton formatting rules.
+Action: Cache `DateFormat` instances as `late final` variables initialized in `initState()` (or `didChangeDependencies()` if locale dependent) instead of creating them inside formatting helper functions used during rendering.

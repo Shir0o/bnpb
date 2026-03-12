@@ -22,9 +22,12 @@ class _PrayerDiaryPageState extends State<PrayerDiaryPage> {
   List<PrayerRequest> _requests = [];
   bool _isLoading = false;
 
+  late final DateFormat _dateFormat;
+
   @override
   void initState() {
     super.initState();
+    _dateFormat = DateFormat.yMMMd();
     _loadRequests();
   }
 
@@ -372,6 +375,6 @@ class _PrayerDiaryPageState extends State<PrayerDiaryPage> {
   }
 
   String _formatDate(DateTime date) {
-    return DateFormat.yMMMd().format(date);
+    return _dateFormat.format(date);
   }
 }
