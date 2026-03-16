@@ -553,22 +553,27 @@ class DBHelper {
       orderBy: 'displayIndex ASC, name ASC',
     );
 
-    final lists = <PrayerList>[];
-    for (final row in listRows) {
-      final listId = row['id'] as String;
-      final memberRows = await db.query(
-        'prayer_list_members',
-        columns: ['contactId'],
-        where: 'listId = ?',
-        whereArgs: [listId],
-      );
+    if (listRows.isEmpty) return [];
 
-      final contactIds =
-          memberRows.map((m) => m['contactId'] as String).toList();
+    final listIds = listRows.map((row) => row['id'] as String).toList();
+    final memberRows = await _chunkedQuery(
+      db: db,
+      table: 'prayer_list_members',
+      inColumn: 'listId',
+      values: listIds,
+    );
 
-      lists.add(PrayerList.fromMap(row, contactIds: contactIds));
+    final membersByList = <String, List<String>>{};
+    for (final row in memberRows) {
+      final listId = row['listId'] as String;
+      final contactId = row['contactId'] as String;
+      membersByList.putIfAbsent(listId, () => []).add(contactId);
     }
-    return lists;
+
+    return listRows.map((row) {
+      final listId = row['id'] as String;
+      return PrayerList.fromMap(row, contactIds: membersByList[listId] ?? []);
+    }).toList();
   }
 
   Future<List<PrayerList>> getPrayerListsModifiedSince(DateTime? since) async {
@@ -587,22 +592,27 @@ class DBHelper {
       whereArgs: whereArgs,
     );
 
-    final lists = <PrayerList>[];
-    for (final row in listRows) {
-      final listId = row['id'] as String;
-      final memberRows = await db.query(
-        'prayer_list_members',
-        columns: ['contactId'],
-        where: 'listId = ?',
-        whereArgs: [listId],
-      );
+    if (listRows.isEmpty) return [];
 
-      final contactIds =
-          memberRows.map((m) => m['contactId'] as String).toList();
+    final listIds = listRows.map((row) => row['id'] as String).toList();
+    final memberRows = await _chunkedQuery(
+      db: db,
+      table: 'prayer_list_members',
+      inColumn: 'listId',
+      values: listIds,
+    );
 
-      lists.add(PrayerList.fromMap(row, contactIds: contactIds));
+    final membersByList = <String, List<String>>{};
+    for (final row in memberRows) {
+      final listId = row['listId'] as String;
+      final contactId = row['contactId'] as String;
+      membersByList.putIfAbsent(listId, () => []).add(contactId);
     }
-    return lists;
+
+    return listRows.map((row) {
+      final listId = row['id'] as String;
+      return PrayerList.fromMap(row, contactIds: membersByList[listId] ?? []);
+    }).toList();
   }
 
   Future<PrayerList?> getPrayerList(String id) async {
