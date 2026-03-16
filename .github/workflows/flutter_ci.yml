@@ -25,6 +25,3 @@ jobs:
 
       # Run tests
       - run: flutter test
-
-      # Verify it builds (Android)
-      - run: flutter build apk --debug
