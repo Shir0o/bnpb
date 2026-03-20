@@ -14,7 +14,7 @@ class GoogleDriveService {
         ? '228185988095-9soj0hn2t78nnfbe1bt5amt54tjtnap2.apps.googleusercontent.com'
         : null,
     serverClientId: Platform.isAndroid
-        ? '228185988095-j6gjirouvrt8o71q6bs1ubco9a2gdm8f.apps.googleusercontent.com'
+        ? '228185988095-ivj6ecnta0gpbr2shafll68bsqtae4t2.apps.googleusercontent.com'
         : null,
     scopes: [drive.DriveApi.driveFileScope],
   );

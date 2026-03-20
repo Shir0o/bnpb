@@ -99,7 +99,15 @@ class SyncService {
       if (syncType == SyncType.local) {
         await _performLocalSync();
       } else {
-        await _performGoogleSync();
+        // Only attempt Google sync if the user is signed in.
+        // This prevents unnecessary background sign-in attempts and potential errors
+        // when the user has not signed in or has signed out.
+        if (await _googleDrive.isSignedIn()) {
+          await _performGoogleSync();
+        } else if (kDebugMode) {
+          print(
+              'Sync: Skipping Google Drive sync because user is not signed in.');
+        }
       }
     } catch (e) {
       if (kDebugMode) {
@@ -258,8 +266,14 @@ class SyncService {
       await _coordinator.importChanges(syncDir);
     } else {
       // For Google Drive, we need to download and merge.
-      // We can just call _performGoogleSync() as it handles both directions safely.
-      await _performGoogleSync();
+      // We only attempt this if the user is signed in.
+      if (await _googleDrive.isSignedIn()) {
+        await _performGoogleSync();
+      } else if (kDebugMode) {
+        print(
+          'Sync: Skipping Google Drive restore because user is not signed in.',
+        );
+      }
     }
 
     await ReminderCoordinator().refreshAllContacts();
