@@ -556,6 +556,36 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
     );
   }
 
+  void _confirmDeleteInteraction(Interaction interaction) {
+    if (interaction.id == null) return;
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Delete Interaction'),
+          content: const Text(
+            'Are you sure you want to delete this interaction? This cannot be undone.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context);
+                _deleteInteraction(interaction);
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+              child: const Text('Delete'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   Future<void> _deleteInteraction(Interaction interaction) async {
     if (interaction.id == null) return;
 
@@ -1599,7 +1629,8 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
                           IconButton(
                             icon: const Icon(Icons.delete_outline),
                             tooltip: 'Delete interaction',
-                            onPressed: () => _deleteInteraction(interaction),
+                            onPressed: () =>
+                                _confirmDeleteInteraction(interaction),
                           ),
                         ],
                       ),
@@ -1942,6 +1973,51 @@ class _InteractionDetailPageState extends State<InteractionDetailPage> {
     ).showSnackBar(const SnackBar(content: Text('Interaction updated')));
   }
 
+  Future<void> _deleteInteraction() async {
+    if (_interaction.id == null) return;
+
+    final dbHelper = DBHelper();
+    await dbHelper.deleteInteraction(_interaction.id!);
+    await ReminderCoordinator().cancelInteractionReminder(_interaction);
+
+    for (final contactId in _interaction.participantIds) {
+      ContactService().invalidateInteractions(contactId);
+    }
+
+    await BackupService().exportBackup();
+
+    if (!mounted) return;
+    Navigator.of(context).pop();
+  }
+
+  void _confirmDelete() {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Delete Interaction'),
+          content: const Text(
+            'Are you sure you want to delete this interaction? This cannot be undone.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context);
+                _deleteInteraction();
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+              child: const Text('Delete'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -1956,6 +2032,10 @@ class _InteractionDetailPageState extends State<InteractionDetailPage> {
           IconButton(
             icon: const Icon(Icons.edit_outlined),
             onPressed: _isLoading ? null : _editInteraction,
+          ),
+          IconButton(
+            icon: const Icon(Icons.delete_outline),
+            onPressed: _isLoading ? null : _confirmDelete,
           ),
         ],
       ),
