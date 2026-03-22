@@ -354,12 +354,7 @@ class _MainPageState extends State<MainPage> with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.paused) {
-      // Sync on backgrounding (Mobile) - force it to ensure data is saved.
-      // Note: We use 'paused' instead of 'inactive' to avoid triggering sync during
-      // system overlays or gesture transitions, which can cause UI flashes and focus issues.
-      SyncService().performSync(force: true);
-    } else if (state == AppLifecycleState.resumed) {
+    if (state == AppLifecycleState.resumed) {
       // Sync on resume - use cooldown to avoid "Google logging in" flashes.
       SyncService().performSync();
     }

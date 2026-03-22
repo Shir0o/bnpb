@@ -55,6 +55,7 @@ void main() {
     syncService.syncCoordinator = mockCoordinator;
 
     when(() => mockDrive.isSignedIn()).thenAnswer((_) async => true);
+    when(() => mockDrive.currentUser).thenAnswer((_) async => null);
     when(() => mockCoordinator.getProcessedFiles()).thenAnswer((_) async => {});
     when(
       () => mockCoordinator.getDeviceId(),

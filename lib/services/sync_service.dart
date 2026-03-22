@@ -76,8 +76,9 @@ class SyncService {
 
   /// Performs a full sync: Import then Export.
   /// [force] will skip the cooldown check.
-  Future<void> performSync({bool force = false}) async {
-    if (_isSyncing) return;
+  /// Returns true if any changes were imported.
+  Future<bool> performSync({bool force = false}) async {
+    if (_isSyncing) return false;
 
     // Cooldown logic: avoid syncing more than once every 5 minutes automatically.
     // This prevents the "flash" effect on every app resume.
@@ -88,26 +89,19 @@ class SyncService {
       if (kDebugMode) {
         print('Sync skipped: cooldown active.');
       }
-      return;
+      return false;
     }
 
     _isSyncing = true;
     _lastSyncTime = now;
     final syncType = await getSyncType();
+    bool hasChanges = false;
 
     try {
       if (syncType == SyncType.local) {
-        await _performLocalSync();
+        hasChanges = await _performLocalSync();
       } else {
-        // Only attempt Google sync if the user is signed in.
-        // This prevents unnecessary background sign-in attempts and potential errors
-        // when the user has not signed in or has signed out.
-        if (await _googleDrive.isSignedIn()) {
-          await _performGoogleSync();
-        } else if (kDebugMode) {
-          print(
-              'Sync: Skipping Google Drive sync because user is not signed in.');
-        }
+        hasChanges = await _performGoogleSync();
       }
     } catch (e) {
       if (kDebugMode) {
@@ -115,30 +109,27 @@ class SyncService {
       }
       // We don't rethrow here to prevent app crashes during background/pause syncs
     } finally {
-      // Always notify listeners that a sync attempt has finished (success or fail,
-      // though typically we want to refresh on success. But even on fail,
-      // maybe we want to stop a spinner? For now, let's treat it as "sync attempt finished").
-      // Actually, if it failed, data might not have changed.
-      // Let's only notify on success for now, or determining if we should refresh.
-      // If we are in the catch block, we logged it.
-      // If we are here, we might have succeeded or caught an error.
-      // Let's notify. UI can decide to refresh.
       _isSyncing = false;
-      _syncCompleteController.add(null);
+      if (hasChanges) {
+        _syncCompleteController.add(null);
+      }
     }
+    return hasChanges;
   }
 
-  Future<void> _performLocalSync() async {
+  Future<bool> _performLocalSync() async {
     final syncDirPath = await getSyncDirectory();
-    if (syncDirPath == null) return;
+    if (syncDirPath == null) return false;
     final syncDir = Directory(syncDirPath);
 
     try {
       // 1. Import remote changes first
-      await _coordinator.importChanges(syncDir);
+      final importResult = await _coordinator.importChanges(syncDir);
 
       // 2. Export local changes
       await _coordinator.exportChanges(syncDir);
+
+      return importResult.importedCount > 0;
     } catch (e) {
       if (kDebugMode) {
         print('Local sync failed: $e');
@@ -147,13 +138,13 @@ class SyncService {
     }
   }
 
-  Future<void> _performGoogleSync() async {
+  Future<bool> _performGoogleSync() async {
     final user = await _googleDrive.currentUser;
     if (user == null) {
       if (kDebugMode) {
         print('Google Sync: Skipping because user is not signed in.');
       }
-      return;
+      return false;
     }
 
     final tempDir = await getTemporaryDirectory();
@@ -205,7 +196,7 @@ class SyncService {
 
       // 2. Run standard SyncCoordinator logic on temp dir
       // This will import the downloaded files and mark them as processed.
-      await _coordinator.importChanges(syncTempDir);
+      final importResult = await _coordinator.importChanges(syncTempDir);
 
       // Export new local changes
       await _coordinator.exportChanges(syncTempDir);
@@ -229,6 +220,7 @@ class SyncService {
         await _googleDrive.uploadFile(file, name);
       });
 
+      return importResult.importedCount > 0;
       // 4. Cleanup temp dir (handled in finally)
     } catch (e) {
       if (kDebugMode) {
@@ -266,14 +258,7 @@ class SyncService {
       await _coordinator.importChanges(syncDir);
     } else {
       // For Google Drive, we need to download and merge.
-      // We only attempt this if the user is signed in.
-      if (await _googleDrive.isSignedIn()) {
-        await _performGoogleSync();
-      } else if (kDebugMode) {
-        print(
-          'Sync: Skipping Google Drive restore because user is not signed in.',
-        );
-      }
+      await _performGoogleSync();
     }
 
     await ReminderCoordinator().refreshAllContacts();

@@ -7,7 +7,6 @@ import 'package:googleapis/drive/v3.dart' as drive;
 class GoogleDriveService {
   static final GoogleDriveService _instance = GoogleDriveService._internal();
   factory GoogleDriveService() => _instance;
-  GoogleDriveService._internal();
 
   final GoogleSignIn _googleSignIn = GoogleSignIn(
     clientId: Platform.isMacOS
@@ -19,7 +18,16 @@ class GoogleDriveService {
     scopes: [drive.DriveApi.driveFileScope],
   );
 
-  bool _triedSilentSignIn = false;
+  GoogleDriveService._internal() {
+    _googleSignIn.onCurrentUserChanged.listen((account) {
+      _currentUser = account;
+      if (account == null) {
+        _driveApi = null;
+      }
+    });
+  }
+
+  Future<GoogleSignInAccount?>? _silentSignInFuture;
   GoogleSignInAccount? _currentUser;
   drive.DriveApi? _driveApi;
   String? _lastSignInError;
@@ -31,24 +39,34 @@ class GoogleDriveService {
   /// Does NOT initialize the Drive API client to avoid unnecessary keychain access.
   Future<GoogleSignInAccount?> get currentUser async {
     if (_currentUser != null) return _currentUser;
-    if (_triedSilentSignIn) return null;
 
+    // Prevent concurrent silent sign-in attempts
+    if (_silentSignInFuture != null) return _silentSignInFuture;
+
+    _silentSignInFuture = _performSilentSignIn();
+    try {
+      return await _silentSignInFuture;
+    } finally {
+      _silentSignInFuture = null;
+    }
+  }
+
+  Future<GoogleSignInAccount?> _performSilentSignIn() async {
     try {
       // Use a timeout to prevent hanging on poor connections.
       // Silent sign-in should be fast; if it's not, we'd rather skip it than block.
-      _currentUser = await _googleSignIn.signInSilently().timeout(
+      final user = await _googleSignIn.signInSilently().timeout(
             const Duration(seconds: 5),
             onTimeout: () => null,
           );
+      _currentUser = user;
+      return user;
     } catch (e) {
       if (kDebugMode) {
         print('Silent sign-in failed/timed out: $e');
       }
-      _currentUser = null;
+      return null;
     }
-
-    _triedSilentSignIn = true;
-    return _currentUser;
   }
 
   /// explicit sign in - usually triggered by user interaction
@@ -56,7 +74,6 @@ class GoogleDriveService {
     _lastSignInError = null;
     try {
       _currentUser = await _googleSignIn.signIn();
-      _triedSilentSignIn = true;
       _driveApi = null;
       return _currentUser;
     } catch (e) {
@@ -80,10 +97,11 @@ class GoogleDriveService {
     await _googleSignIn.signOut();
     _currentUser = null;
     _driveApi = null;
-    _triedSilentSignIn = false;
   }
 
   Future<bool> isSignedIn() async {
+    // Rely on cached user if available, otherwise check plugin
+    if (_currentUser != null) return true;
     return await _googleSignIn.isSignedIn();
   }
 
