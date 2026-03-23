@@ -107,10 +107,7 @@ class ImportService {
     }
 
     // Pass 4: Refresh reminders
-    for (final contact in restoredContacts) {
-      await _reminderCoordinator.refreshFromSnapshot(contact, silent: true);
-    }
-    await _reminderCoordinator.scheduleReviewPrompts();
+    await _reminderCoordinator.refreshAllContacts();
 
     return restoredContacts.length;
   }

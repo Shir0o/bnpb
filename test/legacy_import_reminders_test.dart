@@ -35,55 +35,17 @@ void main() {
     );
 
     expect(persisted, [contact]);
-    expect(coordinator.followUpScheduledFor, [contact.id]);
-    expect(coordinator.followUpSilentFlags, everyElement(isTrue));
-    expect(coordinator.reviewPromptCalls, 1);
+    expect(coordinator.refreshAllCalled, isTrue);
   });
 }
 
 class _SpyReminderCoordinator extends ReminderCoordinator {
   _SpyReminderCoordinator() : super.testHarness();
 
-  final List<String> followUpScheduledFor = [];
-  final List<bool> followUpSilentFlags = [];
-  int reviewPromptCalls = 0;
+  bool refreshAllCalled = false;
 
   @override
-  Future<void> syncSignificantDates(Contact contact) async {}
-
-  @override
-  Future<void> syncInteractionReminder(
-    Contact contact,
-    Interaction interaction, {
-    bool silent = false,
-  }) async {
-    if (interaction.followUpAt != null) {
-      followUpScheduledFor.add(contact.id);
-      followUpSilentFlags.add(silent);
-    }
-  }
-
-  @override
-  Future<void> cancelInteractionReminder(
-    Interaction interaction, {
-    bool silent = false,
-  }) async {}
-
-  @override
-  Future<void> syncPrayerRequestReminder(
-    Contact contact,
-    PrayerRequest request, {
-    bool silent = false,
-  }) async {}
-
-  @override
-  Future<void> cancelPrayerRequestReminder(
-    PrayerRequest request, {
-    bool silent = false,
-  }) async {}
-
-  @override
-  Future<void> scheduleReviewPrompts({List<Contact>? contacts}) async {
-    reviewPromptCalls += 1;
+  Future<void> refreshAllContacts() async {
+    refreshAllCalled = true;
   }
 }
