@@ -13,7 +13,6 @@ Future<void> processLegacyContacts({
   final coordinator = reminderCoordinator ?? ReminderCoordinator();
   for (final contact in contacts) {
     await persistContact(contact);
-    await coordinator.refreshFromSnapshot(contact, silent: true);
   }
-  await coordinator.scheduleReviewPrompts();
+  await coordinator.refreshAllContacts();
 }
