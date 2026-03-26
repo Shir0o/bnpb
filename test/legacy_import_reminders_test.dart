@@ -2,7 +2,6 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:bnpb/models/contact.dart';
 import 'package:bnpb/models/interaction.dart';
-import 'package:bnpb/models/prayer_request.dart';
 import 'package:bnpb/services/legacy_import_service.dart';
 import 'package:bnpb/services/reminder_coordinator.dart';
 

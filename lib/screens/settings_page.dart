@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:intl/intl.dart';
@@ -30,11 +31,14 @@ class _SettingsPageState extends State<SettingsPage>
   final ReminderCoordinator _reminderCoordinator = ReminderCoordinator();
   final SecurityService _securityService = SecurityService();
 
+  late final StreamSubscription<GoogleSignInAccount?> _userSubscription;
+
   bool _isLoading = true;
   bool _isUpdating = false;
   bool _isPurging = false;
   bool _supportsExactAlarmPermission = false;
   bool _exactAlarmOptIn = false;
+  bool _isGoogleInitializing = true;
 
   List<Contact> _contacts = const <Contact>[];
   Map<ReminderChannel, NotificationPreference> _globalDefaults =
@@ -50,6 +54,15 @@ class _SettingsPageState extends State<SettingsPage>
   @override
   void initState() {
     super.initState();
+    _isGoogleInitializing = !GoogleDriveService().hasAttemptedSilentSignIn;
+    _userSubscription = GoogleDriveService().onUserChanged.listen((user) {
+      if (mounted) {
+        setState(() {
+          _googleUser = user;
+          _isGoogleInitializing = false;
+        });
+      }
+    });
     _load();
   }
 
@@ -61,7 +74,9 @@ class _SettingsPageState extends State<SettingsPage>
     _syncPath = await SyncService().getSyncDirectory();
     _lastBackupTime = await SyncService().getLastBackupTime();
     _syncType = await SyncService().getSyncType();
-    _googleUser = await GoogleDriveService().currentUser;
+
+    // Note: We no longer await GoogleDriveService().currentUser here
+    // to prevent blocking page load. The listener in initState handles updates.
 
     _contacts = await _dbHelper.getContacts();
 
@@ -97,6 +112,12 @@ class _SettingsPageState extends State<SettingsPage>
 
   @override
   bool get wantKeepAlive => true;
+
+  @override
+  void dispose() {
+    _userSubscription.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -247,6 +268,16 @@ class _SettingsPageState extends State<SettingsPage>
               await SyncService().setSyncDirectory();
               await _loadSyncState();
             },
+          )
+        else if (_isGoogleInitializing && _googleUser == null)
+          const SkeletonLoader(
+            child: ListTile(
+              leading:
+                  SkeletonBox(width: 24, height: 24, shape: BoxShape.circle),
+              title: SkeletonBox(width: 120, height: 16),
+              subtitle: SkeletonBox(width: 180, height: 12),
+              trailing: SkeletonBox(width: 64, height: 32),
+            ),
           )
         else
           ListTile(

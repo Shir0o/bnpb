@@ -15,6 +15,7 @@ import 'screens/macos/macos_active_contacts_view.dart';
 import 'screens/macos/macos_shell.dart';
 import 'screens/settings_page.dart';
 import 'services/sync_service.dart';
+import 'services/google_drive_service.dart';
 import 'repositories/notification_preferences_repository.dart';
 import 'services/onboarding_service.dart';
 import 'services/reminder_coordinator.dart';
@@ -32,6 +33,10 @@ Future<void> main() async {
       databaseFactory = databaseFactoryFfi;
     }
     WidgetsFlutterBinding.ensureInitialized();
+
+    // Pre-warm Google Sign-In silent login
+    GoogleDriveService();
+
     await ReminderService().initialize();
     final preferencesRepository = NotificationPreferencesRepository();
     await preferencesRepository.ensureDefaults();

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:extension_google_sign_in_as_googleapis_auth/extension_google_sign_in_as_googleapis_auth.dart';
@@ -19,13 +20,22 @@ class GoogleDriveService {
   );
 
   GoogleDriveService._internal() {
-    _googleSignIn.onCurrentUserChanged.listen((account) {
+    _onUserChanged = _googleSignIn.onCurrentUserChanged;
+    _onUserChanged.listen((account) {
       _currentUser = account;
       if (account == null) {
         _driveApi = null;
       }
     });
+    // Trigger the silent sign-in automatically so it's ready when needed.
+    _performSilentSignIn();
   }
+
+  late final Stream<GoogleSignInAccount?> _onUserChanged;
+  bool _hasAttemptedSilentSignIn = false;
+
+  /// Whether silent sign-in has been attempted in this session.
+  bool get hasAttemptedSilentSignIn => _hasAttemptedSilentSignIn;
 
   Future<GoogleSignInAccount?>? _silentSignInFuture;
   GoogleSignInAccount? _currentUser;
@@ -35,30 +45,33 @@ class GoogleDriveService {
   /// Returns the latest error message from a sign-in attempt.
   String? get lastSignInError => _lastSignInError;
 
-  /// Returns the current user, attempting silent sign-in if necessary.
+  /// Stream of Google user state changes.
+  Stream<GoogleSignInAccount?> get onUserChanged => _onUserChanged;
+
+  /// Returns the current user, attempting silent sign-in ONLY if it hasn't
+  /// been attempted before in this session.
   /// Does NOT initialize the Drive API client to avoid unnecessary keychain access.
   Future<GoogleSignInAccount?> get currentUser async {
     if (_currentUser != null) return _currentUser;
 
-    // Prevent concurrent silent sign-in attempts
-    if (_silentSignInFuture != null) return _silentSignInFuture;
+    // If we already tried and it failed, we don't automatically try again
+    // unless the app caller forces it by calling _performSilentSignIn directly.
+    if (_hasAttemptedSilentSignIn && _silentSignInFuture == null) return null;
 
-    _silentSignInFuture = _performSilentSignIn();
-    try {
-      return await _silentSignInFuture;
-    } finally {
-      _silentSignInFuture = null;
-    }
+    return await _performSilentSignIn();
   }
 
   Future<GoogleSignInAccount?> _performSilentSignIn() async {
+    // Prevent concurrent silent sign-in attempts
+    if (_silentSignInFuture != null) return _silentSignInFuture;
+
+    _silentSignInFuture = _googleSignIn.signInSilently().timeout(
+          const Duration(seconds: 5),
+          onTimeout: () => null,
+        );
+
     try {
-      // Use a timeout to prevent hanging on poor connections.
-      // Silent sign-in should be fast; if it's not, we'd rather skip it than block.
-      final user = await _googleSignIn.signInSilently().timeout(
-            const Duration(seconds: 5),
-            onTimeout: () => null,
-          );
+      final user = await _silentSignInFuture;
       _currentUser = user;
       return user;
     } catch (e) {
@@ -66,6 +79,9 @@ class GoogleDriveService {
         print('Silent sign-in failed/timed out: $e');
       }
       return null;
+    } finally {
+      _hasAttemptedSilentSignIn = true;
+      _silentSignInFuture = null;
     }
   }
 
