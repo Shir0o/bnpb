@@ -687,6 +687,30 @@ class _HomePageState extends State<HomePage>
         return;
       }
 
+      if (!mounted) return;
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Overwrite existing data?'),
+          content: const Text(
+            'Importing this backup will delete all your current contacts, '
+            'interactions, and prayer requests. This cannot be undone.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Overwrite and Import'),
+            ),
+          ],
+        ),
+      );
+
+      if (confirmed != true) return;
+
       final count = await _showLoading(
         () => ImportService().importJsonExport(File(filePath)),
         'Importing contacts...\nThis may take a while...',
