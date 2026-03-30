@@ -11,6 +11,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:sqflite_sqlcipher/sqflite.dart';
 
 import '../constants/storage.dart';
+import '../db/db_helper.dart';
 
 /// Coordinates secure storage, biometric authentication, and data purging.
 class SecurityService {
@@ -167,6 +168,9 @@ class SecurityService {
   /// Securely deletes the encrypted database, rolling backups, and all stored
   /// credentials. Returns `true` when data was removed.
   Future<bool> secureDeleteAllData() async {
+    // 1. Close any open database connection via DBHelper to release file locks.
+    await DBHelper().close();
+
     final databasesPath = await getDatabasesPath();
     final dbFile = File(
       p.join(databasesPath, StorageConstants.databaseFileName),
@@ -178,23 +182,42 @@ class SecurityService {
 
     var removedAnything = false;
 
-    if (await dbFile.exists()) {
-      await _securelyWipeFile(dbFile);
-      removedAnything = true;
-    }
-
-    if (await backupDir.exists()) {
-      await backupDir.delete(recursive: true);
-      removedAnything = true;
-    }
-
+    // 2. Clear credentials from secure storage first.
     await _secureStorage.delete(key: _dbKeyStorageKey);
     await _secureStorage.delete(key: _passwordHashKey);
     await _secureStorage.delete(key: _passwordSaltKey);
     await _secureStorage.delete(key: _biometricToggleKey);
 
-    // Close any cached database instance so a fresh key is requested next time.
+    // 3. Securely wipe and remove database files.
+    if (await dbFile.exists()) {
+      await _securelyWipeFile(dbFile);
+      removedAnything = true;
+    }
+
+    // Also wipe WAL and SHM files if they exist (common for SQLite)
+    final walFile = File('${dbFile.path}-wal');
+    if (await walFile.exists()) {
+      await _securelyWipeFile(walFile);
+    }
+    final shmFile = File('${dbFile.path}-shm');
+    if (await shmFile.exists()) {
+      await _securelyWipeFile(shmFile);
+    }
+
+    // Also close any other cached databases and handle sqflite cleanup.
     await closeDatabases();
+
+    // 4. Clean up backups.
+    if (await backupDir.exists()) {
+      final backups = await backupDir.list().toList();
+      for (final entity in backups) {
+        if (entity is File) {
+          await _securelyWipeFile(entity);
+        }
+      }
+      await backupDir.delete(recursive: true);
+      removedAnything = true;
+    }
 
     return removedAnything;
   }

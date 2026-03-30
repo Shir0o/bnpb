@@ -21,6 +21,9 @@ class ImportService {
     // Check for Version 2 / Unified Sync Format (flat structure)
     if (jsonData is Map<String, dynamic> &&
         (jsonData['version'] == 2 || jsonData.containsKey('interactions'))) {
+      // Overwrite behavior: clear existing data before importing.
+      await _dbHelper.clearAllData();
+
       final coordinator = SyncCoordinator(_dbHelper);
       await coordinator.importSyncData(jsonData);
       await _reminderCoordinator.refreshAllContacts();
@@ -58,6 +61,9 @@ class ImportService {
     if (restoredContacts.isEmpty) {
       throw const FormatException('No contacts found in JSON.');
     }
+
+    // Overwrite behavior: clear existing data before importing.
+    await _dbHelper.clearAllData();
 
     // Pass 1: Insert all contacts first (without interactions/requests to avoid FK issues)
     // This ensures all contact IDs exist before we try to link interactions.

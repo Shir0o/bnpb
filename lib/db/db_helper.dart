@@ -2068,6 +2068,28 @@ class DBHelper {
   // ATTENDANCE METHODS
   // -------------------------------------------------------------
 
+  // -------------------------------------------------------------
+  // MAINTENANCE METHODS
+  // -------------------------------------------------------------
+
+  /// Deletes all data from all tables in the database.
+  Future<void> clearAllData() async {
+    final db = await database;
+    await db.transaction((txn) async {
+      await txn.delete('contact_tags');
+      await txn.delete('meet_contexts');
+      await txn.delete('interaction_participants');
+      await txn.delete('interactions');
+      await txn.delete('relationships');
+      await txn.delete('prayer_request_participants');
+      await txn.delete('prayer_requests');
+      await txn.delete('prayer_list_members');
+      await txn.delete('prayer_lists');
+      await txn.delete('notification_preferences');
+      await txn.delete('contacts');
+    });
+  }
+
   Future<List<Map<String, Object?>>> _chunkedQuery({
     required DatabaseExecutor db,
     required String table,

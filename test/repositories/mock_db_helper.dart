@@ -211,4 +211,7 @@ class MockDBHelper implements DBHelper {
   @override
   Future<void> removeContactFromPrayerList(String listId, String contactId) =>
       throw UnimplementedError();
+
+  @override
+  Future<void> clearAllData() async {}
 }

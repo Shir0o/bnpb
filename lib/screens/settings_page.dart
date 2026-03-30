@@ -576,8 +576,8 @@ class _SettingsPageState extends State<SettingsPage>
     );
     if (confirmed == true) {
       setState(() => _isPurging = true);
-      await _securityService.secureDeleteAllData();
       await ReminderService().cancelAll();
+      await _securityService.secureDeleteAllData();
       _load();
     }
   }
