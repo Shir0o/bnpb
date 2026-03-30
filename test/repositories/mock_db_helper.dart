@@ -78,6 +78,7 @@ class MockDBHelper implements DBHelper {
   @override
   Future<List<NotificationPreference>> getNotificationPreferences({
     NotificationScopeType? scopeType,
+    String? scopeId,
   }) =>
       throw UnimplementedError();
 
@@ -210,5 +211,11 @@ class MockDBHelper implements DBHelper {
 
   @override
   Future<void> removeContactFromPrayerList(String listId, String contactId) =>
+      throw UnimplementedError();
+
+  @override
+  Future<void> upsertNotificationPreferences(
+    List<NotificationPreference> preferences,
+  ) =>
       throw UnimplementedError();
 }

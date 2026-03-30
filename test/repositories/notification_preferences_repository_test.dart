@@ -65,11 +65,25 @@ class _TestDBHelper extends MockDBHelper {
   @override
   Future<List<NotificationPreference>> getNotificationPreferences({
     NotificationScopeType? scopeType,
+    String? scopeId,
   }) async {
+    var result = prefs;
     if (scopeType != null) {
-      return prefs.where((p) => p.scopeType == scopeType).toList();
+      result = result.where((p) => p.scopeType == scopeType).toList();
     }
-    return prefs;
+    if (scopeId != null) {
+      result = result.where((p) => p.scopeId == scopeId).toList();
+    }
+    return result;
+  }
+
+  @override
+  Future<void> upsertNotificationPreferences(
+    List<NotificationPreference> preferences,
+  ) async {
+    for (final preference in preferences) {
+      await upsertNotificationPreference(preference);
+    }
   }
 }
 

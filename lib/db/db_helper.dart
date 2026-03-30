@@ -2024,12 +2024,27 @@ class DBHelper {
 
   Future<List<NotificationPreference>> getNotificationPreferences({
     NotificationScopeType? scopeType,
+    String? scopeId,
   }) async {
     final db = await database;
+
+    final where = <String>[];
+    final whereArgs = <Object?>[];
+
+    if (scopeType != null) {
+      where.add('scopeType = ?');
+      whereArgs.add(scopeType.name);
+    }
+
+    if (scopeId != null) {
+      where.add('scopeId = ?');
+      whereArgs.add(scopeId);
+    }
+
     final rows = await db.query(
       'notification_preferences',
-      where: scopeType != null ? 'scopeType = ?' : null,
-      whereArgs: scopeType != null ? [scopeType.name] : null,
+      where: where.isEmpty ? null : where.join(' AND '),
+      whereArgs: whereArgs.isEmpty ? null : whereArgs,
     );
     return rows
         .map(
@@ -2062,6 +2077,25 @@ class DBHelper {
       where: 'scopeType = ? AND scopeId = ? AND channel = ?',
       whereArgs: [scopeType.name, scopeId, channel.name],
     );
+  }
+
+  /// Inserts multiple [NotificationPreference]s using a batch for performance.
+  Future<void> upsertNotificationPreferences(
+    List<NotificationPreference> preferences,
+  ) async {
+    if (preferences.isEmpty) return;
+    final db = await database;
+    await db.transaction((txn) async {
+      final batch = txn.batch();
+      for (final preference in preferences) {
+        batch.insert(
+          'notification_preferences',
+          preference.toMap(includeId: false),
+          conflictAlgorithm: ConflictAlgorithm.replace,
+        );
+      }
+      await batch.commit(noResult: true);
+    });
   }
 
   // -------------------------------------------------------------
