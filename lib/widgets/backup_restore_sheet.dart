@@ -55,7 +55,7 @@ class _BackupRestoreSheetState extends State<BackupRestoreSheet> {
     try {
       await _showLoading(
         () => BackupService().restoreBackup(snapshot, messenger: messenger),
-        'Restoring backup...',
+        'Restoring backup...\nThis may take a while...',
       );
       if (!mounted) {
         return;

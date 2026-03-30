@@ -155,7 +155,7 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
       if (extension == '.json') {
         final count = await _showLoading(
           () => ImportService().importJsonExport(file),
-          'Importing contacts...',
+          'Importing contacts...\nThis may take a while...',
         );
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
@@ -201,7 +201,7 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
             snapshot,
             messenger: ScaffoldMessenger.of(context),
           ),
-          'Restoring backup...',
+          'Restoring backup...\nThis may take a while...',
         );
         await _loadSettings();
 

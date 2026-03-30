@@ -689,7 +689,7 @@ class _HomePageState extends State<HomePage>
 
       final count = await _showLoading(
         () => ImportService().importJsonExport(File(filePath)),
-        'Importing contacts...',
+        'Importing contacts...\nThis may take a while...',
       );
 
       await _fetchContacts();
