@@ -8,7 +8,24 @@ import 'package:bnpb/models/prayer_request.dart';
 import 'package:bnpb/models/relationship.dart';
 import 'package:bnpb/models/prayer_list.dart';
 
+import 'package:bnpb/db/daos/contact_dao.dart';
+import 'package:bnpb/db/daos/interaction_dao.dart';
+import 'package:bnpb/db/daos/prayer_request_dao.dart';
+import 'package:bnpb/db/daos/relationship_dao.dart';
+import 'package:bnpb/db/daos/prayer_list_dao.dart';
+
 class MockDBHelper implements DBHelper {
+  @override
+  ContactDao get contactDao => throw UnimplementedError();
+  @override
+  InteractionDao get interactionDao => throw UnimplementedError();
+  @override
+  PrayerRequestDao get prayerRequestDao => throw UnimplementedError();
+  @override
+  RelationshipDao get relationshipDao => throw UnimplementedError();
+  @override
+  PrayerListDao get prayerListDao => throw UnimplementedError();
+
   @override
   Future<Database> get database => throw UnimplementedError();
 
@@ -94,8 +111,7 @@ class MockDBHelper implements DBHelper {
   Future<void> deleteRelationship(int id) => throw UnimplementedError();
 
   @override
-  Future<List<Relationship>> getAllRelationships() =>
-      throw UnimplementedError();
+  Future<List<Relationship>> getAllRelationships() async => [];
 
   @override
   Future<List<String>> getAllTags() => throw UnimplementedError();
@@ -210,6 +226,26 @@ class MockDBHelper implements DBHelper {
 
   @override
   Future<void> removeContactFromPrayerList(String listId, String contactId) =>
+      throw UnimplementedError();
+
+  @override
+  Future<void> replaceInteractionParticipants(
+    DatabaseExecutor db,
+    int id,
+    List<String> participants,
+  ) =>
+      throw UnimplementedError();
+
+  @override
+  Future<void> replacePrayerRequestParticipants(
+    DatabaseExecutor db,
+    int id,
+    List<String> participants,
+  ) =>
+      throw UnimplementedError();
+
+  @override
+  Future<void> upsertPrayerListFromSync(DatabaseExecutor db, PrayerList list) =>
       throw UnimplementedError();
 
   @override

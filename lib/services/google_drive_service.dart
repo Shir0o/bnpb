@@ -27,8 +27,6 @@ class GoogleDriveService {
         _driveApi = null;
       }
     });
-    // Trigger the silent sign-in automatically so it's ready when needed.
-    _performSilentSignIn();
   }
 
   late final Stream<GoogleSignInAccount?> _onUserChanged;

@@ -19,6 +19,9 @@ while offering analytics and export tooling.
 
 ## Documentation
 
+- [Contributing Guidelines](CONTRIBUTING.md)
+- [Architecture & Technical Design](docs/ARCHITECTURE.md)
+- [Changelog](CHANGELOG.md)
 - [Privacy Policy & Personal Usage Guidelines](docs/privacy_policy.md)
 - [Optional facial recognition pipeline research](docs/facial_recognition_pipeline.md)
 - [ADR 0001 – Platform Selection](docs/adr/0001-platform.md)

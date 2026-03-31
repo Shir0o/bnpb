@@ -6,10 +6,10 @@ import 'package:bnpb/models/prayer_list.dart';
 import 'package:bnpb/models/contact.dart';
 import 'package:bnpb/models/interaction.dart';
 import 'package:bnpb/models/prayer_request.dart';
+import 'package:bnpb/models/relationship.dart';
 import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:sqflite_sqlcipher/sqflite.dart';
 import 'package:uuid/uuid.dart';
 
 class SyncCoordinator {
@@ -60,24 +60,24 @@ class SyncCoordinator {
 
   Future<SyncResult> exportChanges(Directory syncDir) async {
     final lastExport = await _getLastExportTime();
-    final now = DateTime.now().toUtc(); // Use UTC for consistency
+    final now = DateTime.now().toUtc();
 
     // Fetch changes
     final contacts = await _db.getContactsModifiedSince(lastExport);
     final interactions = await _db.getInteractionsModifiedSince(lastExport);
     final prayers = await _db.getPrayerRequestsModifiedSince(lastExport);
-
-    // Prayer Lists now have timestamps.
     final prayerLists = await _db.getPrayerListsModifiedSince(lastExport);
+    final relationships = await _db.getAllRelationships();
 
     if (contacts.isEmpty &&
         interactions.isEmpty &&
         prayers.isEmpty &&
-        prayerLists.isEmpty) {
+        prayerLists.isEmpty &&
+        relationships.isEmpty) {
       return const SyncResult(exportedCount: 0, importedCount: 0);
     }
 
-    // Enrich Prayer Requests with interactionSyncId
+    // Enrich Prayer Requests with interactionSyncId for remote resolution
     final enrichedPrayers = <Map<String, dynamic>>[];
     for (final p in prayers) {
       final map = p.toMap();
@@ -90,15 +90,15 @@ class SyncCoordinator {
       enrichedPrayers.add(map);
     }
 
-    // Serialize
     final data = {
       'version': 2,
       'deviceId': await getDeviceId(),
       'timestamp': now.toIso8601String(),
-      'integrityCheck': 'valid', // Marker for integrity
+      'integrityCheck': 'valid',
       'contacts': contacts.map((c) => c.toMap()).toList(),
       'interactions': interactions.map((i) => i.toMap()).toList(),
       'prayerRequests': enrichedPrayers,
+      'relationships': relationships.map((r) => r.toMap()).toList(),
       'prayerLists': prayerLists.map((l) {
         final map = l.toMap();
         map['contactIds'] = l.contactIds;
@@ -108,26 +108,22 @@ class SyncCoordinator {
 
     final jsonStr = jsonEncode(data);
     final deviceId = await getDeviceId();
-    // Filename: deviceId_timestamp_data.json
-    // Use a safe timestamp format for filenames
     final successTimestamp = now.millisecondsSinceEpoch;
     final filename = '${deviceId}_${successTimestamp}_data.json';
 
-    // Atomic Write: Write to temp file then rename
     final tempFile = File(p.join(syncDir.path, '$filename.tmp'));
     await tempFile.writeAsString(jsonStr, flush: true);
     final finalFile = File(p.join(syncDir.path, filename));
     await tempFile.rename(finalFile.path);
 
-    // Update last export time implies we won't export these again
-    // We should strictly use 'now' as the new checkpoint.
     await _updateLastExportTime(now);
 
     return SyncResult(
       exportedCount: contacts.length +
           interactions.length +
           prayers.length +
-          prayerLists.length,
+          prayerLists.length +
+          relationships.length,
       importedCount: 0,
     );
   }
@@ -158,13 +154,10 @@ class SyncCoordinator {
         await syncDir.list().where((f) => f is File).cast<File>().where((f) {
       final name = p.basename(f.path);
       return name.endsWith('_data.json') &&
-          !name.startsWith(deviceId) && // Ignore own files
+          !name.startsWith(deviceId) &&
           !processed.contains(name);
     }).toList();
 
-    // Sort by timestamp in filename to apply in order
-    // Filename format: deviceId_timestamp_data.json
-    // timestamp is integer milliseconds
     files.sort((a, b) {
       final nameA = p.basename(a.path);
       final nameB = p.basename(b.path);
@@ -178,29 +171,18 @@ class SyncCoordinator {
     for (final file in files) {
       try {
         final content = await file.readAsString();
-        if (content.isEmpty) {
-          debugPrint('Skipping empty file: ${file.path}');
-          continue;
-        }
+        if (content.isEmpty) continue;
 
         final data = jsonDecode(content);
-
-        // Integrity Check
         if (data is! Map<String, dynamic> || !data.containsKey('version')) {
-          debugPrint('Skipping invalid JSON file: ${file.path}');
           continue;
         }
 
-        // Transaction? Ideally yes, but merging calls individual ops
-        // We can wrap per file?
         await importSyncData(data);
-
         await _markFileProcessed(p.basename(file.path));
         importCount++;
       } catch (e) {
         debugPrint('Error importing file ${file.path}: $e');
-        // Retrieve generic error handling or continue?
-        // Continue to next file.
       }
     }
 
@@ -208,20 +190,12 @@ class SyncCoordinator {
   }
 
   int _extractTimestamp(String filename) {
-    // Expected: deviceId_timestamp_data.json
     try {
-      final parts = filename.split('_');
-      if (parts.length >= 3) {
-        // parts[parts.length - 2] should be timestamp if format is strictly followed
-        // recursive split might be safer if deviceID has usually no underscores but UUID has none.
-        // Let's assume deviceId doesn't contain the separator pattern or we parse from end.
-        // suffix is _data.json
-        final withoutSuffix = filename.replaceAll('_data.json', '');
-        final lastUnderscore = withoutSuffix.lastIndexOf('_');
-        if (lastUnderscore != -1) {
-          final tsPart = withoutSuffix.substring(lastUnderscore + 1);
-          return int.tryParse(tsPart) ?? 0;
-        }
+      final withoutSuffix = filename.replaceAll('_data.json', '');
+      final lastUnderscore = withoutSuffix.lastIndexOf('_');
+      if (lastUnderscore != -1) {
+        final tsPart = withoutSuffix.substring(lastUnderscore + 1);
+        return int.tryParse(tsPart) ?? 0;
       }
     } catch (_) {}
     return 0;
@@ -231,18 +205,15 @@ class SyncCoordinator {
     // Merge Contacts
     if (data['contacts'] != null) {
       for (final item in (data['contacts'] as List)) {
-        final map = Map<String, dynamic>.from(item);
-        final remoteContact = Contact.fromMap(map);
-        await _mergeContact(remoteContact);
+        await _mergeContact(Contact.fromMap(Map<String, dynamic>.from(item)));
       }
     }
 
     // Merge Interactions
     if (data['interactions'] != null) {
       for (final item in (data['interactions'] as List)) {
-        final map = Map<String, dynamic>.from(item);
-        final remoteInteraction = Interaction.fromMap(map);
-        await _mergeInteraction(remoteInteraction);
+        await _mergeInteraction(
+            Interaction.fromMap(Map<String, dynamic>.from(item)));
       }
     }
 
@@ -260,6 +231,11 @@ class SyncCoordinator {
     if (data['prayerLists'] != null) {
       await _mergePrayerLists(data['prayerLists'] as List);
     }
+
+    // Merge Relationships
+    if (data['relationships'] != null) {
+      await _mergeRelationships(data['relationships'] as List);
+    }
   }
 
   Future<void> _mergeContact(Contact remote) async {
@@ -270,61 +246,21 @@ class SyncCoordinator {
     final local = localContacts.isNotEmpty ? localContacts.first : null;
 
     if (local == null) {
-      // New or previously hard-deleted locally (shouldn't happen with soft deletes)
-      // If remote is deleted, we just insert the tombstone for consistency.
       await _db.upsertContactFromSync(
         await _db.database,
         remote,
         isUpdate: false,
       );
-    } else {
-      // Local exists (could be alive or deleted).
-      // Compare timestamps.
-      final localTime = local.updatedAt;
-      final remoteTime = remote.updatedAt; // Should stick to non-null
-
-      if (remoteTime.isAfter(localTime)) {
-        // Remote is newer. Overwrite.
-        await _db.upsertContactFromSync(
-          await _db.database,
-          remote,
-          isUpdate: true,
-        );
-      }
-      // If local is new, keep local.
-      // If equal, do nothing.
+    } else if (remote.updatedAt.isAfter(local.updatedAt)) {
+      await _db.upsertContactFromSync(
+        await _db.database,
+        remote,
+        isUpdate: true,
+      );
     }
   }
 
   Future<void> _mergeInteraction(Interaction remote) async {
-    // ID might be problematic if integer auto-increment changes?
-    // CRITICAL: Syncing integer IDs across devices is BAD.
-    // The plan said: "Add syncId (UUID) to Interactions".
-    // Sync should use `syncId` to match!
-    // But `getInteractionById` uses integer ID.
-    // Sync logic MUST use `syncId`.
-
-    // I need `getInteractionBySyncId`?
-    // Or I check `syncId` match.
-    // Wait, Interaction integer ID is local-only.
-    // Remote sends integer ID but it's consistent only on source device.
-    // Remote should rely on `syncId`.
-
-    // Sync should use `syncId` to match!
-    // But `getInteractionById` uses integer ID.
-    // Sync logic MUST use `syncId`.
-
-    // We need to find local record by syncId.
-    // DBHelper doesn't have `getInteractionBySyncId`.
-    // I should add it or scan? Scanning is slow.
-    // I should add `getInteractionBySyncId` to DBHelper OR use raw query here.
-    // Since `SyncCoordinator` has `_db`, I can use `_db.database.query`.
-
-    // Let's implement `_upsertInteractionBySyncId`.
-    await _upsertInteractionBySyncLogic(remote);
-  }
-
-  Future<void> _upsertInteractionBySyncLogic(Interaction remote) async {
     final db = await _db.database;
     final rows = await db.query(
       'interactions',
@@ -333,133 +269,38 @@ class SyncCoordinator {
     );
 
     if (rows.isEmpty) {
-      // Insert new.
-      // We must IGNORE remote integer ID and let local AutoIncrement generate one.
-      // BUT we must map relationships using... wait.
-      // Relationships (Participants) use Contact IDs (UUIDs). So that's fine.
-      // Prayer Requests use Interaction ID (Integer).
-      // If we generate a new Integer ID, the Prayer Request referring to it (by old remote int ID) will break!
-      // Syncing Prayer Requests needs to handle this.
-      // Prayer Request should refer to Interaction by SyncID too?
-      // The plan said "PrayerRequest added syncId".
-      // Does it have `interactionSyncId`? No.
-      // It has `interactionId`.
-      // If we sync PrayerRequest, we need to resolve `interactionId`.
-      // This implies we need to lookup the local integer ID for the interaction SyncID.
+      if (remote.deletedAt != null) return;
 
-      if (remote.deletedAt != null) {
-        // Inserting a tombstone?
-        // If we don't have it, and it's deleted, we ignore it?
-        // Or we store it to prevent future re-import?
-        // Storing tombstones with new IDs is messy.
-        // Ideally we ignore if we don't have it.
-        return;
-      }
-
-      final toInsert = remote.copyWith(id: null); // Remove ID to autogenerate
-      // ... wait, `insertInteraction` in DB helper handles participants.
-      // We can just call `_db.insertInteraction(toInsert)`.
-      // But we need to preserve `syncId` and `updatedAt`.
-      // `insertInteraction` overrides `updatedAt` to Now!
-      // We need a raw insert or `_importInteraction` method in DBHelper that allows forcing timestamps.
-
-      // For now, I'll attempt raw insert via DB instance.
-
-      final map = toInsert.toMap(includeId: false, encodeAttachments: true);
+      final map = remote.toMap(includeId: false, encodeAttachments: true);
       map.remove('participantIds');
-      // Force timestamps and syncId
       map['updatedAt'] = remote.updatedAt.toIso8601String();
       map['deletedAt'] = remote.deletedAt?.toIso8601String();
       map['syncId'] = remote.syncId;
 
       final id = await db.insert('interactions', map);
-
-      // Handle participants
-      // We need `_replaceInteractionParticipants` logic which is private in DBHelper...
-      // I might need to expose it or duplicate it.
-      // Duplicating small logic is safer than exposing privates publicly if not needed.
-      await _replaceParticipants(db, id, remote.participantIds);
+      await _db.replaceInteractionParticipants(db, id, remote.participantIds);
     } else {
-      // Update existing
       final localRow = rows.first;
       final localUpdated = DateTime.parse(localRow['updatedAt'] as String);
-      final remoteUpdated = remote.updatedAt;
-
-      if (remoteUpdated.isAfter(localUpdated)) {
+      if (remote.updatedAt.isAfter(localUpdated)) {
         final localId = localRow['id'] as int;
-
         final map = remote.toMap(includeId: false, encodeAttachments: true);
         map.remove('participantIds');
-        map['updatedAt'] = remoteUpdated.toIso8601String();
+        map['updatedAt'] = remote.updatedAt.toIso8601String();
         map['deletedAt'] = remote.deletedAt?.toIso8601String();
-        // Keep local ID
 
-        await db.update(
-          'interactions',
-          map,
-          where: 'id = ?',
-          whereArgs: [localId],
-        );
-
-        await _replaceParticipants(db, localId, remote.participantIds);
+        await db
+            .update('interactions', map, where: 'id = ?', whereArgs: [localId]);
+        await _db.replaceInteractionParticipants(
+            db, localId, remote.participantIds);
       }
     }
-  }
-
-  Future<void> _replaceParticipants(
-    DatabaseExecutor txn,
-    int interactionId,
-    List<String> participantIds,
-  ) async {
-    await txn.delete(
-      'interaction_participants',
-      where: 'interactionId = ?',
-      whereArgs: [interactionId],
-    );
-
-    final uniqueParticipants = participantIds.toSet();
-    final batch = (txn as dynamic).batch() as Batch;
-    for (final participant in uniqueParticipants) {
-      batch.insert(
-          'interaction_participants',
-          {
-            'interactionId': interactionId,
-            'contactId': participant,
-          },
-          conflictAlgorithm: ConflictAlgorithm.replace);
-    }
-    await batch.commit(noResult: true);
-  }
-
-  Future<void> _replacePrayerParticipants(
-    DatabaseExecutor txn,
-    int requestId,
-    List<String> participantIds,
-  ) async {
-    await txn.delete(
-      'prayer_request_participants',
-      where: 'prayerRequestId = ?',
-      whereArgs: [requestId],
-    );
-
-    final uniqueParticipants = participantIds.toSet();
-    final batch = (txn as dynamic).batch() as Batch;
-    for (final participant in uniqueParticipants) {
-      batch.insert(
-        'prayer_request_participants',
-        {'prayerRequestId': requestId, 'contactId': participant},
-        conflictAlgorithm: ConflictAlgorithm.replace,
-      );
-    }
-    await batch.commit(noResult: true);
   }
 
   Future<void> _mergePrayerRequest(
     PrayerRequest remote,
     String? interactionSyncId,
   ) async {
-    // Similar logic using syncId
-
     final db = await _db.database;
     final rows = await db.query(
       'prayer_requests',
@@ -467,12 +308,10 @@ class SyncCoordinator {
       whereArgs: [remote.syncId],
     );
 
-    // Resolve interactionLink
     int? localInteractionId;
     if (interactionSyncId != null) {
-      localInteractionId = await _getLocalInteractionIdBySyncId(
-        interactionSyncId,
-      );
+      localInteractionId =
+          await _getLocalInteractionIdBySyncId(interactionSyncId);
     }
 
     if (rows.isEmpty) {
@@ -483,7 +322,6 @@ class SyncCoordinator {
       map['updatedAt'] = remote.updatedAt.toIso8601String();
       map['deletedAt'] = remote.deletedAt?.toIso8601String();
       map['syncId'] = remote.syncId;
-
       if (localInteractionId != null) {
         map['interactionId'] = localInteractionId;
       } else {
@@ -491,32 +329,26 @@ class SyncCoordinator {
       }
 
       final id = await db.insert('prayer_requests', map);
-      await _replacePrayerParticipants(db, id, remote.participantIds);
+      await _db.replacePrayerRequestParticipants(db, id, remote.participantIds);
     } else {
       final localRow = rows.first;
       final localUpdated = DateTime.parse(localRow['updatedAt'] as String);
-      final remoteUpdated = remote.updatedAt;
-
-      if (remoteUpdated.isAfter(localUpdated)) {
+      if (remote.updatedAt.isAfter(localUpdated)) {
         final localId = localRow['id'] as int;
         final map = remote.toMap(includeId: false);
         map.remove('participantIds');
-        map['updatedAt'] = remoteUpdated.toIso8601String();
+        map['updatedAt'] = remote.updatedAt.toIso8601String();
         map['deletedAt'] = remote.deletedAt?.toIso8601String();
-
         if (localInteractionId != null) {
           map['interactionId'] = localInteractionId;
         } else {
           map.remove('interactionId');
         }
 
-        await db.update(
-          'prayer_requests',
-          map,
-          where: 'id = ?',
-          whereArgs: [localId],
-        );
-        await _replacePrayerParticipants(db, localId, remote.participantIds);
+        await db.update('prayer_requests', map,
+            where: 'id = ?', whereArgs: [localId]);
+        await _db.replacePrayerRequestParticipants(
+            db, localId, remote.participantIds);
       }
     }
   }
@@ -529,24 +361,16 @@ class SyncCoordinator {
       where: 'syncId = ?',
       whereArgs: [syncId],
     );
-    if (rows.isNotEmpty) {
-      return rows.first['id'] as int;
-    }
+    if (rows.isNotEmpty) return rows.first['id'] as int;
     return null;
   }
 
   Future<void> _mergePrayerLists(List<dynamic> remoteLists) async {
     final db = await _db.database;
-
     for (final item in remoteLists) {
-      final map = Map<String, dynamic>.from(item);
-      final remoteList = PrayerList.fromMap(map);
-
-      final localRows = await db.query(
-        'prayer_lists',
-        where: 'id = ?',
-        whereArgs: [remoteList.id],
-      );
+      final remoteList = PrayerList.fromMap(Map<String, dynamic>.from(item));
+      final localRows = await db
+          .query('prayer_lists', where: 'id = ?', whereArgs: [remoteList.id]);
 
       bool shouldUpdate = false;
       if (localRows.isEmpty) {
@@ -554,47 +378,29 @@ class SyncCoordinator {
           shouldUpdate = true;
         }
       } else {
-        // Found locally (could be soft deleted)
-        // PrayerList.fromMap parses timestamps correctly from DB row
         final localList = PrayerList.fromMap(localRows.first);
-
         if (remoteList.updatedAt.isAfter(localList.updatedAt)) {
           shouldUpdate = true;
         }
       }
 
       if (shouldUpdate) {
-        await _upsertPrayerList(db, remoteList);
+        await _db.upsertPrayerListFromSync(db, remoteList);
       }
     }
   }
 
-  Future<void> _upsertPrayerList(DatabaseExecutor db, PrayerList list) async {
-    await db.insert(
-      'prayer_lists',
-      list.toMap(),
-      conflictAlgorithm: ConflictAlgorithm.replace,
-    );
+  Future<void> _mergeRelationships(List<dynamic> remoteRels) async {
+    for (final item in remoteRels) {
+      final remote = Relationship.fromMap(Map<String, dynamic>.from(item));
+      final existing = await _db.relationshipDao
+          .getRelationshipsForContact(remote.sourceContactId);
+      final match = existing.any((r) =>
+          r.targetContactId == remote.targetContactId && r.type == remote.type);
 
-    // Update members: remove old, add new
-    await db.delete(
-      'prayer_list_members',
-      where: 'listId = ?',
-      whereArgs: [list.id],
-    );
-
-    if (list.deletedAt == null) {
-      final batch = (db as dynamic).batch() as Batch;
-      for (final cid in list.contactIds) {
-        batch.insert(
-            'prayer_list_members',
-            {
-              'listId': list.id,
-              'contactId': cid,
-            },
-            conflictAlgorithm: ConflictAlgorithm.ignore);
+      if (!match) {
+        await _db.relationshipDao.upsertRelationship(remote.copyWith(id: null));
       }
-      await batch.commit(noResult: true);
     }
   }
 }
