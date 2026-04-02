@@ -57,7 +57,7 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
     _addLog('Starting manual sync...', color: const Color(0xFF60A5FA));
 
     try {
-      await _syncService.performSync(force: true);
+      await _syncService.performSync(force: true, rethrowErrors: true);
       _addLog('Sync completed successfully.', color: const Color(0xFF4ADE80));
     } catch (e) {
       _addLog('Sync failed: $e', color: const Color(0xFFEF4444));

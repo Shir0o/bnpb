@@ -4,10 +4,13 @@ import 'package:flutter/foundation.dart';
 import 'package:extension_google_sign_in_as_googleapis_auth/extension_google_sign_in_as_googleapis_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:googleapis/drive/v3.dart' as drive;
+import 'package:shared_preferences/shared_preferences.dart';
 
 class GoogleDriveService {
   static final GoogleDriveService _instance = GoogleDriveService._internal();
   factory GoogleDriveService() => _instance;
+
+  static const String _prefKeyHasSignedIn = 'google_has_signed_in';
 
   final GoogleSignIn _googleSignIn = GoogleSignIn(
     clientId: Platform.isMacOS
@@ -27,13 +30,25 @@ class GoogleDriveService {
         _driveApi = null;
       }
     });
+    // Load the persistent flag into memory
+    SharedPreferences.getInstance().then((prefs) {
+      _hasPreviouslySignedIn = prefs.getBool(_prefKeyHasSignedIn) ?? false;
+    });
   }
 
   late final Stream<GoogleSignInAccount?> _onUserChanged;
   bool _hasAttemptedSilentSignIn = false;
+  bool _isInitializing = false;
+  bool _hasPreviouslySignedIn = false;
 
   /// Whether silent sign-in has been attempted in this session.
   bool get hasAttemptedSilentSignIn => _hasAttemptedSilentSignIn;
+
+  /// Whether the service is currently attempting a silent sign-in.
+  bool get isInitializing => _isInitializing;
+
+  /// Whether the user has previously signed in successfully.
+  bool get hasPreviouslySignedIn => _hasPreviouslySignedIn;
 
   Future<GoogleSignInAccount?>? _silentSignInFuture;
   GoogleSignInAccount? _currentUser;
@@ -47,14 +62,21 @@ class GoogleDriveService {
   Stream<GoogleSignInAccount?> get onUserChanged => _onUserChanged;
 
   /// Returns the current user, attempting silent sign-in ONLY if it hasn't
-  /// been attempted before in this session.
-  /// Does NOT initialize the Drive API client to avoid unnecessary keychain access.
+  /// been attempted before in this session and the user has previously signed in.
   Future<GoogleSignInAccount?> get currentUser async {
     if (_currentUser != null) return _currentUser;
 
-    // If we already tried and it failed, we don't automatically try again
-    // unless the app caller forces it by calling _performSilentSignIn directly.
     if (_hasAttemptedSilentSignIn && _silentSignInFuture == null) return null;
+
+    if (!_hasPreviouslySignedIn) {
+      // Re-check once just in case the constructor's async init wasn't done
+      final prefs = await SharedPreferences.getInstance();
+      _hasPreviouslySignedIn = prefs.getBool(_prefKeyHasSignedIn) ?? false;
+      if (!_hasPreviouslySignedIn) {
+        _hasAttemptedSilentSignIn = true;
+        return null;
+      }
+    }
 
     return await _performSilentSignIn();
   }
@@ -63,6 +85,7 @@ class GoogleDriveService {
     // Prevent concurrent silent sign-in attempts
     if (_silentSignInFuture != null) return _silentSignInFuture;
 
+    _isInitializing = true;
     _silentSignInFuture = _googleSignIn.signInSilently().timeout(
           const Duration(seconds: 5),
           onTimeout: () => null,
@@ -71,6 +94,14 @@ class GoogleDriveService {
     try {
       final user = await _silentSignInFuture;
       _currentUser = user;
+
+      // Update our persistent flag if we got a user
+      if (user != null) {
+        _hasPreviouslySignedIn = true;
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool(_prefKeyHasSignedIn, true);
+      }
+
       return user;
     } catch (e) {
       if (kDebugMode) {
@@ -80,6 +111,7 @@ class GoogleDriveService {
     } finally {
       _hasAttemptedSilentSignIn = true;
       _silentSignInFuture = null;
+      _isInitializing = false;
     }
   }
 
@@ -89,6 +121,13 @@ class GoogleDriveService {
     try {
       _currentUser = await _googleSignIn.signIn();
       _driveApi = null;
+
+      if (_currentUser != null) {
+        _hasPreviouslySignedIn = true;
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool(_prefKeyHasSignedIn, true);
+      }
+
       return _currentUser;
     } catch (e) {
       String errorMessage = 'Google Sign-In failed';
@@ -111,6 +150,10 @@ class GoogleDriveService {
     await _googleSignIn.signOut();
     _currentUser = null;
     _driveApi = null;
+
+    _hasPreviouslySignedIn = false;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_prefKeyHasSignedIn, false);
   }
 
   Future<bool> isSignedIn() async {

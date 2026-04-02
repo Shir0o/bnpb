@@ -32,6 +32,7 @@ class _SettingsPageState extends State<SettingsPage>
   final SecurityService _securityService = SecurityService();
 
   late final StreamSubscription<GoogleSignInAccount?> _userSubscription;
+  late final StreamSubscription<void> _syncSubscription;
 
   bool _isLoading = true;
   bool _isUpdating = false;
@@ -54,15 +55,25 @@ class _SettingsPageState extends State<SettingsPage>
   @override
   void initState() {
     super.initState();
-    _isGoogleInitializing = !GoogleDriveService().hasAttemptedSilentSignIn;
-    _userSubscription = GoogleDriveService().onUserChanged.listen((user) {
+    final googleService = GoogleDriveService();
+    // If it's already done or won't be attempted, we start with false.
+    _isGoogleInitializing = googleService.isInitializing;
+
+    _userSubscription = googleService.onUserChanged.listen((user) {
       if (mounted) {
         setState(() {
           _googleUser = user;
-          _isGoogleInitializing = false;
+          _isGoogleInitializing = googleService.isInitializing;
         });
       }
     });
+
+    _syncSubscription = SyncService().onSyncComplete.listen((_) {
+      if (mounted) {
+        _loadSyncState();
+      }
+    });
+
     _load();
   }
 
@@ -116,6 +127,7 @@ class _SettingsPageState extends State<SettingsPage>
   @override
   void dispose() {
     _userSubscription.cancel();
+    _syncSubscription.cancel();
     super.dispose();
   }
 
@@ -368,7 +380,7 @@ class _SettingsPageState extends State<SettingsPage>
   Future<void> _performSync() async {
     setState(() => _isUpdating = true);
     try {
-      await SyncService().performSync(force: true);
+      await SyncService().performSync(force: true, rethrowErrors: true);
       await _loadSyncState();
       if (mounted) {
         ScaffoldMessenger.of(

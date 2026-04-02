@@ -76,8 +76,10 @@ class SyncService {
 
   /// Performs a full sync: Import then Export.
   /// [force] will skip the cooldown check.
+  /// [rethrowErrors] will allow exceptions to propagate (useful for manual UI sync).
   /// Returns true if any changes were imported.
-  Future<bool> performSync({bool force = false}) async {
+  Future<bool> performSync(
+      {bool force = false, bool rethrowErrors = false}) async {
     if (_isSyncing) return false;
 
     // Cooldown logic: avoid syncing more than once every 5 minutes automatically.
@@ -107,7 +109,7 @@ class SyncService {
       if (kDebugMode) {
         print('Sync failed: $e');
       }
-      // We don't rethrow here to prevent app crashes during background/pause syncs
+      if (rethrowErrors) rethrow;
     } finally {
       _isSyncing = false;
       if (hasChanges) {
