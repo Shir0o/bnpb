@@ -99,16 +99,21 @@ class PrayerRequestDao extends BaseDao {
         contact.prayerRequests.map((r) => r.id).whereType<int>().toSet();
 
     final idsToDelete = existingIds.difference(newIds);
-    for (final id in idsToDelete) {
-      await txn.update(
-        'prayer_requests',
-        {
-          'deletedAt': DateTime.now().toUtc().toIso8601String(),
-          'updatedAt': DateTime.now().toUtc().toIso8601String(),
-        },
-        where: 'id = ?',
-        whereArgs: [id],
-      );
+    if (idsToDelete.isNotEmpty) {
+      final batch = txn.batch();
+      final now = DateTime.now().toUtc().toIso8601String();
+      for (final id in idsToDelete) {
+        batch.update(
+          'prayer_requests',
+          {
+            'deletedAt': now,
+            'updatedAt': now,
+          },
+          where: 'id = ?',
+          whereArgs: [id],
+        );
+      }
+      await batch.commit(noResult: true);
     }
 
     for (final request in contact.prayerRequests) {
