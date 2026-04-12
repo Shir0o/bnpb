@@ -23,16 +23,24 @@ void main() {
     final dao = PrayerRequestDao(dbHelper);
     final contactId = const Uuid().v4();
 
+    // Ensure contact exists for foreign key
+    await db.insert('contacts', {
+      'id': contactId,
+      'firstName': 'Test',
+      'updatedAt': DateTime.now().toIso8601String(),
+    });
+
     // 1. Setup initial prayer requests
     int id1 = -1;
     int id2 = -1;
     await db.transaction((txn) async {
       id1 = await txn.insert('prayer_requests', {
         'syncId': const Uuid().v4(),
+        'contactId': contactId,
         'description': 'Request 1',
         'status': 'pending',
         'requestedAt': DateTime.now().toIso8601String(),
-        'updatedAt': DateTime.now().toIso8601String(),
+        'updatedAt': DateTime.now().toUtc().toIso8601String(),
       });
       await txn.insert('prayer_request_participants', {
         'prayerRequestId': id1,
@@ -41,10 +49,11 @@ void main() {
 
       id2 = await txn.insert('prayer_requests', {
         'syncId': const Uuid().v4(),
+        'contactId': contactId,
         'description': 'Request 2',
         'status': 'pending',
         'requestedAt': DateTime.now().toIso8601String(),
-        'updatedAt': DateTime.now().toIso8601String(),
+        'updatedAt': DateTime.now().toUtc().toIso8601String(),
       });
       await txn.insert('prayer_request_participants', {
         'prayerRequestId': id2,
