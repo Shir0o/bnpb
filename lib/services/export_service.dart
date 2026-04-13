@@ -245,7 +245,7 @@ class ExportService {
     List<String> fieldIds, {
     List<PrayerList>? prayerLists,
   }) async {
-    final contactList = contacts.map((contact) => contact.toJson()).toList();
+    final contactList = <Map<String, dynamic>>[];
 
     // Flatten interactions and prayer requests with de-duplication
     final flatInteractions = <Map<String, dynamic>>[];
@@ -258,20 +258,21 @@ class ExportService {
     final globalInteractionMap = <int, String>{};
 
     for (final contact in contacts) {
+      contactList.add(contact.toJson());
+
       for (final interaction in contact.interactions) {
         if (interaction.id != null) {
           globalInteractionMap[interaction.id!] = interaction.syncId;
         }
-        if (!seenInteractionSyncIds.contains(interaction.syncId)) {
+        if (seenInteractionSyncIds.add(interaction.syncId)) {
           flatInteractions.add(interaction.toJson());
-          seenInteractionSyncIds.add(interaction.syncId);
         }
       }
     }
 
     for (final contact in contacts) {
       for (final prayer in contact.prayerRequests) {
-        if (!seenPrayerSyncIds.contains(prayer.syncId)) {
+        if (seenPrayerSyncIds.add(prayer.syncId)) {
           final map = prayer.toMap();
           // Resolve interactionSyncId if linked
           if (prayer.interactionId != null) {
@@ -281,7 +282,6 @@ class ExportService {
             }
           }
           flatPrayerRequests.add(map);
-          seenPrayerSyncIds.add(prayer.syncId);
         }
       }
     }
