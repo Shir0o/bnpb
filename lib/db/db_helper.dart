@@ -274,6 +274,8 @@ class DBHelper {
       ''');
 
       final legacyRows = await db.query('contacts', columns: ['id', 'history']);
+      final batch = db.batch();
+      final now = DateTime.now().toIso8601String();
       for (final row in legacyRows) {
         final contactId = row['id'] as String;
         final historyJson = row['history'] as String?;
@@ -288,10 +290,9 @@ class DBHelper {
           );
           final summary = (entryMap['detail'] ?? '').toString();
           if (summary.isEmpty) continue;
-          final occurredAt =
-              entryMap['date'] as String? ?? DateTime.now().toIso8601String();
+          final occurredAt = entryMap['date'] as String? ?? now;
 
-          await db.insert('interactions', {
+          batch.insert('interactions', {
             'contactId': contactId,
             'occurredAt': occurredAt,
             'summary': summary,
@@ -300,6 +301,7 @@ class DBHelper {
           });
         }
       }
+      await batch.commit(noResult: true);
 
       await db.execute('UPDATE contacts SET history = NULL');
     }
