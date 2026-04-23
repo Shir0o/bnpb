@@ -35,7 +35,7 @@ Future<void> main() async {
     WidgetsFlutterBinding.ensureInitialized();
 
     // Pre-warm Google Sign-In silent login
-    GoogleDriveService();
+    await GoogleDriveService().initialize();
 
     await ReminderService().initialize();
     final preferencesRepository = NotificationPreferencesRepository();

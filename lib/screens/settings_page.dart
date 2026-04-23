@@ -91,6 +91,11 @@ class _SettingsPageState extends State<SettingsPage>
 
     _contacts = await _dbHelper.getContacts();
 
+    // Fetch initial Google user state
+    final googleService = GoogleDriveService();
+    _googleUser = await googleService.currentUser;
+    _isGoogleInitializing = googleService.isInitializing;
+
     final storedPreferences = await _preferencesRepository.loadPreferences();
     final globalDefaults = <ReminderChannel, NotificationPreference>{};
     for (final preference in storedPreferences) {

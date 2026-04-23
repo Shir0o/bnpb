@@ -14,7 +14,9 @@ void main() {
     FlutterSecureStorage.setMockInitialValues({});
   });
 
-  test('PrayerRequestDao.replacePrayerRequestsForContact soft deletes old requests', () async {
+  test(
+      'PrayerRequestDao.replacePrayerRequestsForContact soft deletes old requests',
+      () async {
     final db = await databaseFactory.openDatabase(inMemoryDatabasePath);
     final dbHelper = DBHelper();
     DBHelper.setDatabaseForTest(db);
@@ -62,7 +64,8 @@ void main() {
     });
 
     // Verify they exist and are not deleted
-    final checkBefore = await db.query('prayer_requests', where: 'deletedAt IS NULL');
+    final checkBefore =
+        await db.query('prayer_requests', where: 'deletedAt IS NULL');
     expect(checkBefore.length, 2);
 
     // 2. Call replacePrayerRequestsForContact with ONLY request 1
@@ -86,12 +89,14 @@ void main() {
     });
 
     // 3. Verify request 2 is soft deleted
-    final request2 = await db.query('prayer_requests', where: 'id = ?', whereArgs: [id2]);
+    final request2 =
+        await db.query('prayer_requests', where: 'id = ?', whereArgs: [id2]);
     expect(request2.first['deletedAt'], isNotNull);
     expect(request2.first['updatedAt'], isNotNull);
 
     // Verify request 1 is NOT soft deleted
-    final request1 = await db.query('prayer_requests', where: 'id = ?', whereArgs: [id1]);
+    final request1 =
+        await db.query('prayer_requests', where: 'id = ?', whereArgs: [id1]);
     expect(request1.first['deletedAt'], isNull);
 
     await db.close();

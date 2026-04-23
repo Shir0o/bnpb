@@ -35,14 +35,14 @@ dependencies:
   pdf: ^3.10.7
   archive: ^4.0.7
   encrypt: ^5.0.1
-  shared_preferences: ^2.2.3
+  shared_preferences: ^2.3.2
   speech_to_text: ^7.3.0
   uuid: ^4.5.1
   crypto: ^3.0.7
   meta: ^1.17.0
-  google_sign_in: ^6.2.1
-  googleapis: ^13.2.0
-  extension_google_sign_in_as_googleapis_auth: ^2.0.13
+  google_sign_in: ^7.2.0
+  googleapis: ^16.0.0
+  extension_google_sign_in_as_googleapis_auth: ^3.0.0
 
 
 dev_dependencies:

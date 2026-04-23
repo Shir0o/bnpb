@@ -11,35 +11,31 @@ class GoogleDriveService {
   factory GoogleDriveService() => _instance;
 
   static const String _prefKeyHasSignedIn = 'google_has_signed_in';
+  static const List<String> _scopes = [drive.DriveApi.driveFileScope];
 
-  final GoogleSignIn _googleSignIn = GoogleSignIn(
-    clientId: Platform.isMacOS
-        ? '228185988095-9soj0hn2t78nnfbe1bt5amt54tjtnap2.apps.googleusercontent.com'
-        : null,
-    serverClientId: Platform.isAndroid
-        ? '228185988095-ivj6ecnta0gpbr2shafll68bsqtae4t2.apps.googleusercontent.com'
-        : null,
-    scopes: [drive.DriveApi.driveFileScope],
-  );
+  final GoogleSignIn _googleSignIn = GoogleSignIn.instance;
 
   GoogleDriveService._internal() {
-    _onUserChanged = _googleSignIn.onCurrentUserChanged;
-    _onUserChanged.listen((account) {
-      _currentUser = account;
-      if (account == null) {
-        _driveApi = null;
-      }
-    });
-    // Load the persistent flag into memory
-    SharedPreferences.getInstance().then((prefs) {
-      _hasPreviouslySignedIn = prefs.getBool(_prefKeyHasSignedIn) ?? false;
-    });
+    _setupUserListener();
+    _initPrefs();
   }
 
-  late final Stream<GoogleSignInAccount?> _onUserChanged;
+  Future<void>? _prefsInitFuture;
+  Future<void> _initPrefs() async {
+    _prefsInitFuture = () async {
+      final prefs = await SharedPreferences.getInstance();
+      _hasPreviouslySignedIn = prefs.getBool(_prefKeyHasSignedIn) ?? false;
+    }();
+    return _prefsInitFuture;
+  }
+
+  final _userController = StreamController<GoogleSignInAccount?>.broadcast();
+  Stream<GoogleSignInAccount?> get onUserChanged => _userController.stream;
+
   bool _hasAttemptedSilentSignIn = false;
   bool _isInitializing = false;
   bool _hasPreviouslySignedIn = false;
+  bool _isPluginInitialized = false;
 
   /// Whether silent sign-in has been attempted in this session.
   bool get hasAttemptedSilentSignIn => _hasAttemptedSilentSignIn;
@@ -58,24 +54,61 @@ class GoogleDriveService {
   /// Returns the latest error message from a sign-in attempt.
   String? get lastSignInError => _lastSignInError;
 
-  /// Stream of Google user state changes.
-  Stream<GoogleSignInAccount?> get onUserChanged => _onUserChanged;
+  void _setupUserListener() {
+    _googleSignIn.authenticationEvents.listen((event) {
+      if (event is GoogleSignInAuthenticationEventSignIn) {
+        _currentUser = event.user;
+        _userController.add(_currentUser);
+      } else if (event is GoogleSignInAuthenticationEventSignOut) {
+        _currentUser = null;
+        _driveApi = null;
+        _userController.add(null);
+      }
+    });
+  }
+
+  /// Initializes the Google Sign-In plugin. Must be called before any other methods.
+  Future<void> initialize() async {
+    if (_isPluginInitialized) return;
+
+    // Ensure preferences are loaded first
+    await (_prefsInitFuture ?? _initPrefs());
+
+    await _googleSignIn.initialize(
+      clientId: Platform.isMacOS
+          ? '228185988095-9soj0hn2t78nnfbe1bt5amt54tjtnap2.apps.googleusercontent.com'
+          : null,
+      serverClientId: Platform.isAndroid
+          ? '228185988095-ivj6ecnta0gpbr2shafll68bsqtae4t2.apps.googleusercontent.com'
+          : null,
+    );
+    _isPluginInitialized = true;
+
+    // Trigger silent sign-in if previously signed in
+    if (_hasPreviouslySignedIn) {
+      // Don't await here to avoid blocking main() if silent sign-in takes time,
+      // but ensure it starts.
+      currentUser;
+    }
+  }
 
   /// Returns the current user, attempting silent sign-in ONLY if it hasn't
   /// been attempted before in this session and the user has previously signed in.
   Future<GoogleSignInAccount?> get currentUser async {
+    if (!_isPluginInitialized) {
+      await initialize();
+    }
+
     if (_currentUser != null) return _currentUser;
 
     if (_hasAttemptedSilentSignIn && _silentSignInFuture == null) return null;
 
+    // Ensure preferences are loaded
+    await (_prefsInitFuture ?? _initPrefs());
+
     if (!_hasPreviouslySignedIn) {
-      // Re-check once just in case the constructor's async init wasn't done
-      final prefs = await SharedPreferences.getInstance();
-      _hasPreviouslySignedIn = prefs.getBool(_prefKeyHasSignedIn) ?? false;
-      if (!_hasPreviouslySignedIn) {
-        _hasAttemptedSilentSignIn = true;
-        return null;
-      }
+      _hasAttemptedSilentSignIn = true;
+      return null;
     }
 
     return await _performSilentSignIn();
@@ -86,10 +119,18 @@ class GoogleDriveService {
     if (_silentSignInFuture != null) return _silentSignInFuture;
 
     _isInitializing = true;
-    _silentSignInFuture = _googleSignIn.signInSilently().timeout(
-          const Duration(seconds: 5),
-          onTimeout: () => null,
-        );
+
+    final future = _googleSignIn.attemptLightweightAuthentication();
+    if (future == null) {
+      _hasAttemptedSilentSignIn = true;
+      _isInitializing = false;
+      return null;
+    }
+
+    _silentSignInFuture = future.timeout(
+      const Duration(seconds: 5),
+      onTimeout: () => null,
+    );
 
     try {
       final user = await _silentSignInFuture;
@@ -112,20 +153,30 @@ class GoogleDriveService {
       _hasAttemptedSilentSignIn = true;
       _silentSignInFuture = null;
       _isInitializing = false;
+      _userController.add(_currentUser);
     }
   }
 
   /// explicit sign in - usually triggered by user interaction
   Future<GoogleSignInAccount?> signIn() async {
+    if (!_isPluginInitialized) {
+      await initialize();
+    }
+
     _lastSignInError = null;
     try {
-      _currentUser = await _googleSignIn.signIn();
+      // In v7.0.0, signIn is replaced by authenticate
+      _currentUser = await _googleSignIn.authenticate();
       _driveApi = null;
 
       if (_currentUser != null) {
         _hasPreviouslySignedIn = true;
         final prefs = await SharedPreferences.getInstance();
         await prefs.setBool(_prefKeyHasSignedIn, true);
+        _userController.add(_currentUser);
+
+        // Also ensure authorization for drive scopes
+        await _ensureApiInitialized(force: true);
       }
 
       return _currentUser;
@@ -154,12 +205,25 @@ class GoogleDriveService {
     _hasPreviouslySignedIn = false;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_prefKeyHasSignedIn, false);
+    _userController.add(null);
   }
 
   Future<bool> isSignedIn() async {
-    // Rely on cached user if available, otherwise check plugin
+    // Rely on cached user if available
     if (_currentUser != null) return true;
-    return await _googleSignIn.isSignedIn();
+
+    // In v7.0.0, isSignedIn() is removed.
+    // We can use attemptLightweightAuthentication() to check.
+    final future = _googleSignIn.attemptLightweightAuthentication();
+    if (future == null) return false;
+
+    final user = await future;
+    _currentUser = user;
+    if (user != null) {
+      _userController.add(user);
+      return true;
+    }
+    return false;
   }
 
   /// Checks if there is basic internet connectivity.
@@ -195,36 +259,26 @@ class GoogleDriveService {
       }
     }
 
-    // If forcing, we try to re-authenticate silently to refresh tokens
-    if (force) {
-      try {
-        _currentUser =
-            await _googleSignIn.signInSilently(reAuthenticate: true).timeout(
-                  const Duration(seconds: 10),
-                  onTimeout: () => _currentUser,
-                );
-      } catch (e) {
-        if (kDebugMode) {
-          print('Forced re-authentication failed: $e');
-        }
-      }
-    }
-
     // Silent sign-in only for background/automated tasks
     final user = await currentUser;
 
     if (user != null) {
       try {
-        final authClient = await _googleSignIn.authenticatedClient();
-        if (authClient != null) {
-          _driveApi = drive.DriveApi(authClient);
-        } else {
-          // Force a re-authentication state if we have a user but no client
-          _currentUser = null;
-          _driveApi = null;
-          await _googleSignIn.signOut();
-          throw Exception('Not signed in to Google Drive (Token expired)');
+        // In v7.0.0, we use authorizationClient to get authorization for scopes
+        var auth =
+            await user.authorizationClient.authorizationForScopes(_scopes);
+
+        if (auth == null) {
+          if (force) {
+            auth = await user.authorizationClient.authorizeScopes(_scopes);
+          } else {
+            throw Exception('Not authorized for Google Drive scopes');
+          }
         }
+
+        // Use extension authClient(scopes: ...) from extension_google_sign_in_as_googleapis_auth
+        final authClient = auth.authClient(scopes: _scopes);
+        _driveApi = drive.DriveApi(authClient);
       } catch (e) {
         _driveApi = null;
         if (kDebugMode) {

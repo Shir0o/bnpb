@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
@@ -25,6 +26,8 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
   final _syncService = SyncService();
   final _backupService = BackupService();
   final _googleDriveService = GoogleDriveService();
+
+  late final StreamSubscription<GoogleSignInAccount?> _userSubscription;
 
   String? _syncPath;
   bool _isLoading = true;
@@ -74,7 +77,18 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
   @override
   void initState() {
     super.initState();
+    _userSubscription = _googleDriveService.onUserChanged.listen((user) {
+      if (mounted) {
+        setState(() => _googleUser = user);
+      }
+    });
     _loadSettings();
+  }
+
+  @override
+  void dispose() {
+    _userSubscription.cancel();
+    super.dispose();
   }
 
   Future<void> _loadSettings() async {
