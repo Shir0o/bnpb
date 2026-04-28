@@ -55,6 +55,7 @@ class ContactGap {
     required this.totalInteractions,
     required this.lastInteractionAt,
     required this.gap,
+    this.hasFollowUp = false,
   });
 
   final String contactId;
@@ -62,6 +63,7 @@ class ContactGap {
   final int totalInteractions;
   final DateTime? lastInteractionAt;
   final Duration? gap;
+  final bool hasFollowUp;
 
   bool get hasNeverInteracted => lastInteractionAt == null;
 }
@@ -116,9 +118,18 @@ class AnalyticsRepository {
       );
 
       DateTime? latestInteraction;
+      DateTime? latestFollowUp;
 
       for (final Interaction interaction in contact.interactions) {
         final occurredAt = interaction.occurredAt;
+
+        if (interaction.followUpAt != null) {
+          if (latestFollowUp == null ||
+              interaction.followUpAt!.isAfter(latestFollowUp)) {
+            latestFollowUp = interaction.followUpAt;
+          }
+        }
+
         if (!_isWithinRange(occurredAt, rangeStart, rangeEnd)) {
           if (latestInteraction == null ||
               occurredAt.isAfter(latestInteraction)) {
@@ -170,6 +181,10 @@ class AnalyticsRepository {
           gap: latestInteraction != null
               ? now.difference(latestInteraction)
               : null,
+          hasFollowUp: latestFollowUp != null &&
+              (latestFollowUp.isAfter(now) ||
+                  latestInteraction == null ||
+                  latestInteraction.isBefore(latestFollowUp)),
         ),
       );
     }

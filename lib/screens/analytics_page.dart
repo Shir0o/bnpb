@@ -532,11 +532,13 @@ class _AnalyticsPageState extends State<AnalyticsPage>
   }
 
   Widget _buildGapCard(AnalyticsSummary summary) {
-    final gaps = summary.contactGaps.take(6).toList();
+    final gaps =
+        summary.contactGaps.where((gap) => gap.hasFollowUp).take(6).toList();
     if (gaps.isEmpty) {
       return const _EmptyAnalyticsCard(
         title: 'Follow-up reminders',
-        message: 'Add interactions to identify contacts that need attention.',
+        message: 'No pending follow-ups. Add a follow-up date when logging '
+            'an interaction to see reminders here.',
       );
     }
 
