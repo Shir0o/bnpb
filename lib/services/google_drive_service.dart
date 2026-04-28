@@ -8,16 +8,42 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class GoogleDriveService {
   static final GoogleDriveService _instance = GoogleDriveService._internal();
-  factory GoogleDriveService() => _instance;
+  static GoogleDriveService? _testOverride;
+
+  factory GoogleDriveService() => _testOverride ?? _instance;
 
   static const String _prefKeyHasSignedIn = 'google_has_signed_in';
   static const List<String> _scopes = [drive.DriveApi.driveFileScope];
 
-  final GoogleSignIn _googleSignIn = GoogleSignIn.instance;
+  final GoogleSignIn _googleSignIn;
 
-  GoogleDriveService._internal() {
+  GoogleDriveService._internal() : _googleSignIn = GoogleSignIn.instance {
     _setupUserListener();
     _initPrefs();
+  }
+
+  @visibleForTesting
+  GoogleDriveService.testHarness({
+    required GoogleSignIn googleSignIn,
+    SharedPreferences? prefs,
+  }) : _googleSignIn = googleSignIn {
+    _setupUserListener();
+    if (prefs != null) {
+      _hasPreviouslySignedIn = prefs.getBool(_prefKeyHasSignedIn) ?? false;
+      _prefsInitFuture = Future.value();
+    } else {
+      _initPrefs();
+    }
+  }
+
+  @visibleForTesting
+  static void overrideForTest(GoogleDriveService service) {
+    _testOverride = service;
+  }
+
+  @visibleForTesting
+  static void resetTestOverride() {
+    _testOverride = null;
   }
 
   Future<void>? _prefsInitFuture;
@@ -67,7 +93,7 @@ class GoogleDriveService {
     });
   }
 
-  /// Initializes the Google Sign-In plugin. Must be called before any other methods.
+  /// Initializes the Google Sign-In plugin and attempts silent sign-in.
   Future<void> initialize() async {
     if (_isPluginInitialized) return;
 
@@ -84,11 +110,13 @@ class GoogleDriveService {
     );
     _isPluginInitialized = true;
 
-    // Trigger silent sign-in if previously signed in
+    // Always attempt silent sign-in on initialization if we've signed in before
     if (_hasPreviouslySignedIn) {
-      // Don't await here to avoid blocking main() if silent sign-in takes time,
-      // but ensure it starts.
-      currentUser;
+      if (kDebugMode) {
+        print('GoogleDriveService: Attempting automatic silent sign-in');
+      }
+      // Await silent sign-in to ensure user is available for initial app state
+      await _performSilentSignIn();
     }
   }
 
@@ -101,15 +129,8 @@ class GoogleDriveService {
 
     if (_currentUser != null) return _currentUser;
 
+    // If we've already tried and failed, don't keep hammering it unless we have an active future
     if (_hasAttemptedSilentSignIn && _silentSignInFuture == null) return null;
-
-    // Ensure preferences are loaded
-    await (_prefsInitFuture ?? _initPrefs());
-
-    if (!_hasPreviouslySignedIn) {
-      _hasAttemptedSilentSignIn = true;
-      return null;
-    }
 
     return await _performSilentSignIn();
   }
@@ -120,33 +141,38 @@ class GoogleDriveService {
 
     _isInitializing = true;
 
-    final future = _googleSignIn.attemptLightweightAuthentication();
-    if (future == null) {
-      _hasAttemptedSilentSignIn = true;
-      _isInitializing = false;
-      return null;
-    }
-
-    _silentSignInFuture = future.timeout(
-      const Duration(seconds: 5),
-      onTimeout: () => null,
-    );
-
     try {
+      final future = _googleSignIn.attemptLightweightAuthentication();
+      if (future == null) {
+        _hasAttemptedSilentSignIn = true;
+        _isInitializing = false;
+        return null;
+      }
+
+      _silentSignInFuture = future.timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          if (kDebugMode) print('Silent sign-in timed out');
+          return null;
+        },
+      );
+
       final user = await _silentSignInFuture;
       _currentUser = user;
 
-      // Update our persistent flag if we got a user
+      // Update our persistent flag based on actual result
       if (user != null) {
-        _hasPreviouslySignedIn = true;
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setBool(_prefKeyHasSignedIn, true);
+        if (!_hasPreviouslySignedIn) {
+          _hasPreviouslySignedIn = true;
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setBool(_prefKeyHasSignedIn, true);
+        }
       }
 
       return user;
     } catch (e) {
       if (kDebugMode) {
-        print('Silent sign-in failed/timed out: $e');
+        print('Silent sign-in failed: $e');
       }
       return null;
     } finally {
@@ -214,16 +240,8 @@ class GoogleDriveService {
 
     // In v7.0.0, isSignedIn() is removed.
     // We can use attemptLightweightAuthentication() to check.
-    final future = _googleSignIn.attemptLightweightAuthentication();
-    if (future == null) return false;
-
-    final user = await future;
-    _currentUser = user;
-    if (user != null) {
-      _userController.add(user);
-      return true;
-    }
-    return false;
+    final user = await currentUser;
+    return user != null;
   }
 
   /// Checks if there is basic internet connectivity.
