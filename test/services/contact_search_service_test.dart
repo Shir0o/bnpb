@@ -79,13 +79,6 @@ void main() {
       expect(results.first.contact.firstName, 'Carol');
     });
 
-    test('searchMeetingContexts finds matches', () async {
-      final results = await service.searchMeetingContexts('conference');
-      expect(results.isNotEmpty, true);
-      expect(results.first.contact.id, 'c3');
-      expect(results.first.matchDescription, 'First meeting notes');
-    });
-
     test(
       'empty query returns all contacts with 0 score (normal search)',
       () async {
@@ -94,11 +87,6 @@ void main() {
         expect(results.first.score, 0);
       },
     );
-
-    test('empty query returns empty list (context search)', () async {
-      final results = await service.searchMeetingContexts('');
-      expect(results, isEmpty);
-    });
 
     test('getSuggestions returns contacts ranked by recency', () {
       final now = DateTime.now();

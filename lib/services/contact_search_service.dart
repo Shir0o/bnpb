@@ -28,12 +28,10 @@ class ContactSearchService {
   // Optimization: Cache pre-computed search indices to avoid expensive
   // date formatting and string concatenation on every search keystroke.
   List<_IndexedContact>? _cachedGeneralIndex;
-  List<_IndexedContact>? _cachedMeetingIndex;
 
   void index(List<Contact> contacts) {
     _contacts = List<Contact>.from(contacts);
     _cachedGeneralIndex = null;
-    _cachedMeetingIndex = null;
   }
 
   Future<List<ContactMatch>> search(String query) async {
@@ -122,102 +120,6 @@ class ContactSearchService {
 
     results.sort((a, b) => b.score.compareTo(a.score));
     return results;
-  }
-
-  /// Specialized lookup for "met at ..." or meeting context style queries.
-  Future<List<ContactMatch>> searchMeetingContexts(String query) async {
-    _cachedMeetingIndex ??= await compute(_buildMeetingContextIndex, _contacts);
-    return compute(
-      _performMeetingContextSearch,
-      _SearchRequest(indexedContacts: _cachedMeetingIndex!, query: query),
-    );
-  }
-
-  static List<_IndexedContact> _buildMeetingContextIndex(
-    List<Contact> contacts,
-  ) {
-    final formatter = DateFormat.yMMMd();
-    return contacts.map((contact) {
-      final segments = <_SearchField>[];
-
-      if ((contact.firstMeetingNotes ?? '').isNotEmpty) {
-        segments.add(
-          _SearchField(
-            label: 'First meeting notes',
-            values: [contact.firstMeetingNotes!],
-          ),
-        );
-      }
-
-      for (final Interaction interaction in contact.interactions) {
-        final parts = <String>[];
-        if ((interaction.location ?? '').isNotEmpty) {
-          parts.add(interaction.location!);
-        }
-        parts.add(interaction.summary);
-        segments.add(
-          _SearchField(
-            label: 'Interaction on ${formatter.format(interaction.occurredAt)}',
-            values: parts,
-          ),
-        );
-      }
-      return _IndexedContact(contact: contact, fields: segments);
-    }).toList();
-  }
-
-  static List<ContactMatch> _performMeetingContextSearch(
-    _SearchRequest request,
-  ) {
-    final query = request.query;
-    final indexedContacts = request.indexedContacts;
-    final normalizedQuery = _normalize(query);
-    if (normalizedQuery.isEmpty) {
-      return const [];
-    }
-
-    final queryTrigrams = _trigrams(normalizedQuery);
-    final matches = <ContactMatch>[];
-
-    for (final item in indexedContacts) {
-      double bestScore = 0;
-      String? bestLabel;
-      String? bestSnippet;
-
-      for (final field in item.fields) {
-        if (field.normalizedText.isEmpty) {
-          continue;
-        }
-
-        final score = _score(
-          normalizedQuery,
-          queryTrigrams,
-          field.normalizedText,
-          field.trigrams,
-        );
-
-        if (score > bestScore) {
-          bestScore = score;
-          bestLabel = field.label;
-          final fieldText = field.values.join(' ');
-          bestSnippet = _snippet(fieldText, query);
-        }
-      }
-
-      if (bestScore > 0) {
-        matches.add(
-          ContactMatch(
-            contact: item.contact,
-            score: bestScore,
-            matchDescription: bestLabel,
-            snippet: bestSnippet,
-          ),
-        );
-      }
-    }
-
-    matches.sort((a, b) => b.score.compareTo(a.score));
-    return matches;
   }
 
   static List<_SearchField> _buildGeneralFields(

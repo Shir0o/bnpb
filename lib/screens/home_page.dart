@@ -19,7 +19,6 @@ import '../widgets/home_page_skeleton.dart';
 import '../widgets/people_card.dart';
 import '../services/import_service.dart';
 import 'contact_details_page.dart';
-import 'met_at_lookup_page.dart';
 import 'prayer_diary_page.dart';
 import 'prayer_request_details_page.dart';
 import 'prayer_lists_page.dart';
@@ -842,23 +841,12 @@ class _HomePageState extends State<HomePage>
             },
           ),
           IconButton(
-            icon: const Icon(Icons.travel_explore_outlined),
-            tooltip: 'Reverse lookup (met at...)',
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) => MetAtLookupPage(contacts: _contacts),
-                ),
-              );
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.file_upload_outlined),
+            icon: const Icon(Icons.settings_backup_restore),
             tooltip: 'Backup and Restore',
             onPressed: _openRestoreSheet,
           ),
           IconButton(
-            icon: const Icon(Icons.file_download_outlined),
+            icon: const Icon(Icons.ios_share),
             tooltip: 'Export',
             onPressed: _openExportSheet,
           ),
