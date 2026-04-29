@@ -17,6 +17,7 @@ import '../widgets/backup_restore_sheet.dart';
 import '../widgets/export_options_sheet.dart';
 import '../widgets/home_page_skeleton.dart';
 import '../widgets/people_card.dart';
+import '../services/follow_up_recommendation_service.dart';
 import '../services/import_service.dart';
 import 'contact_details_page.dart';
 import 'prayer_diary_page.dart';
@@ -98,6 +99,8 @@ class _HomePageState extends State<HomePage>
         TickerProviderStateMixin,
         AutomaticKeepAliveClientMixin {
   final DBHelper _dbHelper = DBHelper();
+  final FollowUpRecommendationService _recommendationService =
+      FollowUpRecommendationService();
   List<Contact> _contacts = [];
   List<Contact> _filteredContacts = [];
   // Optimization: Cache grouped contacts to avoid O(N) grouping in every build.
@@ -114,6 +117,7 @@ class _HomePageState extends State<HomePage>
   List<PrayerRequest> _pendingPrayerReminders = [];
   List<PrayerRequest> _recentAnsweredPrayers = [];
   List<Interaction> _prayerFocusInteractions = [];
+  List<FollowUpRecommendation> _recommendations = [];
   Map<String, ContactMatch> _activeMatches = {};
 
   final Set<String> _expandedLocations = <String>{};
@@ -197,7 +201,10 @@ class _HomePageState extends State<HomePage>
           forceRefresh: forceRefresh,
         );
         _applyContactsSnapshot(contacts);
-        await _loadPrayerInsights();
+        await Future.wait([
+          _loadPrayerInsights(),
+          _loadRecommendations(),
+        ]);
       })(),
       if (useSkeleton) Future.delayed(minDelay),
     ]);
@@ -205,6 +212,15 @@ class _HomePageState extends State<HomePage>
     if (mounted && useSkeleton) {
       setState(() {
         _showRefreshSkeleton = false;
+      });
+    }
+  }
+
+  Future<void> _loadRecommendations() async {
+    final recommendations = await _recommendationService.getRecommendations();
+    if (mounted) {
+      setState(() {
+        _recommendations = recommendations;
       });
     }
   }
@@ -551,6 +567,122 @@ class _HomePageState extends State<HomePage>
                     }),
                   ],
                 ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRecommendationsCard() {
+    if (_recommendations.isEmpty) return const SizedBox.shrink();
+
+    final theme = Theme.of(context);
+    final topRecommendations = _recommendations.take(5).toList();
+
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  Icons.auto_awesome,
+                  size: 20,
+                  color: theme.colorScheme.primary,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Smart follow-up suggestions',
+                    style: theme.textTheme.titleMedium,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: topRecommendations.map((rec) {
+                  Color borderColor;
+                  IconData icon;
+                  switch (rec.priority) {
+                    case RecommendationPriority.critical:
+                      borderColor = Colors.red.withValues(alpha: 0.5);
+                      icon = Icons.priority_high;
+                      break;
+                    case RecommendationPriority.high:
+                      borderColor = Colors.orange.withValues(alpha: 0.5);
+                      icon = Icons.star_outline;
+                      break;
+                    case RecommendationPriority.medium:
+                      borderColor =
+                          theme.colorScheme.primary.withValues(alpha: 0.5);
+                      icon = Icons.chat_bubble_outline;
+                      break;
+                    case RecommendationPriority.low:
+                      borderColor = theme.colorScheme.outlineVariant;
+                      icon = Icons.person_outline;
+                      break;
+                  }
+
+                  return Container(
+                    width: 200,
+                    margin: const EdgeInsets.only(right: 12),
+                    child: InkWell(
+                      onTap: () => _navigateToContactDetails(rec.contact),
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: borderColor, width: 2),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                CircleAvatar(
+                                  radius: 14,
+                                  child: Text(
+                                    rec.contact.initials,
+                                    style: const TextStyle(fontSize: 10),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    rec.contact.displayName,
+                                    style: theme.textTheme.titleSmall,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                Icon(icon,
+                                    size: 14,
+                                    color: borderColor.withValues(alpha: 1.0)),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              rec.reason,
+                              style: theme.textTheme.bodySmall,
+                              maxLines: 3,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
               ),
             ),
           ],
@@ -909,6 +1041,8 @@ class _HomePageState extends State<HomePage>
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
+                              _buildRecommendationsCard(),
+                              const SizedBox(height: 16),
                               _buildPrayerInsightsCard(),
                               if (hasFilterOptions) ...[
                                 const SizedBox(height: 16),

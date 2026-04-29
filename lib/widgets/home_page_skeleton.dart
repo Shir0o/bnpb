@@ -22,6 +22,10 @@ class HomePageSkeleton extends StatelessWidget {
           ),
           const SizedBox(height: 16),
 
+          // Recommendations Skeleton
+          _buildRecommendationsSkeleton(),
+          const SizedBox(height: 16),
+
           // Prayer Insights Card
           const PrayerInsightsSkeleton(),
           const SizedBox(height: 16),
@@ -72,6 +76,31 @@ class HomePageSkeleton extends StatelessWidget {
         const ContactItemSkeleton(),
         const SizedBox(height: 12),
         const ContactItemSkeleton(),
+      ],
+    );
+  }
+
+  Widget _buildRecommendationsSkeleton() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SkeletonBox(width: 150, height: 18),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            const SkeletonBox(
+              width: 200,
+              height: 100,
+              borderRadius: BorderRadius.all(Radius.circular(12)),
+            ),
+            const SizedBox(width: 12),
+            const SkeletonBox(
+              width: 100,
+              height: 100,
+              borderRadius: BorderRadius.all(Radius.circular(12)),
+            ),
+          ],
+        ),
       ],
     );
   }

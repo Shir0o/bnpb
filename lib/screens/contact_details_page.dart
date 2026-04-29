@@ -2,8 +2,6 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
-import 'package:speech_to_text/speech_recognition_result.dart';
-import 'package:speech_to_text/speech_to_text.dart';
 
 import '../db/db_helper.dart';
 import '../models/contact.dart';
@@ -2208,18 +2206,12 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
   late final TextEditingController _durationController;
   late final TextEditingController _notesController;
   late final TextEditingController _occurredTimeController;
-  final SpeechToText _speechToText = SpeechToText();
 
   DateTime _occurredAt = DateTime.now();
   DateTime? _followUpAt;
   String _medium = 'in_person';
   bool _markForPrayer = false;
-  bool _speechInitialized = false;
-  bool _hasSpeechCapability = false;
-  bool _isListening = false;
-  String _speechBaseText = '';
 
-  bool _sheetActive = true;
   AutovalidateMode _autovalidateMode = AutovalidateMode.disabled;
   bool _isSaveEnabled = false;
   bool _formWasSubmitted = false;
@@ -2446,7 +2438,6 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
     };
     _initContacts();
     _occurredAtManuallyChanged = widget.initialInteraction != null;
-    _speechBaseText = _summaryController.text.trim();
     _summaryController.addListener(_updateSaveEnabled);
     _durationController.addListener(_updateSaveEnabled);
     _durationController.addListener(_updateOccurredAtFromDuration);
@@ -2455,9 +2446,6 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
 
   @override
   void dispose() {
-    _sheetActive = false;
-    _speechToText.stop();
-    _speechToText.cancel();
     _summaryController.removeListener(_updateSaveEnabled);
     _durationController.removeListener(_updateSaveEnabled);
     _durationController.removeListener(_updateOccurredAtFromDuration);
@@ -2592,139 +2580,6 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
     });
   }
 
-  Future<void> _stopListening() async {
-    if (!_speechInitialized || !_isListening) return;
-    try {
-      await _speechToText.stop();
-      _speechBaseText = _summaryController.text.trim();
-    } catch (_) {
-      // Ignore teardown failures.
-    } finally {
-      if (_sheetActive && mounted) {
-        setState(() {
-          _isListening = false;
-        });
-      }
-    }
-  }
-
-  Future<void> _toggleVoiceInput() async {
-    if (_isListening) {
-      await _stopListening();
-      return;
-    }
-
-    if (!_speechInitialized) {
-      try {
-        final available = await _speechToText.initialize(
-          onError: (error) {
-            if (!_sheetActive || !mounted) return;
-            setState(() {
-              _isListening = false;
-            });
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Voice capture error: ${error.errorMsg}')),
-            );
-          },
-          onStatus: (status) {
-            if (!_sheetActive || !mounted) return;
-            final normalized = status.toLowerCase();
-            if (normalized == 'done' || normalized == 'notlistening') {
-              setState(() {
-                _isListening = false;
-              });
-              _speechBaseText = _summaryController.text.trim();
-            }
-          },
-        );
-        _speechInitialized = true;
-        _hasSpeechCapability = available;
-        if (!available) {
-          if (_sheetActive && mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text(
-                  'Speech recognition is unavailable on this device.',
-                ),
-              ),
-            );
-          }
-          return;
-        }
-      } catch (error) {
-        if (_sheetActive && mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Speech recognition failed: $error')),
-          );
-        }
-        return;
-      }
-    } else if (!_hasSpeechCapability) {
-      if (_sheetActive && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Speech recognition permission is not granted.'),
-          ),
-        );
-      }
-      return;
-    }
-
-    if (!mounted) return;
-    FocusScope.of(context).unfocus();
-    _speechBaseText = _summaryController.text.trim();
-
-    try {
-      final started = await _speechToText.listen(
-        listenOptions: SpeechListenOptions(listenMode: ListenMode.dictation),
-        onResult: (SpeechRecognitionResult result) {
-          if (!_sheetActive || !mounted) {
-            return;
-          }
-          final recognized = result.recognizedWords.trim();
-          setState(() {
-            final base = _speechBaseText.trim();
-            final pieces = <String>[];
-            if (base.isNotEmpty) {
-              pieces.add(base);
-            }
-            if (recognized.isNotEmpty) {
-              pieces.add(recognized);
-            }
-            final combined = pieces.join(pieces.length > 1 ? ' ' : '').trim();
-            _summaryController.value = TextEditingValue(
-              text: combined,
-              selection: TextSelection.collapsed(offset: combined.length),
-            );
-          });
-        },
-      );
-      if (!started) {
-        if (_sheetActive && mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Unable to start voice capture.')),
-          );
-        }
-        return;
-      }
-      if (!_sheetActive) {
-        await _speechToText.stop();
-        return;
-      }
-      if (mounted) {
-        setState(() {
-          _isListening = true;
-        });
-      }
-    } catch (error) {
-      if (_sheetActive && mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Voice capture error: $error')));
-      }
-    }
-  }
-
   Future<void> _saveInteraction() async {
     final form = _formKey.currentState;
     final isValid = form?.validate() ?? false;
@@ -2844,8 +2699,6 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
         ),
       );
 
-      _sheetActive = false;
-      await _stopListening();
       if (mounted) {
         Navigator.of(context).pop(savedInteraction);
       }
@@ -2878,10 +2731,7 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
     // and a standard AppBar structure for the actions.
     return PopScope(
       canPop: true,
-      onPopInvokedWithResult: (didPop, result) async {
-        _sheetActive = false;
-        await _stopListening();
-      },
+      onPopInvokedWithResult: (didPop, result) async {},
       child: SafeArea(
         child: Scaffold(
           backgroundColor: Colors.transparent,
@@ -2891,8 +2741,6 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
             leading: IconButton(
               icon: const Icon(Icons.close),
               onPressed: () async {
-                _sheetActive = false;
-                await _stopListening();
                 if (context.mounted) {
                   Navigator.of(context).pop();
                 }
@@ -2943,22 +2791,9 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
                   const SizedBox(height: 16),
                   TextFormField(
                     controller: _summaryController,
-                    decoration: InputDecoration(
+                    decoration: const InputDecoration(
                       labelText: 'Summary *',
-                      border: const OutlineInputBorder(),
-                      helperText: _isListening ? 'Listening...' : null,
-                      suffixIcon: IconButton(
-                        icon: Icon(
-                          _isListening ? Icons.mic : Icons.mic_none,
-                          color: _isListening
-                              ? Theme.of(context).colorScheme.primary
-                              : null,
-                        ),
-                        onPressed: _toggleVoiceInput,
-                        tooltip: _isListening
-                            ? 'Stop voice capture'
-                            : 'Use voice to text',
-                      ),
+                      border: OutlineInputBorder(),
                     ),
                     textCapitalization: TextCapitalization.sentences,
                     maxLines: 2,
