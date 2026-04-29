@@ -98,10 +98,10 @@ class PrayerRequestDao extends BaseDao {
     final newIds =
         contact.prayerRequests.map((r) => r.id).whereType<int>().toSet();
 
+    final now = DateTime.now().toUtc().toIso8601String();
     final idsToDelete = existingIds.difference(newIds);
     if (idsToDelete.isNotEmpty) {
       final batch = txn.batch();
-      final now = DateTime.now().toUtc().toIso8601String();
       for (final id in idsToDelete) {
         batch.update(
           'prayer_requests',
@@ -116,33 +116,42 @@ class PrayerRequestDao extends BaseDao {
       await batch.commit(noResult: true);
     }
 
+    if (contact.prayerRequests.isEmpty) return;
+
+    final upsertBatch = txn.batch();
     for (final request in contact.prayerRequests) {
+      final reqMap = request.toMap(includeId: true);
+      reqMap.remove('participantIds');
+      reqMap['updatedAt'] = now;
+      upsertBatch.insert(
+        'prayer_requests',
+        reqMap,
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+    }
+
+    final results = await upsertBatch.commit(noResult: false);
+
+    final participantBatch = txn.batch();
+    for (int i = 0; i < contact.prayerRequests.length; i++) {
+      final request = contact.prayerRequests[i];
+      final requestId = results[i] as int;
       final participants = {...request.participantIds, contact.id}.toList();
 
-      final reqMap = request.toMap(includeId: false);
-      reqMap.remove('participantIds');
-      reqMap['updatedAt'] = DateTime.now().toUtc().toIso8601String();
+      participantBatch.delete(
+        'prayer_request_participants',
+        where: 'prayerRequestId = ?',
+        whereArgs: [requestId],
+      );
 
-      int requestId = -1;
-      if (request.id != null) {
-        final count = await txn.update(
-          'prayer_requests',
-          reqMap,
-          where: 'id = ?',
-          whereArgs: [request.id],
-        );
-        if (count == 0) {
-          final insertMap = Map<String, dynamic>.from(reqMap);
-          insertMap['id'] = request.id;
-          requestId = await txn.insert('prayer_requests', insertMap);
-        } else {
-          requestId = request.id!;
-        }
-      } else {
-        requestId = await txn.insert('prayer_requests', reqMap);
+      for (final contactId in participants) {
+        participantBatch.insert('prayer_request_participants', {
+          'prayerRequestId': requestId,
+          'contactId': contactId,
+        });
       }
-      await replacePrayerRequestParticipants(txn, requestId, participants);
     }
+    await participantBatch.commit(noResult: true);
   }
 
   Future<Map<String, List<PrayerRequest>>> getPrayerRequestsForContacts(
