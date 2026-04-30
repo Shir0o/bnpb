@@ -246,7 +246,7 @@ class _SettingsPageState extends State<SettingsPage>
 
   Widget _buildSyncGroup(BuildContext context) {
     final lastSyncStr = _lastBackupTime != null
-        ? DateFormat.yMMMd().add_jm().format(_lastBackupTime!)
+        ? DateFormat.yMMMd().add_jm().format(_lastBackupTime!.toLocal())
         : 'Never';
 
     return Column(
