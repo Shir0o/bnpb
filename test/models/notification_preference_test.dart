@@ -44,5 +44,13 @@ void main() {
       final pref = NotificationPreference.fromMap(map);
       expect(pref.scopeType, NotificationScopeType.global);
     });
+
+    test('defaults to followUp if channel is invalid', () {
+      final map = {'scopeType': 'global', 'scopeId': 'global', 'channel': 'x'};
+
+      final pref = NotificationPreference.fromMap(map);
+
+      expect(pref.channel, ReminderChannel.followUp);
+    });
   });
 }
