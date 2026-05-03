@@ -62,6 +62,13 @@ void main() {
       expect(updated.tags, ['A', 'B']);
     });
 
+    test('displayName and initials use fallbacks for unnamed contacts', () {
+      final contact = Contact(id: '1', firstName: '');
+
+      expect(contact.displayName, 'Unknown');
+      expect(contact.initials, '?');
+    });
+
     group('serialization', () {
       test('toMap and fromMap roundtrip', () {
         final original = Contact(
