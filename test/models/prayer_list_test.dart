@@ -34,6 +34,16 @@ void main() {
       expect(restored.deletedAt, now.add(const Duration(hours: 1)));
     });
 
+    test('should restore contact IDs from embedded map data', () {
+      final list = PrayerList.fromMap({
+        'id': '1',
+        'name': 'Small Group',
+        'contactIds': ['c1', 'c2', 3],
+      });
+
+      expect(list.contactIds, ['c1', 'c2', '3']);
+    });
+
     test(
       'should use DateTime.now() if updatedAt is missing in fromMap (legacy)',
       () {
