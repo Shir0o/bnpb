@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:bnpb/models/contact.dart';
 import 'package:bnpb/models/interaction.dart';
 import 'package:bnpb/models/prayer_request.dart';
+import 'package:bnpb/models/relationship.dart';
 
 void main() {
   group('Contact', () {
@@ -142,6 +143,31 @@ void main() {
         expect(contact.tags, isEmpty);
         expect(contact.recognitionKeywords, isEmpty);
         expect(contact.interactions, isEmpty);
+      });
+
+      test('toMap and fromMap preserve relationships', () {
+        final original = Contact(
+          id: '1',
+          firstName: 'John',
+          relationships: const [
+            Relationship(
+              id: 301,
+              sourceContactId: '1',
+              targetContactId: '2',
+              type: 'Mentor',
+              notes: 'Meets monthly',
+            ),
+          ],
+        );
+
+        final reconstructed = Contact.fromMap(original.toMap());
+
+        expect(reconstructed.relationships, hasLength(1));
+        expect(reconstructed.relationships.first.id, 301);
+        expect(reconstructed.relationships.first.sourceContactId, '1');
+        expect(reconstructed.relationships.first.targetContactId, '2');
+        expect(reconstructed.relationships.first.type, 'Mentor');
+        expect(reconstructed.relationships.first.notes, 'Meets monthly');
       });
     });
   });
