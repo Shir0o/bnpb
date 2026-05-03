@@ -399,7 +399,14 @@ class SyncCoordinator {
           r.targetContactId == remote.targetContactId && r.type == remote.type);
 
       if (!match) {
-        await _db.relationshipDao.upsertRelationship(remote.copyWith(id: null));
+        await _db.relationshipDao.upsertRelationship(
+          Relationship(
+            sourceContactId: remote.sourceContactId,
+            targetContactId: remote.targetContactId,
+            type: remote.type,
+            notes: remote.notes,
+          ),
+        );
       }
     }
   }
