@@ -121,5 +121,46 @@ void main() {
       expect(relationships.first.targetContactId, 'c2');
       expect(relationships.first.type, 'Mentor');
     });
+
+    test('importChanges imports relationship files once', () async {
+      final payload = {
+        'version': 2,
+        'deviceId': 'remote-device',
+        'timestamp': DateTime(2024, 1, 1).toUtc().toIso8601String(),
+        'integrityCheck': 'valid',
+        'contacts': [
+          Contact(id: 'c1', firstName: 'Alice').toMap(),
+          Contact(id: 'c2', firstName: 'Bob').toMap(),
+        ],
+        'interactions': [],
+        'prayerRequests': [],
+        'prayerLists': [],
+        'relationships': const [
+          {
+            'id': 42,
+            'sourceContactId': 'c1',
+            'targetContactId': 'c2',
+            'type': 'Mentor',
+            'notes': 'Meets monthly',
+          },
+        ],
+      };
+      final syncFile =
+          File(p.join(syncDir.path, 'remote_1704067200000_data.json'));
+      await syncFile.writeAsString(jsonEncode(payload));
+
+      final coordinator = SyncCoordinator(dbHelper);
+
+      final firstImport = await coordinator.importChanges(syncDir);
+      final secondImport = await coordinator.importChanges(syncDir);
+
+      final relationships = await dbHelper.getAllRelationships();
+
+      expect(firstImport.importedCount, 1);
+      expect(secondImport.importedCount, 0);
+      expect(relationships, hasLength(1));
+      expect(relationships.first.sourceContactId, 'c1');
+      expect(relationships.first.targetContactId, 'c2');
+    });
   });
 }
