@@ -90,6 +90,7 @@ class _PrayerDiaryPageState extends State<PrayerDiaryPage> {
     final result = await showModalBottomSheet<String>(
       context: context,
       isScrollControlled: true,
+      useSafeArea: true,
       builder: (context) {
         return LogPrayerRequestSheet(
           availableContacts: List<Contact>.from(_contacts),

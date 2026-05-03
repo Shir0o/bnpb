@@ -145,6 +145,7 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
+      useSafeArea: true,
       builder: (context) => ExportOptionsSheet(contacts: contacts),
     );
   }

@@ -109,6 +109,7 @@ class _MacOSPrayerDiaryViewState extends State<MacOSPrayerDiaryView> {
     await showModalBottomSheet<String>(
       context: context,
       isScrollControlled: true,
+      useSafeArea: true,
       builder: (context) {
         return LogPrayerRequestSheet(
           availableContacts: List<Contact>.from(_contacts),

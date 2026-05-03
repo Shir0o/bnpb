@@ -2311,6 +2311,7 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
     final result = await showModalBottomSheet<List<String>>(
       context: context,
       isScrollControlled: true,
+      useSafeArea: true,
       sheetAnimationStyle: AnimationStyle(
         duration: const Duration(milliseconds: 300),
         reverseDuration: const Duration(milliseconds: 200),

@@ -769,6 +769,7 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
     final message = await showModalBottomSheet<String>(
       context: context,
       isScrollControlled: true,
+      useSafeArea: true,
       builder: (context) => ExportOptionsSheet(contacts: _contacts),
     );
 

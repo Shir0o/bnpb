@@ -604,6 +604,7 @@ class _SettingsPageState extends State<SettingsPage>
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      useSafeArea: true,
       builder: (context) => ExportOptionsSheet(contacts: _contacts),
     );
   }

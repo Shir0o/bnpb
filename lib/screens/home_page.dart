@@ -754,6 +754,7 @@ class _HomePageState extends State<HomePage>
     final message = await showModalBottomSheet<String>(
       context: context,
       isScrollControlled: true,
+      useSafeArea: true,
       transitionAnimationController: controller,
       builder: (context) => ExportOptionsSheet(contacts: _contacts),
     );
@@ -773,6 +774,7 @@ class _HomePageState extends State<HomePage>
     final result = await showModalBottomSheet<BackupRestoreSheetResult>(
       context: context,
       isScrollControlled: true,
+      useSafeArea: true,
       builder: (context) => const BackupRestoreSheet(),
     );
 

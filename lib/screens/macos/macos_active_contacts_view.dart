@@ -117,6 +117,7 @@ class _MacOSActiveContactsViewState extends State<MacOSActiveContactsView> {
     final selectedIds = await showModalBottomSheet<List<String>>(
       context: context,
       isScrollControlled: true,
+      useSafeArea: true,
       sheetAnimationStyle: AnimationStyle(
         duration: const Duration(milliseconds: 300),
         reverseDuration: const Duration(milliseconds: 200),
