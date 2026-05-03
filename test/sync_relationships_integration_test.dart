@@ -83,5 +83,43 @@ void main() {
       expect(restoredRelationships.first.type, 'Mentor');
       expect(restoredRelationships.first.notes, 'Meets monthly');
     });
+
+    test('does not duplicate relationships when sync payload is reimported',
+        () async {
+      final payload = {
+        'version': 2,
+        'deviceId': 'remote-device',
+        'timestamp': DateTime(2024, 1, 1).toUtc().toIso8601String(),
+        'integrityCheck': 'valid',
+        'contacts': [
+          Contact(id: 'c1', firstName: 'Alice').toMap(),
+          Contact(id: 'c2', firstName: 'Bob').toMap(),
+        ],
+        'interactions': [],
+        'prayerRequests': [],
+        'prayerLists': [],
+        'relationships': const [
+          {
+            'id': 42,
+            'sourceContactId': 'c1',
+            'targetContactId': 'c2',
+            'type': 'Mentor',
+            'notes': 'Meets monthly',
+          },
+        ],
+      };
+
+      final coordinator = SyncCoordinator(dbHelper);
+
+      await coordinator.importSyncData(payload);
+      await coordinator.importSyncData(payload);
+
+      final relationships = await dbHelper.getAllRelationships();
+
+      expect(relationships, hasLength(1));
+      expect(relationships.first.sourceContactId, 'c1');
+      expect(relationships.first.targetContactId, 'c2');
+      expect(relationships.first.type, 'Mentor');
+    });
   });
 }
