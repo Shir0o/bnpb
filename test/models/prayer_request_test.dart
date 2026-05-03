@@ -40,6 +40,22 @@ void main() {
       expect(restored.participantIds, ['c1']);
     });
 
+    test('toMap omits id when includeId is false', () {
+      final req = PrayerRequest(
+        id: 10,
+        participantIds: ['c1'],
+        description: 'Health',
+        status: PrayerRequestStatus.pending,
+        requestedAt: DateTime(2023, 1, 1),
+      );
+
+      final map = req.toMap(includeId: false);
+
+      expect(map, isNot(contains('id')));
+      expect(map['syncId'], req.syncId);
+      expect(map['contactId'], 'c1');
+    });
+
     test('handles null optional fields and legacy contactId', () {
       final req = PrayerRequest.fromMap({
         'contactId': 'c1',
