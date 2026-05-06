@@ -46,8 +46,11 @@ void main() {
         )
         .toList();
     expect(interactionUpdates, hasLength(1));
-    expect(interactionUpdates.first.where, 'id = ?');
-    expect(interactionUpdates.first.whereArgs, [999]);
+    expect(
+      interactionUpdates.first.where,
+      'NOT EXISTS (SELECT 1 FROM interaction_participants WHERE interaction_participants.interactionId = interactions.id) AND deletedAt IS NULL',
+    );
+    expect(interactionUpdates.first.whereArgs, isNull);
 
     final interactionInserts = fakeTxn.insertCalls
         .where((call) => call.table == 'interactions')

@@ -178,7 +178,7 @@ class InteractionDao extends BaseDao {
         'updatedAt': now,
       },
       where:
-          'id NOT IN (SELECT interactionId FROM interaction_participants) AND deletedAt IS NULL',
+          'NOT EXISTS (SELECT 1 FROM interaction_participants WHERE interaction_participants.interactionId = interactions.id) AND deletedAt IS NULL',
     );
   }
 
