@@ -57,30 +57,16 @@ class ContactCard extends StatelessWidget {
                     color: Colors.grey[200],
                     shape: BoxShape.circle,
                     border: Border.all(color: Colors.grey[100]!),
-                    image: contact.recognitionPhotoUris.isNotEmpty
-                        ? DecorationImage(
-                            // Optimization: Resize image to display size to save memory.
-                            image: ResizeImage(
-                              NetworkImage(contact.recognitionPhotoUris.first),
-                              width:
-                                  (64 * MediaQuery.of(context).devicePixelRatio)
-                                      .toInt(),
-                            ),
-                            fit: BoxFit.cover,
-                          )
-                        : null,
                   ),
                   alignment: Alignment.center,
-                  child: contact.recognitionPhotoUris.isEmpty
-                      ? Text(
-                          contact.initials,
-                          style: GoogleFonts.inter(
-                            fontSize: 24,
-                            fontWeight: FontWeight.w500,
-                            color: Colors.grey[500],
-                          ),
-                        )
-                      : null,
+                  child: Text(
+                    contact.initials,
+                    style: GoogleFonts.inter(
+                      fontSize: 24,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.grey[500],
+                    ),
+                  ),
                 ),
                 const SizedBox(height: 12),
                 // Name

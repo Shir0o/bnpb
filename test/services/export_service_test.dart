@@ -19,10 +19,9 @@ void main() {
           firstName: 'Alice',
           lastName: 'Smith',
           interactions: [],
-          tags: ['Friend'],
         ),
       ];
-      final fields = ['firstName', 'lastName', 'tags'];
+      final fields = ['firstName', 'lastName'];
 
       final service = ExportService();
       final payload = service.buildExportPayload(contacts, fields);
@@ -31,7 +30,6 @@ void main() {
       final item = payload.first;
       expect(item['firstName'], 'Alice');
       expect(item['lastName'], 'Smith');
-      expect(item['tags'], ['Friend']);
       expect(item.containsKey('nickname'), true); // Always included now
       expect(item['id'], 'c1'); // Always included
     });

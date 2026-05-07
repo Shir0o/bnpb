@@ -26,8 +26,17 @@ class _AddContactPageState extends State<AddContactPage>
   final TextEditingController _locationController = TextEditingController();
   final TextEditingController _firstMeetingNotesController =
       TextEditingController();
+  final TextEditingController _notesController = TextEditingController();
 
   bool _isSavingContact = false;
+
+  List<String> _locationSuggestions = const [];
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_loadSuggestions());
+  }
 
   @override
   void dispose() {
@@ -37,7 +46,29 @@ class _AddContactPageState extends State<AddContactPage>
     _nicknameController.dispose();
     _locationController.dispose();
     _firstMeetingNotesController.dispose();
+    _notesController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadSuggestions() async {
+    try {
+      final contacts = await DBHelper().getContacts();
+      final locations = <String>{};
+      for (final contact in contacts) {
+        final location = contact.location?.trim();
+        if (location != null && location.isNotEmpty) {
+          locations.add(location);
+        }
+      }
+      if (!mounted) return;
+      setState(() {
+        _locationSuggestions = locations.toList()
+          ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+      });
+    } catch (error, stackTrace) {
+      debugPrint('Failed to load suggestions: $error');
+      debugPrintStack(stackTrace: stackTrace);
+    }
   }
 
   /// Saves a new contact while keeping the UI responsive by optimistically
@@ -66,6 +97,9 @@ class _AddContactPageState extends State<AddContactPage>
       firstMeetingNotes: _firstMeetingNotesController.text.trim().isEmpty
           ? null
           : _firstMeetingNotesController.text.trim(),
+      notes: _notesController.text.trim().isEmpty
+          ? null
+          : _notesController.text.trim(),
     );
 
     setState(() {
@@ -93,6 +127,7 @@ class _AddContactPageState extends State<AddContactPage>
       await ReminderCoordinator().syncSignificantDates(newContact);
 
       _resetForm();
+      unawaited(_loadSuggestions());
     } catch (error, stackTrace) {
       if (!mounted) {
         return;
@@ -127,6 +162,7 @@ class _AddContactPageState extends State<AddContactPage>
     _nicknameController.clear();
     _locationController.clear();
     _firstMeetingNotesController.clear();
+    _notesController.clear();
 
     setState(() {});
   }
@@ -202,10 +238,11 @@ class _AddContactPageState extends State<AddContactPage>
                     prefixIcon: Icons.badge_outlined,
                   ),
                   const SizedBox(height: 16),
-                  _buildTextField(
+                  _buildSuggestionField(
                     controller: _locationController,
                     label: 'Location (Optional)',
                     prefixIcon: Icons.place_outlined,
+                    suggestions: _locationSuggestions,
                   ),
                 ],
               ),
@@ -217,6 +254,13 @@ class _AddContactPageState extends State<AddContactPage>
                     label: 'First Meeting Notes (Optional)',
                     prefixIcon: Icons.handshake_outlined,
                     maxLines: 3,
+                  ),
+                  const SizedBox(height: 16),
+                  _buildTextField(
+                    controller: _notesController,
+                    label: 'Notes (Optional)',
+                    prefixIcon: Icons.notes_outlined,
+                    maxLines: 5,
                   ),
                 ],
               ),
@@ -254,6 +298,68 @@ class _AddContactPageState extends State<AddContactPage>
       decoration: _buildInputDecoration(label, prefixIcon: prefixIcon),
       validator: validator,
       maxLines: maxLines,
+    );
+  }
+
+  Widget _buildSuggestionField({
+    required TextEditingController controller,
+    required String label,
+    required List<String> suggestions,
+    IconData? prefixIcon,
+  }) {
+    return RawAutocomplete<String>(
+      textEditingController: controller,
+      focusNode: FocusNode(),
+      optionsBuilder: (TextEditingValue value) {
+        if (suggestions.isEmpty) {
+          return const Iterable<String>.empty();
+        }
+        final query = value.text.trim().toLowerCase();
+        if (query.isEmpty) {
+          return suggestions;
+        }
+        return suggestions
+            .where((option) => option.toLowerCase().contains(query));
+      },
+      fieldViewBuilder: (context, textController, focusNode, onFieldSubmitted) {
+        return TextFormField(
+          controller: textController,
+          focusNode: focusNode,
+          textCapitalization: TextCapitalization.sentences,
+          decoration: _buildInputDecoration(label, prefixIcon: prefixIcon),
+          onFieldSubmitted: (_) => onFieldSubmitted(),
+        );
+      },
+      optionsViewBuilder: (context, onSelected, options) {
+        return Align(
+          alignment: Alignment.topLeft,
+          child: Material(
+            elevation: 4,
+            borderRadius: BorderRadius.circular(8),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 220),
+              child: ListView.builder(
+                shrinkWrap: true,
+                padding: EdgeInsets.zero,
+                itemCount: options.length,
+                itemBuilder: (context, index) {
+                  final option = options.elementAt(index);
+                  return InkWell(
+                    onTap: () => onSelected(option),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                      child: Text(option),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 

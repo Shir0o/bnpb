@@ -94,8 +94,6 @@ void main() {
         () => mockDBHelper.getContacts(contactId: any(named: 'contactId')),
       ).thenAnswer((_) async => []);
 
-      when(() => mockDBHelper.getAllTags()).thenAnswer((_) async => []);
-
       when(
         () => mockDBHelper.getRelationshipsForContact('123'),
       ).thenAnswer((_) async => []);
