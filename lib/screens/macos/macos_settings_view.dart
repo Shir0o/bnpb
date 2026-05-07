@@ -32,6 +32,7 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
   String? _syncPath;
   bool _isLoading = true;
   SyncType _syncType = SyncType.local;
+  SyncConfigurationStatus? _configurationStatus;
   GoogleSignInAccount? _googleUser;
   bool _isSyncing = false;
   String? _syncError;
@@ -61,11 +62,13 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
 
     try {
       await _syncService.performSync(force: true, rethrowErrors: true);
+      await _loadSettings();
       _addLog('Sync completed successfully.', color: const Color(0xFF4ADE80));
     } catch (e) {
-      _addLog('Sync failed: $e', color: const Color(0xFFEF4444));
+      final message = e.toString().replaceAll('Exception: ', '');
+      _addLog('Sync failed: $message', color: const Color(0xFFEF4444));
       setState(() {
-        _syncError = e.toString().replaceAll('Exception: ', '');
+        _syncError = message;
       });
     } finally {
       if (mounted) {
@@ -96,12 +99,14 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
 
     final syncPath = await _syncService.getSyncDirectory();
     final syncType = await _syncService.getSyncType();
+    final configurationStatus = await _syncService.getConfigurationStatus();
     final googleUser = await _googleDriveService.currentUser;
 
     if (mounted) {
       setState(() {
         _syncPath = syncPath;
         _syncType = syncType;
+        _configurationStatus = configurationStatus;
         _googleUser = googleUser;
         _isLoading = false;
       });
@@ -110,6 +115,9 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
 
   Future<void> _setSyncType(SyncType type) async {
     await _syncService.setSyncType(type);
+    setState(() {
+      _syncError = null;
+    });
     await _loadSettings();
   }
 
@@ -117,6 +125,7 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
     final user = await _googleDriveService.signIn();
     if (user != null) {
       await _loadSettings();
+      await _performManualSync();
     } else {
       final error = _googleDriveService.lastSignInError;
       if (error != null && mounted) {
@@ -134,6 +143,9 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
 
   Future<void> _setSyncLocation() async {
     await _syncService.setSyncDirectory();
+    setState(() {
+      _syncError = null;
+    });
     await _loadSettings();
   }
 
@@ -284,6 +296,8 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
   }
 
   Widget _buildSyncStatusBadge() {
+    final configurationStatus = _configurationStatus;
+
     if (_isSyncing) {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -338,6 +352,35 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
                 fontSize: 12,
                 fontWeight: FontWeight.w500,
                 color: const Color(0xFFB91C1C),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (configurationStatus != null && !configurationStatus.canSync) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFFFBEB),
+          border: Border.all(color: const Color(0xFFFDE68A)),
+          borderRadius: BorderRadius.circular(4),
+        ),
+        child: Row(
+          children: [
+            const Icon(
+              Icons.sync_problem,
+              size: 16,
+              color: Color(0xFFB45309),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              'Setup Needed',
+              style: GoogleFonts.inter(
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                color: const Color(0xFF92400E),
               ),
             ),
           ],
@@ -486,7 +529,7 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
                             const Divider(height: 1, color: Color(0xFFE5E5E5)),
                             // Backup Location with Error State Support
                             Container(
-                              color: _syncPath == null
+                              color: _configurationStatus?.canSync == false
                                   ? const Color(0xFFFEF2F2) // red-50
                                   : Colors.white,
                               padding: const EdgeInsets.all(16),
@@ -501,18 +544,21 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
                                         Row(
                                           children: [
                                             Text(
-                                              'Backup Location',
+                                              'Sync Folder',
                                               style: GoogleFonts.inter(
                                                 fontSize: 14,
                                                 fontWeight: FontWeight.w600,
-                                                color: _syncPath == null
+                                                color: _configurationStatus
+                                                            ?.canSync ==
+                                                        false
                                                     ? const Color(
                                                         0xFF7F1D1D,
                                                       ) // red-900
                                                     : Colors.black,
                                               ),
                                             ),
-                                            if (_syncPath == null) ...[
+                                            if (_configurationStatus?.canSync ==
+                                                false) ...[
                                               const SizedBox(width: 8),
                                               const Icon(
                                                 Icons.error,
@@ -522,10 +568,12 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
                                             ],
                                           ],
                                         ),
-                                        if (_syncPath == null) ...[
+                                        if (_configurationStatus?.canSync ==
+                                            false) ...[
                                           const SizedBox(height: 4),
                                           Text(
-                                            'Path not found or invalid permissions.',
+                                            _configurationStatus?.detail ??
+                                                'Choose a folder shared with your mobile device.',
                                             style: GoogleFonts.inter(
                                               fontSize: 12,
                                               color: const Color(0xFFB91C1C),
@@ -533,7 +581,7 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
                                           ),
                                           const SizedBox(height: 8),
                                           Text(
-                                            'Not Configured',
+                                            _syncPath ?? 'Not Configured',
                                             style: GoogleFonts.ibmPlexMono(
                                               fontSize: 12,
                                               color: const Color(0xFF991B1B),
@@ -551,10 +599,11 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
                                   ),
                                   const SizedBox(width: 16),
                                   _buildActionButton(
-                                    _syncPath == null
+                                    _configurationStatus?.canSync == false
                                         ? 'Fix Path...'
                                         : 'Change...',
-                                    isDestructive: _syncPath == null,
+                                    isDestructive:
+                                        _configurationStatus?.canSync == false,
                                     onTap: _setSyncLocation,
                                   ),
                                 ],
@@ -809,12 +858,22 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
                         _buildIndicator('File System', Colors.green),
                         const SizedBox(width: 24),
                         _buildIndicator(
-                          'Background Task',
-                          Colors.yellow,
-                          isDimmed: true,
+                          _syncType == SyncType.googleDrive
+                              ? 'Google Drive'
+                              : 'Shared Folder',
+                          _configurationStatus?.canSync == true
+                              ? Colors.green
+                              : Colors.yellow,
+                          isDimmed: _configurationStatus?.canSync != true,
                         ),
                         const SizedBox(width: 24),
-                        _buildIndicator('Network', Colors.red, isDimmed: true),
+                        _buildIndicator(
+                          'Mobile Ready',
+                          _configurationStatus?.canSync == true
+                              ? Colors.green
+                              : Colors.red,
+                          isDimmed: _configurationStatus?.canSync != true,
+                        ),
                       ],
                     ),
                     const SizedBox(height: 24),
@@ -1034,6 +1093,7 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
   }
 
   Widget _buildStatusBadge() {
+    final isReady = _configurationStatus?.canSync == true;
     return Row(
       children: [
         SizedBox(
@@ -1052,8 +1112,10 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
                 child: Container(
                   width: 10,
                   height: 10,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFF22C55E), // green-500
+                  decoration: BoxDecoration(
+                    color: isReady
+                        ? const Color(0xFF22C55E)
+                        : const Color(0xFFF59E0B),
                     shape: BoxShape.circle,
                   ),
                 ),
@@ -1063,11 +1125,11 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
         ),
         const SizedBox(width: 8),
         Text(
-          'Operational',
+          isReady ? 'Operational' : 'Setup Needed',
           style: GoogleFonts.inter(
             fontSize: 12,
             fontWeight: FontWeight.w500,
-            color: const Color(0xFF16A34A), // green-600
+            color: isReady ? const Color(0xFF16A34A) : const Color(0xFFB45309),
           ),
         ),
       ],
@@ -1168,7 +1230,7 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
                 const SizedBox(height: 4),
                 if (_googleUser != null)
                   Text(
-                    _googleUser!.email,
+                    _configurationStatus?.detail ?? _googleUser!.email,
                     style: GoogleFonts.inter(
                       fontSize: 12,
                       color: const Color(0xFF6B7280),
@@ -1176,7 +1238,8 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
                   )
                 else
                   Text(
-                    'Sign in to sync your data across devices.',
+                    _configurationStatus?.detail ??
+                        'Sign in to sync your data across devices.',
                     style: GoogleFonts.inter(
                       fontSize: 12,
                       color: const Color(0xFF6B7280),
