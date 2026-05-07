@@ -181,8 +181,8 @@ class _BackupRestoreSheetState extends State<BackupRestoreSheet> {
                     itemBuilder: (context, index) {
                       final backup = backups[index];
                       final timestamp = DateFormat.yMMMd().add_jm().format(
-                            backup.modified,
-                          );
+                        backup.modified,
+                      );
                       final sizeLabel = _formatFileSize(backup.bytes);
 
                       return ListTile(

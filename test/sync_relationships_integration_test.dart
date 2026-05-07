@@ -49,9 +49,9 @@ void main() {
         ),
       );
 
-      final exportResult = await SyncCoordinator(dbHelper).exportChanges(
-        syncDir,
-      );
+      final exportResult = await SyncCoordinator(
+        dbHelper,
+      ).exportChanges(syncDir);
 
       expect(exportResult.exportedCount, greaterThanOrEqualTo(3));
 
@@ -75,8 +75,10 @@ void main() {
       final restoredContacts = await dbHelper.getContacts();
       final restoredRelationships = await dbHelper.getAllRelationships();
 
-      expect(restoredContacts.map((contact) => contact.id),
-          containsAll(['c1', 'c2']));
+      expect(
+        restoredContacts.map((contact) => contact.id),
+        containsAll(['c1', 'c2']),
+      );
       expect(restoredRelationships, hasLength(1));
       expect(restoredRelationships.first.sourceContactId, 'c1');
       expect(restoredRelationships.first.targetContactId, 'c2');
@@ -84,43 +86,45 @@ void main() {
       expect(restoredRelationships.first.notes, 'Meets monthly');
     });
 
-    test('does not duplicate relationships when sync payload is reimported',
-        () async {
-      final payload = {
-        'version': 2,
-        'deviceId': 'remote-device',
-        'timestamp': DateTime(2024, 1, 1).toUtc().toIso8601String(),
-        'integrityCheck': 'valid',
-        'contacts': [
-          Contact(id: 'c1', firstName: 'Alice').toMap(),
-          Contact(id: 'c2', firstName: 'Bob').toMap(),
-        ],
-        'interactions': [],
-        'prayerRequests': [],
-        'prayerLists': [],
-        'relationships': const [
-          {
-            'id': 42,
-            'sourceContactId': 'c1',
-            'targetContactId': 'c2',
-            'type': 'Mentor',
-            'notes': 'Meets monthly',
-          },
-        ],
-      };
+    test(
+      'does not duplicate relationships when sync payload is reimported',
+      () async {
+        final payload = {
+          'version': 2,
+          'deviceId': 'remote-device',
+          'timestamp': DateTime(2024, 1, 1).toUtc().toIso8601String(),
+          'integrityCheck': 'valid',
+          'contacts': [
+            Contact(id: 'c1', firstName: 'Alice').toMap(),
+            Contact(id: 'c2', firstName: 'Bob').toMap(),
+          ],
+          'interactions': [],
+          'prayerRequests': [],
+          'prayerLists': [],
+          'relationships': const [
+            {
+              'id': 42,
+              'sourceContactId': 'c1',
+              'targetContactId': 'c2',
+              'type': 'Mentor',
+              'notes': 'Meets monthly',
+            },
+          ],
+        };
 
-      final coordinator = SyncCoordinator(dbHelper);
+        final coordinator = SyncCoordinator(dbHelper);
 
-      await coordinator.importSyncData(payload);
-      await coordinator.importSyncData(payload);
+        await coordinator.importSyncData(payload);
+        await coordinator.importSyncData(payload);
 
-      final relationships = await dbHelper.getAllRelationships();
+        final relationships = await dbHelper.getAllRelationships();
 
-      expect(relationships, hasLength(1));
-      expect(relationships.first.sourceContactId, 'c1');
-      expect(relationships.first.targetContactId, 'c2');
-      expect(relationships.first.type, 'Mentor');
-    });
+        expect(relationships, hasLength(1));
+        expect(relationships.first.sourceContactId, 'c1');
+        expect(relationships.first.targetContactId, 'c2');
+        expect(relationships.first.type, 'Mentor');
+      },
+    );
 
     test('importChanges imports relationship files once', () async {
       final payload = {
@@ -145,8 +149,9 @@ void main() {
           },
         ],
       };
-      final syncFile =
-          File(p.join(syncDir.path, 'remote_1704067200000_data.json'));
+      final syncFile = File(
+        p.join(syncDir.path, 'remote_1704067200000_data.json'),
+      );
       await syncFile.writeAsString(jsonEncode(payload));
 
       final coordinator = SyncCoordinator(dbHelper);

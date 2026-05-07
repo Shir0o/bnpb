@@ -78,8 +78,10 @@ class SyncService {
   /// [force] will skip the cooldown check.
   /// [rethrowErrors] will allow exceptions to propagate (useful for manual UI sync).
   /// Returns true if any changes were imported.
-  Future<bool> performSync(
-      {bool force = false, bool rethrowErrors = false}) async {
+  Future<bool> performSync({
+    bool force = false,
+    bool rethrowErrors = false,
+  }) async {
     if (_isSyncing) return false;
 
     // Cooldown logic: avoid syncing more than once every 5 minutes automatically.

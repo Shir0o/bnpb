@@ -67,7 +67,8 @@ class _PrayerDiaryEntryState extends State<PrayerDiaryEntry> {
       description: _descriptionController.text,
       status: _status,
       // answeredAt logic could be handled here or in the parent
-      answeredAt: _status == PrayerRequestStatus.answered &&
+      answeredAt:
+          _status == PrayerRequestStatus.answered &&
               widget.request.status != PrayerRequestStatus.answered
           ? DateTime.now()
           : widget.request.answeredAt,
@@ -94,8 +95,9 @@ class _PrayerDiaryEntryState extends State<PrayerDiaryEntry> {
   }
 
   Widget _buildViewMode() {
-    final timeStr = _timeFormat
-        .format(widget.request.answeredAt ?? widget.request.requestedAt);
+    final timeStr = _timeFormat.format(
+      widget.request.answeredAt ?? widget.request.requestedAt,
+    );
     final contactNames = widget.contacts.isEmpty
         ? 'Unknown'
         : widget.contacts.map((c) => c.displayName).join(', ');
@@ -263,8 +265,9 @@ class _PrayerDiaryEntryState extends State<PrayerDiaryEntry> {
   }
 
   Widget _buildEditMode() {
-    final timeStr = _timeFormat
-        .format(widget.request.answeredAt ?? widget.request.requestedAt);
+    final timeStr = _timeFormat.format(
+      widget.request.answeredAt ?? widget.request.requestedAt,
+    );
     final contactNamesLabel = widget.contacts.isEmpty
         ? 'Unknown'
         : widget.contacts.map((c) => c.displayName).join(', ');

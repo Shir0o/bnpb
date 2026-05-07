@@ -7,7 +7,7 @@ enum RecommendationPriority {
   critical, // Overdue follow-up or extreme gap
   high, // Significant event or medium gap
   medium, // Standard follow-up
-  low // General check-in
+  low, // General check-in
 }
 
 class FollowUpRecommendation {
@@ -28,7 +28,7 @@ class FollowUpRecommendationService {
   final DBHelper _dbHelper;
 
   FollowUpRecommendationService({DBHelper? dbHelper})
-      : _dbHelper = dbHelper ?? DBHelper();
+    : _dbHelper = dbHelper ?? DBHelper();
 
   Future<List<FollowUpRecommendation>> getRecommendations() async {
     final contacts = await _dbHelper.getContacts();
@@ -42,40 +42,47 @@ class FollowUpRecommendationService {
       // 1. Check for answered prayer requests in the last 7 days (High priority)
       final recentAnsweredPrayer = _getRecentAnsweredPrayer(contact, now);
       if (recentAnsweredPrayer != null) {
-        recommendations.add(FollowUpRecommendation(
-          contact: contact,
-          reason:
-              'Celebrate answered prayer: "${recentAnsweredPrayer.description}"',
-          priority: RecommendationPriority.high,
-          relativeDate: recentAnsweredPrayer.answeredAt,
-        ));
+        recommendations.add(
+          FollowUpRecommendation(
+            contact: contact,
+            reason:
+                'Celebrate answered prayer: "${recentAnsweredPrayer.description}"',
+            priority: RecommendationPriority.high,
+            relativeDate: recentAnsweredPrayer.answeredAt,
+          ),
+        );
         continue; // One recommendation per contact is usually enough
       }
 
       // 2. Check for keywords in recent interactions (High priority)
-      final followUpKeywordInteraction =
-          _getInteractionWithFollowUpKeywords(contact);
+      final followUpKeywordInteraction = _getInteractionWithFollowUpKeywords(
+        contact,
+      );
       if (followUpKeywordInteraction != null) {
-        recommendations.add(FollowUpRecommendation(
-          contact: contact,
-          reason:
-              'Mentioned "follow up" in last meeting: "${followUpKeywordInteraction.summary}"',
-          priority: RecommendationPriority.high,
-          relativeDate: followUpKeywordInteraction.occurredAt,
-        ));
+        recommendations.add(
+          FollowUpRecommendation(
+            contact: contact,
+            reason:
+                'Mentioned "follow up" in last meeting: "${followUpKeywordInteraction.summary}"',
+            priority: RecommendationPriority.high,
+            relativeDate: followUpKeywordInteraction.occurredAt,
+          ),
+        );
         continue;
       }
 
       // 3. Check for pending prayer requests older than 14 days (Medium priority)
       final stalePrayerRequest = _getStalePrayerRequest(contact, now);
       if (stalePrayerRequest != null) {
-        recommendations.add(FollowUpRecommendation(
-          contact: contact,
-          reason:
-              'Check in on prayer request from ${stalenessInDays(stalePrayerRequest.requestedAt, now)} days ago',
-          priority: RecommendationPriority.medium,
-          relativeDate: stalePrayerRequest.requestedAt,
-        ));
+        recommendations.add(
+          FollowUpRecommendation(
+            contact: contact,
+            reason:
+                'Check in on prayer request from ${stalenessInDays(stalePrayerRequest.requestedAt, now)} days ago',
+            priority: RecommendationPriority.medium,
+            relativeDate: stalePrayerRequest.requestedAt,
+          ),
+        );
         continue;
       }
 
@@ -83,27 +90,33 @@ class FollowUpRecommendationService {
       final latestInteraction = _getLatestInteraction(contact);
       if (latestInteraction == null) {
         // Never interacted - Low priority check-in
-        recommendations.add(FollowUpRecommendation(
-          contact: contact,
-          reason: 'New contact: reach out for an initial meeting',
-          priority: RecommendationPriority.low,
-        ));
+        recommendations.add(
+          FollowUpRecommendation(
+            contact: contact,
+            reason: 'New contact: reach out for an initial meeting',
+            priority: RecommendationPriority.low,
+          ),
+        );
       } else {
         final gapDays = now.difference(latestInteraction.occurredAt).inDays;
         if (gapDays >= 60) {
-          recommendations.add(FollowUpRecommendation(
-            contact: contact,
-            reason: 'Significant gap: no interaction in $gapDays days',
-            priority: RecommendationPriority.critical,
-            relativeDate: latestInteraction.occurredAt,
-          ));
+          recommendations.add(
+            FollowUpRecommendation(
+              contact: contact,
+              reason: 'Significant gap: no interaction in $gapDays days',
+              priority: RecommendationPriority.critical,
+              relativeDate: latestInteraction.occurredAt,
+            ),
+          );
         } else if (gapDays >= 30) {
-          recommendations.add(FollowUpRecommendation(
-            contact: contact,
-            reason: 'Monthly check-in: last seen $gapDays days ago',
-            priority: RecommendationPriority.medium,
-            relativeDate: latestInteraction.occurredAt,
-          ));
+          recommendations.add(
+            FollowUpRecommendation(
+              contact: contact,
+              reason: 'Monthly check-in: last seen $gapDays days ago',
+              priority: RecommendationPriority.medium,
+              relativeDate: latestInteraction.occurredAt,
+            ),
+          );
         }
       }
     }
@@ -158,7 +171,7 @@ class FollowUpRecommendationService {
       'check in',
       'check-in',
       'next time',
-      'remind me'
+      'remind me',
     ];
     for (final kw in keywords) {
       if (text.contains(kw)) {

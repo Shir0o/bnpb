@@ -472,8 +472,8 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
                                     selected: {_syncType},
                                     onSelectionChanged:
                                         (Set<SyncType> newSelection) {
-                                      _setSyncType(newSelection.first);
-                                    },
+                                          _setSyncType(newSelection.first);
+                                        },
                                     style: ButtonStyle(
                                       textStyle: WidgetStateProperty.all(
                                         GoogleFonts.inter(fontSize: 12),
@@ -615,8 +615,8 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
                                     selected: {_syncType},
                                     onSelectionChanged:
                                         (Set<SyncType> newSelection) {
-                                      _setSyncType(newSelection.first);
-                                    },
+                                          _setSyncType(newSelection.first);
+                                        },
                                     style: ButtonStyle(
                                       textStyle: WidgetStateProperty.all(
                                         GoogleFonts.inter(fontSize: 12),
@@ -741,8 +741,9 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
                                 Material(
                                   color: Colors.transparent,
                                   child: InkWell(
-                                    onTap:
-                                        _isSyncing ? null : _performManualSync,
+                                    onTap: _isSyncing
+                                        ? null
+                                        : _performManualSync,
                                     borderRadius: BorderRadius.circular(4),
                                     child: Padding(
                                       padding: const EdgeInsets.symmetric(

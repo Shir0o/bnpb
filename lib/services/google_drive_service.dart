@@ -247,9 +247,9 @@ class GoogleDriveService {
   /// Checks if there is basic internet connectivity.
   Future<bool> _hasConnectivity() async {
     try {
-      final result = await InternetAddress.lookup('google.com').timeout(
-        const Duration(seconds: 3),
-      );
+      final result = await InternetAddress.lookup(
+        'google.com',
+      ).timeout(const Duration(seconds: 3));
       return result.isNotEmpty && result[0].rawAddress.isNotEmpty;
     } catch (_) {
       return false;
@@ -283,8 +283,9 @@ class GoogleDriveService {
     if (user != null) {
       try {
         // In v7.0.0, we use authorizationClient to get authorization for scopes
-        var auth =
-            await user.authorizationClient.authorizationForScopes(_scopes);
+        var auth = await user.authorizationClient.authorizationForScopes(
+          _scopes,
+        );
 
         if (auth == null) {
           if (force) {
@@ -336,9 +337,9 @@ class GoogleDriveService {
     return await _executeWithRetry(() async {
       final query =
           "name = '$folderName' and mimeType = 'application/vnd.google-apps.folder' and trashed = false";
-      final folderList = await _driveApi!.files.list(q: query).timeout(
-            const Duration(seconds: 10),
-          );
+      final folderList = await _driveApi!.files
+          .list(q: query)
+          .timeout(const Duration(seconds: 10));
 
       if (folderList.files != null && folderList.files!.isNotEmpty) {
         return folderList.files!.first.id;
@@ -408,10 +409,7 @@ class GoogleDriveService {
     return await _executeWithRetry(() async {
       final query = "'$folderId' in parents and trashed = false";
       final fileList = await _driveApi!.files
-          .list(
-            q: query,
-            $fields: 'files(id, name, modifiedTime, size)',
-          )
+          .list(q: query, $fields: 'files(id, name, modifiedTime, size)')
           .timeout(const Duration(seconds: 15));
 
       if (kDebugMode) {
@@ -429,12 +427,11 @@ class GoogleDriveService {
 
   Future<void> downloadFile(String fileId, File targetFile) async {
     await _executeWithRetry(() async {
-      final mediaResponse = await _driveApi!.files
-          .get(
-            fileId,
-            downloadOptions: drive.DownloadOptions.fullMedia,
-          )
-          .timeout(const Duration(seconds: 30)) as drive.Media;
+      final mediaResponse =
+          await _driveApi!.files
+                  .get(fileId, downloadOptions: drive.DownloadOptions.fullMedia)
+                  .timeout(const Duration(seconds: 30))
+              as drive.Media;
 
       final sink = targetFile.openWrite();
       try {

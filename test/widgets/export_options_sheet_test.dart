@@ -9,15 +9,16 @@ void main() {
     SharedPreferences.setMockInitialValues({});
   });
 
-  testWidgets('ExportOptionsSheet displays all export format buttons',
-      (WidgetTester tester) async {
+  testWidgets('ExportOptionsSheet displays all export format buttons', (
+    WidgetTester tester,
+  ) async {
     final contacts = [Contact(id: '1', firstName: 'Alice')];
 
-    await tester.pumpWidget(MaterialApp(
-      home: Scaffold(
-        body: ExportOptionsSheet(contacts: contacts),
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(body: ExportOptionsSheet(contacts: contacts)),
       ),
-    ));
+    );
 
     // Verify format buttons exist
     expect(find.text('Export JSON'), findsOneWidget);

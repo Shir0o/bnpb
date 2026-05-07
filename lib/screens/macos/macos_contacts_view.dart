@@ -211,11 +211,12 @@ class _MacOSContactsViewState extends State<MacOSContactsView> {
                     padding: const EdgeInsets.all(24),
                     gridDelegate:
                         const SliverGridDelegateWithMaxCrossAxisExtent(
-                      maxCrossAxisExtent: 180,
-                      mainAxisSpacing: 24,
-                      crossAxisSpacing: 16,
-                      childAspectRatio: 0.85, // Adjust based on card content
-                    ),
+                          maxCrossAxisExtent: 180,
+                          mainAxisSpacing: 24,
+                          crossAxisSpacing: 16,
+                          childAspectRatio:
+                              0.85, // Adjust based on card content
+                        ),
                     itemCount: filtered.length + 1,
                     itemBuilder: (context, index) {
                       if (index == filtered.length) {

@@ -153,8 +153,9 @@ void main() {
             followUpAt: now.subtract(const Duration(days: 5)),
           ),
           Interaction(
-            occurredAt:
-                now.subtract(const Duration(days: 4)), // After followUpAt
+            occurredAt: now.subtract(
+              const Duration(days: 4),
+            ), // After followUpAt
             summary: 'Follow-up chat',
             medium: 'phone',
           ),

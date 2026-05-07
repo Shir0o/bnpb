@@ -271,8 +271,9 @@ class _MacOSContactDetailsPageState extends State<MacOSContactDetailsPage> {
 
     final dbHelper = DBHelper();
     final contacts = await dbHelper.getContacts();
-    final availableContacts =
-        contacts.where((c) => c.id != widget.contact!.id).toList();
+    final availableContacts = contacts
+        .where((c) => c.id != widget.contact!.id)
+        .toList();
 
     if (!mounted) return;
 
@@ -431,8 +432,9 @@ class _MacOSContactDetailsPageState extends State<MacOSContactDetailsPage> {
         style: ElevatedButton.styleFrom(
           backgroundColor: isPrimary ? const Color(0xFF007AFF) : Colors.white,
           foregroundColor: isPrimary ? Colors.white : const Color(0xFF374151),
-          disabledBackgroundColor:
-              isPrimary ? const Color(0xFF007AFF).withValues(alpha: 0.5) : null,
+          disabledBackgroundColor: isPrimary
+              ? const Color(0xFF007AFF).withValues(alpha: 0.5)
+              : null,
           elevation: 0,
           shadowColor: Colors.transparent,
           side: isPrimary

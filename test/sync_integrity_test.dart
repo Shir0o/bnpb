@@ -38,8 +38,7 @@ class IntegritySpyDBHelper extends MockDBHelper {
     List<String>? contactIds,
     DateTime? updatedSince,
     bool includeDeleted = false,
-  }) async =>
-      [];
+  }) async => [];
 
   Future<void> _createSchema(Database db) async {
     // Minimal schema for SyncCoordinator

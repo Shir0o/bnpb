@@ -52,14 +52,15 @@ class _RelationshipExplorerPageState extends State<RelationshipExplorerPage> {
       return nickname.isNotEmpty ? nickname : 'Unknown contact';
     }
 
-    final groupedEntries = groupedByTarget.entries
-        .where((entry) => entry.value.length > 1)
-        .toList()
-      ..sort(
-        (a, b) => getDisplayName(
-          a.key,
-        ).toLowerCase().compareTo(getDisplayName(b.key).toLowerCase()),
-      );
+    final groupedEntries =
+        groupedByTarget.entries
+            .where((entry) => entry.value.length > 1)
+            .toList()
+          ..sort(
+            (a, b) => getDisplayName(
+              a.key,
+            ).toLowerCase().compareTo(getDisplayName(b.key).toLowerCase()),
+          );
 
     if (!mounted) return;
     setState(() {

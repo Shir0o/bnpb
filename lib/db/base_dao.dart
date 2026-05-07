@@ -24,8 +24,9 @@ abstract class BaseDao {
     final allRows = <Map<String, Object?>>[];
 
     for (var i = 0; i < values.length; i += chunkSize) {
-      final end =
-          (i + chunkSize < values.length) ? i + chunkSize : values.length;
+      final end = (i + chunkSize < values.length)
+          ? i + chunkSize
+          : values.length;
       final chunk = values.sublist(i, end);
       final placeholders = List.filled(chunk.length, '?').join(',');
 

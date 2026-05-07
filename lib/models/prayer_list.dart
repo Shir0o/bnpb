@@ -11,8 +11,8 @@ class PrayerList {
     List<String>? contactIds,
     DateTime? updatedAt,
     this.deletedAt,
-  })  : contactIds = contactIds ?? const [],
-        updatedAt = updatedAt ?? DateTime.now();
+  }) : contactIds = contactIds ?? const [],
+       updatedAt = updatedAt ?? DateTime.now();
 
   final String id;
   final String name;

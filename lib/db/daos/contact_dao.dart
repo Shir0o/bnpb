@@ -45,8 +45,9 @@ class ContactDao extends BaseDao {
       'updatedAt': forceNowTimestamps
           ? DateTime.now().toUtc().toIso8601String()
           : contact.updatedAt.toIso8601String(),
-      'deletedAt':
-          forceNowTimestamps ? null : contact.deletedAt?.toIso8601String(),
+      'deletedAt': forceNowTimestamps
+          ? null
+          : contact.deletedAt?.toIso8601String(),
     };
 
     if (isUpdate) {
@@ -73,14 +74,17 @@ class ContactDao extends BaseDao {
       await dbHelper.interactionDao.replaceInteractionsForContact(txn, contact);
 
       if (contact.prayerRequests.isNotEmpty) {
-        await dbHelper.prayerRequestDao
-            .replacePrayerRequestsForContact(txn, contact);
+        await dbHelper.prayerRequestDao.replacePrayerRequestsForContact(
+          txn,
+          contact,
+        );
       }
     }
   }
 
   Future<void> _upsertMeetContext(DatabaseExecutor txn, Contact contact) async {
-    final hasContext = contact.firstMeetingNotes != null &&
+    final hasContext =
+        contact.firstMeetingNotes != null &&
         contact.firstMeetingNotes!.isNotEmpty;
 
     if (!hasContext) {
@@ -92,13 +96,10 @@ class ContactDao extends BaseDao {
       return;
     }
 
-    await txn.insert(
-        'meet_contexts',
-        {
-          'contactId': contact.id,
-          'firstMeetingNotes': contact.firstMeetingNotes,
-        },
-        conflictAlgorithm: ConflictAlgorithm.replace);
+    await txn.insert('meet_contexts', {
+      'contactId': contact.id,
+      'firstMeetingNotes': contact.firstMeetingNotes,
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   Future<void> _replaceContactTags(
@@ -158,11 +159,13 @@ class ContactDao extends BaseDao {
 
     if (contactRows.isEmpty) return [];
 
-    final retrievedContactIds =
-        contactRows.map((c) => c['id'] as String).toList();
+    final retrievedContactIds = contactRows
+        .map((c) => c['id'] as String)
+        .toList();
     final retrievedContactIdsSet = retrievedContactIds.toSet();
 
-    final isFetchAllActive = contactId == null &&
+    final isFetchAllActive =
+        contactId == null &&
         (contactIds == null || contactIds.isEmpty) &&
         updatedSince == null &&
         !includeDeleted;
@@ -191,26 +194,26 @@ class ContactDao extends BaseDao {
     }
 
     // Fetch Interactions
-    final interactionsByContact =
-        await dbHelper.interactionDao.getInteractionsForContacts(
-      retrievedContactIds,
-      isFetchAllActive: isFetchAllActive,
-    );
+    final interactionsByContact = await dbHelper.interactionDao
+        .getInteractionsForContacts(
+          retrievedContactIds,
+          isFetchAllActive: isFetchAllActive,
+        );
 
     // Fetch Prayer Requests
-    final requestsByContact =
-        await dbHelper.prayerRequestDao.getPrayerRequestsForContacts(
-      retrievedContactIds,
-      isFetchAllActive: isFetchAllActive,
-    );
+    final requestsByContact = await dbHelper.prayerRequestDao
+        .getPrayerRequestsForContacts(
+          retrievedContactIds,
+          isFetchAllActive: isFetchAllActive,
+        );
 
     // Fetch Relationships
-    final relationshipsByContact =
-        await dbHelper.relationshipDao.getRelationshipsForContacts(
-      retrievedContactIds,
-      retrievedContactIdsSet,
-      isFetchAllActive: isFetchAllActive,
-    );
+    final relationshipsByContact = await dbHelper.relationshipDao
+        .getRelationshipsForContacts(
+          retrievedContactIds,
+          retrievedContactIdsSet,
+          isFetchAllActive: isFetchAllActive,
+        );
 
     // Fetch Meet Contexts
     final List<Map<String, Object?>> contextRows;
@@ -236,27 +239,33 @@ class ContactDao extends BaseDao {
       final cId = row['id'] as String;
       final contactMap = Map<String, dynamic>.from(row);
       contactMap['tags'] = tagsByContact[cId] ?? [];
-      contactMap['interactions'] =
-          (interactionsByContact[cId] ?? []).map((i) => i.toMap()).toList();
-      contactMap['prayerRequests'] =
-          (requestsByContact[cId] ?? []).map((r) => r.toMap()).toList();
-      contactMap['relationships'] =
-          (relationshipsByContact[cId] ?? []).map((r) => r.toMap()).toList();
+      contactMap['interactions'] = (interactionsByContact[cId] ?? [])
+          .map((i) => i.toMap())
+          .toList();
+      contactMap['prayerRequests'] = (requestsByContact[cId] ?? [])
+          .map((r) => r.toMap())
+          .toList();
+      contactMap['relationships'] = (relationshipsByContact[cId] ?? [])
+          .map((r) => r.toMap())
+          .toList();
       contactMap['firstMeetingNotes'] = contextMap[cId];
 
       if (contactMap['keywords'] != null) {
-        contactMap['recognitionKeywords'] =
-            _parseStringList(contactMap['keywords']);
+        contactMap['recognitionKeywords'] = _parseStringList(
+          contactMap['keywords'],
+        );
         contactMap.remove('keywords');
       }
       if (contactMap['photoCues'] != null) {
-        contactMap['recognitionPhotoUris'] =
-            _parseStringList(contactMap['photoCues']);
+        contactMap['recognitionPhotoUris'] = _parseStringList(
+          contactMap['photoCues'],
+        );
         contactMap.remove('photoCues');
       }
       if (contactMap['reminderCues'] != null) {
-        contactMap['recognitionReminders'] =
-            _parseStringList(contactMap['reminderCues']);
+        contactMap['recognitionReminders'] = _parseStringList(
+          contactMap['reminderCues'],
+        );
         contactMap.remove('reminderCues');
       }
 

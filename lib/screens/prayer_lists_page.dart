@@ -156,19 +156,19 @@ class _PrayerListPageState extends State<PrayerListPage> {
   void _navigateToContactDetails(Contact contact) {
     Navigator.of(context)
         .push(
-      MaterialPageRoute(
-        builder: (context) => ContactDetailsPage(
-          contact: contact,
-          onDelete: () => _deleteContact(contact.id),
-        ),
-      ),
-    )
+          MaterialPageRoute(
+            builder: (context) => ContactDetailsPage(
+              contact: contact,
+              onDelete: () => _deleteContact(contact.id),
+            ),
+          ),
+        )
         .then((_) {
-      // Refresh list in case contact was deleted or changed
-      if (_list != null) {
-        _loadListContacts(_list!);
-      }
-    });
+          // Refresh list in case contact was deleted or changed
+          if (_list != null) {
+            _loadListContacts(_list!);
+          }
+        });
   }
 
   @override
@@ -216,15 +216,15 @@ class _PrayerListPageState extends State<PrayerListPage> {
                 Text(
                   'No contacts in your prayer list yet.',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: Theme.of(context).colorScheme.outline,
-                      ),
+                    color: Theme.of(context).colorScheme.outline,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 Text(
                   'Tap "Add People" to get started.',
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Theme.of(context).colorScheme.outline,
-                      ),
+                    color: Theme.of(context).colorScheme.outline,
+                  ),
                 ),
               ],
             ),
@@ -247,8 +247,9 @@ class _PrayerListPageState extends State<PrayerListPage> {
                   ),
                 ),
                 title: Text(contact.fullName),
-                subtitle:
-                    contact.location != null ? Text(contact.location!) : null,
+                subtitle: contact.location != null
+                    ? Text(contact.location!)
+                    : null,
                 onTap: () => _navigateToContactDetails(contact),
                 trailing: IconButton(
                   icon: const Icon(Icons.remove_circle_outline),

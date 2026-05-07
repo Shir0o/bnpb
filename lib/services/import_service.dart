@@ -86,7 +86,8 @@ class ImportService {
 
       final contactWithoutRelations = contact.copyWith(
         interactions: [],
-        prayerRequests: [], // Logic in HomePage didn't explicitly clear requests, but stripping interactions is key
+        prayerRequests:
+            [], // Logic in HomePage didn't explicitly clear requests, but stripping interactions is key
       );
       await _dbHelper.insertContact(contactWithoutRelations);
     }
@@ -110,6 +111,13 @@ class ImportService {
     // Pass 3: Insert Prayer Lists
     for (final list in restoredPrayerLists) {
       await _dbHelper.insertPrayerList(list);
+    }
+
+    // Pass 3b: Insert relationships (insertContact does not sync these).
+    for (final contact in restoredContacts) {
+      for (final relationship in contact.relationships) {
+        await _dbHelper.upsertRelationship(relationship.copyWith(id: null));
+      }
     }
 
     // Pass 4: Refresh reminders

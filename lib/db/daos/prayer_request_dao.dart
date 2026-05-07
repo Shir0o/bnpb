@@ -93,10 +93,13 @@ class PrayerRequestDao extends BaseDao {
       where: 'contactId = ?',
       whereArgs: [contact.id],
     );
-    final existingIds =
-        existingRows.map((r) => r['prayerRequestId'] as int).toSet();
-    final newIds =
-        contact.prayerRequests.map((r) => r.id).whereType<int>().toSet();
+    final existingIds = existingRows
+        .map((r) => r['prayerRequestId'] as int)
+        .toSet();
+    final newIds = contact.prayerRequests
+        .map((r) => r.id)
+        .whereType<int>()
+        .toSet();
 
     final now = DateTime.now().toUtc().toIso8601String();
     final idsToDelete = existingIds.difference(newIds);
@@ -105,10 +108,7 @@ class PrayerRequestDao extends BaseDao {
       for (final id in idsToDelete) {
         batch.update(
           'prayer_requests',
-          {
-            'deletedAt': now,
-            'updatedAt': now,
-          },
+          {'deletedAt': now, 'updatedAt': now},
           where: 'id = ?',
           whereArgs: [id],
         );
@@ -189,10 +189,12 @@ class PrayerRequestDao extends BaseDao {
       }
     }
 
-    final fetchedPrayerIds =
-        prayerParticipantRows.map((r) => r['id'] as int).toSet();
-    final allPrayerParticipantsMap =
-        await getParticipantsForPrayerRequests(fetchedPrayerIds);
+    final fetchedPrayerIds = prayerParticipantRows
+        .map((r) => r['id'] as int)
+        .toSet();
+    final allPrayerParticipantsMap = await getParticipantsForPrayerRequests(
+      fetchedPrayerIds,
+    );
 
     final requestsByContact = <String, List<PrayerRequest>>{};
     for (final row in prayerParticipantRows) {

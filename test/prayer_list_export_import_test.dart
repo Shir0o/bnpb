@@ -39,12 +39,14 @@ void main() {
       await db.close();
     });
 
-    test('Successfully exports and imports prayer lists with members',
-        () async {
+    test('Successfully exports and imports prayer lists with members', () async {
       // 1. Create a contact
       final contactId = const Uuid().v4();
-      final contact =
-          Contact(id: contactId, firstName: 'Alice', lastName: 'Test');
+      final contact = Contact(
+        id: contactId,
+        firstName: 'Alice',
+        lastName: 'Test',
+      );
       await dbHelper.insertContact(contact);
 
       // 2. Create a prayer list containing that contact
@@ -68,11 +70,10 @@ void main() {
       final contacts = await dbHelper.getContacts();
       final prayerLists = await dbHelper.getPrayerLists();
 
-      final payload = await exportService.buildFullExportPayload(
-        contacts,
-        ['firstName', 'lastName'],
-        prayerLists: prayerLists,
-      );
+      final payload = await exportService.buildFullExportPayload(contacts, [
+        'firstName',
+        'lastName',
+      ], prayerLists: prayerLists);
 
       final jsonStr = jsonEncode(payload);
 

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import '../db/db_helper.dart';
 import '../models/contact.dart';
 import '../models/interaction.dart';
@@ -11,6 +13,19 @@ class ContactService {
 
   List<Contact>? _cachedContacts;
   final Map<String, List<Interaction>> _cachedInteractions = {};
+
+  final StreamController<void> _contactsChangedController =
+      StreamController<void>.broadcast();
+
+  /// Emits when contacts have been added, updated, or deleted and listeners
+  /// should refetch.
+  Stream<void> get onContactsChanged => _contactsChangedController.stream;
+
+  /// Invalidates the contact cache and notifies listeners.
+  void notifyContactsChanged() {
+    _cachedContacts = null;
+    _contactsChangedController.add(null);
+  }
 
   bool get hasCachedContacts => _cachedContacts != null;
   bool hasCachedInteractions(String contactId) =>

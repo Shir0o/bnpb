@@ -37,8 +37,9 @@ void main() async {
   // ignore: avoid_print
   print('1. Creating test data...');
   final contactId = const Uuid().v4();
-  await dbHelper
-      .insertContact(Contact(id: contactId, firstName: 'Manual Test Contact'));
+  await dbHelper.insertContact(
+    Contact(id: contactId, firstName: 'Manual Test Contact'),
+  );
 
   const listId = 'manual-list-999';
   final list = PrayerList(
@@ -55,11 +56,9 @@ void main() async {
   final contacts = await dbHelper.getContacts();
   final prayerLists = await dbHelper.getPrayerLists();
 
-  final payload = await ExportService().buildFullExportPayload(
-    contacts,
-    ['firstName'],
-    prayerLists: prayerLists,
-  );
+  final payload = await ExportService().buildFullExportPayload(contacts, [
+    'firstName',
+  ], prayerLists: prayerLists);
 
   final jsonStr = jsonEncode(payload);
   // ignore: avoid_print

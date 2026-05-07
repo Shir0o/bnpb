@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../db/db_helper.dart';
 import '../models/contact.dart';
 import '../services/backup_service.dart';
+import '../services/contact_service.dart';
 import '../services/reminder_coordinator.dart';
 
 class AddContactPage extends StatefulWidget {
@@ -75,6 +76,7 @@ class _AddContactPageState extends State<AddContactPage>
     try {
       final dbHelper = DBHelper();
       await dbHelper.insertContact(newContact);
+      ContactService().notifyContactsChanged();
 
       if (!mounted) {
         return;
