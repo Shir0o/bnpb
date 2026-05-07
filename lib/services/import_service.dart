@@ -114,10 +114,15 @@ class ImportService {
     }
 
     // Pass 3b: Insert relationships (insertContact does not sync these).
-    for (final contact in restoredContacts) {
-      for (final relationship in contact.relationships) {
-        await _dbHelper.upsertRelationship(relationship.copyWith(id: null));
-      }
+    final relationshipsToInsert = [
+      for (final contact in restoredContacts)
+        for (final relationship in contact.relationships)
+          relationship.copyWith(id: null),
+    ];
+    if (relationshipsToInsert.isNotEmpty) {
+      await _dbHelper.relationshipDao.insertRelationshipsBulk(
+        relationshipsToInsert,
+      );
     }
 
     // Pass 4: Refresh reminders

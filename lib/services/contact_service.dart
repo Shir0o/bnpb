@@ -24,6 +24,7 @@ class ContactService {
   /// Invalidates the contact cache and notifies listeners.
   void notifyContactsChanged() {
     _cachedContacts = null;
+    _cachedInteractions.clear();
     _contactsChangedController.add(null);
   }
 

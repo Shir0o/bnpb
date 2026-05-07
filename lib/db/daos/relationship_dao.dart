@@ -24,6 +24,21 @@ class RelationshipDao extends BaseDao {
     }
   }
 
+  /// Inserts many relationships in a single transaction. Used by import flows
+  /// to avoid one transaction per row.
+  Future<void> insertRelationshipsBulk(
+    Iterable<Relationship> relationships,
+  ) async {
+    final db = await database;
+    await db.transaction((txn) async {
+      final batch = txn.batch();
+      for (final relationship in relationships) {
+        batch.insert('relationships', relationship.toMap(includeId: false));
+      }
+      await batch.commit(noResult: true);
+    });
+  }
+
   Future<void> deleteRelationship(int id) async {
     final db = await database;
     await db.delete('relationships', where: 'id = ?', whereArgs: [id]);
