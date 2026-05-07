@@ -65,6 +65,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
   final TextEditingController _notesController = TextEditingController();
   final TextEditingController _interactionSearchController =
       TextEditingController();
+  final FocusNode _locationFocusNode = FocusNode();
 
   List<Interaction> _interactions = [];
   List<Interaction> _filteredInteractionsCache = [];
@@ -182,6 +183,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
     _locationController.dispose();
     _firstMeetingNotesController.dispose();
     _notesController.dispose();
+    _locationFocusNode.dispose();
     super.dispose();
   }
 
@@ -192,10 +194,14 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
     });
 
     final dbHelper = widget._dbHelper;
-    final contacts = await dbHelper.getContacts();
-    final relationships = await dbHelper.getRelationshipsForContact(
-      widget.contact.id,
-    );
+    final results = await Future.wait([
+      dbHelper.getContacts(),
+      dbHelper.getRelationshipsForContact(widget.contact.id),
+      dbHelper.getDistinctLocations(),
+    ]);
+    final contacts = results[0] as List<Contact>;
+    final relationships = results[1] as List<Relationship>;
+    final locations = results[2] as List<String>;
 
     setState(() {
       _contactLookup = {for (final contact in contacts) contact.id: contact};
@@ -205,13 +211,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
               (a, b) =>
                   a.fullName.toLowerCase().compareTo(b.fullName.toLowerCase()),
             );
-      final locations = <String>{};
-      for (final c in contacts) {
-        final loc = c.location?.trim();
-        if (loc != null && loc.isNotEmpty) locations.add(loc);
-      }
-      _locationSuggestions = locations.toList()
-        ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+      _locationSuggestions = locations;
       _isLoadingReferenceData = false;
       _relationships = relationships;
       _isLoadingRelationships = false;
@@ -870,6 +870,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
         const SizedBox(height: 16),
         _buildSuggestionField(
           controller: _locationController,
+          focusNode: _locationFocusNode,
           label: 'Location (Optional)',
           suggestions: _locationSuggestions,
         ),
@@ -955,12 +956,13 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
 
   Widget _buildSuggestionField({
     required TextEditingController controller,
+    required FocusNode focusNode,
     required String label,
     required List<String> suggestions,
   }) {
     return RawAutocomplete<String>(
       textEditingController: controller,
-      focusNode: FocusNode(),
+      focusNode: focusNode,
       optionsBuilder: (TextEditingValue value) {
         if (suggestions.isEmpty) return const Iterable<String>.empty();
         final query = value.text.trim().toLowerCase();

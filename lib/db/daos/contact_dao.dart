@@ -206,6 +206,21 @@ class ContactDao extends BaseDao {
     return contacts.isNotEmpty ? contacts.first : null;
   }
 
+  /// Returns the distinct, non-empty `location` values across active contacts,
+  /// sorted case-insensitively. Used to populate location autocomplete; does
+  /// not hydrate nested data the way [getContacts] does.
+  Future<List<String>> getDistinctLocations() async {
+    final db = await database;
+    final rows = await db.rawQuery('''
+      SELECT DISTINCT location FROM contacts
+      WHERE deletedAt IS NULL
+        AND location IS NOT NULL
+        AND TRIM(location) != ''
+    ''');
+    return rows.map((row) => (row['location'] as String).trim()).toList()
+      ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+  }
+
   Future<int> deleteContact(String id) async {
     final db = await database;
     return db.update(

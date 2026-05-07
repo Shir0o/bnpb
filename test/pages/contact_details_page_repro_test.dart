@@ -101,6 +101,9 @@ void main() {
         () => mockDBHelper.getRelationshipsForContact(any()),
       ).thenAnswer((_) async => []);
 
+      when(() => mockDBHelper.getDistinctLocations())
+          .thenAnswer((_) async => []);
+
       debugPrint('STEP: Stubs Setup Complete');
 
       // 3. Build Widget

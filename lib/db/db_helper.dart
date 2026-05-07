@@ -646,6 +646,8 @@ class DBHelper {
   Future<void> updateContact(Contact contact) =>
       contactDao.updateContact(contact);
   Future<int> deleteContact(String id) => contactDao.deleteContact(id);
+  Future<List<String>> getDistinctLocations() =>
+      contactDao.getDistinctLocations();
 
   Future<Interaction> insertInteraction(Interaction interaction) =>
       interactionDao.insertInteraction(interaction);

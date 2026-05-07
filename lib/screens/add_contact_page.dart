@@ -27,6 +27,7 @@ class _AddContactPageState extends State<AddContactPage>
   final TextEditingController _firstMeetingNotesController =
       TextEditingController();
   final TextEditingController _notesController = TextEditingController();
+  final FocusNode _locationFocusNode = FocusNode();
 
   bool _isSavingContact = false;
 
@@ -47,23 +48,16 @@ class _AddContactPageState extends State<AddContactPage>
     _locationController.dispose();
     _firstMeetingNotesController.dispose();
     _notesController.dispose();
+    _locationFocusNode.dispose();
     super.dispose();
   }
 
   Future<void> _loadSuggestions() async {
     try {
-      final contacts = await DBHelper().getContacts();
-      final locations = <String>{};
-      for (final contact in contacts) {
-        final location = contact.location?.trim();
-        if (location != null && location.isNotEmpty) {
-          locations.add(location);
-        }
-      }
+      final locations = await DBHelper().getDistinctLocations();
       if (!mounted) return;
       setState(() {
-        _locationSuggestions = locations.toList()
-          ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+        _locationSuggestions = locations;
       });
     } catch (error, stackTrace) {
       debugPrint('Failed to load suggestions: $error');
@@ -240,6 +234,7 @@ class _AddContactPageState extends State<AddContactPage>
                   const SizedBox(height: 16),
                   _buildSuggestionField(
                     controller: _locationController,
+                    focusNode: _locationFocusNode,
                     label: 'Location (Optional)',
                     prefixIcon: Icons.place_outlined,
                     suggestions: _locationSuggestions,
@@ -303,13 +298,14 @@ class _AddContactPageState extends State<AddContactPage>
 
   Widget _buildSuggestionField({
     required TextEditingController controller,
+    required FocusNode focusNode,
     required String label,
     required List<String> suggestions,
     IconData? prefixIcon,
   }) {
     return RawAutocomplete<String>(
       textEditingController: controller,
-      focusNode: FocusNode(),
+      focusNode: focusNode,
       optionsBuilder: (TextEditingValue value) {
         if (suggestions.isEmpty) {
           return const Iterable<String>.empty();

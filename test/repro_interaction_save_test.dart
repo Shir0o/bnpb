@@ -53,6 +53,7 @@ void main() {
     when(
       () => mockDBHelper.getRelationshipsForContact('c1'),
     ).thenAnswer((_) async => []);
+    when(() => mockDBHelper.getDistinctLocations()).thenAnswer((_) async => []);
 
     // Stub for inserting interaction
     when(() => mockDBHelper.insertInteraction(any())).thenAnswer((
