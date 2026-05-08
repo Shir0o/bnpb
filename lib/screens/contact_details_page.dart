@@ -45,8 +45,8 @@ class ContactDetailsPage extends StatefulWidget {
     required this.onDelete,
     ContactService? contactService,
     DBHelper? dbHelper,
-  }) : _contactService = contactService ?? ContactService(),
-       _dbHelper = dbHelper ?? DBHelper();
+  })  : _contactService = contactService ?? ContactService(),
+        _dbHelper = dbHelper ?? DBHelper();
 
   final ContactService _contactService;
   final DBHelper _dbHelper;
@@ -163,9 +163,8 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
       final mediumLabel =
           _mediumLabels[interaction.medium] ?? interaction.medium;
       final matchesSummary = interaction.summary.toLowerCase().contains(query);
-      final matchesLocation = (interaction.location ?? '')
-          .toLowerCase()
-          .contains(query);
+      final matchesLocation =
+          (interaction.location ?? '').toLowerCase().contains(query);
       final matchesMedium = mediumLabel.toLowerCase().contains(query);
 
       return matchesSummary || matchesLocation || matchesMedium;
@@ -256,10 +255,14 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
         _isLoadingInteractions = false;
       });
       debugPrint('Error loading interactions: $e');
+      final colorScheme = Theme.of(context).colorScheme;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Unable to load interactions. Please try again.'),
-          backgroundColor: Colors.red,
+        SnackBar(
+          content: Text(
+            'Unable to load interactions. Please try again.',
+            style: TextStyle(color: colorScheme.onError),
+          ),
+          backgroundColor: colorScheme.error,
         ),
       );
     }
@@ -447,9 +450,8 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
       lastName: lastNameText.isEmpty ? null : lastNameText,
       nickname: nicknameText.isEmpty ? null : nicknameText,
       location: locationText.isEmpty ? null : locationText,
-      firstMeetingNotes: firstMeetingNotesText.isEmpty
-          ? null
-          : firstMeetingNotesText,
+      firstMeetingNotes:
+          firstMeetingNotesText.isEmpty ? null : firstMeetingNotesText,
       notes: notesText.isEmpty ? null : notesText,
       tags: List<String>.from(_selectedTags),
       recognitionKeywords: List<String>.from(_keywords),
@@ -547,7 +549,10 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
                 Navigator.of(dialogContext).pop();
                 Navigator.of(pageContext).pop();
               },
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Theme.of(dialogContext).colorScheme.error,
+                foregroundColor: Theme.of(dialogContext).colorScheme.onError,
+              ),
               child: const Text('Delete'),
             ),
           ],
@@ -577,7 +582,10 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
                 Navigator.pop(context);
                 _deleteInteraction(interaction);
               },
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.error,
+                foregroundColor: Theme.of(context).colorScheme.onError,
+              ),
               child: const Text('Delete'),
             ),
           ],
@@ -724,7 +732,10 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
                 if (!context.mounted) return;
                 Navigator.pop(context);
               },
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.error,
+                foregroundColor: Theme.of(context).colorScheme.onError,
+              ),
               child: const Text('Delete'),
             ),
           ],
@@ -975,9 +986,11 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
             ),
             if (_filteredInteractionsCache.isEmpty) ...[
               const SizedBox(height: 12),
-              const Text(
+              Text(
                 'No interactions logged yet. Use the button below to record one.',
-                style: TextStyle(fontSize: 14, color: Colors.grey),
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.outline,
+                ),
               ),
             ],
           ],
@@ -1151,15 +1164,14 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
             Expanded(
               child: TextField(
                 controller: _photoCueController,
-                decoration:
-                    _buildInputDecoration(
-                      'Link or path to a helpful photo',
-                    ).copyWith(
-                      suffixIcon: IconButton(
-                        icon: const Icon(Icons.add),
-                        onPressed: _addPhotoCueFromInput,
-                      ),
-                    ),
+                decoration: _buildInputDecoration(
+                  'Link or path to a helpful photo',
+                ).copyWith(
+                  suffixIcon: IconButton(
+                    icon: const Icon(Icons.add),
+                    onPressed: _addPhotoCueFromInput,
+                  ),
+                ),
                 onSubmitted: (_) => _addPhotoCueFromInput(),
               ),
             ),
@@ -1422,10 +1434,6 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
     return InputDecoration(
       labelText: label,
       border: const OutlineInputBorder(),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
-        borderSide: const BorderSide(color: Colors.blue, width: 2),
-      ),
     );
   }
 
@@ -1874,8 +1882,8 @@ class _InteractionDetailPageState extends State<InteractionDetailPage> {
       final name = contact?.fullName.isNotEmpty == true
           ? contact!.fullName
           : (contact?.nickname?.isNotEmpty == true
-                ? contact!.nickname!
-                : participantId);
+              ? contact!.nickname!
+              : participantId);
       final initial = name.isNotEmpty ? name[0].toUpperCase() : '?';
 
       return Chip(
@@ -2010,7 +2018,10 @@ class _InteractionDetailPageState extends State<InteractionDetailPage> {
                 Navigator.pop(context);
                 _deleteInteraction();
               },
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.error,
+                foregroundColor: Theme.of(context).colorScheme.onError,
+              ),
               child: const Text('Delete'),
             ),
           ],
@@ -2103,8 +2114,7 @@ class _InteractionDetailPageState extends State<InteractionDetailPage> {
             _buildCard(
               children: [
                 _buildDetailTile(
-                  icon:
-                      _mediumIcons[_interaction.medium] ??
+                  icon: _mediumIcons[_interaction.medium] ??
                       Icons.event_note_outlined,
                   title: 'Medium',
                   value: mediumLabel,
@@ -2358,8 +2368,8 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
     final name = contact.fullName.isNotEmpty
         ? contact.fullName
         : (contact.nickname?.isNotEmpty == true
-              ? contact.nickname!
-              : contact.id);
+            ? contact.nickname!
+            : contact.id);
     final initial = name.isNotEmpty ? name[0].toUpperCase() : '?';
 
     return FilterChip(
@@ -2607,9 +2617,8 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
 
     final summary = _summaryController.text.trim();
     final durationText = _durationController.text.trim();
-    final durationMinutes = durationText.isEmpty
-        ? null
-        : int.tryParse(durationText);
+    final durationMinutes =
+        durationText.isEmpty ? null : int.tryParse(durationText);
     final notesText = _notesController.text.trim();
     final notes = notesText.isEmpty ? null : notesText;
 

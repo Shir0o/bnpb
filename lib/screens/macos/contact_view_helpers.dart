@@ -2,7 +2,21 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 /// Returns a deterministic color based on the input text.
-Color getAvatarColor(String text) {
+Color getAvatarColor(String text, [ColorScheme? colorScheme]) {
+  if (colorScheme != null) {
+    final colors = [
+      colorScheme.primary,
+      colorScheme.secondary,
+      colorScheme.tertiary,
+      colorScheme.primaryFixedDim,
+      colorScheme.secondaryFixedDim,
+      colorScheme.tertiaryFixedDim,
+      colorScheme.inversePrimary,
+      colorScheme.error,
+    ];
+    return colors[text.isEmpty ? 0 : text.codeUnitAt(0) % colors.length];
+  }
+
   if (text.isEmpty) return Colors.blue;
   final colors = [
     Colors.blue,

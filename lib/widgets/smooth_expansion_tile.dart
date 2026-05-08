@@ -60,8 +60,7 @@ class _SmoothExpansionTileState extends State<SmoothExpansionTile>
     _heightFactor = _controller.drive(CurveTween(curve: widget.curve));
     _iconTurns = _controller.drive(_halfTween.chain(_easeInTween));
 
-    _isExpanded =
-        PageStorage.of(context).readState(context) as bool? ??
+    _isExpanded = PageStorage.of(context).readState(context) as bool? ??
         widget.initiallyExpanded;
     if (_isExpanded) {
       _controller.value = 1.0;

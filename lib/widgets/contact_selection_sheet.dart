@@ -165,67 +165,68 @@ class _ContactSelectionSheetState extends State<ContactSelectionSheet> {
               child: _isLoading
                   ? const _ContactSelectionSkeleton(key: ValueKey('loading'))
                   : displayList.isEmpty
-                  ? Center(
-                      key: const ValueKey('empty'),
-                      child: Text(
-                        isSearching
-                            ? 'No matching contacts found'
-                            : 'No contacts found',
-                        style: theme.textTheme.bodyLarge?.copyWith(
-                          color: theme.colorScheme.outline,
-                        ),
-                      ),
-                    )
-                  : ListView.builder(
-                      key: const ValueKey('list'),
-                      itemCount: displayList.length,
-                      itemBuilder: (context, index) {
-                        final match = displayList[index];
-                        final contact = match.contact;
-                        final isSelected = _selectedIds.contains(contact.id);
-                        final isDisabled = widget.disabledIds.contains(
-                          contact.id,
-                        );
+                      ? Center(
+                          key: const ValueKey('empty'),
+                          child: Text(
+                            isSearching
+                                ? 'No matching contacts found'
+                                : 'No contacts found',
+                            style: theme.textTheme.bodyLarge?.copyWith(
+                              color: theme.colorScheme.outline,
+                            ),
+                          ),
+                        )
+                      : ListView.builder(
+                          key: const ValueKey('list'),
+                          itemCount: displayList.length,
+                          itemBuilder: (context, index) {
+                            final match = displayList[index];
+                            final contact = match.contact;
+                            final isSelected =
+                                _selectedIds.contains(contact.id);
+                            final isDisabled = widget.disabledIds.contains(
+                              contact.id,
+                            );
 
-                        return ListTile(
-                          leading: CircleAvatar(
-                            backgroundColor: isDisabled
-                                ? theme.colorScheme.surfaceContainerHighest
-                                : theme.colorScheme.primaryContainer,
-                            foregroundColor: isDisabled
-                                ? theme.colorScheme.outline
-                                : theme.colorScheme.onPrimaryContainer,
-                            child: Text(
-                              contact.firstName.isNotEmpty
-                                  ? contact.firstName[0].toUpperCase()
-                                  : '?',
-                            ),
-                          ),
-                          title: Text(
-                            contact.fullName,
-                            style: TextStyle(
-                              color: isDisabled
-                                  ? theme.colorScheme.outline
-                                  : null,
-                            ),
-                          ),
-                          subtitle: match.snippet != null
-                              ? Text(match.snippet!)
-                              : (contact.location?.isNotEmpty == true
-                                    ? Text(contact.location!)
-                                    : null),
-                          trailing: Checkbox(
-                            value: isSelected || isDisabled,
-                            onChanged: isDisabled
-                                ? null
-                                : (_) => _toggleSelection(contact.id),
-                          ),
-                          onTap: isDisabled
-                              ? null
-                              : () => _toggleSelection(contact.id),
-                        );
-                      },
-                    ),
+                            return ListTile(
+                              leading: CircleAvatar(
+                                backgroundColor: isDisabled
+                                    ? theme.colorScheme.surfaceContainerHighest
+                                    : theme.colorScheme.primaryContainer,
+                                foregroundColor: isDisabled
+                                    ? theme.colorScheme.outline
+                                    : theme.colorScheme.onPrimaryContainer,
+                                child: Text(
+                                  contact.firstName.isNotEmpty
+                                      ? contact.firstName[0].toUpperCase()
+                                      : '?',
+                                ),
+                              ),
+                              title: Text(
+                                contact.fullName,
+                                style: TextStyle(
+                                  color: isDisabled
+                                      ? theme.colorScheme.outline
+                                      : null,
+                                ),
+                              ),
+                              subtitle: match.snippet != null
+                                  ? Text(match.snippet!)
+                                  : (contact.location?.isNotEmpty == true
+                                      ? Text(contact.location!)
+                                      : null),
+                              trailing: Checkbox(
+                                value: isSelected || isDisabled,
+                                onChanged: isDisabled
+                                    ? null
+                                    : (_) => _toggleSelection(contact.id),
+                              ),
+                              onTap: isDisabled
+                                  ? null
+                                  : () => _toggleSelection(contact.id),
+                            );
+                          },
+                        ),
             ),
           ),
         ],

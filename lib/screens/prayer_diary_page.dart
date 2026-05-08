@@ -216,9 +216,8 @@ class _PrayerDiaryPageState extends State<PrayerDiaryPage> {
         .where((name) => name != 'Unknown contact')
         .join(', ');
 
-    final displayNames = contactNames.isEmpty
-        ? 'Unknown contact'
-        : contactNames;
+    final displayNames =
+        contactNames.isEmpty ? 'Unknown contact' : contactNames;
 
     final details = [
       _formatDate(request.answeredAt ?? request.requestedAt),

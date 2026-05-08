@@ -86,8 +86,7 @@ class ImportService {
 
       final contactWithoutRelations = contact.copyWith(
         interactions: [],
-        prayerRequests:
-            [], // Logic in HomePage didn't explicitly clear requests, but stripping interactions is key
+        prayerRequests: [], // Logic in HomePage didn't explicitly clear requests, but stripping interactions is key
       );
       await _dbHelper.insertContact(contactWithoutRelations);
     }

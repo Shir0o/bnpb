@@ -196,35 +196,40 @@ class _MacOSContactDetailsPageState extends State<MacOSContactDetailsPage> {
   Future<void> _deleteContact() async {
     final confirm = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(
-          'Delete Contact',
-          style: GoogleFonts.inter(fontWeight: FontWeight.bold),
-        ),
-        content: Text(
-          'Are you sure you want to delete this contact? This action cannot be undone.',
-          style: GoogleFonts.inter(fontSize: 14),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text(
-              'Cancel',
-              style: GoogleFonts.inter(color: Colors.grey[600]),
-            ),
+      builder: (context) {
+        final colorScheme = Theme.of(context).colorScheme;
+        return AlertDialog(
+          title: Text(
+            'Delete Contact',
+            style: GoogleFonts.googleSans(fontWeight: FontWeight.bold),
           ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: Text(
-              'Delete',
-              style: GoogleFonts.inter(
-                color: Colors.red,
-                fontWeight: FontWeight.bold,
+          content: Text(
+            'Are you sure you want to delete this contact? This action cannot be undone.',
+            style: GoogleFonts.googleSans(fontSize: 14),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: Text(
+                'Cancel',
+                style: GoogleFonts.googleSans(
+                  color: colorScheme.onSurfaceVariant,
+                ),
               ),
             ),
-          ),
-        ],
-      ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: Text(
+                'Delete',
+                style: GoogleFonts.googleSans(
+                  color: colorScheme.error,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
     );
 
     if (confirm == true && widget.contact?.id != null) {
@@ -271,9 +276,8 @@ class _MacOSContactDetailsPageState extends State<MacOSContactDetailsPage> {
 
     final dbHelper = DBHelper();
     final contacts = await dbHelper.getContacts();
-    final availableContacts = contacts
-        .where((c) => c.id != widget.contact!.id)
-        .toList();
+    final availableContacts =
+        contacts.where((c) => c.id != widget.contact!.id).toList();
 
     if (!mounted) return;
 
@@ -299,8 +303,9 @@ class _MacOSContactDetailsPageState extends State<MacOSContactDetailsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: colorScheme.surface,
       body: Column(
         children: [
           // Header
@@ -328,23 +333,26 @@ class _MacOSContactDetailsPageState extends State<MacOSContactDetailsPage> {
                           ],
                         ),
                         const SizedBox(height: 32),
-                        const Divider(height: 1, color: Color(0xFFE5E7EB)),
+                        Divider(height: 1, color: colorScheme.outlineVariant),
                         const SizedBox(height: 32),
                         // Contact Info Section
                         _buildContactInfoSection(),
                         const SizedBox(height: 32),
-                        const Divider(height: 1, color: Color(0xFFE5E7EB)),
+                        Divider(height: 1, color: colorScheme.outlineVariant),
                         const SizedBox(height: 32),
                         // Notes Section
                         _buildNotesSection(),
                         const SizedBox(height: 32),
-                        const Divider(height: 1, color: Color(0xFFE5E7EB)),
+                        Divider(height: 1, color: colorScheme.outlineVariant),
                         const SizedBox(height: 32),
                         // Interactions Section
                         _buildInteractionsSection(),
                         if (widget.contact != null) ...[
                           const SizedBox(height: 32),
-                          const Divider(height: 1, color: Color(0xFFE5E7EB)),
+                          Divider(
+                            height: 1,
+                            color: colorScheme.outlineVariant,
+                          ),
                           const SizedBox(height: 32),
                           _buildDeleteSection(),
                         ],
@@ -361,12 +369,15 @@ class _MacOSContactDetailsPageState extends State<MacOSContactDetailsPage> {
   }
 
   Widget _buildHeader() {
+    final colorScheme = Theme.of(context).colorScheme;
     return Container(
       height: 52,
       padding: const EdgeInsets.symmetric(horizontal: 16),
-      decoration: const BoxDecoration(
-        color: Colors.white, // semi-transparent?
-        border: Border(bottom: BorderSide(color: Color(0xFFE5E7EB))),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerLowest,
+        border: Border(
+          bottom: BorderSide(color: colorScheme.outlineVariant),
+        ),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -376,17 +387,17 @@ class _MacOSContactDetailsPageState extends State<MacOSContactDetailsPage> {
             children: [
               TextButton.icon(
                 onPressed: () => Navigator.pop(context),
-                icon: const Icon(
+                icon: Icon(
                   Icons.arrow_back_ios_new,
                   size: 16,
-                  color: Color(0xFF007AFF),
+                  color: colorScheme.primary,
                 ),
                 label: Text(
                   'Contacts',
-                  style: GoogleFonts.inter(
+                  style: GoogleFonts.googleSans(
                     fontSize: 15,
                     fontWeight: FontWeight.w500,
-                    color: const Color(0xFF007AFF),
+                    color: colorScheme.primary,
                   ),
                 ),
                 style: TextButton.styleFrom(
@@ -425,21 +436,23 @@ class _MacOSContactDetailsPageState extends State<MacOSContactDetailsPage> {
     required bool isPrimary,
     bool isLoading = false,
   }) {
+    final colorScheme = Theme.of(context).colorScheme;
     return SizedBox(
       height: 28,
       child: ElevatedButton(
         onPressed: onPressed,
         style: ElevatedButton.styleFrom(
-          backgroundColor: isPrimary ? const Color(0xFF007AFF) : Colors.white,
-          foregroundColor: isPrimary ? Colors.white : const Color(0xFF374151),
-          disabledBackgroundColor: isPrimary
-              ? const Color(0xFF007AFF).withValues(alpha: 0.5)
-              : null,
+          backgroundColor: isPrimary
+              ? colorScheme.primary
+              : colorScheme.surfaceContainerLowest,
+          foregroundColor:
+              isPrimary ? colorScheme.onPrimary : colorScheme.onSurface,
+          disabledBackgroundColor:
+              isPrimary ? colorScheme.primary.withValues(alpha: 0.5) : null,
           elevation: 0,
           shadowColor: Colors.transparent,
-          side: isPrimary
-              ? null
-              : const BorderSide(color: Color(0xFFD1D5DB)), // gray-300
+          side:
+              isPrimary ? null : BorderSide(color: colorScheme.outlineVariant),
           padding: const EdgeInsets.symmetric(horizontal: 12),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(4), // slightly rounded
@@ -451,12 +464,13 @@ class _MacOSContactDetailsPageState extends State<MacOSContactDetailsPage> {
                 height: 14,
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
-                  color: isPrimary ? Colors.white : const Color(0xFF007AFF),
+                  color:
+                      isPrimary ? colorScheme.onPrimary : colorScheme.primary,
                 ),
               )
             : Text(
                 label,
-                style: GoogleFonts.inter(
+                style: GoogleFonts.googleSans(
                   fontSize: 13,
                   fontWeight: FontWeight.w500,
                 ),
@@ -466,6 +480,7 @@ class _MacOSContactDetailsPageState extends State<MacOSContactDetailsPage> {
   }
 
   Widget _buildAvatar() {
+    final colorScheme = Theme.of(context).colorScheme;
     final hasPhoto = _photoCues.isNotEmpty;
     return MouseRegion(
       cursor: SystemMouseCursors.click,
@@ -477,12 +492,12 @@ class _MacOSContactDetailsPageState extends State<MacOSContactDetailsPage> {
               width: 112, // w-28
               height: 112, // h-28
               decoration: BoxDecoration(
-                color: Colors.grey[200],
+                color: colorScheme.surfaceContainerHigh,
                 shape: BoxShape.circle,
-                border: Border.all(color: Colors.black.withValues(alpha: 0.05)),
+                border: Border.all(color: colorScheme.outlineVariant),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.1),
+                    color: colorScheme.shadow.withValues(alpha: 0.1),
                     blurRadius: 4,
                     offset: const Offset(0, 2),
                   ),
@@ -495,7 +510,11 @@ class _MacOSContactDetailsPageState extends State<MacOSContactDetailsPage> {
                     : null,
               ),
               child: !hasPhoto
-                  ? Icon(Icons.person, size: 64, color: Colors.grey[400])
+                  ? Icon(
+                      Icons.person,
+                      size: 64,
+                      color: colorScheme.onSurfaceVariant,
+                    )
                   : null,
             ),
             // Edit Overlay (Always visible on hover ideally, but for simplicity always show "Edit" badge or relying on hover might be tricky in flutter web without logic)
@@ -511,18 +530,19 @@ class _MacOSContactDetailsPageState extends State<MacOSContactDetailsPage> {
                     vertical: 4,
                   ),
                   decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.6),
+                    color: colorScheme.inverseSurface.withValues(alpha: 0.8),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.2),
+                      color:
+                          colorScheme.onInverseSurface.withValues(alpha: 0.2),
                     ),
                   ),
                   child: Text(
                     'Edit',
-                    style: GoogleFonts.inter(
+                    style: GoogleFonts.googleSans(
                       fontSize: 11,
                       fontWeight: FontWeight.w500,
-                      color: Colors.white,
+                      color: colorScheme.onInverseSurface,
                     ),
                   ),
                 ),
@@ -553,6 +573,7 @@ class _MacOSContactDetailsPageState extends State<MacOSContactDetailsPage> {
   }
 
   Widget _buildContactInfoSection() {
+    final colorScheme = Theme.of(context).colorScheme;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -585,10 +606,10 @@ class _MacOSContactDetailsPageState extends State<MacOSContactDetailsPage> {
                 child: Text(
                   'Relationships',
                   textAlign: TextAlign.right,
-                  style: GoogleFonts.inter(
+                  style: GoogleFonts.googleSans(
                     fontSize: 12,
                     fontWeight: FontWeight.w500,
-                    color: const Color(0xFF6B7280), // gray-500
+                    color: colorScheme.onSurfaceVariant,
                   ),
                 ),
               ),
@@ -602,9 +623,9 @@ class _MacOSContactDetailsPageState extends State<MacOSContactDetailsPage> {
                       padding: const EdgeInsets.symmetric(vertical: 8.0),
                       child: Text(
                         'No relationships added',
-                        style: GoogleFonts.inter(
+                        style: GoogleFonts.googleSans(
                           fontSize: 13,
-                          color: Colors.grey[400],
+                          color: colorScheme.outline,
                         ),
                       ),
                     ),
@@ -612,17 +633,17 @@ class _MacOSContactDetailsPageState extends State<MacOSContactDetailsPage> {
                   const SizedBox(height: 4),
                   TextButton.icon(
                     onPressed: _addRelationship,
-                    icon: const Icon(
+                    icon: Icon(
                       Icons.add_circle,
                       size: 16,
-                      color: Color(0xFF16A34A),
-                    ), // green-600
+                      color: colorScheme.primary,
+                    ),
                     label: Text(
                       'add relationship',
-                      style: GoogleFonts.inter(
+                      style: GoogleFonts.googleSans(
                         fontSize: 13,
                         fontWeight: FontWeight.w500,
-                        color: const Color(0xFF16A34A),
+                        color: colorScheme.primary,
                       ),
                     ),
                     style: TextButton.styleFrom(
@@ -641,6 +662,7 @@ class _MacOSContactDetailsPageState extends State<MacOSContactDetailsPage> {
   }
 
   Widget _buildRelationshipItem(Relationship rel) {
+    final colorScheme = Theme.of(context).colorScheme;
     final isOutgoing = rel.sourceContactId == widget.contact?.id;
     final otherId = isOutgoing ? rel.targetContactId : rel.sourceContactId;
     // We need to resolve name. For now, showing ID or we need to fetch name.
@@ -667,12 +689,12 @@ class _MacOSContactDetailsPageState extends State<MacOSContactDetailsPage> {
                     vertical: 6,
                   ),
                   decoration: BoxDecoration(
-                    color: Colors.white,
-                    border: Border.all(color: Colors.grey[300]!),
+                    color: colorScheme.surfaceContainerLowest,
+                    border: Border.all(color: colorScheme.outlineVariant),
                     borderRadius: BorderRadius.circular(6),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.05),
+                        color: colorScheme.shadow.withValues(alpha: 0.05),
                         blurRadius: 2,
                         offset: const Offset(0, 1),
                       ),
@@ -680,18 +702,16 @@ class _MacOSContactDetailsPageState extends State<MacOSContactDetailsPage> {
                   ),
                   child: RichText(
                     text: TextSpan(
-                      style: GoogleFonts.inter(fontSize: 13),
+                      style: GoogleFonts.googleSans(fontSize: 13),
                       children: [
                         TextSpan(
                           text: '${rel.type}: ',
-                          style: const TextStyle(
-                            color: Color(0xFF6B7280),
-                          ), // gray-500
+                          style: TextStyle(color: colorScheme.onSurfaceVariant),
                         ),
                         TextSpan(
                           text: otherName,
-                          style: const TextStyle(
-                            color: Color(0xFF007AFF), // primary
+                          style: TextStyle(
+                            color: colorScheme.primary,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
@@ -702,11 +722,11 @@ class _MacOSContactDetailsPageState extends State<MacOSContactDetailsPage> {
               ),
               const SizedBox(width: 8),
               IconButton(
-                icon: const Icon(
+                icon: Icon(
                   Icons.remove_circle,
                   size: 18,
-                  color: Color(0xFF9CA3AF),
-                ), // gray-400
+                  color: colorScheme.outline,
+                ),
                 hoverColor: Colors.transparent,
                 highlightColor: Colors.transparent,
                 padding: EdgeInsets.zero,
@@ -722,6 +742,7 @@ class _MacOSContactDetailsPageState extends State<MacOSContactDetailsPage> {
   }
 
   Widget _buildNotesSection() {
+    final colorScheme = Theme.of(context).colorScheme;
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -732,10 +753,10 @@ class _MacOSContactDetailsPageState extends State<MacOSContactDetailsPage> {
             child: Text(
               'Notes',
               textAlign: TextAlign.right,
-              style: GoogleFonts.inter(
+              style: GoogleFonts.googleSans(
                 fontSize: 12,
                 fontWeight: FontWeight.w500,
-                color: const Color(0xFF6B7280),
+                color: colorScheme.onSurfaceVariant,
               ),
             ),
           ),
@@ -744,33 +765,34 @@ class _MacOSContactDetailsPageState extends State<MacOSContactDetailsPage> {
           child: TextField(
             controller: _notesController,
             maxLines: 6,
-            style: GoogleFonts.inter(fontSize: 13, color: Colors.grey[900]),
+            style: GoogleFonts.googleSans(
+              fontSize: 13,
+              color: colorScheme.onSurface,
+            ),
             decoration: InputDecoration(
               hintText: 'Add notes about this contact...',
-              hintStyle: GoogleFonts.inter(
+              hintStyle: GoogleFonts.googleSans(
                 fontSize: 13,
-                color: Colors.grey[400],
+                color: colorScheme.outline,
               ),
               filled: true,
-              fillColor: const Color(
-                0xFFFEFCE8,
-              ).withValues(alpha: 0.5), // yellow-50/50
+              fillColor: colorScheme.tertiaryContainer.withValues(alpha: 0.28),
               contentPadding: const EdgeInsets.symmetric(
                 horizontal: 12,
                 vertical: 8,
               ),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(6),
-                borderSide: const BorderSide(color: Color(0xFFD1D5DB)),
+                borderSide: BorderSide(color: colorScheme.outlineVariant),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(6),
-                borderSide: const BorderSide(color: Color(0xFFD1D5DB)),
+                borderSide: BorderSide(color: colorScheme.outlineVariant),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(6),
-                borderSide: const BorderSide(
-                  color: Color(0xFF007AFF),
+                borderSide: BorderSide(
+                  color: colorScheme.primary,
                   width: 2,
                 ),
               ),
@@ -782,6 +804,7 @@ class _MacOSContactDetailsPageState extends State<MacOSContactDetailsPage> {
   }
 
   Widget _buildInteractionsSection() {
+    final colorScheme = Theme.of(context).colorScheme;
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -792,10 +815,10 @@ class _MacOSContactDetailsPageState extends State<MacOSContactDetailsPage> {
             child: Text(
               'Interactions',
               textAlign: TextAlign.right,
-              style: GoogleFonts.inter(
+              style: GoogleFonts.googleSans(
                 fontSize: 12,
                 fontWeight: FontWeight.w500,
-                color: const Color(0xFF6B7280),
+                color: colorScheme.onSurfaceVariant,
               ),
             ),
           ),
@@ -803,12 +826,12 @@ class _MacOSContactDetailsPageState extends State<MacOSContactDetailsPage> {
         Expanded(
           child: Container(
             decoration: BoxDecoration(
-              color: Colors.white,
-              border: Border.all(color: const Color(0xFFE5E7EB)),
+              color: colorScheme.surfaceContainerLowest,
+              border: Border.all(color: colorScheme.outlineVariant),
               borderRadius: BorderRadius.circular(6),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.05),
+                  color: colorScheme.shadow.withValues(alpha: 0.05),
                   blurRadius: 2,
                 ),
               ],
@@ -817,7 +840,7 @@ class _MacOSContactDetailsPageState extends State<MacOSContactDetailsPage> {
               children: [
                 // Table Header
                 Container(
-                  color: const Color(0xFFF9FAFB), // gray-50
+                  color: colorScheme.surfaceContainerLow,
                   padding: const EdgeInsets.symmetric(
                     horizontal: 12,
                     vertical: 8,
@@ -849,18 +872,18 @@ class _MacOSContactDetailsPageState extends State<MacOSContactDetailsPage> {
                     padding: const EdgeInsets.all(16.0),
                     child: Text(
                       'No interactions yet',
-                      style: GoogleFonts.inter(
+                      style: GoogleFonts.googleSans(
                         fontSize: 12,
-                        color: Colors.grey[400],
+                        color: colorScheme.outline,
                       ),
                     ),
                   )
                 else
                   ..._interactions.take(5).map((interaction) {
                     return Container(
-                      decoration: const BoxDecoration(
+                      decoration: BoxDecoration(
                         border: Border(
-                          top: BorderSide(color: Color(0xFFF3F4F6)),
+                          top: BorderSide(color: colorScheme.outlineVariant),
                         ),
                       ),
                       padding: const EdgeInsets.symmetric(
@@ -873,9 +896,9 @@ class _MacOSContactDetailsPageState extends State<MacOSContactDetailsPage> {
                             flex: 2,
                             child: Text(
                               _dateFormat.format(interaction.occurredAt),
-                              style: GoogleFonts.inter(
+                              style: GoogleFonts.googleSans(
                                 fontSize: 12,
-                                color: Colors.grey[900],
+                                color: colorScheme.onSurface,
                               ),
                             ),
                           ),
@@ -886,14 +909,14 @@ class _MacOSContactDetailsPageState extends State<MacOSContactDetailsPage> {
                                 Icon(
                                   getMediumIcon(interaction.medium),
                                   size: 14,
-                                  color: Colors.grey[500],
+                                  color: colorScheme.onSurfaceVariant,
                                 ),
                                 const SizedBox(width: 4),
                                 Text(
                                   _capitalize(interaction.medium),
-                                  style: GoogleFonts.inter(
+                                  style: GoogleFonts.googleSans(
                                     fontSize: 12,
-                                    color: Colors.grey[500],
+                                    color: colorScheme.onSurfaceVariant,
                                   ),
                                 ),
                               ],
@@ -906,9 +929,9 @@ class _MacOSContactDetailsPageState extends State<MacOSContactDetailsPage> {
                                   ? '${interaction.durationMinutes}m'
                                   : '-',
                               textAlign: TextAlign.right,
-                              style: GoogleFonts.inter(
+                              style: GoogleFonts.googleSans(
                                 fontSize: 12,
-                                color: Colors.grey[500],
+                                color: colorScheme.onSurfaceVariant,
                               ),
                             ),
                           ),
@@ -919,9 +942,11 @@ class _MacOSContactDetailsPageState extends State<MacOSContactDetailsPage> {
                 // Footer
                 if (_interactions.isNotEmpty)
                   Container(
-                    decoration: const BoxDecoration(
-                      color: Color(0xFFF9FAFB),
-                      border: Border(top: BorderSide(color: Color(0xFFF3F4F6))),
+                    decoration: BoxDecoration(
+                      color: colorScheme.surfaceContainerLow,
+                      border: Border(
+                        top: BorderSide(color: colorScheme.outlineVariant),
+                      ),
                     ),
                     padding: const EdgeInsets.symmetric(
                       horizontal: 12,
@@ -930,10 +955,10 @@ class _MacOSContactDetailsPageState extends State<MacOSContactDetailsPage> {
                     alignment: Alignment.centerLeft,
                     child: Text(
                       'View all history',
-                      style: GoogleFonts.inter(
+                      style: GoogleFonts.googleSans(
                         fontSize: 12,
                         fontWeight: FontWeight.w500,
-                        color: const Color(0xFF007AFF),
+                        color: colorScheme.primary,
                       ),
                     ),
                   ),
@@ -946,11 +971,11 @@ class _MacOSContactDetailsPageState extends State<MacOSContactDetailsPage> {
   }
 
   TextStyle _tableHeaderStyle() {
-    return GoogleFonts.inter(
+    final colorScheme = Theme.of(context).colorScheme;
+    return GoogleFonts.googleSans(
       fontSize: 11,
       fontWeight: FontWeight.w500,
-      color: const Color(0xFF6B7280),
-      letterSpacing: 0.5,
+      color: colorScheme.onSurfaceVariant,
     );
   }
 
@@ -964,6 +989,7 @@ class _MacOSContactDetailsPageState extends State<MacOSContactDetailsPage> {
     IconData? icon,
     TextInputType inputType = TextInputType.text,
   }) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Row(
       crossAxisAlignment: CrossAxisAlignment.baseline,
       textBaseline: TextBaseline.alphabetic,
@@ -975,10 +1001,10 @@ class _MacOSContactDetailsPageState extends State<MacOSContactDetailsPage> {
             child: Text(
               label,
               textAlign: TextAlign.right,
-              style: GoogleFonts.inter(
+              style: GoogleFonts.googleSans(
                 fontSize: 12,
                 fontWeight: FontWeight.w500,
-                color: const Color(0xFF6B7280), // gray-500
+                color: colorScheme.onSurfaceVariant,
               ),
             ),
           ),
@@ -990,12 +1016,15 @@ class _MacOSContactDetailsPageState extends State<MacOSContactDetailsPage> {
               TextFormField(
                 controller: controller,
                 keyboardType: inputType,
-                style: GoogleFonts.inter(fontSize: 13, color: Colors.grey[900]),
+                style: GoogleFonts.googleSans(
+                  fontSize: 13,
+                  color: colorScheme.onSurface,
+                ),
                 decoration: InputDecoration(
                   hintText: placeholder,
-                  hintStyle: GoogleFonts.inter(
+                  hintStyle: GoogleFonts.googleSans(
                     fontSize: 13,
-                    color: Colors.grey[400],
+                    color: colorScheme.outline,
                   ),
                   contentPadding: EdgeInsets.fromLTRB(
                     8,
@@ -1006,21 +1035,21 @@ class _MacOSContactDetailsPageState extends State<MacOSContactDetailsPage> {
                   isDense: true,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(6),
-                    borderSide: const BorderSide(color: Color(0xFFD1D5DB)),
+                    borderSide: BorderSide(color: colorScheme.outlineVariant),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(6),
-                    borderSide: const BorderSide(color: Color(0xFFD1D5DB)),
+                    borderSide: BorderSide(color: colorScheme.outlineVariant),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(6),
-                    borderSide: const BorderSide(
-                      color: Color(0xFF007AFF),
+                    borderSide: BorderSide(
+                      color: colorScheme.primary,
                       width: 2,
                     ),
                   ),
                   filled: true,
-                  fillColor: Colors.white,
+                  fillColor: colorScheme.surfaceContainerLowest,
                 ),
                 validator: (value) {
                   if (label == 'First' &&
@@ -1033,7 +1062,7 @@ class _MacOSContactDetailsPageState extends State<MacOSContactDetailsPage> {
               if (icon != null)
                 Padding(
                   padding: const EdgeInsets.only(right: 8.0),
-                  child: Icon(icon, size: 16, color: Colors.grey[400]),
+                  child: Icon(icon, size: 16, color: colorScheme.outline),
                 ),
             ],
           ),
@@ -1043,20 +1072,21 @@ class _MacOSContactDetailsPageState extends State<MacOSContactDetailsPage> {
   }
 
   Widget _buildDeleteSection() {
+    final colorScheme = Theme.of(context).colorScheme;
     return Center(
       child: TextButton.icon(
         onPressed: _isSaving ? null : _deleteContact,
-        icon: const Icon(Icons.delete_outline, size: 18, color: Colors.red),
+        icon: Icon(Icons.delete_outline, size: 18, color: colorScheme.error),
         label: Text(
           'Delete Contact',
-          style: GoogleFonts.inter(
-            color: Colors.red,
+          style: GoogleFonts.googleSans(
+            color: colorScheme.error,
             fontWeight: FontWeight.w500,
           ),
         ),
         style: TextButton.styleFrom(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          backgroundColor: Colors.red.withValues(alpha: 0.05),
+          backgroundColor: colorScheme.errorContainer.withValues(alpha: 0.32),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         ),
       ),

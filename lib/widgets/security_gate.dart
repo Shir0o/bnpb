@@ -110,9 +110,8 @@ class _SecurityGateState extends State<SecurityGate> {
           onSubmit: _unlockWithPasscode,
           errorText: _error,
           showBiometricButton: _biometricsEnabled,
-          onBiometricRequested: _biometricsEnabled
-              ? _unlockWithBiometrics
-              : null,
+          onBiometricRequested:
+              _biometricsEnabled ? _unlockWithBiometrics : null,
           biometricsAvailable: _biometricsAvailable,
         );
     }
@@ -222,8 +221,8 @@ class _LockScreenState extends State<_LockScreen> {
                       child: Text(
                         'Biometric unlock is unavailable on this device.',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context).hintColor,
-                        ),
+                              color: Theme.of(context).hintColor,
+                            ),
                         textAlign: TextAlign.center,
                       ),
                     ),

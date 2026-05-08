@@ -37,9 +37,8 @@ class _RelationshipDialogState extends State<RelationshipDialog> {
       selectedContactId = widget.relationship!.targetContactId;
       // We assume the parent passed a valid list including the target contact if editing.
     } else {
-      selectedContactId = dropdownContacts.isNotEmpty
-          ? dropdownContacts.first.id
-          : null;
+      selectedContactId =
+          dropdownContacts.isNotEmpty ? dropdownContacts.first.id : null;
     }
 
     notesController = TextEditingController(

@@ -17,15 +17,16 @@ class ContactCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     final activeRequestCount = contact.prayerRequests
         .where((r) => r.status == PrayerRequestStatus.pending)
         .length;
 
     final borderColor = isSelected
-        ? Theme.of(context).primaryColor.withValues(alpha: 0.2)
+        ? colorScheme.primary.withValues(alpha: 0.2)
         : Colors.transparent;
     final backgroundColor = isSelected
-        ? Theme.of(context).primaryColor.withValues(alpha: 0.1)
+        ? colorScheme.primary.withValues(alpha: 0.1)
         : Colors.transparent;
 
     return Material(
@@ -33,7 +34,7 @@ class ContactCard extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(12),
-        hoverColor: Colors.grey[50],
+        hoverColor: colorScheme.surfaceContainerLow,
         // Optimization: Isolate the content from the InkWell ripple animation.
         child: RepaintBoundary(
           child: Container(
@@ -54,9 +55,9 @@ class ContactCard extends StatelessWidget {
                   width: 64,
                   height: 64,
                   decoration: BoxDecoration(
-                    color: Colors.grey[200],
+                    color: colorScheme.surfaceContainerHighest,
                     shape: BoxShape.circle,
-                    border: Border.all(color: Colors.grey[100]!),
+                    border: Border.all(color: colorScheme.surfaceContainerHigh),
                     image: contact.recognitionPhotoUris.isNotEmpty
                         ? DecorationImage(
                             // Optimization: Resize image to display size to save memory.
@@ -74,10 +75,10 @@ class ContactCard extends StatelessWidget {
                   child: contact.recognitionPhotoUris.isEmpty
                       ? Text(
                           contact.initials,
-                          style: GoogleFonts.inter(
+                          style: GoogleFonts.googleSans(
                             fontSize: 24,
                             fontWeight: FontWeight.w500,
-                            color: Colors.grey[500],
+                            color: colorScheme.onSurfaceVariant,
                           ),
                         )
                       : null,
@@ -86,10 +87,10 @@ class ContactCard extends StatelessWidget {
                 // Name
                 Text(
                   contact.displayName,
-                  style: GoogleFonts.inter(
+                  style: GoogleFonts.googleSans(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
-                    color: Colors.grey[900],
+                    color: colorScheme.onSurface,
                   ),
                   textAlign: TextAlign.center,
                   maxLines: 1,
@@ -101,12 +102,12 @@ class ContactCard extends StatelessWidget {
                   activeRequestCount > 0
                       ? '$activeRequestCount active request${activeRequestCount == 1 ? '' : 's'}'
                       : 'No active requests',
-                  style: GoogleFonts.inter(
+                  style: GoogleFonts.googleSans(
                     fontSize: 11,
                     fontWeight: FontWeight.w500,
                     color: activeRequestCount > 0
-                        ? Theme.of(context).primaryColor
-                        : Colors.grey[400],
+                        ? colorScheme.primary
+                        : colorScheme.outline,
                   ),
                   textAlign: TextAlign.center,
                   maxLines: 1,
@@ -128,17 +129,19 @@ class AddContactCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(12),
-        hoverColor: Colors.grey[50],
+        hoverColor: colorScheme.surfaceContainerLow,
         child: Container(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: Colors.grey[300]!,
+              color: colorScheme.outlineVariant,
               style: BorderStyle
                   .solid, // Flutter doesn't support dashed easily without package, sticking to solid or using CustomPainter.
               // Design says dashed. For simplicity without extra dependencies, I'll use solid light grey which looks fine,
@@ -155,27 +158,31 @@ class AddContactCard extends StatelessWidget {
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   border: Border.all(
-                    color: Colors.grey[300]!,
+                    color: colorScheme.outlineVariant,
                     width: 2,
                     style: BorderStyle
                         .solid, // Again, mimicking dashed visually or using simple border
                   ),
                 ),
-                child: Icon(Icons.add, size: 32, color: Colors.grey[300]),
+                child: Icon(
+                  Icons.add,
+                  size: 32,
+                  color: colorScheme.outlineVariant,
+                ),
               ),
               const SizedBox(height: 12),
               Text(
                 'Add Contact',
-                style: GoogleFonts.inter(
+                style: GoogleFonts.googleSans(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
-                  color: Colors.grey[400],
+                  color: colorScheme.outline,
                 ),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 4),
               // Spacer to align with contact card text height
-              Text('', style: GoogleFonts.inter(fontSize: 11)),
+              Text('', style: GoogleFonts.googleSans(fontSize: 11)),
             ],
           ),
         ),

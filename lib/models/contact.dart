@@ -59,14 +59,14 @@ class Contact {
     List<Relationship>? relationships,
     DateTime? updatedAt,
     this.deletedAt,
-  }) : tags = tags ?? const [],
-       recognitionKeywords = recognitionKeywords ?? const [],
-       recognitionPhotoUris = recognitionPhotoUris ?? const [],
-       recognitionReminders = recognitionReminders ?? const [],
-       interactions = interactions ?? const [],
-       prayerRequests = prayerRequests ?? const [],
-       relationships = relationships ?? const [],
-       updatedAt = updatedAt ?? DateTime.now();
+  })  : tags = tags ?? const [],
+        recognitionKeywords = recognitionKeywords ?? const [],
+        recognitionPhotoUris = recognitionPhotoUris ?? const [],
+        recognitionReminders = recognitionReminders ?? const [],
+        interactions = interactions ?? const [],
+        prayerRequests = prayerRequests ?? const [],
+        relationships = relationships ?? const [],
+        updatedAt = updatedAt ?? DateTime.now();
 
   Contact copyWith({
     String? firstName,

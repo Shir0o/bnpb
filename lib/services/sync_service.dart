@@ -16,6 +16,31 @@ import 'reminder_coordinator.dart';
 
 enum SyncType { local, googleDrive }
 
+class SyncConfigurationException implements Exception {
+  final String message;
+
+  const SyncConfigurationException(this.message);
+
+  @override
+  String toString() => message;
+}
+
+class SyncConfigurationStatus {
+  final SyncType syncType;
+  final bool canSync;
+  final String label;
+  final String detail;
+  final String? path;
+
+  const SyncConfigurationStatus({
+    required this.syncType,
+    required this.canSync,
+    required this.label,
+    required this.detail,
+    this.path,
+  });
+}
+
 class SyncService {
   static final SyncService _instance = SyncService._internal();
   factory SyncService() => _instance;
@@ -74,6 +99,58 @@ class SyncService {
     );
   }
 
+  Future<SyncConfigurationStatus> getConfigurationStatus() async {
+    final syncType = await getSyncType();
+
+    if (syncType == SyncType.local) {
+      final path = await getSyncDirectory();
+      if (path == null || path.trim().isEmpty) {
+        return const SyncConfigurationStatus(
+          syncType: SyncType.local,
+          canSync: false,
+          label: 'Sync folder required',
+          detail: 'Choose a folder shared with your mobile device.',
+        );
+      }
+
+      final directory = Directory(path);
+      if (!await directory.exists()) {
+        return SyncConfigurationStatus(
+          syncType: SyncType.local,
+          canSync: false,
+          label: 'Sync folder unavailable',
+          detail: 'Choose another folder or reconnect the selected location.',
+          path: path,
+        );
+      }
+
+      return SyncConfigurationStatus(
+        syncType: SyncType.local,
+        canSync: true,
+        label: 'Local folder ready',
+        detail: 'Changes sync through the selected shared folder.',
+        path: path,
+      );
+    }
+
+    final user = await _googleDrive.currentUser;
+    if (user == null) {
+      return const SyncConfigurationStatus(
+        syncType: SyncType.googleDrive,
+        canSync: false,
+        label: 'Google Drive sign-in required',
+        detail: 'Sign in to Google Drive with the same account used on mobile.',
+      );
+    }
+
+    return SyncConfigurationStatus(
+      syncType: SyncType.googleDrive,
+      canSync: true,
+      label: 'Google Drive ready',
+      detail: 'Signed in as ${user.email}.',
+    );
+  }
+
   /// Performs a full sync: Import then Export.
   /// [force] will skip the cooldown check.
   /// [rethrowErrors] will allow exceptions to propagate (useful for manual UI sync).
@@ -102,6 +179,9 @@ class SyncService {
     bool hasChanges = false;
 
     try {
+      if (rethrowErrors) {
+        await _ensureConfiguredForManualSync();
+      }
       if (syncType == SyncType.local) {
         hasChanges = await _performLocalSync();
       } else {
@@ -119,6 +199,13 @@ class SyncService {
       }
     }
     return hasChanges;
+  }
+
+  Future<void> _ensureConfiguredForManualSync() async {
+    final status = await getConfigurationStatus();
+    if (!status.canSync) {
+      throw SyncConfigurationException(status.detail);
+    }
   }
 
   Future<bool> _performLocalSync() async {
@@ -164,35 +251,23 @@ class SyncService {
       final processedFiles = await _coordinator.getProcessedFiles();
       final deviceId = await _coordinator.getDeviceId();
 
-      // Optimization: Group remote files by deviceId and only take the latest one per device.
-      // This drastically reduces the number of files we check and download.
-      final latestFilesPerDevice = <String, drive.File>{};
-      for (final file in remoteFiles) {
-        if (file.name == null || file.id == null) continue;
+      final filesToDownload = remoteFiles.where((file) {
+        if (file.name == null || file.id == null) return false;
         final name = file.name!;
-        if (!name.endsWith('_data.json')) continue;
-
-        // Skip our own files
-        if (name.startsWith(deviceId)) continue;
-
-        // Skip already processed files
-        if (processedFiles.contains(name)) continue;
-
-        final fileDeviceId = name.split('_').first;
-        final timestamp = _extractTimestamp(name);
-
-        final existing = latestFilesPerDevice[fileDeviceId];
-        if (existing == null || timestamp > _extractTimestamp(existing.name!)) {
-          latestFilesPerDevice[fileDeviceId] = file;
-        }
-      }
-
-      final filesToDownload = latestFilesPerDevice.values.toList();
+        if (!name.endsWith('_data.json')) return false;
+        if (name.startsWith(deviceId)) return false;
+        return !processedFiles.contains(name);
+      }).toList()
+        ..sort((a, b) {
+          final timestampA = _extractTimestamp(a.name!);
+          final timestampB = _extractTimestamp(b.name!);
+          return timestampA.compareTo(timestampB);
+        });
 
       // Download in parallel batches
       await _processInBatches<drive.File>(filesToDownload, (file) async {
         if (kDebugMode) {
-          print('-> Downloading latest from device: ${file.name}');
+          print('-> Downloading sync delta: ${file.name}');
         }
         final targetFile = File(p.join(syncTempDir.path, file.name!));
         await _googleDrive.downloadFile(file.id!, targetFile);

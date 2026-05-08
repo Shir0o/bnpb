@@ -56,9 +56,12 @@ void main() async {
   final contacts = await dbHelper.getContacts();
   final prayerLists = await dbHelper.getPrayerLists();
 
-  final payload = await ExportService().buildFullExportPayload(contacts, [
-    'firstName',
-  ], prayerLists: prayerLists);
+  final payload = await ExportService().buildFullExportPayload(
+      contacts,
+      [
+        'firstName',
+      ],
+      prayerLists: prayerLists);
 
   final jsonStr = jsonEncode(payload);
   // ignore: avoid_print

@@ -88,8 +88,8 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
     final biometricEnabled = await _securityService.isBiometricEnabled();
     final biometricAvailable = await _securityService.canUseBiometrics();
     final reminderService = ReminderService();
-    final supportsExactAlarmPermission = await reminderService
-        .isExactAlarmPermissionRelevant();
+    final supportsExactAlarmPermission =
+        await reminderService.isExactAlarmPermissionRelevant();
     final exactAlarmOptIn = await reminderService.isExactAlarmOptInEnabled();
 
     if (!mounted) {
@@ -180,8 +180,7 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
               ...ReminderChannel.values.map((channel) {
                 final preference = _globalDefaults[channel];
                 final enabled = preference?.enabled ?? true;
-                final leadTime =
-                    preference?.leadTime ??
+                final leadTime = preference?.leadTime ??
                     _fallbackLeadTimeFor(channel: channel);
                 return _PreferenceControl(
                   title: channel.label,
@@ -807,9 +806,8 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
           title: const Text('Contact overrides'),
           subtitle: const Text('Override reminders for a specific person.'),
           children: _contacts.map((contact) {
-            final displayName = contact.fullName.isEmpty
-                ? 'Unnamed contact'
-                : contact.fullName;
+            final displayName =
+                contact.fullName.isEmpty ? 'Unnamed contact' : contact.fullName;
             return ExpansionTile(
               title: Text(displayName),
               childrenPadding: const EdgeInsets.only(
@@ -979,16 +977,15 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
     });
 
     try {
-      final preference =
-          (existing ??
-                  NotificationPreference(
-                    scopeType: scopeType,
-                    scopeId: scopeId,
-                    channel: channel,
-                    enabled: enabled,
-                    leadTime: leadTime,
-                  ))
-              .copyWith(enabled: enabled, leadTime: leadTime);
+      final preference = (existing ??
+              NotificationPreference(
+                scopeType: scopeType,
+                scopeId: scopeId,
+                channel: channel,
+                enabled: enabled,
+                leadTime: leadTime,
+              ))
+          .copyWith(enabled: enabled, leadTime: leadTime);
       final saved = await _preferencesRepository.savePreference(preference);
       if (!mounted) {
         return;
@@ -1002,8 +999,8 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
         if (scopeType == NotificationScopeType.global) {
           final globalMutable =
               Map<ReminderChannel, NotificationPreference>.from(
-                _globalDefaults,
-              );
+            _globalDefaults,
+          );
           globalMutable[channel] = saved;
           _globalDefaults = globalMutable;
         }
@@ -1281,8 +1278,7 @@ String _formatLeadTime(ReminderChannel channel, Duration duration) {
     }
   }
 
-  final isAfter =
-      channel == ReminderChannel.prayerUpdate ||
+  final isAfter = channel == ReminderChannel.prayerUpdate ||
       channel == ReminderChannel.weeklyReview ||
       channel == ReminderChannel.monthlyReview;
   final qualifier = isAfter ? 'after' : 'before';

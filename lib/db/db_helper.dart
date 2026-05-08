@@ -546,6 +546,37 @@ class DBHelper {
     }
   }
 
+  Future<Map<String, dynamic>> getGlobalMetadata() async {
+    final db = await database;
+    final contactCount = Sqflite.firstIntValue(await db.rawQuery(
+            'SELECT COUNT(*) FROM contacts WHERE deletedAt IS NULL')) ??
+        0;
+    final interactionCount = Sqflite.firstIntValue(await db.rawQuery(
+            'SELECT COUNT(*) FROM interactions WHERE deletedAt IS NULL')) ??
+        0;
+    final prayerCount = Sqflite.firstIntValue(await db.rawQuery(
+            'SELECT COUNT(*) FROM prayer_requests WHERE deletedAt IS NULL')) ??
+        0;
+
+    final lastUpdateRow = await db.rawQuery('''
+      SELECT MAX(updatedAt) as maxUpdate FROM (
+        SELECT updatedAt FROM contacts WHERE deletedAt IS NULL
+        UNION ALL
+        SELECT updatedAt FROM interactions WHERE deletedAt IS NULL
+        UNION ALL
+        SELECT updatedAt FROM prayer_requests WHERE deletedAt IS NULL
+      )
+    ''');
+    final lastUpdate = lastUpdateRow.first['maxUpdate'] as String?;
+
+    return {
+      'contactCount': contactCount,
+      'interactionCount': interactionCount,
+      'prayerCount': prayerCount,
+      'lastUpdate': lastUpdate,
+    };
+  }
+
   // --- Maintenance Methods ---
 
   Future<void> clearAllData() async {
@@ -634,12 +665,13 @@ class DBHelper {
     List<String>? contactIds,
     DateTime? updatedSince,
     bool includeDeleted = false,
-  }) => contactDao.getContacts(
-    contactId: contactId,
-    contactIds: contactIds,
-    updatedSince: updatedSince,
-    includeDeleted: includeDeleted,
-  );
+  }) =>
+      contactDao.getContacts(
+        contactId: contactId,
+        contactIds: contactIds,
+        updatedSince: updatedSince,
+        includeDeleted: includeDeleted,
+      );
 
   Future<List<Contact>> getContactsModifiedSince(DateTime? since) =>
       contactDao.getContacts(updatedSince: since, includeDeleted: true);
@@ -664,13 +696,14 @@ class DBHelper {
     String? contactId,
     DateTime? updatedSince,
     bool includeDeleted = false,
-  }) => interactionDao.getInteractions(
-    start: start,
-    end: end,
-    contactId: contactId,
-    updatedSince: updatedSince,
-    includeDeleted: includeDeleted,
-  );
+  }) =>
+      interactionDao.getInteractions(
+        start: start,
+        end: end,
+        contactId: contactId,
+        updatedSince: updatedSince,
+        includeDeleted: includeDeleted,
+      );
   Future<List<Interaction>> getPrayerFocusInteractions({int limit = 10}) async {
     final db = await database;
     final rows = await db.query(
@@ -684,8 +717,8 @@ class DBHelper {
     if (rows.isEmpty) return [];
 
     final interactionIds = rows.map((row) => row['id'] as int).toSet();
-    final participantsByInteraction = await interactionDao
-        .getParticipantsForInteractions(interactionIds);
+    final participantsByInteraction =
+        await interactionDao.getParticipantsForInteractions(interactionIds);
 
     return rows.map((row) {
       final interactionMap = Map<String, dynamic>.from(row);
@@ -721,16 +754,16 @@ class DBHelper {
     required String contactId,
     required DateTime occurredAt,
     required String summary,
-  }) => interactionDao.interactionExists(
-    contactId: contactId,
-    occurredAt: occurredAt,
-    summary: summary,
-  );
+  }) =>
+      interactionDao.interactionExists(
+        contactId: contactId,
+        occurredAt: occurredAt,
+        summary: summary,
+      );
 
   Future<List<PrayerRequest>> getPrayerRequestsForContact(String contactId) =>
-      prayerRequestDao
-          .getPrayerRequestsForContacts([contactId])
-          .then((map) => map[contactId] ?? []);
+      prayerRequestDao.getPrayerRequestsForContacts([contactId]).then(
+          (map) => map[contactId] ?? []);
 
   Future<PrayerRequest> insertPrayerRequest(PrayerRequest request) =>
       prayerRequestDao.insertPrayerRequest(request);
@@ -744,13 +777,14 @@ class DBHelper {
     bool latestAnsweredFirst = false,
     DateTime? updatedSince,
     bool includeDeleted = false,
-  }) => prayerRequestDao.getPrayerRequests(
-    status: status,
-    limit: limit,
-    latestAnsweredFirst: latestAnsweredFirst,
-    updatedSince: updatedSince,
-    includeDeleted: includeDeleted,
-  );
+  }) =>
+      prayerRequestDao.getPrayerRequests(
+        status: status,
+        limit: limit,
+        latestAnsweredFirst: latestAnsweredFirst,
+        updatedSince: updatedSince,
+        includeDeleted: includeDeleted,
+      );
   Future<List<PrayerRequest>> getPrayerRequestsModifiedSince(DateTime? since) =>
       prayerRequestDao.getPrayerRequests(
         updatedSince: since,
@@ -790,13 +824,15 @@ class DBHelper {
     DatabaseExecutor db,
     int id,
     List<String> participants,
-  ) => interactionDao.replaceInteractionParticipants(db, id, participants);
+  ) =>
+      interactionDao.replaceInteractionParticipants(db, id, participants);
 
   Future<void> replacePrayerRequestParticipants(
     DatabaseExecutor db,
     int id,
     List<String> participants,
-  ) => prayerRequestDao.replacePrayerRequestParticipants(db, id, participants);
+  ) =>
+      prayerRequestDao.replacePrayerRequestParticipants(db, id, participants);
 
   Future<void> upsertPrayerListFromSync(DatabaseExecutor db, PrayerList list) =>
       prayerListDao.upsertPrayerListFromSync(db, list);
@@ -806,11 +842,12 @@ class DBHelper {
     DatabaseExecutor txn,
     Contact contact, {
     required bool isUpdate,
-  }) => contactDao.upsertContactRow(
-    txn,
-    contact,
-    isUpdate: isUpdate,
-    syncNested: false,
-    forceNowTimestamps: false,
-  );
+  }) =>
+      contactDao.upsertContactRow(
+        txn,
+        contact,
+        isUpdate: isUpdate,
+        syncNested: false,
+        forceNowTimestamps: false,
+      );
 }

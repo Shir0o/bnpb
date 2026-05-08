@@ -22,7 +22,7 @@ dependencies:
   sqflite_common_ffi: ^2.3.0
   sqlcipher_flutter_libs: ^0.6.2
   path: ^1.8.3
-  google_fonts: ^7.0.2
+  google_fonts: ^8.1.0
   timeline_tile: ^2.0.0
   fl_chart: ^1.1.1
   http: ^1.2.1
@@ -42,6 +42,7 @@ dependencies:
   google_sign_in: ^7.2.0
   googleapis: ^16.0.0
   extension_google_sign_in_as_googleapis_auth: ^3.0.0
+  google_generative_ai: ^0.4.7
 
 
 dev_dependencies:
@@ -55,6 +56,8 @@ dev_dependencies:
   flutter_launcher_icons: ^0.14.4
 flutter:
   uses-material-design: true
+  assets:
+    - assets/fonts/
 
 flutter_launcher_icons:
   android: true

@@ -165,12 +165,11 @@ class PeopleCard extends StatelessWidget {
                                     // Resize image to display size to save memory
                                     image: ResizeImage(
                                       provider,
-                                      width:
-                                          (80 *
-                                                  MediaQuery.of(
-                                                    context,
-                                                  ).devicePixelRatio)
-                                              .toInt(),
+                                      width: (80 *
+                                              MediaQuery.of(
+                                                context,
+                                              ).devicePixelRatio)
+                                          .toInt(),
                                     ),
                                     fit: BoxFit.cover,
                                   )
@@ -261,9 +260,7 @@ class PeopleCard extends StatelessWidget {
     }
     if (contact.tags.isNotEmpty) {
       details.addAll(
-        contact.tags
-            .take(3)
-            .map(
+        contact.tags.take(3).map(
               (tag) => _SubtitleChip(icon: Icons.style_outlined, label: tag),
             ),
       );

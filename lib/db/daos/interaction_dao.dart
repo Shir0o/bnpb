@@ -77,10 +77,13 @@ class InteractionDao extends BaseDao {
     final uniqueParticipants = participantIds.toSet();
     final batch = txn.batch();
     for (final participant in uniqueParticipants) {
-      batch.insert('interaction_participants', {
-        'interactionId': interactionId,
-        'contactId': participant,
-      }, conflictAlgorithm: ConflictAlgorithm.replace);
+      batch.insert(
+          'interaction_participants',
+          {
+            'interactionId': interactionId,
+            'contactId': participant,
+          },
+          conflictAlgorithm: ConflictAlgorithm.replace);
     }
     await batch.commit(noResult: true);
   }
@@ -95,9 +98,8 @@ class InteractionDao extends BaseDao {
       where: 'contactId = ?',
       whereArgs: [contact.id],
     );
-    final existingInteractionIds = existingRows
-        .map((row) => row['interactionId'] as int)
-        .toSet();
+    final existingInteractionIds =
+        existingRows.map((row) => row['interactionId'] as int).toSet();
 
     if (existingInteractionIds.isNotEmpty) {
       await txn.delete(
@@ -209,9 +211,8 @@ class InteractionDao extends BaseDao {
         participantRows.addAll(rows);
       }
     }
-    final fetchedInteractionIds = participantRows
-        .map((r) => r['id'] as int)
-        .toSet();
+    final fetchedInteractionIds =
+        participantRows.map((r) => r['id'] as int).toSet();
     final allParticipantsMap = await getParticipantsForInteractions(
       fetchedInteractionIds,
     );
@@ -271,9 +272,8 @@ class InteractionDao extends BaseDao {
         where: 'contactId = ?',
         whereArgs: [contactId],
       );
-      final interactionIds = interactionIdRows
-          .map((r) => r['interactionId'] as int)
-          .toList();
+      final interactionIds =
+          interactionIdRows.map((r) => r['interactionId'] as int).toList();
       if (interactionIds.isEmpty) return [];
 
       final placeholders = List.filled(interactionIds.length, '?').join(',');

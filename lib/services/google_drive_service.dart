@@ -427,11 +427,9 @@ class GoogleDriveService {
 
   Future<void> downloadFile(String fileId, File targetFile) async {
     await _executeWithRetry(() async {
-      final mediaResponse =
-          await _driveApi!.files
-                  .get(fileId, downloadOptions: drive.DownloadOptions.fullMedia)
-                  .timeout(const Duration(seconds: 30))
-              as drive.Media;
+      final mediaResponse = await _driveApi!.files
+          .get(fileId, downloadOptions: drive.DownloadOptions.fullMedia)
+          .timeout(const Duration(seconds: 30)) as drive.Media;
 
       final sink = targetFile.openWrite();
       try {

@@ -67,8 +67,7 @@ class _PrayerDiaryEntryState extends State<PrayerDiaryEntry> {
       description: _descriptionController.text,
       status: _status,
       // answeredAt logic could be handled here or in the parent
-      answeredAt:
-          _status == PrayerRequestStatus.answered &&
+      answeredAt: _status == PrayerRequestStatus.answered &&
               widget.request.status != PrayerRequestStatus.answered
           ? DateTime.now()
           : widget.request.answeredAt,
@@ -95,9 +94,9 @@ class _PrayerDiaryEntryState extends State<PrayerDiaryEntry> {
   }
 
   Widget _buildViewMode() {
-    final timeStr = _timeFormat.format(
-      widget.request.answeredAt ?? widget.request.requestedAt,
-    );
+    final colorScheme = Theme.of(context).colorScheme;
+    final timeStr = _timeFormat
+        .format(widget.request.answeredAt ?? widget.request.requestedAt);
     final contactNames = widget.contacts.isEmpty
         ? 'Unknown'
         : widget.contacts.map((c) => c.displayName).join(', ');
@@ -107,9 +106,9 @@ class _PrayerDiaryEntryState extends State<PrayerDiaryEntry> {
     return Container(
       // Match Stitch "entry-card" styling (padding, border)
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         border: Border(
-          bottom: BorderSide(color: Color(0xFFF5F5F7)), // separator-light
+          bottom: BorderSide(color: colorScheme.outlineVariant),
         ),
       ),
       child: Column(
@@ -123,40 +122,38 @@ class _PrayerDiaryEntryState extends State<PrayerDiaryEntry> {
                 width: 60,
                 child: Text(
                   timeStr,
-                  style: GoogleFonts.inter(
+                  style: GoogleFonts.googleSans(
                     fontSize: 12,
                     fontWeight: FontWeight.w500,
-                    color: Colors.grey[400], // text-gray-400
+                    color: colorScheme.outline,
                   ),
                 ),
               ),
-              Text('•', style: TextStyle(color: Colors.grey[300])),
+              Text('•', style: TextStyle(color: colorScheme.outlineVariant)),
               const SizedBox(width: 8),
 
               // Contact Badge
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(
-                  color: const Color(
-                    0xFF0D7CF2,
-                  ).withValues(alpha: 0.1), // primary/10
+                  color: colorScheme.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(100),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.person,
                       size: 14,
-                      color: Color(0xFF0D7CF2),
+                      color: colorScheme.primary,
                     ),
                     const SizedBox(width: 4),
                     Text(
                       contactNames,
-                      style: GoogleFonts.inter(
+                      style: GoogleFonts.googleSans(
                         fontSize: 11,
                         fontWeight: FontWeight.w500,
-                        color: const Color(0xFF0D7CF2),
+                        color: colorScheme.primary,
                       ),
                     ),
                   ],
@@ -173,37 +170,37 @@ class _PrayerDiaryEntryState extends State<PrayerDiaryEntry> {
                     vertical: 2,
                   ),
                   decoration: BoxDecoration(
-                    color: Colors.grey[100],
+                    color: colorScheme.surfaceContainer,
                     borderRadius: BorderRadius.circular(4),
-                    border: Border.all(color: Colors.grey[200]!),
+                    border: Border.all(color: colorScheme.outlineVariant),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       if (isAnswered)
-                        const Padding(
+                        Padding(
                           padding: EdgeInsets.only(right: 2),
                           child: Icon(
                             Icons.check_circle,
                             size: 12,
-                            color: Colors.green,
+                            color: colorScheme.primary,
                           ),
                         ),
                       if (isArchived)
-                        const Padding(
+                        Padding(
                           padding: EdgeInsets.only(right: 2),
                           child: Icon(
                             Icons.inventory_2,
                             size: 12,
-                            color: Colors.grey,
+                            color: colorScheme.onSurfaceVariant,
                           ),
                         ),
                       Text(
                         widget.request.status.label,
-                        style: GoogleFonts.inter(
+                        style: GoogleFonts.googleSans(
                           fontSize: 10,
                           fontWeight: FontWeight.w500,
-                          color: Colors.grey[500],
+                          color: colorScheme.onSurfaceVariant,
                         ),
                       ),
                     ],
@@ -226,10 +223,10 @@ class _PrayerDiaryEntryState extends State<PrayerDiaryEntry> {
                     ),
                     child: Text(
                       'Edit',
-                      style: GoogleFonts.inter(
+                      style: GoogleFonts.googleSans(
                         fontSize: 11,
                         fontWeight: FontWeight.w500,
-                        color: const Color(0xFF0D7CF2),
+                        color: colorScheme.primary,
                       ),
                     ),
                   ),
@@ -243,18 +240,18 @@ class _PrayerDiaryEntryState extends State<PrayerDiaryEntry> {
           Padding(
             padding: const EdgeInsets.only(left: 72),
             child: Container(
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 border: Border(
-                  left: BorderSide(color: Color(0xFFE5E5E5)), // gray-200
+                  left: BorderSide(color: colorScheme.outlineVariant),
                 ),
               ),
               padding: const EdgeInsets.only(left: 16),
               child: Text(
                 widget.request.description,
-                style: GoogleFonts.inter(
+                style: GoogleFonts.googleSans(
                   fontSize: 14,
                   height: 1.5,
-                  color: Colors.black87,
+                  color: colorScheme.onSurface,
                 ),
               ),
             ),
@@ -265,9 +262,9 @@ class _PrayerDiaryEntryState extends State<PrayerDiaryEntry> {
   }
 
   Widget _buildEditMode() {
-    final timeStr = _timeFormat.format(
-      widget.request.answeredAt ?? widget.request.requestedAt,
-    );
+    final colorScheme = Theme.of(context).colorScheme;
+    final timeStr = _timeFormat
+        .format(widget.request.answeredAt ?? widget.request.requestedAt);
     final contactNamesLabel = widget.contacts.isEmpty
         ? 'Unknown'
         : widget.contacts.map((c) => c.displayName).join(', ');
@@ -275,19 +272,19 @@ class _PrayerDiaryEntryState extends State<PrayerDiaryEntry> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
       decoration: BoxDecoration(
-        color: Colors.white,
-        border: const Border(bottom: BorderSide(color: Color(0xFFF5F5F7))),
+        color: colorScheme.surfaceContainerLowest,
+        border: Border(bottom: BorderSide(color: colorScheme.outlineVariant)),
         // Active edit shadow
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF007AFF).withValues(alpha: 0.1),
+            color: colorScheme.primary.withValues(alpha: 0.1),
             spreadRadius: 0,
             blurRadius: 0,
             offset: const Offset(0, 0),
           ),
           // Simulate the "ring" effect
           BoxShadow(
-            color: const Color.fromRGBO(0, 122, 255, 0.15), // focus-ring color?
+            color: colorScheme.primary.withValues(alpha: 0.15),
             spreadRadius: 2, // approximation
             blurRadius: 0,
           ),
@@ -303,36 +300,36 @@ class _PrayerDiaryEntryState extends State<PrayerDiaryEntry> {
                 width: 60,
                 child: Text(
                   timeStr,
-                  style: GoogleFonts.inter(
+                  style: GoogleFonts.googleSans(
                     fontSize: 12,
                     fontWeight: FontWeight.w500,
-                    color: Colors.grey[400],
+                    color: colorScheme.outline,
                   ),
                 ),
               ),
-              Text('•', style: TextStyle(color: Colors.grey[300])),
+              Text('•', style: TextStyle(color: colorScheme.outlineVariant)),
               const SizedBox(width: 8),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF0D7CF2).withValues(alpha: 0.1),
+                  color: colorScheme.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(100),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.person,
                       size: 14,
-                      color: Color(0xFF0D7CF2),
+                      color: colorScheme.primary,
                     ),
                     const SizedBox(width: 4),
                     Text(
                       contactNamesLabel,
-                      style: GoogleFonts.inter(
+                      style: GoogleFonts.googleSans(
                         fontSize: 11,
                         fontWeight: FontWeight.w500,
-                        color: const Color(0xFF0D7CF2),
+                        color: colorScheme.primary,
                       ),
                     ),
                   ],
@@ -349,8 +346,10 @@ class _PrayerDiaryEntryState extends State<PrayerDiaryEntry> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Container(
-                  decoration: const BoxDecoration(
-                    border: Border(left: BorderSide(color: Color(0xFFE5E5E5))),
+                  decoration: BoxDecoration(
+                    border: Border(
+                      left: BorderSide(color: colorScheme.outlineVariant),
+                    ),
                   ),
                   padding: const EdgeInsets.only(left: 16),
                   child: Column(
@@ -361,37 +360,31 @@ class _PrayerDiaryEntryState extends State<PrayerDiaryEntry> {
                         autofocus: true,
                         maxLines: null,
                         minLines: 3,
-                        style: GoogleFonts.inter(
+                        style: GoogleFonts.googleSans(
                           fontSize: 14,
                           height: 1.5,
-                          color: Colors.black87,
+                          color: colorScheme.onSurface,
                         ),
                         decoration: InputDecoration(
                           filled: true,
-                          fillColor: Colors.white,
+                          fillColor: colorScheme.surfaceContainerLowest,
                           contentPadding: const EdgeInsets.all(12),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(6),
                             borderSide: BorderSide(
-                              color: const Color(
-                                0xFF007AFF,
-                              ).withValues(alpha: 0.4),
+                              color: colorScheme.primary.withValues(alpha: 0),
                             ),
                           ),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(6),
                             borderSide: BorderSide(
-                              color: const Color(
-                                0xFF007AFF,
-                              ).withValues(alpha: 0.4),
+                              color: colorScheme.primary.withValues(alpha: 0.4),
                             ),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(6),
                             borderSide: BorderSide(
-                              color: const Color(
-                                0xFF007AFF,
-                              ).withValues(alpha: 0.6),
+                              color: colorScheme.primary.withValues(alpha: 0.6),
                               width: 2,
                             ),
                           ),
@@ -406,7 +399,7 @@ class _PrayerDiaryEntryState extends State<PrayerDiaryEntry> {
                           // Status Toggles
                           Container(
                             decoration: BoxDecoration(
-                              color: Colors.grey[100],
+                              color: colorScheme.surfaceContainer,
                               borderRadius: BorderRadius.circular(6),
                             ),
                             padding: const EdgeInsets.all(2),
@@ -421,7 +414,7 @@ class _PrayerDiaryEntryState extends State<PrayerDiaryEntry> {
                                   PrayerRequestStatus.answered,
                                   'Answered',
                                   Icons.check_circle,
-                                  activeColor: Colors.green,
+                                  activeColor: colorScheme.primary,
                                 ),
                                 _buildStatusToggle(
                                   PrayerRequestStatus.archived,
@@ -440,8 +433,8 @@ class _PrayerDiaryEntryState extends State<PrayerDiaryEntry> {
                               TextButton(
                                 onPressed: widget.onEditCancel,
                                 style: TextButton.styleFrom(
-                                  foregroundColor: Colors.grey[600],
-                                  textStyle: GoogleFonts.inter(
+                                  foregroundColor: colorScheme.onSurfaceVariant,
+                                  textStyle: GoogleFonts.googleSans(
                                     fontSize: 12,
                                     fontWeight: FontWeight.w500,
                                   ),
@@ -452,8 +445,8 @@ class _PrayerDiaryEntryState extends State<PrayerDiaryEntry> {
                               ElevatedButton(
                                 onPressed: _handleSave,
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color(0xFF0D7CF2),
-                                  foregroundColor: Colors.white,
+                                  backgroundColor: colorScheme.primary,
+                                  foregroundColor: colorScheme.onPrimary,
                                   elevation: 0,
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(6),
@@ -462,7 +455,7 @@ class _PrayerDiaryEntryState extends State<PrayerDiaryEntry> {
                                     horizontal: 16,
                                     vertical: 12,
                                   ),
-                                  textStyle: GoogleFonts.inter(
+                                  textStyle: GoogleFonts.googleSans(
                                     fontSize: 12,
                                     fontWeight: FontWeight.w500,
                                   ),
@@ -490,8 +483,9 @@ class _PrayerDiaryEntryState extends State<PrayerDiaryEntry> {
     IconData icon, {
     Color? activeColor,
   }) {
+    final colorScheme = Theme.of(context).colorScheme;
     final isSelected = _status == status;
-    final color = activeColor ?? Colors.grey[700]!;
+    final color = activeColor ?? colorScheme.onSurfaceVariant;
 
     return InkWell(
       onTap: () {
@@ -503,12 +497,14 @@ class _PrayerDiaryEntryState extends State<PrayerDiaryEntry> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         decoration: BoxDecoration(
-          color: isSelected ? Colors.white : Colors.transparent,
+          color: isSelected
+              ? colorScheme.surfaceContainerLowest
+              : Colors.transparent,
           borderRadius: BorderRadius.circular(4),
           boxShadow: isSelected
               ? [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.05),
+                    color: colorScheme.shadow.withValues(alpha: 0.05),
                     blurRadius: 2,
                     offset: const Offset(0, 1),
                   ),
@@ -517,14 +513,15 @@ class _PrayerDiaryEntryState extends State<PrayerDiaryEntry> {
         ),
         child: Row(
           children: [
-            Icon(icon, size: 14, color: isSelected ? color : Colors.grey[400]),
+            Icon(icon,
+                size: 14, color: isSelected ? color : colorScheme.outline),
             const SizedBox(width: 4),
             Text(
               label,
-              style: GoogleFonts.inter(
+              style: GoogleFonts.googleSans(
                 fontSize: 11,
                 fontWeight: FontWeight.w500,
-                color: isSelected ? color : Colors.grey[500],
+                color: isSelected ? color : colorScheme.onSurfaceVariant,
               ),
             ),
           ],

@@ -43,14 +43,16 @@ class MockDBHelper implements DBHelper {
     DatabaseExecutor txn,
     Contact contact, {
     required bool isUpdate,
-  }) => throw UnimplementedError();
+  }) =>
+      throw UnimplementedError();
 
   @override
   Future<void> upsertContactRowForTest(
     DatabaseExecutor txn,
     Contact contact, {
     required bool isUpdate,
-  }) => throw UnimplementedError();
+  }) =>
+      throw UnimplementedError();
 
   @override
   Future<List<Contact>> getContacts({
@@ -58,7 +60,8 @@ class MockDBHelper implements DBHelper {
     List<String>? contactIds,
     DateTime? updatedSince,
     bool includeDeleted = false,
-  }) => throw UnimplementedError();
+  }) =>
+      throw UnimplementedError();
 
   @override
   Future<List<Contact>> getContactsModifiedSince(DateTime? since) =>
@@ -70,26 +73,30 @@ class MockDBHelper implements DBHelper {
   @override
   Future<NotificationPreference> upsertNotificationPreference(
     NotificationPreference preference,
-  ) => throw UnimplementedError();
+  ) =>
+      throw UnimplementedError();
 
   @override
   Future<NotificationPreference?> getNotificationPreference({
     required NotificationScopeType scopeType,
     required String scopeId,
     required ReminderChannel channel,
-  }) => throw UnimplementedError();
+  }) =>
+      throw UnimplementedError();
 
   @override
   Future<void> deleteNotificationPreference({
     required NotificationScopeType scopeType,
     required String scopeId,
     required ReminderChannel channel,
-  }) => throw UnimplementedError();
+  }) =>
+      throw UnimplementedError();
 
   @override
   Future<List<NotificationPreference>> getNotificationPreferences({
     NotificationScopeType? scopeType,
-  }) => throw UnimplementedError();
+  }) =>
+      throw UnimplementedError();
 
   @override
   Future<int> deleteContact(String id) => throw UnimplementedError();
@@ -120,7 +127,8 @@ class MockDBHelper implements DBHelper {
     String? contactId,
     DateTime? updatedSince,
     bool includeDeleted = false,
-  }) => throw UnimplementedError();
+  }) =>
+      throw UnimplementedError();
 
   @override
   Future<List<Interaction>> getInteractionsModifiedSince(DateTime? since) =>
@@ -148,7 +156,8 @@ class MockDBHelper implements DBHelper {
     bool latestAnsweredFirst = false,
     DateTime? updatedSince,
     bool includeDeleted = false,
-  }) => throw UnimplementedError();
+  }) =>
+      throw UnimplementedError();
 
   @override
   Future<List<PrayerRequest>> getPrayerRequestsModifiedSince(DateTime? since) =>
@@ -175,7 +184,8 @@ class MockDBHelper implements DBHelper {
     required String contactId,
     required DateTime occurredAt,
     required String summary,
-  }) => throw UnimplementedError();
+  }) =>
+      throw UnimplementedError();
 
   @override
   Future<void> updateContact(Contact contact) => throw UnimplementedError();
@@ -223,18 +233,30 @@ class MockDBHelper implements DBHelper {
     DatabaseExecutor db,
     int id,
     List<String> participants,
-  ) => throw UnimplementedError();
+  ) =>
+      throw UnimplementedError();
 
   @override
   Future<void> replacePrayerRequestParticipants(
     DatabaseExecutor db,
     int id,
     List<String> participants,
-  ) => throw UnimplementedError();
+  ) =>
+      throw UnimplementedError();
 
   @override
   Future<void> upsertPrayerListFromSync(DatabaseExecutor db, PrayerList list) =>
       throw UnimplementedError();
+
+  @override
+  Future<Map<String, dynamic>> getGlobalMetadata() async {
+    return {
+      'contactCount': 0,
+      'interactionCount': 0,
+      'prayerCount': 0,
+      'lastUpdate': null,
+    };
+  }
 
   @override
   Future<void> clearAllData() async {}

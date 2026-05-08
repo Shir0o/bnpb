@@ -208,12 +208,13 @@ class _AnalyticsPageState extends State<AnalyticsPage>
     final maxY = values.reduce(math.max);
     final double yInterval = (maxY == 0 ? 1 : math.max(1, maxY / 4)).toDouble();
 
+    final colorScheme = Theme.of(context).colorScheme;
     final List<Color> barColors = [
-      Colors.blue,
-      Colors.red,
-      Colors.green,
-      Colors.orange,
-      Colors.purple,
+      colorScheme.primary,
+      colorScheme.tertiary,
+      colorScheme.secondary,
+      colorScheme.primaryFixedDim,
+      colorScheme.tertiaryFixedDim,
     ];
 
     return Card(
@@ -380,14 +381,15 @@ class _AnalyticsPageState extends State<AnalyticsPage>
                             entry.value.totalMinutes,
                             entry.value.interactionCount,
                           );
-                          final percentage = totalValue == 0
-                              ? 0
-                              : (value / totalValue) * 100;
+                          final percentage =
+                              totalValue == 0 ? 0 : (value / totalValue) * 100;
                           return PieChartSectionData(
                             value: value,
                             title: '${percentage.toStringAsFixed(1)}%',
                             radius: sectionRadius,
-                            titleStyle: Theme.of(context).textTheme.bodyMedium
+                            titleStyle: Theme.of(context)
+                                .textTheme
+                                .bodyMedium
                                 ?.copyWith(fontWeight: FontWeight.bold),
                           );
                         }).toList(),
@@ -531,15 +533,12 @@ class _AnalyticsPageState extends State<AnalyticsPage>
   }
 
   Widget _buildGapCard(AnalyticsSummary summary) {
-    final gaps = summary.contactGaps
-        .where((gap) => gap.hasFollowUp)
-        .take(6)
-        .toList();
+    final gaps =
+        summary.contactGaps.where((gap) => gap.hasFollowUp).take(6).toList();
     if (gaps.isEmpty) {
       return const _EmptyAnalyticsCard(
         title: 'Follow-up reminders',
-        message:
-            'No pending follow-ups. Add a follow-up date when logging '
+        message: 'No pending follow-ups. Add a follow-up date when logging '
             'an interaction to see reminders here.',
       );
     }
@@ -680,8 +679,8 @@ class _EmptyAnalyticsCard extends StatelessWidget {
             Text(
               message,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Theme.of(context).colorScheme.outline,
-              ),
+                    color: Theme.of(context).colorScheme.outline,
+                  ),
             ),
           ],
         ),

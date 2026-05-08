@@ -21,9 +21,8 @@ class ExportOptionsSheet extends StatefulWidget {
 class _ExportOptionsSheetState extends State<ExportOptionsSheet> {
   final ExportService _exportService = ExportService();
   final TextEditingController _passphraseController = TextEditingController();
-  final Set<String> _selectedFields = ExportService.availableFields
-      .map((field) => field.id)
-      .toSet();
+  final Set<String> _selectedFields =
+      ExportService.availableFields.map((field) => field.id).toSet();
 
   bool _isExporting = false;
   String? _error;

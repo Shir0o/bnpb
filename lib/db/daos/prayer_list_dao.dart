@@ -110,10 +110,13 @@ class PrayerListDao extends BaseDao {
 
       final batch = txn.batch();
       for (final contactId in list.contactIds) {
-        batch.insert('prayer_list_members', {
-          'listId': list.id,
-          'contactId': contactId,
-        }, conflictAlgorithm: ConflictAlgorithm.ignore);
+        batch.insert(
+            'prayer_list_members',
+            {
+              'listId': list.id,
+              'contactId': contactId,
+            },
+            conflictAlgorithm: ConflictAlgorithm.ignore);
       }
       await batch.commit(noResult: true);
     });
@@ -144,10 +147,13 @@ class PrayerListDao extends BaseDao {
   Future<void> addContactToPrayerList(String listId, String contactId) async {
     final db = await database;
     await db.transaction((txn) async {
-      await txn.insert('prayer_list_members', {
-        'listId': listId,
-        'contactId': contactId,
-      }, conflictAlgorithm: ConflictAlgorithm.ignore);
+      await txn.insert(
+          'prayer_list_members',
+          {
+            'listId': listId,
+            'contactId': contactId,
+          },
+          conflictAlgorithm: ConflictAlgorithm.ignore);
       await txn.update(
         'prayer_lists',
         {'updatedAt': DateTime.now().toUtc().toIso8601String()},
@@ -196,10 +202,13 @@ class PrayerListDao extends BaseDao {
     if (list.deletedAt == null) {
       final batch = (db as dynamic).batch() as Batch;
       for (final cid in list.contactIds) {
-        batch.insert('prayer_list_members', {
-          'listId': list.id,
-          'contactId': cid,
-        }, conflictAlgorithm: ConflictAlgorithm.ignore);
+        batch.insert(
+            'prayer_list_members',
+            {
+              'listId': list.id,
+              'contactId': cid,
+            },
+            conflictAlgorithm: ConflictAlgorithm.ignore);
       }
       await batch.commit(noResult: true);
     }
