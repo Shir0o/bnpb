@@ -26,6 +26,7 @@ class SecurityService {
   static const _passwordHashKey = 'lock_password_hash';
   static const _passwordSaltKey = 'lock_password_salt';
   static const _biometricToggleKey = 'lock_biometric_enabled';
+  static const _geminiApiKeyKey = 'gemini_api_key';
 
   final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
   final LocalAuthentication _localAuth = LocalAuthentication();
@@ -78,6 +79,26 @@ class SecurityService {
     }
     final file = File(p.join(dir.path, '.db_key'));
     await file.writeAsString(key);
+  }
+
+  /// Indicates whether a Gemini API key has been configured.
+  Future<bool> hasGeminiApiKey() async {
+    final key = await _secureStorage.read(key: _geminiApiKeyKey);
+    return key != null && key.isNotEmpty;
+  }
+
+  /// Stores the Gemini API key. Passing `null` clears it.
+  Future<void> setGeminiApiKey(String? key) async {
+    if (key == null || key.isEmpty) {
+      await _secureStorage.delete(key: _geminiApiKeyKey);
+      return;
+    }
+    await _secureStorage.write(key: _geminiApiKeyKey, value: key);
+  }
+
+  /// Retrieves the stored Gemini API key.
+  Future<String?> getGeminiApiKey() async {
+    return await _secureStorage.read(key: _geminiApiKeyKey);
   }
 
   /// Indicates whether a passcode has been configured.
@@ -187,6 +208,7 @@ class SecurityService {
     await _secureStorage.delete(key: _passwordHashKey);
     await _secureStorage.delete(key: _passwordSaltKey);
     await _secureStorage.delete(key: _biometricToggleKey);
+    await _secureStorage.delete(key: _geminiApiKeyKey);
 
     // 3. Securely wipe and remove database files.
     if (await dbFile.exists()) {

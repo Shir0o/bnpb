@@ -249,5 +249,15 @@ class MockDBHelper implements DBHelper {
       throw UnimplementedError();
 
   @override
+  Future<Map<String, dynamic>> getGlobalMetadata() async {
+    return {
+      'contactCount': 0,
+      'interactionCount': 0,
+      'prayerCount': 0,
+      'lastUpdate': null,
+    };
+  }
+
+  @override
   Future<void> clearAllData() async {}
 }

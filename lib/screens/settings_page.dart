@@ -45,6 +45,9 @@ class _SettingsPageState extends State<SettingsPage>
   Map<ReminderChannel, NotificationPreference> _globalDefaults =
       const <ReminderChannel, NotificationPreference>{};
   bool _hasPasscode = false;
+  bool _hasGeminiApiKey = false;
+  bool _isEditingGeminiKey = false;
+  final TextEditingController _geminiKeyController = TextEditingController();
   bool _biometricEnabled = false;
   bool _biometricAvailable = false;
   String? _syncPath;
@@ -105,6 +108,11 @@ class _SettingsPageState extends State<SettingsPage>
     }
 
     _hasPasscode = await _securityService.hasPasscode();
+    _hasGeminiApiKey = await _securityService.hasGeminiApiKey();
+    if (_hasGeminiApiKey && !_isEditingGeminiKey) {
+      _geminiKeyController.text =
+          await _securityService.getGeminiApiKey() ?? '';
+    }
     _biometricEnabled = await _securityService.isBiometricEnabled();
     _biometricAvailable = await _securityService.canUseBiometrics();
     final reminderService = ReminderService();
@@ -166,6 +174,9 @@ class _SettingsPageState extends State<SettingsPage>
           const Divider(),
           _buildSectionHeader('Sync & Backup'),
           _buildSyncGroup(context),
+          const Divider(),
+          _buildSectionHeader('AI Features'),
+          _buildGeminiTile(context),
           const Divider(),
           _buildSectionHeader('Security'),
           _buildSecurityGroup(context),
@@ -344,6 +355,82 @@ class _SettingsPageState extends State<SettingsPage>
         ),
       ],
     );
+  }
+
+  Widget _buildGeminiTile(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    if (_isEditingGeminiKey) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Gemini AI API Key',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 4),
+            const Text(
+              'Get your key from Google AI Studio. This enables smart follow-up suggestions.',
+              style: TextStyle(fontSize: 12),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _geminiKeyController,
+                    decoration: const InputDecoration(
+                      hintText: 'Enter API Key',
+                      isDense: true,
+                      border: OutlineInputBorder(),
+                    ),
+                    obscureText: true,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                IconButton(
+                  icon: Icon(Icons.check, color: colorScheme.primary),
+                  onPressed: _saveGeminiApiKey,
+                ),
+                IconButton(
+                  icon: Icon(Icons.close, color: colorScheme.error),
+                  onPressed: () {
+                    setState(() {
+                      _isEditingGeminiKey = false;
+                      _load(); // Revert to stored key
+                    });
+                  },
+                ),
+              ],
+            ),
+          ],
+        ),
+      );
+    }
+
+    return ListTile(
+      leading: const Icon(Icons.auto_awesome_outlined),
+      title: const Text('Gemini AI API Key'),
+      subtitle: Text(_hasGeminiApiKey ? 'Key is set' : 'Not set'),
+      trailing: const Icon(Icons.edit_outlined, size: 20),
+      onTap: () {
+        setState(() {
+          _isEditingGeminiKey = true;
+        });
+      },
+    );
+  }
+
+  Future<void> _saveGeminiApiKey() async {
+    await _securityService.setGeminiApiKey(_geminiKeyController.text);
+    final hasKey = await _securityService.hasGeminiApiKey();
+    if (mounted) {
+      setState(() {
+        _hasGeminiApiKey = hasKey;
+        _isEditingGeminiKey = false;
+      });
+    }
   }
 
   Widget _buildSecurityGroup(BuildContext context) {
@@ -585,7 +672,9 @@ class _SettingsPageState extends State<SettingsPage>
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            style: TextButton.styleFrom(
+              foregroundColor: Theme.of(context).colorScheme.error,
+            ),
             child: const Text('Purge'),
           ),
         ],

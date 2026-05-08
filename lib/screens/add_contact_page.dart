@@ -109,10 +109,14 @@ class _AddContactPageState extends State<AddContactPage>
       }
 
       final messenger = ScaffoldMessenger.of(context);
+      final colorScheme = Theme.of(context).colorScheme;
       messenger.showSnackBar(
         SnackBar(
-          content: Text('Contact saved: ${newContact.fullName}'),
-          backgroundColor: Colors.green,
+          content: Text(
+            'Contact saved: ${newContact.fullName}',
+            style: TextStyle(color: colorScheme.onPrimaryContainer),
+          ),
+          backgroundColor: colorScheme.primaryContainer,
         ),
       );
 
@@ -128,12 +132,16 @@ class _AddContactPageState extends State<AddContactPage>
       }
 
       final messenger = ScaffoldMessenger.of(context);
+      final colorScheme = Theme.of(context).colorScheme;
       messenger
         ..hideCurrentSnackBar()
         ..showSnackBar(
           SnackBar(
-            content: Text('Failed to save contact: $error'),
-            backgroundColor: Colors.red,
+            content: Text(
+              'Failed to save contact: $error',
+              style: TextStyle(color: colorScheme.onError),
+            ),
+            backgroundColor: colorScheme.error,
           ),
         );
 
@@ -365,10 +373,6 @@ class _AddContactPageState extends State<AddContactPage>
       labelText: label,
       prefixIcon: prefixIcon != null ? Icon(prefixIcon) : null,
       border: const OutlineInputBorder(),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
-        borderSide: const BorderSide(color: Colors.blue, width: 2),
-      ),
     );
   }
 }

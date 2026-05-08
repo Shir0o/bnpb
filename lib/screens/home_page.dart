@@ -116,6 +116,7 @@ class _HomePageState extends State<HomePage>
   List<PrayerRequest> _recentAnsweredPrayers = [];
   List<Interaction> _prayerFocusInteractions = [];
   List<FollowUpRecommendation> _recommendations = [];
+  bool _isRefreshingRecommendations = false;
   Map<String, ContactMatch> _activeMatches = {};
 
   final Set<String> _expandedLocations = <String>{};
@@ -214,12 +215,23 @@ class _HomePageState extends State<HomePage>
     }
   }
 
-  Future<void> _loadRecommendations() async {
-    final recommendations = await _recommendationService.getRecommendations();
-    if (mounted) {
-      setState(() {
-        _recommendations = recommendations;
-      });
+  Future<void> _loadRecommendations({bool forceRefresh = false}) async {
+    if (forceRefresh) {
+      setState(() => _isRefreshingRecommendations = true);
+    }
+    try {
+      final recommendations = await _recommendationService.getRecommendations(
+        forceRefresh: forceRefresh,
+      );
+      if (mounted) {
+        setState(() {
+          _recommendations = recommendations;
+        });
+      }
+    } finally {
+      if (mounted && forceRefresh) {
+        setState(() => _isRefreshingRecommendations = false);
+      }
     }
   }
 
@@ -558,87 +570,67 @@ class _HomePageState extends State<HomePage>
                     style: theme.textTheme.titleMedium,
                   ),
                 ),
+                if (_isRefreshingRecommendations)
+                  const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                else
+                  IconButton(
+                    icon: const Icon(Icons.refresh, size: 20),
+                    onPressed: () => _loadRecommendations(forceRefresh: true),
+                    visualDensity: VisualDensity.compact,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    tooltip: 'Refresh suggestions',
+                  ),
               ],
             ),
-            const SizedBox(height: 12),
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: topRecommendations.map((rec) {
-                  Color borderColor;
-                  IconData icon;
-                  switch (rec.priority) {
-                    case RecommendationPriority.critical:
-                      borderColor = Colors.red.withValues(alpha: 0.5);
-                      icon = Icons.priority_high;
-                      break;
-                    case RecommendationPriority.high:
-                      borderColor = Colors.orange.withValues(alpha: 0.5);
-                      icon = Icons.star_outline;
-                      break;
-                    case RecommendationPriority.medium:
-                      borderColor =
-                          theme.colorScheme.primary.withValues(alpha: 0.5);
-                      icon = Icons.chat_bubble_outline;
-                      break;
-                    case RecommendationPriority.low:
-                      borderColor = theme.colorScheme.outlineVariant;
-                      icon = Icons.person_outline;
-                      break;
-                  }
+            const SizedBox(height: 8),
+            Column(
+              children: topRecommendations.map((rec) {
+                Color iconColor;
+                IconData icon;
+                switch (rec.priority) {
+                  case RecommendationPriority.critical:
+                    iconColor = theme.colorScheme.error;
+                    icon = Icons.priority_high;
+                    break;
+                  case RecommendationPriority.high:
+                    iconColor = theme.colorScheme.tertiary;
+                    icon = Icons.star_outline;
+                    break;
+                  case RecommendationPriority.medium:
+                    iconColor = theme.colorScheme.primary;
+                    icon = Icons.chat_bubble_outline;
+                    break;
+                  case RecommendationPriority.low:
+                    iconColor = theme.colorScheme.outline;
+                    icon = Icons.person_outline;
+                    break;
+                }
 
-                  return Container(
-                    width: 200,
-                    margin: const EdgeInsets.only(right: 12),
-                    child: InkWell(
-                      onTap: () => _navigateToContactDetails(rec.contact),
-                      borderRadius: BorderRadius.circular(12),
-                      child: Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          border: Border.all(color: borderColor, width: 2),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                CircleAvatar(
-                                  radius: 14,
-                                  child: Text(
-                                    rec.contact.initials,
-                                    style: const TextStyle(fontSize: 10),
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    rec.contact.displayName,
-                                    style: theme.textTheme.titleSmall,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                                Icon(icon,
-                                    size: 14,
-                                    color: borderColor.withValues(alpha: 1.0)),
-                              ],
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              rec.reason,
-                              style: theme.textTheme.bodySmall,
-                              maxLines: 3,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  );
-                }).toList(),
-              ),
+                return ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: CircleAvatar(
+                    radius: 18,
+                    child: Text(rec.contact.initials),
+                  ),
+                  title: Text(
+                    rec.contact.displayName,
+                    style: theme.textTheme.titleSmall,
+                  ),
+                  subtitle: Text(
+                    rec.reason,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodySmall,
+                  ),
+                  trailing: Icon(icon, color: iconColor, size: 20),
+                  onTap: () => _navigateToContactDetails(rec.contact),
+                );
+              }).toList(),
             ),
           ],
         ),
