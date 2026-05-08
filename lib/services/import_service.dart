@@ -112,6 +112,18 @@ class ImportService {
       await _dbHelper.insertPrayerList(list);
     }
 
+    // Pass 3b: Insert relationships (insertContact does not sync these).
+    final relationshipsToInsert = [
+      for (final contact in restoredContacts)
+        for (final relationship in contact.relationships)
+          relationship.copyWith(id: null),
+    ];
+    if (relationshipsToInsert.isNotEmpty) {
+      await _dbHelper.relationshipDao.insertRelationshipsBulk(
+        relationshipsToInsert,
+      );
+    }
+
     // Pass 4: Refresh reminders
     await _reminderCoordinator.refreshAllContacts();
 

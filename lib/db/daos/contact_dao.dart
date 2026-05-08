@@ -68,8 +68,10 @@ class ContactDao extends BaseDao {
       await dbHelper.interactionDao.replaceInteractionsForContact(txn, contact);
 
       if (contact.prayerRequests.isNotEmpty) {
-        await dbHelper.prayerRequestDao
-            .replacePrayerRequestsForContact(txn, contact);
+        await dbHelper.prayerRequestDao.replacePrayerRequestsForContact(
+          txn,
+          contact,
+        );
       }
     }
   }

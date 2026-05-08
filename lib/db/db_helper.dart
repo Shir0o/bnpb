@@ -467,9 +467,7 @@ class DBHelper {
       );
       await db.execute("ALTER TABLE contacts ADD COLUMN deletedAt TEXT");
 
-      await db.execute(
-        "ALTER TABLE interactions ADD COLUMN syncId TEXT",
-      );
+      await db.execute("ALTER TABLE interactions ADD COLUMN syncId TEXT");
       await db.execute(
         "ALTER TABLE interactions ADD COLUMN updatedAt TEXT NOT NULL DEFAULT '1970-01-01T00:00:00.000Z'",
       );
@@ -611,7 +609,8 @@ class DBHelper {
     );
     if (rows.isEmpty) return null;
     return NotificationPreference.fromMap(
-        Map<String, dynamic>.from(rows.first));
+      Map<String, dynamic>.from(rows.first),
+    );
   }
 
   Future<List<NotificationPreference>> getNotificationPreferences({
@@ -624,13 +623,16 @@ class DBHelper {
       whereArgs: scopeType != null ? [scopeType.name] : null,
     );
     return rows
-        .map((row) =>
-            NotificationPreference.fromMap(Map<String, dynamic>.from(row)))
+        .map(
+          (row) =>
+              NotificationPreference.fromMap(Map<String, dynamic>.from(row)),
+        )
         .toList();
   }
 
   Future<NotificationPreference> upsertNotificationPreference(
-      NotificationPreference preference) async {
+    NotificationPreference preference,
+  ) async {
     final db = await database;
     final id = await db.insert(
       'notification_preferences',
@@ -714,9 +716,7 @@ class DBHelper {
 
     final interactionIds = rows.map((row) => row['id'] as int).toSet();
     final participantsByInteraction =
-        await interactionDao.getParticipantsForInteractions(
-      interactionIds,
-    );
+        await interactionDao.getParticipantsForInteractions(interactionIds);
 
     return rows.map((row) {
       final interactionMap = Map<String, dynamic>.from(row);
@@ -740,8 +740,12 @@ class DBHelper {
     Contact contact, {
     required bool isUpdate,
   }) async {
-    await contactDao.upsertContactRow(txn, contact,
-        isUpdate: isUpdate, syncNested: true);
+    await contactDao.upsertContactRow(
+      txn,
+      contact,
+      isUpdate: isUpdate,
+      syncNested: true,
+    );
   }
 
   Future<bool> interactionExists({
@@ -781,7 +785,9 @@ class DBHelper {
       );
   Future<List<PrayerRequest>> getPrayerRequestsModifiedSince(DateTime? since) =>
       prayerRequestDao.getPrayerRequests(
-          updatedSince: since, includeDeleted: true);
+        updatedSince: since,
+        includeDeleted: true,
+      );
   Future<Map<PrayerRequestStatus, int>> getPrayerRequestCounts() =>
       prayerRequestDao.getPrayerRequestCounts();
   Future<List<String>> getPrayerCategories() =>
@@ -813,19 +819,33 @@ class DBHelper {
       prayerListDao.removeContactFromPrayerList(listId, contactId);
 
   Future<void> replaceInteractionParticipants(
-          DatabaseExecutor db, int id, List<String> participants) =>
+    DatabaseExecutor db,
+    int id,
+    List<String> participants,
+  ) =>
       interactionDao.replaceInteractionParticipants(db, id, participants);
 
   Future<void> replacePrayerRequestParticipants(
-          DatabaseExecutor db, int id, List<String> participants) =>
+    DatabaseExecutor db,
+    int id,
+    List<String> participants,
+  ) =>
       prayerRequestDao.replacePrayerRequestParticipants(db, id, participants);
 
   Future<void> upsertPrayerListFromSync(DatabaseExecutor db, PrayerList list) =>
       prayerListDao.upsertPrayerListFromSync(db, list);
 
   // Special bridge for SyncCoordinator
-  Future<void> upsertContactFromSync(DatabaseExecutor txn, Contact contact,
-          {required bool isUpdate}) =>
-      contactDao.upsertContactRow(txn, contact,
-          isUpdate: isUpdate, syncNested: false, forceNowTimestamps: false);
+  Future<void> upsertContactFromSync(
+    DatabaseExecutor txn,
+    Contact contact, {
+    required bool isUpdate,
+  }) =>
+      contactDao.upsertContactRow(
+        txn,
+        contact,
+        isUpdate: isUpdate,
+        syncNested: false,
+        forceNowTimestamps: false,
+      );
 }

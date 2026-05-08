@@ -125,6 +125,7 @@ class _HomePageState extends State<HomePage>
   bool _showRefreshSkeleton = false;
   bool _wasKeyboardVisible = false;
   StreamSubscription<void>? _syncSubscription;
+  StreamSubscription<void>? _contactsChangedSubscription;
 
   // Optimization: Cached DateFormat to avoid expensive parsing during build loops.
   late DateFormat _dateFormat;
@@ -145,6 +146,13 @@ class _HomePageState extends State<HomePage>
       setState(() {});
     });
     _syncSubscription = SyncService().onSyncComplete.listen((_) {
+      if (mounted) {
+        _fetchContacts(forceRefresh: true);
+      }
+    });
+    _contactsChangedSubscription = ContactService().onContactsChanged.listen((
+      _,
+    ) {
       if (mounted) {
         _fetchContacts(forceRefresh: true);
       }
@@ -200,10 +208,7 @@ class _HomePageState extends State<HomePage>
           forceRefresh: forceRefresh,
         );
         _applyContactsSnapshot(contacts);
-        await Future.wait([
-          _loadPrayerInsights(),
-          _loadRecommendations(),
-        ]);
+        await Future.wait([_loadPrayerInsights(), _loadRecommendations()]);
       })(),
       if (useSkeleton) Future.delayed(minDelay),
     ]);
@@ -885,6 +890,7 @@ class _HomePageState extends State<HomePage>
     _searchController.dispose();
     _searchFocusNode.dispose();
     _syncSubscription?.cancel();
+    _contactsChangedSubscription?.cancel();
     super.dispose();
   }
 

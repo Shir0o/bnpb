@@ -300,8 +300,11 @@ class _SettingsPageState extends State<SettingsPage>
         else if (_isGoogleInitializing && _googleUser == null)
           const SkeletonLoader(
             child: ListTile(
-              leading:
-                  SkeletonBox(width: 24, height: 24, shape: BoxShape.circle),
+              leading: SkeletonBox(
+                width: 24,
+                height: 24,
+                shape: BoxShape.circle,
+              ),
               title: SkeletonBox(width: 120, height: 16),
               subtitle: SkeletonBox(width: 180, height: 12),
               trailing: SkeletonBox(width: 64, height: 32),

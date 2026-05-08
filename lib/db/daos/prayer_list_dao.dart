@@ -184,7 +184,9 @@ class PrayerListDao extends BaseDao {
   }
 
   Future<void> upsertPrayerListFromSync(
-      DatabaseExecutor db, PrayerList list) async {
+    DatabaseExecutor db,
+    PrayerList list,
+  ) async {
     await db.insert(
       'prayer_lists',
       list.toMap(),

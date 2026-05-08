@@ -213,7 +213,8 @@ class SyncCoordinator {
     if (data['interactions'] != null) {
       for (final item in (data['interactions'] as List)) {
         await _mergeInteraction(
-            Interaction.fromMap(Map<String, dynamic>.from(item)));
+          Interaction.fromMap(Map<String, dynamic>.from(item)),
+        );
       }
     }
 
@@ -289,10 +290,17 @@ class SyncCoordinator {
         map['updatedAt'] = remote.updatedAt.toIso8601String();
         map['deletedAt'] = remote.deletedAt?.toIso8601String();
 
-        await db
-            .update('interactions', map, where: 'id = ?', whereArgs: [localId]);
+        await db.update(
+          'interactions',
+          map,
+          where: 'id = ?',
+          whereArgs: [localId],
+        );
         await _db.replaceInteractionParticipants(
-            db, localId, remote.participantIds);
+          db,
+          localId,
+          remote.participantIds,
+        );
       }
     }
   }
@@ -310,8 +318,9 @@ class SyncCoordinator {
 
     int? localInteractionId;
     if (interactionSyncId != null) {
-      localInteractionId =
-          await _getLocalInteractionIdBySyncId(interactionSyncId);
+      localInteractionId = await _getLocalInteractionIdBySyncId(
+        interactionSyncId,
+      );
     }
 
     if (rows.isEmpty) {
@@ -345,10 +354,17 @@ class SyncCoordinator {
           map.remove('interactionId');
         }
 
-        await db.update('prayer_requests', map,
-            where: 'id = ?', whereArgs: [localId]);
+        await db.update(
+          'prayer_requests',
+          map,
+          where: 'id = ?',
+          whereArgs: [localId],
+        );
         await _db.replacePrayerRequestParticipants(
-            db, localId, remote.participantIds);
+          db,
+          localId,
+          remote.participantIds,
+        );
       }
     }
   }
@@ -369,8 +385,11 @@ class SyncCoordinator {
     final db = await _db.database;
     for (final item in remoteLists) {
       final remoteList = PrayerList.fromMap(Map<String, dynamic>.from(item));
-      final localRows = await db
-          .query('prayer_lists', where: 'id = ?', whereArgs: [remoteList.id]);
+      final localRows = await db.query(
+        'prayer_lists',
+        where: 'id = ?',
+        whereArgs: [remoteList.id],
+      );
 
       bool shouldUpdate = false;
       if (localRows.isEmpty) {
@@ -393,10 +412,14 @@ class SyncCoordinator {
   Future<void> _mergeRelationships(List<dynamic> remoteRels) async {
     for (final item in remoteRels) {
       final remote = Relationship.fromMap(Map<String, dynamic>.from(item));
-      final existing = await _db.relationshipDao
-          .getRelationshipsForContact(remote.sourceContactId);
-      final match = existing.any((r) =>
-          r.targetContactId == remote.targetContactId && r.type == remote.type);
+      final existing = await _db.relationshipDao.getRelationshipsForContact(
+        remote.sourceContactId,
+      );
+      final match = existing.any(
+        (r) =>
+            r.targetContactId == remote.targetContactId &&
+            r.type == remote.type,
+      );
 
       if (!match) {
         await _db.relationshipDao.upsertRelationship(

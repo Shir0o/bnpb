@@ -229,9 +229,11 @@ class ExportService {
     // Flatten interactions and prayer requests with de-duplication
     final flatInteractions = <Map<String, dynamic>>[];
     final flatPrayerRequests = <Map<String, dynamic>>[];
+    final flatRelationships = <Map<String, dynamic>>[];
 
     final seenInteractionSyncIds = <String>{};
     final seenPrayerSyncIds = <String>{};
+    final seenRelationshipKeys = <String>{};
 
     // Global mapping of local interaction ID to SyncID for prayer request resolution
     final globalInteractionMap = <int, String>{};
@@ -245,6 +247,14 @@ class ExportService {
         }
         if (seenInteractionSyncIds.add(interaction.syncId)) {
           flatInteractions.add(interaction.toJson());
+        }
+      }
+
+      for (final relationship in contact.relationships) {
+        final key =
+            '${relationship.sourceContactId}|${relationship.targetContactId}|${relationship.type}';
+        if (seenRelationshipKeys.add(key)) {
+          flatRelationships.add(relationship.toMap(includeId: false));
         }
       }
     }
@@ -277,6 +287,7 @@ class ExportService {
       'contacts': contactList,
       'interactions': flatInteractions,
       'prayerRequests': flatPrayerRequests,
+      'relationships': flatRelationships,
       'prayerLists': (prayerLists ?? []).map((list) {
         final map = list.toMap();
         map['contactIds'] = list.contactIds;

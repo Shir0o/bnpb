@@ -18,11 +18,7 @@ class InteractionDao extends BaseDao {
       interactionMap['deletedAt'] = null;
 
       final id = await txn.insert('interactions', interactionMap);
-      await replaceInteractionParticipants(
-        txn,
-        id,
-        interaction.participantIds,
-      );
+      await replaceInteractionParticipants(txn, id, interaction.participantIds);
 
       return interaction.copyWith(id: id);
     });
@@ -173,10 +169,7 @@ class InteractionDao extends BaseDao {
     final now = DateTime.now().toUtc().toIso8601String();
     await txn.update(
       'interactions',
-      {
-        'deletedAt': now,
-        'updatedAt': now,
-      },
+      {'deletedAt': now, 'updatedAt': now},
       where:
           'NOT EXISTS (SELECT 1 FROM interaction_participants WHERE interaction_participants.interactionId = interactions.id) AND deletedAt IS NULL',
     );
@@ -220,8 +213,9 @@ class InteractionDao extends BaseDao {
     }
     final fetchedInteractionIds =
         participantRows.map((r) => r['id'] as int).toSet();
-    final allParticipantsMap =
-        await getParticipantsForInteractions(fetchedInteractionIds);
+    final allParticipantsMap = await getParticipantsForInteractions(
+      fetchedInteractionIds,
+    );
 
     final interactionsByContact = <String, List<Interaction>>{};
     for (final row in participantRows) {
@@ -312,8 +306,9 @@ class InteractionDao extends BaseDao {
     if (rows.isEmpty) return [];
 
     final validIds = rows.map((r) => r['id'] as int).toSet();
-    final participantsByInteraction =
-        await getParticipantsForInteractions(validIds);
+    final participantsByInteraction = await getParticipantsForInteractions(
+      validIds,
+    );
 
     return rows.map((row) {
       final interactionMap = Map<String, dynamic>.from(row);
@@ -334,8 +329,9 @@ class InteractionDao extends BaseDao {
 
     if (rows.isEmpty) return null;
 
-    final participantsByInteraction =
-        await getParticipantsForInteractions({interactionId});
+    final participantsByInteraction = await getParticipantsForInteractions({
+      interactionId,
+    });
     final interactionMap = Map<String, dynamic>.from(rows.first);
     interactionMap['participantIds'] =
         participantsByInteraction[interactionId] ?? const <String>[];
@@ -348,12 +344,15 @@ class InteractionDao extends BaseDao {
     required String summary,
   }) async {
     final dbInstance = await database;
-    final rows = await dbInstance.rawQuery('''
+    final rows = await dbInstance.rawQuery(
+      '''
       SELECT i.id FROM interactions i
       JOIN interaction_participants ip ON i.id = ip.interactionId
       WHERE ip.contactId = ? AND i.occurredAt = ? AND i.summary = ? AND i.deletedAt IS NULL
       LIMIT 1
-    ''', [contactId, occurredAt.toIso8601String(), summary]);
+    ''',
+      [contactId, occurredAt.toIso8601String(), summary],
+    );
 
     return rows.isNotEmpty;
   }

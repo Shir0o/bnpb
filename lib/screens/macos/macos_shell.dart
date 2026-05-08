@@ -147,14 +147,17 @@ class _MacOSShellState extends State<MacOSShell> {
                 physics: const NeverScrollableScrollPhysics(),
                 children: [
                   _KeepAlivePage(
-                      child:
-                          _buildNavigator(0, const MacOSActiveContactsView())),
+                    child: _buildNavigator(0, const MacOSActiveContactsView()),
+                  ),
                   _KeepAlivePage(
-                      child: _buildNavigator(1, const MacOSPrayerDiaryView())),
+                    child: _buildNavigator(1, const MacOSPrayerDiaryView()),
+                  ),
                   _KeepAlivePage(
-                      child: _buildNavigator(2, const MacOSContactsView())),
+                    child: _buildNavigator(2, const MacOSContactsView()),
+                  ),
                   _KeepAlivePage(
-                      child: _buildNavigator(3, const MacOSSettingsView())),
+                    child: _buildNavigator(3, const MacOSSettingsView()),
+                  ),
                 ],
               ),
             ),
