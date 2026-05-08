@@ -548,6 +548,37 @@ class DBHelper {
     }
   }
 
+  Future<Map<String, dynamic>> getGlobalMetadata() async {
+    final db = await database;
+    final contactCount = Sqflite.firstIntValue(await db.rawQuery(
+            'SELECT COUNT(*) FROM contacts WHERE deletedAt IS NULL')) ??
+        0;
+    final interactionCount = Sqflite.firstIntValue(await db.rawQuery(
+            'SELECT COUNT(*) FROM interactions WHERE deletedAt IS NULL')) ??
+        0;
+    final prayerCount = Sqflite.firstIntValue(await db.rawQuery(
+            'SELECT COUNT(*) FROM prayer_requests WHERE deletedAt IS NULL')) ??
+        0;
+
+    final lastUpdateRow = await db.rawQuery('''
+      SELECT MAX(updatedAt) as maxUpdate FROM (
+        SELECT updatedAt FROM contacts WHERE deletedAt IS NULL
+        UNION ALL
+        SELECT updatedAt FROM interactions WHERE deletedAt IS NULL
+        UNION ALL
+        SELECT updatedAt FROM prayer_requests WHERE deletedAt IS NULL
+      )
+    ''');
+    final lastUpdate = lastUpdateRow.first['maxUpdate'] as String?;
+
+    return {
+      'contactCount': contactCount,
+      'interactionCount': interactionCount,
+      'prayerCount': prayerCount,
+      'lastUpdate': lastUpdate,
+    };
+  }
+
   // --- Maintenance Methods ---
 
   Future<void> clearAllData() async {
