@@ -358,6 +358,7 @@ class _SettingsPageState extends State<SettingsPage>
   }
 
   Widget _buildGeminiTile(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     if (_isEditingGeminiKey) {
       return Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -389,11 +390,11 @@ class _SettingsPageState extends State<SettingsPage>
                 ),
                 const SizedBox(width: 8),
                 IconButton(
-                  icon: const Icon(Icons.check, color: Colors.green),
+                  icon: Icon(Icons.check, color: colorScheme.primary),
                   onPressed: _saveGeminiApiKey,
                 ),
                 IconButton(
-                  icon: const Icon(Icons.close, color: Colors.red),
+                  icon: Icon(Icons.close, color: colorScheme.error),
                   onPressed: () {
                     setState(() {
                       _isEditingGeminiKey = false;

@@ -140,11 +140,13 @@ class _MacOSPrayerDiaryViewState extends State<MacOSPrayerDiaryView> {
   }
 
   Widget _buildHeader() {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Container(
       height: 52,
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        border: Border(bottom: BorderSide(color: Color(0xFFE5E5E5))),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerLowest,
+        border: Border(bottom: BorderSide(color: colorScheme.outlineVariant)),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(
@@ -155,7 +157,7 @@ class _MacOSPrayerDiaryViewState extends State<MacOSPrayerDiaryView> {
             style: GoogleFonts.googleSans(
               fontSize: 16,
               fontWeight: FontWeight.w600,
-              color: Colors.black,
+              color: colorScheme.onSurface,
             ),
           ),
           Row(
@@ -165,7 +167,7 @@ class _MacOSPrayerDiaryViewState extends State<MacOSPrayerDiaryView> {
                 width: 200,
                 height: 32,
                 decoration: BoxDecoration(
-                  color: Colors.grey[100],
+                  color: colorScheme.surfaceContainer,
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: TextField(
@@ -174,18 +176,22 @@ class _MacOSPrayerDiaryViewState extends State<MacOSPrayerDiaryView> {
                       _searchQuery = value.toLowerCase();
                     });
                   },
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     hintText: 'Search',
-                    prefixIcon: Icon(Icons.search, size: 18),
+                    prefixIcon: Icon(
+                      Icons.search,
+                      size: 18,
+                      color: colorScheme.onSurfaceVariant,
+                    ),
                     border: InputBorder.none,
                     alignLabelWithHint: true,
                     isDense: true,
-                    contentPadding: EdgeInsets.only(top: 6, bottom: 6),
+                    contentPadding: const EdgeInsets.only(top: 6, bottom: 6),
                   ),
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 13,
                     height: 1.0,
-                    color: Colors.black,
+                    color: colorScheme.onSurface,
                   ),
                   textAlignVertical: TextAlignVertical.center,
                 ),
@@ -196,11 +202,11 @@ class _MacOSPrayerDiaryViewState extends State<MacOSPrayerDiaryView> {
                 onPressed: _openLogPrayerRequestSheet,
                 icon: const Icon(Icons.add),
                 style: IconButton.styleFrom(
-                  foregroundColor: const Color(0xFF0D7CF2),
+                  foregroundColor: colorScheme.primary,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(6),
                   ),
-                  hoverColor: const Color(0xFF0D7CF2).withAlpha(25),
+                  hoverColor: colorScheme.primary.withValues(alpha: 0.1),
                 ),
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
@@ -213,6 +219,7 @@ class _MacOSPrayerDiaryViewState extends State<MacOSPrayerDiaryView> {
   }
 
   Widget _buildContent() {
+    final colorScheme = Theme.of(context).colorScheme;
     final filteredRequests = _requests.where((req) {
       if (_searchQuery.isEmpty) return true;
       final matchDescription = req.description.toLowerCase().contains(
@@ -230,12 +237,18 @@ class _MacOSPrayerDiaryViewState extends State<MacOSPrayerDiaryView> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.book_outlined, size: 48, color: Colors.grey[400]),
+            Icon(
+              Icons.book_outlined,
+              size: 48,
+              color: colorScheme.outline,
+            ),
             const SizedBox(height: 16),
             Text(
               'No prayer entries found',
-              style:
-                  GoogleFonts.googleSans(fontSize: 14, color: Colors.grey[600]),
+              style: GoogleFonts.googleSans(
+                fontSize: 14,
+                color: colorScheme.onSurfaceVariant,
+              ),
             ),
           ],
         ),
@@ -289,6 +302,7 @@ class _MacOSPrayerDiaryViewState extends State<MacOSPrayerDiaryView> {
   }
 
   Widget _buildDateHeader(String title, DateTime date) {
+    final colorScheme = Theme.of(context).colorScheme;
     String dateStr = '';
     if (title == 'Older') {
       dateStr = '';
@@ -298,8 +312,8 @@ class _MacOSPrayerDiaryViewState extends State<MacOSPrayerDiaryView> {
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-      decoration: const BoxDecoration(
-        border: Border(bottom: BorderSide(color: Color(0xFFF5F5F7))),
+      decoration: BoxDecoration(
+        border: Border(bottom: BorderSide(color: colorScheme.outlineVariant)),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -309,7 +323,7 @@ class _MacOSPrayerDiaryViewState extends State<MacOSPrayerDiaryView> {
             style: GoogleFonts.googleSans(
               fontSize: 13,
               fontWeight: FontWeight.w700,
-              color: Colors.black,
+              color: colorScheme.onSurface,
             ),
           ),
           if (dateStr.isNotEmpty)
@@ -317,7 +331,7 @@ class _MacOSPrayerDiaryViewState extends State<MacOSPrayerDiaryView> {
               dateStr,
               style: GoogleFonts.sourceCodePro(
                 fontSize: 11,
-                color: Colors.grey[400],
+                color: colorScheme.outline,
               ),
             ),
         ],

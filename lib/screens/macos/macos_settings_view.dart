@@ -14,6 +14,8 @@ import '../../services/sync_service.dart';
 import '../../services/import_service.dart';
 import '../../widgets/export_options_sheet.dart';
 
+enum _LogTone { normal, info, success, error }
+
 class MacOSSettingsView extends StatefulWidget {
   const MacOSSettingsView({super.key});
 
@@ -41,12 +43,12 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
     {'time': '10:45:03', 'msg': 'Ready.'},
   ];
 
-  void _addLog(String message, {Color? color}) {
+  void _addLog(String message, {_LogTone tone = _LogTone.normal}) {
     final now = DateTime.now();
     final timeStr =
         '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}:${now.second.toString().padLeft(2, '0')}';
     setState(() {
-      _logs.add({'time': timeStr, 'msg': message, 'color': color});
+      _logs.add({'time': timeStr, 'msg': message, 'tone': tone});
       if (_logs.length > 10) _logs.removeAt(0);
     });
   }
@@ -58,15 +60,15 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
       _isSyncing = true;
       _syncError = null;
     });
-    _addLog('Starting manual sync...', color: const Color(0xFF60A5FA));
+    _addLog('Starting manual sync...', tone: _LogTone.info);
 
     try {
       await _syncService.performSync(force: true, rethrowErrors: true);
       await _loadSettings();
-      _addLog('Sync completed successfully.', color: const Color(0xFF4ADE80));
+      _addLog('Sync completed successfully.', tone: _LogTone.success);
     } catch (e) {
       final message = e.toString().replaceAll('Exception: ', '');
-      _addLog('Sync failed: $message', color: const Color(0xFFEF4444));
+      _addLog('Sync failed: $message', tone: _LogTone.error);
       setState(() {
         _syncError = message;
       });
@@ -296,24 +298,25 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
   }
 
   Widget _buildSyncStatusBadge() {
+    final colorScheme = Theme.of(context).colorScheme;
     final configurationStatus = _configurationStatus;
 
     if (_isSyncing) {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: const Color(0xFFEFF6FF), // blue-50
-          border: Border.all(color: const Color(0xFFDBEAFE)), // blue-100
+          color: colorScheme.primaryContainer,
+          border: Border.all(color: colorScheme.primary.withValues(alpha: 0.2)),
           borderRadius: BorderRadius.circular(4),
         ),
         child: Row(
           children: [
-            const SizedBox(
+            SizedBox(
               width: 14,
               height: 14,
               child: CircularProgressIndicator(
                 strokeWidth: 2,
-                color: Color(0xFF3B82F6),
+                color: colorScheme.primary,
               ),
             ),
             const SizedBox(width: 8),
@@ -322,7 +325,7 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
               style: GoogleFonts.googleSans(
                 fontSize: 12,
                 fontWeight: FontWeight.w500,
-                color: const Color(0xFF1D4ED8), // blue-700
+                color: colorScheme.onPrimaryContainer,
               ),
             ),
           ],
@@ -334,24 +337,24 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: const Color(0xFFFEF2F2), // red-50
-          border: Border.all(color: const Color(0xFFFECACA)), // red-200
+          color: colorScheme.errorContainer,
+          border: Border.all(color: colorScheme.error.withValues(alpha: 0.24)),
           borderRadius: BorderRadius.circular(4),
         ),
         child: Row(
           children: [
-            const Icon(
+            Icon(
               Icons.sync_problem,
               size: 16,
-              color: Color(0xFFB91C1C),
-            ), // red-700
+              color: colorScheme.onErrorContainer,
+            ),
             const SizedBox(width: 8),
             Text(
               'Sync Failed',
               style: GoogleFonts.googleSans(
                 fontSize: 12,
                 fontWeight: FontWeight.w500,
-                color: const Color(0xFFB91C1C),
+                color: colorScheme.onErrorContainer,
               ),
             ),
           ],
@@ -363,16 +366,17 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: const Color(0xFFFFFBEB),
-          border: Border.all(color: const Color(0xFFFDE68A)),
+          color: colorScheme.tertiaryContainer,
+          border:
+              Border.all(color: colorScheme.tertiary.withValues(alpha: 0.24)),
           borderRadius: BorderRadius.circular(4),
         ),
         child: Row(
           children: [
-            const Icon(
+            Icon(
               Icons.sync_problem,
               size: 16,
-              color: Color(0xFFB45309),
+              color: colorScheme.onTertiaryContainer,
             ),
             const SizedBox(width: 8),
             Text(
@@ -380,7 +384,7 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
               style: GoogleFonts.googleSans(
                 fontSize: 12,
                 fontWeight: FontWeight.w500,
-                color: const Color(0xFF92400E),
+                color: colorScheme.onTertiaryContainer,
               ),
             ),
           ],
@@ -391,24 +395,25 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: const Color(0xFFF0FDF4), // green-50
-        border: Border.all(color: const Color(0xFFBBF7D0)), // green-200
+        color: colorScheme.secondaryContainer,
+        border:
+            Border.all(color: colorScheme.secondary.withValues(alpha: 0.24)),
         borderRadius: BorderRadius.circular(4),
       ),
       child: Row(
         children: [
-          const Icon(
+          Icon(
             Icons.cloud_done,
             size: 16,
-            color: Color(0xFF15803D),
-          ), // green-700
+            color: colorScheme.onSecondaryContainer,
+          ),
           const SizedBox(width: 8),
           Text(
             'Synced',
             style: GoogleFonts.googleSans(
               fontSize: 12,
               fontWeight: FontWeight.w500,
-              color: const Color(0xFF15803D),
+              color: colorScheme.onSecondaryContainer,
             ),
           ),
         ],
@@ -418,6 +423,7 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     if (_isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -428,9 +434,11 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
         Container(
           height: 52,
           padding: const EdgeInsets.symmetric(horizontal: 24),
-          decoration: const BoxDecoration(
-            border: Border(bottom: BorderSide(color: Color(0xFFE5E5E5))),
-            color: Color(0xCCFFFFFF), // white/80
+          decoration: BoxDecoration(
+            border: Border(
+              bottom: BorderSide(color: colorScheme.outlineVariant),
+            ),
+            color: colorScheme.surfaceContainerLowest.withValues(alpha: 0.8),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -440,7 +448,7 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
                 style: GoogleFonts.googleSans(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
-                  color: Colors.black,
+                  color: colorScheme.onSurface,
                 ),
               ),
               _buildSyncStatusBadge(),
@@ -463,13 +471,15 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
                     if (_syncType == SyncType.local)
                       Container(
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: colorScheme.surfaceContainerLowest,
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: const Color(0xFFE5E5E5)),
-                          boxShadow: const [
+                          border: Border.all(
+                            color: colorScheme.outlineVariant,
+                          ),
+                          boxShadow: [
                             BoxShadow(
-                              color: Color.fromRGBO(0, 0, 0, 0.05),
-                              offset: Offset(0, 1),
+                              color: colorScheme.shadow.withValues(alpha: 0.05),
+                              offset: const Offset(0, 1),
                               blurRadius: 2,
                             ),
                           ],
@@ -489,7 +499,7 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
                                     style: GoogleFonts.googleSans(
                                       fontSize: 14,
                                       fontWeight: FontWeight.w600,
-                                      color: Colors.black,
+                                      color: colorScheme.onSurface,
                                     ),
                                   ),
                                   SegmentedButton<SyncType>(
@@ -525,12 +535,15 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
                                 ],
                               ),
                             ),
-                            const Divider(height: 1, color: Color(0xFFE5E5E5)),
+                            Divider(
+                              height: 1,
+                              color: colorScheme.outlineVariant,
+                            ),
                             // Backup Location with Error State Support
                             Container(
                               color: _configurationStatus?.canSync == false
-                                  ? const Color(0xFFFEF2F2) // red-50
-                                  : Colors.white,
+                                  ? colorScheme.errorContainer
+                                  : colorScheme.surfaceContainerLowest,
                               padding: const EdgeInsets.all(16),
                               child: Row(
                                 crossAxisAlignment: CrossAxisAlignment.center,
@@ -550,20 +563,19 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
                                                 color: _configurationStatus
                                                             ?.canSync ==
                                                         false
-                                                    ? const Color(
-                                                        0xFF7F1D1D,
-                                                      ) // red-900
-                                                    : Colors.black,
+                                                    ? colorScheme
+                                                        .onErrorContainer
+                                                    : colorScheme.onSurface,
                                               ),
                                             ),
                                             if (_configurationStatus?.canSync ==
                                                 false) ...[
                                               const SizedBox(width: 8),
-                                              const Icon(
+                                              Icon(
                                                 Icons.error,
                                                 size: 18,
-                                                color: Color(0xFFDC2626),
-                                              ), // red-600
+                                                color: colorScheme.error,
+                                              ),
                                             ],
                                           ],
                                         ),
@@ -575,16 +587,18 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
                                                 'Choose a folder shared with your mobile device.',
                                             style: GoogleFonts.googleSans(
                                               fontSize: 12,
-                                              color: const Color(0xFFB91C1C),
-                                            ), // red-700
+                                              color:
+                                                  colorScheme.onErrorContainer,
+                                            ),
                                           ),
                                           const SizedBox(height: 8),
                                           Text(
                                             _syncPath ?? 'Not Configured',
                                             style: GoogleFonts.ibmPlexMono(
                                               fontSize: 12,
-                                              color: const Color(0xFF991B1B),
-                                            ), // red-800
+                                              color:
+                                                  colorScheme.onErrorContainer,
+                                            ),
                                           ),
                                         ] else ...[
                                           const SizedBox(height: 8),
@@ -614,13 +628,15 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
                     else
                       Container(
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: colorScheme.surfaceContainerLowest,
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: const Color(0xFFE5E5E5)),
-                          boxShadow: const [
+                          border: Border.all(
+                            color: colorScheme.outlineVariant,
+                          ),
+                          boxShadow: [
                             BoxShadow(
-                              color: Color.fromRGBO(0, 0, 0, 0.05),
-                              offset: Offset(0, 1),
+                              color: colorScheme.shadow.withValues(alpha: 0.05),
+                              offset: const Offset(0, 1),
                               blurRadius: 2,
                             ),
                           ],
@@ -638,7 +654,7 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
                                     style: GoogleFonts.googleSans(
                                       fontSize: 14,
                                       fontWeight: FontWeight.w600,
-                                      color: Colors.black,
+                                      color: colorScheme.onSurface,
                                     ),
                                   ),
                                   SegmentedButton<SyncType>(
@@ -674,7 +690,10 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
                                 ],
                               ),
                             ),
-                            const Divider(height: 1, color: Color(0xFFE5E5E5)),
+                            Divider(
+                              height: 1,
+                              color: colorScheme.outlineVariant,
+                            ),
                             _buildGoogleSignInRow(),
                           ],
                         ),
@@ -687,13 +706,13 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
                     const SizedBox(height: 12),
                     Container(
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: colorScheme.surfaceContainerLowest,
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: const Color(0xFFE5E5E5)),
-                        boxShadow: const [
+                        border: Border.all(color: colorScheme.outlineVariant),
+                        boxShadow: [
                           BoxShadow(
-                            color: Color.fromRGBO(0, 0, 0, 0.05),
-                            offset: Offset(0, 1),
+                            color: colorScheme.shadow.withValues(alpha: 0.05),
+                            offset: const Offset(0, 1),
                             blurRadius: 2,
                           ),
                         ],
@@ -739,20 +758,14 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
                     const SizedBox(height: 12),
                     Container(
                       decoration: BoxDecoration(
-                        color: const Color(0xFF1E1E1E),
+                        color: colorScheme.inverseSurface,
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: const Color(0xFF1F2937)),
-                        boxShadow: const [
+                        border: Border.all(color: colorScheme.outlineVariant),
+                        boxShadow: [
                           BoxShadow(
-                            color: Color.fromRGBO(
-                              0,
-                              0,
-                              0,
-                              0.2,
-                            ), // shadow-inner approx
-                            offset: Offset(0, 2),
+                            color: colorScheme.shadow.withValues(alpha: 0.2),
+                            offset: const Offset(0, 2),
                             blurRadius: 4,
-                            // inset: true, // Removed as not supported
                           ),
                         ],
                       ),
@@ -764,25 +777,28 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
                               horizontal: 16,
                               vertical: 8,
                             ),
-                            decoration: const BoxDecoration(
-                              color: Color(0xFF252526),
+                            decoration: BoxDecoration(
+                              color: colorScheme.inverseSurface,
                               border: Border(
-                                bottom: BorderSide(color: Color(0xFF374151)),
+                                bottom: BorderSide(
+                                  color: colorScheme.onInverseSurface
+                                      .withValues(alpha: 0.24),
+                                ),
                               ),
                             ),
                             child: Row(
                               children: [
-                                const Icon(
+                                Icon(
                                   Icons.terminal,
                                   size: 14,
-                                  color: Color(0xFF9CA3AF),
+                                  color: colorScheme.onInverseSurface,
                                 ),
                                 const SizedBox(width: 8),
                                 Text(
                                   'Activity Log',
                                   style: GoogleFonts.ibmPlexMono(
                                     fontSize: 12,
-                                    color: const Color(0xFF9CA3AF),
+                                    color: colorScheme.onInverseSurface,
                                   ),
                                 ),
                                 const Spacer(),
@@ -800,19 +816,20 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
                                       child: Row(
                                         children: [
                                           if (_isSyncing)
-                                            const SizedBox(
+                                            SizedBox(
                                               width: 12,
                                               height: 12,
                                               child: CircularProgressIndicator(
                                                 strokeWidth: 2,
-                                                color: Color(0xFF60A5FA),
+                                                color:
+                                                    colorScheme.inversePrimary,
                                               ),
                                             )
                                           else
-                                            const Icon(
+                                            Icon(
                                               Icons.refresh,
                                               size: 14,
-                                              color: Color(0xFF60A5FA),
+                                              color: colorScheme.inversePrimary,
                                             ),
                                           const SizedBox(width: 6),
                                           Text(
@@ -822,7 +839,7 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
                                             style: GoogleFonts.googleSans(
                                               fontSize: 11,
                                               fontWeight: FontWeight.w600,
-                                              color: const Color(0xFF60A5FA),
+                                              color: colorScheme.inversePrimary,
                                             ),
                                           ),
                                         ],
@@ -843,7 +860,8 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
                                 return _buildLogEntry(
                                   '[${log['time']}]',
                                   log['msg'],
-                                  textColor: log['color'],
+                                  tone: log['tone'] as _LogTone? ??
+                                      _LogTone.normal,
                                 );
                               },
                             ),
@@ -854,23 +872,23 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
                     const SizedBox(height: 16),
                     Row(
                       children: [
-                        _buildIndicator('File System', Colors.green),
+                        _buildIndicator('File System', _LogTone.success),
                         const SizedBox(width: 24),
                         _buildIndicator(
                           _syncType == SyncType.googleDrive
                               ? 'Google Drive'
                               : 'Shared Folder',
                           _configurationStatus?.canSync == true
-                              ? Colors.green
-                              : Colors.yellow,
+                              ? _LogTone.success
+                              : _LogTone.info,
                           isDimmed: _configurationStatus?.canSync != true,
                         ),
                         const SizedBox(width: 24),
                         _buildIndicator(
                           'Mobile Ready',
                           _configurationStatus?.canSync == true
-                              ? Colors.green
-                              : Colors.red,
+                              ? _LogTone.success
+                              : _LogTone.error,
                           isDimmed: _configurationStatus?.canSync != true,
                         ),
                       ],
@@ -887,6 +905,7 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
   }
 
   Widget _buildSectionHeader(String title) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Padding(
       padding: const EdgeInsets.only(left: 4),
       child: Text(
@@ -894,7 +913,7 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
         style: GoogleFonts.googleSans(
           fontSize: 14,
           fontWeight: FontWeight.w600,
-          color: const Color(0xFF6B7280), // gray-500
+          color: colorScheme.onSurfaceVariant,
         ),
       ),
     );
@@ -908,6 +927,7 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
     required bool isLast,
     Color? backgroundColor,
   }) {
+    final colorScheme = Theme.of(context).colorScheme;
     // If we have an error state (red background), display that style
     final bool isError = backgroundColor != null;
 
@@ -917,7 +937,7 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
         color: backgroundColor,
         border: isLast
             ? null
-            : const Border(bottom: BorderSide(color: Color(0xFFE5E5E5))),
+            : Border(bottom: BorderSide(color: colorScheme.outlineVariant)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
@@ -934,14 +954,14 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
                         style: GoogleFonts.googleSans(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
-                          color: const Color(0xFF7F1D1D),
+                          color: colorScheme.onErrorContainer,
                         ),
                       ),
                       const SizedBox(width: 8),
-                      const Icon(
+                      Icon(
                         Icons.error,
                         size: 18,
-                        color: Color(0xFFDC2626),
+                        color: colorScheme.error,
                       ),
                     ],
                   )
@@ -951,7 +971,7 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
                     style: GoogleFonts.googleSans(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
-                      color: Colors.black,
+                      color: colorScheme.onSurface,
                     ),
                   ),
                 if (description != null) ...[
@@ -960,9 +980,9 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
                     description,
                     style: GoogleFonts.googleSans(
                       fontSize: 12,
-                      color: const Color(0xFF6B7280),
+                      color: colorScheme.onSurfaceVariant,
                     ),
-                  ), // gray-500
+                  ),
                 ],
                 if (content != null) ...[
                   if (description == null && !isError)
@@ -980,24 +1000,25 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
   }
 
   Widget _buildPathBadge(String path, IconData icon) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: const Color(0xFFF9FAFB), // gray-50
-        border: Border.all(color: const Color(0xFFF3F4F6)), // gray-100
+        color: colorScheme.surfaceContainerLow,
+        border: Border.all(color: colorScheme.outlineVariant),
         borderRadius: BorderRadius.circular(4),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 14, color: const Color(0xFF6B7280)), // gray-500
+          Icon(icon, size: 14, color: colorScheme.onSurfaceVariant),
           const SizedBox(width: 8),
           Flexible(
             child: Text(
               path,
               style: GoogleFonts.ibmPlexMono(
                 fontSize: 12,
-                color: const Color(0xFF6B7280),
+                color: colorScheme.onSurfaceVariant,
               ),
               overflow: TextOverflow.ellipsis,
             ),
@@ -1014,37 +1035,31 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
     IconData? icon,
     VoidCallback? onTap,
   }) {
+    final colorScheme = Theme.of(context).colorScheme;
     Color textColor;
     Color borderColor;
-    Color backgroundColor = Colors.white;
+    Color backgroundColor = colorScheme.surfaceContainerLowest;
 
     if (isDestructive) {
-      textColor = const Color(0xFFB91C1C); // red-700
-      borderColor = const Color(0xFFFECACA); // red-200
-      // hover state is handled by InkWell, but we can set bg if needed
+      textColor = colorScheme.error;
+      borderColor = colorScheme.error.withValues(alpha: 0.24);
     } else if (isPrimary) {
-      textColor = const Color(0xFF0D7CF2); // primary blue
-      borderColor = const Color(0xFFE5E7EB); // gray-200
+      textColor = colorScheme.primary;
+      borderColor = colorScheme.outlineVariant;
     } else {
-      textColor = const Color(
-        0xFF0D7CF2,
-      ); // primary blue for action text usually, or gray-700
-      borderColor = const Color(0xFFE5E7EB); // gray-200
-      // Stitch design shows "Export JSON..." as text-primary (blue) with white bg
-      // "Fix Path..." is red-700
-      // "Import..." is gray-700 in HTML (text-gray-700)
+      textColor = colorScheme.primary;
+      borderColor = colorScheme.outlineVariant;
     }
 
-    // specific overrides based on label analysis from Stitch HTML
     if (label == 'Export JSON...') {
-      textColor = const Color(0xFF0D7CF2); // text-primary
-      borderColor = const Color(0xFFE5E5E5); // gray-200
+      textColor = colorScheme.primary;
+      borderColor = colorScheme.outlineVariant;
     } else if (label == 'Import...') {
-      textColor = const Color(0xFF374151); // text-gray-700
-      borderColor = const Color(0xFFE5E5E5);
+      textColor = colorScheme.onSurface;
+      borderColor = colorScheme.outlineVariant;
     } else if (label == 'Fix Path...') {
-      textColor = const Color(0xFFB91C1C); // text-red-700
-      borderColor = const Color(0xFFFECACA); // border-red-200
+      textColor = colorScheme.error;
+      borderColor = colorScheme.error.withValues(alpha: 0.24);
     }
 
     return Container(
@@ -1052,10 +1067,10 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
         color: backgroundColor,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: borderColor),
-        boxShadow: const [
+        boxShadow: [
           BoxShadow(
-            color: Color.fromRGBO(0, 0, 0, 0.05),
-            offset: Offset(0, 1),
+            color: colorScheme.shadow.withValues(alpha: 0.05),
+            offset: const Offset(0, 1),
             blurRadius: 2,
           ),
         ],
@@ -1091,7 +1106,9 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
   }
 
   Widget _buildStatusBadge() {
+    final colorScheme = Theme.of(context).colorScheme;
     final isReady = _configurationStatus?.canSync == true;
+    final statusColor = isReady ? colorScheme.primary : colorScheme.tertiary;
     return Row(
       children: [
         SizedBox(
@@ -1101,8 +1118,8 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
             children: [
               // Ping animation would go here
               Container(
-                decoration: const BoxDecoration(
-                  color: Color(0xFF4ADE80), // green-400
+                decoration: BoxDecoration(
+                  color: statusColor.withValues(alpha: 0.4),
                   shape: BoxShape.circle,
                 ),
               ),
@@ -1111,9 +1128,7 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
                   width: 10,
                   height: 10,
                   decoration: BoxDecoration(
-                    color: isReady
-                        ? const Color(0xFF22C55E)
-                        : const Color(0xFFF59E0B),
+                    color: statusColor,
                     shape: BoxShape.circle,
                   ),
                 ),
@@ -1127,14 +1142,28 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
           style: GoogleFonts.googleSans(
             fontSize: 12,
             fontWeight: FontWeight.w500,
-            color: isReady ? const Color(0xFF16A34A) : const Color(0xFFB45309),
+            color: statusColor,
           ),
         ),
       ],
     );
   }
 
-  Widget _buildLogEntry(String timestamp, String message, {Color? textColor}) {
+  Color _logToneColor(_LogTone tone, ColorScheme colorScheme) {
+    return switch (tone) {
+      _LogTone.info => colorScheme.inversePrimary,
+      _LogTone.success => colorScheme.primaryFixedDim,
+      _LogTone.error => colorScheme.error,
+      _LogTone.normal => colorScheme.onInverseSurface,
+    };
+  }
+
+  Widget _buildLogEntry(
+    String timestamp,
+    String message, {
+    _LogTone tone = _LogTone.normal,
+  }) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Row(
@@ -1144,7 +1173,7 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
             timestamp,
             style: GoogleFonts.ibmPlexMono(
               fontSize: 12,
-              color: Colors.grey[600],
+              color: colorScheme.onInverseSurface.withValues(alpha: 0.7),
             ),
           ),
           const SizedBox(width: 12),
@@ -1153,7 +1182,7 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
               message,
               style: GoogleFonts.ibmPlexMono(
                 fontSize: 12,
-                color: textColor ?? Colors.grey[400],
+                color: _logToneColor(tone, colorScheme),
               ),
             ),
           ),
@@ -1162,18 +1191,13 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
     );
   }
 
-  Widget _buildIndicator(String label, Color color, {bool isDimmed = false}) {
-    Color finalColor = color;
-    // Adjust colors to match Stitch
-    if (label == 'File System') {
-      finalColor = const Color(0xFF22C55E); // green-500
-    }
-    if (label == 'Background Task') {
-      finalColor = const Color(0xFFEAB308); // yellow-500
-    }
-    if (label == 'Network') {
-      finalColor = const Color(0xFFEF4444); // red-500
-    }
+  Widget _buildIndicator(
+    String label,
+    _LogTone tone, {
+    bool isDimmed = false,
+  }) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final finalColor = _logToneColor(tone, colorScheme);
 
     return Row(
       children: [
@@ -1185,8 +1209,8 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
             shape: BoxShape.circle,
             boxShadow: label == 'File System'
                 ? [
-                    const BoxShadow(
-                      color: Color.fromRGBO(34, 197, 94, 0.6),
+                    BoxShadow(
+                      color: finalColor.withValues(alpha: 0.6),
                       blurRadius: 8,
                       spreadRadius: 0,
                     ),
@@ -1199,9 +1223,9 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
           label,
           style: GoogleFonts.googleSans(
             fontSize: 12,
-            color: isDimmed
-                ? const Color(0xFF4B5563)
-                : const Color(0xFF4B5563), // gray-600
+            color: colorScheme.onSurfaceVariant.withValues(
+              alpha: isDimmed ? 0.7 : 1,
+            ),
           ),
         ),
       ],
@@ -1209,6 +1233,7 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
   }
 
   Widget _buildGoogleSignInRow() {
+    final colorScheme = Theme.of(context).colorScheme;
     return Container(
       padding: const EdgeInsets.all(16),
       child: Row(
@@ -1222,7 +1247,7 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
                   style: GoogleFonts.googleSans(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
-                    color: Colors.black,
+                    color: colorScheme.onSurface,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -1231,7 +1256,7 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
                     _configurationStatus?.detail ?? _googleUser!.email,
                     style: GoogleFonts.googleSans(
                       fontSize: 12,
-                      color: const Color(0xFF6B7280),
+                      color: colorScheme.onSurfaceVariant,
                     ),
                   )
                 else
@@ -1240,7 +1265,7 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
                         'Sign in to sync your data across devices.',
                     style: GoogleFonts.googleSans(
                       fontSize: 12,
-                      color: const Color(0xFF6B7280),
+                      color: colorScheme.onSurfaceVariant,
                     ),
                   ),
               ],

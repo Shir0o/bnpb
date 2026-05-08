@@ -42,6 +42,8 @@ class _MacOSShellState extends State<MacOSShell> {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return CallbackShortcuts(
       bindings: {
         const SingleActivator(LogicalKeyboardKey.keyR, meta: true): () {
@@ -58,9 +60,9 @@ class _MacOSShellState extends State<MacOSShell> {
             Container(
               width: 260,
               decoration: BoxDecoration(
-                color: const Color(0xFFF5F5F7).withValues(alpha: 0.85),
-                border: const Border(
-                  right: BorderSide(color: Color(0xFFE5E5E5)),
+                color: colorScheme.surfaceContainerLow.withValues(alpha: 0.85),
+                border: Border(
+                  right: BorderSide(color: colorScheme.outlineVariant),
                 ),
               ),
               child: Column(
@@ -187,6 +189,8 @@ class _MacOSShellState extends State<MacOSShell> {
   }
 
   Widget _buildSectionHeader(String title) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Padding(
       padding: const EdgeInsets.only(left: 8, bottom: 8),
       child: Text(
@@ -194,13 +198,14 @@ class _MacOSShellState extends State<MacOSShell> {
         style: GoogleFonts.googleSans(
           fontSize: 11,
           fontWeight: FontWeight.w600,
-          color: Colors.grey[500],
+          color: colorScheme.onSurfaceVariant,
         ),
       ),
     );
   }
 
   Widget _buildNavItem(int index, IconData icon, String label, bool isActive) {
+    final colorScheme = Theme.of(context).colorScheme;
     // We override isActive with our internal state for now, or we could remove the parameter.
     // For now, let's just use the parameter as it is passed correctly in build().
     final isSelected = isActive;
@@ -219,14 +224,12 @@ class _MacOSShellState extends State<MacOSShell> {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
             decoration: BoxDecoration(
-              color: isSelected
-                  ? const Color(0xFF0D7CF2)
-                  : Colors.transparent, // bg-primary
+              color: isSelected ? colorScheme.primary : Colors.transparent,
               borderRadius: BorderRadius.circular(6),
               boxShadow: isSelected
                   ? [
-                      const BoxShadow(
-                        color: Color.fromRGBO(0, 0, 0, 0.05), // shadow-sm
+                      BoxShadow(
+                        color: colorScheme.shadow.withValues(alpha: 0.05),
                         offset: Offset(0, 1),
                         blurRadius: 2,
                       ),
@@ -238,7 +241,9 @@ class _MacOSShellState extends State<MacOSShell> {
                 Icon(
                   icon,
                   size: 20,
-                  color: isSelected ? Colors.white : Colors.grey[600],
+                  color: isSelected
+                      ? colorScheme.onPrimary
+                      : colorScheme.onSurfaceVariant,
                 ),
                 const SizedBox(width: 12),
                 Text(
@@ -246,7 +251,9 @@ class _MacOSShellState extends State<MacOSShell> {
                   style: GoogleFonts.googleSans(
                     fontSize: 13,
                     fontWeight: FontWeight.w500,
-                    color: isSelected ? Colors.white : Colors.grey[700],
+                    color: isSelected
+                        ? colorScheme.onPrimary
+                        : colorScheme.onSurfaceVariant,
                   ),
                 ),
               ],
