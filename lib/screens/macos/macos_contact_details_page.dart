@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
@@ -41,7 +40,6 @@ class _MacOSContactDetailsPageState extends State<MacOSContactDetailsPage> {
   late TextEditingController _notesController;
 
   // State
-  List<String> _photoCues = [];
   List<Relationship> _relationships = [];
   List<Interaction> _interactions = [];
   bool _isSaving = false;
@@ -64,7 +62,6 @@ class _MacOSContactDetailsPageState extends State<MacOSContactDetailsPage> {
     _notesController = TextEditingController(text: contact?.notes ?? '');
 
     if (contact != null) {
-      _photoCues = List.from(contact.recognitionPhotoUris);
       _relationships = List.from(contact.relationships);
       // Sort interactions by date desc
       _interactions = List.from(contact.interactions)
@@ -106,23 +103,6 @@ class _MacOSContactDetailsPageState extends State<MacOSContactDetailsPage> {
     super.dispose();
   }
 
-  Future<void> _pickImage() async {
-    final result = await FilePicker.platform.pickFiles(type: FileType.image);
-    if (result == null || result.files.isEmpty) return;
-
-    final path = result.files.single.path;
-    if (path != null) {
-      setState(() {
-        // For simplicity, we just keep the latest one as the avatar or add to list?
-        // The design shows one main image. Let's prepend to the list so it becomes the primary.
-        if (_photoCues.contains(path)) {
-          _photoCues.remove(path);
-        }
-        _photoCues.insert(0, path);
-      });
-    }
-  }
-
   Future<void> _saveContact() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -154,12 +134,8 @@ class _MacOSContactDetailsPageState extends State<MacOSContactDetailsPage> {
         notes: _notesController.text.trim().isEmpty
             ? null
             : _notesController.text.trim(),
-        recognitionPhotoUris: _photoCues,
         // Preserve other fields
         firstMeetingNotes: widget.contact?.firstMeetingNotes,
-        tags: widget.contact?.tags ?? [],
-        recognitionKeywords: widget.contact?.recognitionKeywords ?? [],
-        recognitionReminders: widget.contact?.recognitionReminders ?? [],
         interactions:
             _interactions, // Interactions are not edited here directly
         relationships:
@@ -481,75 +457,25 @@ class _MacOSContactDetailsPageState extends State<MacOSContactDetailsPage> {
 
   Widget _buildAvatar() {
     final colorScheme = Theme.of(context).colorScheme;
-    final hasPhoto = _photoCues.isNotEmpty;
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      child: GestureDetector(
-        onTap: _pickImage,
-        child: Stack(
-          children: [
-            Container(
-              width: 112, // w-28
-              height: 112, // h-28
-              decoration: BoxDecoration(
-                color: colorScheme.surfaceContainerHigh,
-                shape: BoxShape.circle,
-                border: Border.all(color: colorScheme.outlineVariant),
-                boxShadow: [
-                  BoxShadow(
-                    color: colorScheme.shadow.withValues(alpha: 0.1),
-                    blurRadius: 4,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-                image: hasPhoto
-                    ? DecorationImage(
-                        image: NetworkImage(_photoCues.first), // Simplified
-                        fit: BoxFit.cover,
-                      )
-                    : null,
-              ),
-              child: !hasPhoto
-                  ? Icon(
-                      Icons.person,
-                      size: 64,
-                      color: colorScheme.onSurfaceVariant,
-                    )
-                  : null,
-            ),
-            // Edit Overlay (Always visible on hover ideally, but for simplicity always show "Edit" badge or relying on hover might be tricky in flutter web without logic)
-            // Let's make a permanent small badge for now or standard Material InkWell behavior.
-            Positioned(
-              bottom: 0,
-              left: 0,
-              right: 0,
-              child: Center(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: colorScheme.inverseSurface.withValues(alpha: 0.8),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color:
-                          colorScheme.onInverseSurface.withValues(alpha: 0.2),
-                    ),
-                  ),
-                  child: Text(
-                    'Edit',
-                    style: GoogleFonts.googleSans(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w500,
-                      color: colorScheme.onInverseSurface,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
+    return Container(
+      width: 112,
+      height: 112,
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerHigh,
+        shape: BoxShape.circle,
+        border: Border.all(color: colorScheme.outlineVariant),
+        boxShadow: [
+          BoxShadow(
+            color: colorScheme.shadow.withValues(alpha: 0.1),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Icon(
+        Icons.person,
+        size: 64,
+        color: colorScheme.onSurfaceVariant,
       ),
     );
   }

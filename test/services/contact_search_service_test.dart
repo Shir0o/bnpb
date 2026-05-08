@@ -17,7 +17,6 @@ void main() {
           lastName: 'Smith',
           nickname: 'Ali',
           interactions: [],
-          tags: ['Friend', 'Work'],
         ),
         Contact(
           id: 'c2',
@@ -37,8 +36,6 @@ void main() {
           firstName: 'Carol',
           interactions: [],
           firstMeetingNotes: 'Met at conference',
-          recognitionKeywords: ['red scarf'],
-          recognitionReminders: ['ask about marathon'],
         ),
       ];
       service.index(contacts);
@@ -63,12 +60,6 @@ void main() {
       expect(results.first.contact.firstName, 'Bob');
     });
 
-    test('search finds matches in tags', () async {
-      final results = await service.search('friend');
-      expect(results.isNotEmpty, true);
-      expect(results.first.contact.firstName, 'Alice');
-    });
-
     test('search finds matches in interaction summary', () async {
       final results = await service.search('Starbucks');
       expect(results.isNotEmpty, true);
@@ -79,18 +70,6 @@ void main() {
       final results = await service.search('conference');
       expect(results.isNotEmpty, true);
       expect(results.first.contact.firstName, 'Carol');
-    });
-
-    test('search finds matches in recognition cues', () async {
-      final keywordResults = await service.search('scarf');
-      final reminderResults = await service.search('marathon');
-
-      expect(keywordResults.isNotEmpty, true);
-      expect(keywordResults.first.contact.firstName, 'Carol');
-      expect(keywordResults.first.matchDescription, 'Recognition keywords');
-      expect(reminderResults.isNotEmpty, true);
-      expect(reminderResults.first.contact.firstName, 'Carol');
-      expect(reminderResults.first.matchDescription, 'Recognition reminders');
     });
 
     test(

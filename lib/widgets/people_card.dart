@@ -99,104 +99,6 @@ class PeopleCard extends StatelessWidget {
                   const SizedBox(height: 12),
                   _LatestInteractionSummary(interaction: latestInteraction),
                 ],
-                if (contact.recognitionKeywords.isNotEmpty) ...[
-                  const SizedBox(height: 12),
-                  Text('Keywords', style: theme.textTheme.labelLarge),
-                  const SizedBox(height: 6),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 6,
-                    children: contact.recognitionKeywords
-                        .map(
-                          (keyword) => Chip(
-                            label: Text(keyword),
-                            visualDensity: VisualDensity.compact,
-                          ),
-                        )
-                        .toList(),
-                  ),
-                ],
-                if (contact.recognitionReminders.isNotEmpty) ...[
-                  const SizedBox(height: 12),
-                  Text('Reminders', style: theme.textTheme.labelLarge),
-                  const SizedBox(height: 6),
-                  ...contact.recognitionReminders.map(
-                    (reminder) => Padding(
-                      padding: const EdgeInsets.only(bottom: 4),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Icon(
-                            Icons.notifications_outlined,
-                            size: 18,
-                            color: theme.colorScheme.secondary,
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              reminder,
-                              style: theme.textTheme.bodyMedium,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-                if (contact.recognitionPhotoUris.isNotEmpty) ...[
-                  const SizedBox(height: 12),
-                  Text('Recognition photos', style: theme.textTheme.labelLarge),
-                  const SizedBox(height: 8),
-                  SizedBox(
-                    height: 80,
-                    child: ListView.separated(
-                      scrollDirection: Axis.horizontal,
-                      itemBuilder: (context, index) {
-                        final cue = contact.recognitionPhotoUris[index];
-                        final provider = _resolveImage(cue);
-                        return ClipRRect(
-                          borderRadius: BorderRadius.circular(12),
-                          child: Container(
-                            width: 80,
-                            height: 80,
-                            color: theme.colorScheme.surfaceContainerHighest,
-                            child: provider != null
-                                ? Image(
-                                    // Resize image to display size to save memory
-                                    image: ResizeImage(
-                                      provider,
-                                      width: (80 *
-                                              MediaQuery.of(
-                                                context,
-                                              ).devicePixelRatio)
-                                          .toInt(),
-                                    ),
-                                    fit: BoxFit.cover,
-                                  )
-                                : Center(
-                                    child: Column(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        const Icon(Icons.photo_outlined),
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          cue.length > 10
-                                              ? '${cue.substring(0, 10)}…'
-                                              : cue,
-                                          textAlign: TextAlign.center,
-                                          style: theme.textTheme.bodySmall,
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                          ),
-                        );
-                      },
-                      separatorBuilder: (_, __) => const SizedBox(width: 8),
-                      itemCount: contact.recognitionPhotoUris.length,
-                    ),
-                  ),
-                ],
                 if (highlightLabel != null && highlightText != null) ...[
                   const SizedBox(height: 12),
                   Container(
@@ -258,30 +160,7 @@ class PeopleCard extends StatelessWidget {
         ),
       );
     }
-    if (contact.tags.isNotEmpty) {
-      details.addAll(
-        contact.tags.take(3).map(
-              (tag) => _SubtitleChip(icon: Icons.style_outlined, label: tag),
-            ),
-      );
-      if (contact.tags.length > 3) {
-        details.add(
-          _SubtitleChip(icon: Icons.tag, label: '+${contact.tags.length - 3}'),
-        );
-      }
-    }
     return details;
-  }
-
-  ImageProvider<Object>? _resolveImage(String value) {
-    final uri = Uri.tryParse(value);
-    if (uri != null && uri.hasAbsolutePath) {
-      final scheme = uri.scheme.toLowerCase();
-      if (scheme == 'http' || scheme == 'https') {
-        return NetworkImage(value);
-      }
-    }
-    return null;
   }
 }
 

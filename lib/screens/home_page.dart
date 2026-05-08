@@ -109,8 +109,6 @@ class _HomePageState extends State<HomePage>
   final FocusNode _searchFocusNode = FocusNode();
   final Map<String, Contact> _contactLookup = {};
   final ContactSearchService _searchService = ContactSearchService();
-  List<String> _availableTags = [];
-  String? _selectedTagFilter;
   Map<PrayerRequestStatus, int> _prayerCounts = {
     for (final status in PrayerRequestStatus.values) status: 0,
   };
@@ -264,11 +262,6 @@ class _HomePageState extends State<HomePage>
       });
 
     final lookup = {for (final contact in sortedContacts) contact.id: contact};
-    final tags = sortedContacts
-        .expand((contact) => contact.tags)
-        .toSet()
-        .toList()
-      ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
 
     _searchService.index(sortedContacts);
 
@@ -282,10 +275,6 @@ class _HomePageState extends State<HomePage>
       _contactLookup
         ..clear()
         ..addAll(lookup);
-      if (_selectedTagFilter != null && !tags.contains(_selectedTagFilter)) {
-        _selectedTagFilter = null;
-      }
-      _availableTags = tags;
       _filteredContacts = filtered;
       _groupedFilteredContacts = grouped;
     });
@@ -342,49 +331,15 @@ class _HomePageState extends State<HomePage>
       baseList = matches.map((match) => match.contact).toList();
     }
 
-    return baseList
-        .where(
-          (contact) =>
-              _selectedTagFilter == null ||
-              contact.tags.contains(_selectedTagFilter),
-        )
-        .toList();
+    return baseList;
   }
 
   Future<void> _filterContacts() async {
     final queryBefore = _searchController.text.trim();
-    final filterBefore = _selectedTagFilter;
 
     final filtered = await _applyFilters(_contacts);
     if (!mounted) return;
-    if (_searchController.text.trim() != queryBefore ||
-        _selectedTagFilter != filterBefore) {
-      return;
-    }
-
-    final grouped = _groupContactsByLocation(filtered).entries.toList();
-    setState(() {
-      _filteredContacts = filtered;
-      _groupedFilteredContacts = grouped;
-    });
-  }
-
-  Future<void> _toggleTagFilter(String tag) async {
-    setState(() {
-      if (_selectedTagFilter == tag) {
-        _selectedTagFilter = null;
-      } else {
-        _selectedTagFilter = tag;
-      }
-    });
-
-    final queryBefore = _searchController.text.trim();
-    final filterBefore = _selectedTagFilter;
-
-    final filtered = await _applyFilters(_contacts);
-    if (!mounted) return;
-    if (_searchController.text.trim() != queryBefore ||
-        _selectedTagFilter != filterBefore) {
+    if (_searchController.text.trim() != queryBefore) {
       return;
     }
 
@@ -946,7 +901,6 @@ class _HomePageState extends State<HomePage>
   Widget build(BuildContext context) {
     super.build(context);
     final groupedEntries = _groupedFilteredContacts;
-    final hasFilterOptions = _availableTags.isNotEmpty;
     final searchSuggestions = _buildSearchSuggestions();
     final isShowingSuggestions = searchSuggestions is! SizedBox;
 
@@ -1044,35 +998,6 @@ class _HomePageState extends State<HomePage>
                               _buildRecommendationsCard(),
                               const SizedBox(height: 16),
                               _buildPrayerInsightsCard(),
-                              if (hasFilterOptions) ...[
-                                const SizedBox(height: 16),
-                                SingleChildScrollView(
-                                  scrollDirection: Axis.horizontal,
-                                  child: Row(
-                                    children: [
-                                      FilterChip(
-                                        label: const Text('All'),
-                                        selected: _selectedTagFilter == null,
-                                        onSelected: (_) => _toggleTagFilter(''),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      ..._availableTags.map((tag) {
-                                        return Padding(
-                                          padding: const EdgeInsets.only(
-                                            right: 8,
-                                          ),
-                                          child: FilterChip(
-                                            label: Text(tag),
-                                            selected: _selectedTagFilter == tag,
-                                            onSelected: (_) =>
-                                                _toggleTagFilter(tag),
-                                          ),
-                                        );
-                                      }),
-                                    ],
-                                  ),
-                                ),
-                              ],
                               const SizedBox(height: 16),
                             ],
                           ),

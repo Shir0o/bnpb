@@ -62,21 +62,6 @@ class ExportService {
       description: 'City/region information',
     ),
     ExportField(
-      id: 'tags',
-      label: 'Tags',
-      description: 'Relationship and grouping tags',
-    ),
-    ExportField(
-      id: 'recognitionKeywords',
-      label: 'Recognition keywords',
-      description: 'Personal cues that help remember the contact',
-    ),
-    ExportField(
-      id: 'recognitionReminders',
-      label: 'Reminders',
-      description: 'Gentle prompts like birthdays or follow-ups',
-    ),
-    ExportField(
       id: 'firstMeetingNotes',
       label: 'First meeting notes',
       description: 'Context from the very first interaction',
@@ -210,12 +195,6 @@ class ExportService {
         return contact.nickname ?? '';
       case 'location':
         return contact.location ?? '';
-      case 'tags':
-        return contact.tags.join(', ');
-      case 'recognitionKeywords':
-        return contact.recognitionKeywords.join(', ');
-      case 'recognitionReminders':
-        return contact.recognitionReminders.join(', ');
       case 'firstMeetingNotes':
         return contact.firstMeetingNotes ?? '';
       case 'notes':

@@ -78,10 +78,9 @@ class _MacOSContactsViewState extends State<MacOSContactsView> {
   List<Contact> get _filteredContacts {
     if (_searchQuery.isEmpty) return _contacts;
     final query = _searchQuery.toLowerCase();
-    return _contacts.where((c) {
-      return c.displayName.toLowerCase().contains(query) ||
-          c.tags.any((t) => t.toLowerCase().contains(query));
-    }).toList();
+    return _contacts
+        .where((c) => c.displayName.toLowerCase().contains(query))
+        .toList();
   }
 
   Future<void> _onAddContact() async {

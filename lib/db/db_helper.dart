@@ -23,7 +23,7 @@ import '../models/prayer_list.dart';
 import '../models/relationship.dart';
 
 class DBHelper {
-  static const _dbVersion = 18;
+  static const _dbVersion = 19;
 
   static final DBHelper _instance = DBHelper._();
   static Database? _database;
@@ -91,21 +91,9 @@ class DBHelper {
         location TEXT,
         email TEXT,
         phone TEXT,
-        keywords TEXT,
-        photoCues TEXT,
-        reminderCues TEXT,
         notes TEXT,
         updatedAt TEXT NOT NULL DEFAULT (datetime('now')),
         deletedAt TEXT
-      )
-    ''');
-
-    await db.execute('''
-      CREATE TABLE contact_tags (
-        contactId TEXT,
-        tag TEXT,
-        PRIMARY KEY(contactId, tag),
-        FOREIGN KEY(contactId) REFERENCES contacts(id) ON DELETE CASCADE
       )
     ''');
 
@@ -544,6 +532,16 @@ class DBHelper {
         SELECT id, contactId FROM prayer_requests
       ''');
     }
+    if (oldVersion < 19) {
+      await db.execute('DROP TABLE IF EXISTS contact_tags');
+      final columns = await db.rawQuery('PRAGMA table_info(contacts)');
+      final names = columns.map((c) => c['name'] as String).toSet();
+      for (final col in ['keywords', 'photoCues', 'reminderCues']) {
+        if (names.contains(col)) {
+          await db.execute('ALTER TABLE contacts DROP COLUMN $col');
+        }
+      }
+    }
   }
 
   Future<Map<String, dynamic>> getGlobalMetadata() async {
@@ -582,7 +580,6 @@ class DBHelper {
   Future<void> clearAllData() async {
     final db = await database;
     await db.transaction((txn) async {
-      await txn.delete('contact_tags');
       await txn.delete('meet_contexts');
       await txn.delete('interaction_participants');
       await txn.delete('interactions');
@@ -682,7 +679,8 @@ class DBHelper {
   Future<void> updateContact(Contact contact) =>
       contactDao.updateContact(contact);
   Future<int> deleteContact(String id) => contactDao.deleteContact(id);
-  Future<List<String>> getAllTags() => contactDao.getAllTags();
+  Future<List<String>> getDistinctLocations() =>
+      contactDao.getDistinctLocations();
 
   Future<Interaction> insertInteraction(Interaction interaction) =>
       interactionDao.insertInteraction(interaction);

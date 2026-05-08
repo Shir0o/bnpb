@@ -401,11 +401,6 @@ class _MainPageState extends State<MainPage> with WidgetsBindingObserver {
         message =
             'Tap the restore icon on the Contacts tab to import people from a backup file.';
         break;
-      case OnboardingFollowUp.manageTags:
-        targetIndex = 2;
-        message =
-            'Use the tags section while adding a contact to build and reuse your tag library.';
-        break;
       case OnboardingFollowUp.notificationSettings:
         targetIndex = 3;
         message =
