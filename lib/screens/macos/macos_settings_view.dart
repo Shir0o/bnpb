@@ -319,7 +319,7 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
             const SizedBox(width: 8),
             Text(
               'Syncing...',
-              style: GoogleFonts.inter(
+              style: GoogleFonts.googleSans(
                 fontSize: 12,
                 fontWeight: FontWeight.w500,
                 color: const Color(0xFF1D4ED8), // blue-700
@@ -348,7 +348,7 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
             const SizedBox(width: 8),
             Text(
               'Sync Failed',
-              style: GoogleFonts.inter(
+              style: GoogleFonts.googleSans(
                 fontSize: 12,
                 fontWeight: FontWeight.w500,
                 color: const Color(0xFFB91C1C),
@@ -377,7 +377,7 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
             const SizedBox(width: 8),
             Text(
               'Setup Needed',
-              style: GoogleFonts.inter(
+              style: GoogleFonts.googleSans(
                 fontSize: 12,
                 fontWeight: FontWeight.w500,
                 color: const Color(0xFF92400E),
@@ -405,7 +405,7 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
           const SizedBox(width: 8),
           Text(
             'Synced',
-            style: GoogleFonts.inter(
+            style: GoogleFonts.googleSans(
               fontSize: 12,
               fontWeight: FontWeight.w500,
               color: const Color(0xFF15803D),
@@ -437,10 +437,9 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
             children: [
               Text(
                 'Sync & Settings',
-                style: GoogleFonts.inter(
+                style: GoogleFonts.googleSans(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
-                  letterSpacing: -0.5,
                   color: Colors.black,
                 ),
               ),
@@ -487,7 +486,7 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
                                 children: [
                                   Text(
                                     'Sync Method',
-                                    style: GoogleFonts.inter(
+                                    style: GoogleFonts.googleSans(
                                       fontSize: 14,
                                       fontWeight: FontWeight.w600,
                                       color: Colors.black,
@@ -519,7 +518,7 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
                                     },
                                     style: ButtonStyle(
                                       textStyle: WidgetStateProperty.all(
-                                        GoogleFonts.inter(fontSize: 12),
+                                        GoogleFonts.googleSans(fontSize: 12),
                                       ),
                                     ),
                                   ),
@@ -545,7 +544,7 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
                                           children: [
                                             Text(
                                               'Sync Folder',
-                                              style: GoogleFonts.inter(
+                                              style: GoogleFonts.googleSans(
                                                 fontSize: 14,
                                                 fontWeight: FontWeight.w600,
                                                 color: _configurationStatus
@@ -574,7 +573,7 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
                                           Text(
                                             _configurationStatus?.detail ??
                                                 'Choose a folder shared with your mobile device.',
-                                            style: GoogleFonts.inter(
+                                            style: GoogleFonts.googleSans(
                                               fontSize: 12,
                                               color: const Color(0xFFB91C1C),
                                             ), // red-700
@@ -636,7 +635,7 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
                                 children: [
                                   Text(
                                     'Sync Method',
-                                    style: GoogleFonts.inter(
+                                    style: GoogleFonts.googleSans(
                                       fontSize: 14,
                                       fontWeight: FontWeight.w600,
                                       color: Colors.black,
@@ -668,7 +667,7 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
                                     },
                                     style: ButtonStyle(
                                       textStyle: WidgetStateProperty.all(
-                                        GoogleFonts.inter(fontSize: 12),
+                                        GoogleFonts.googleSans(fontSize: 12),
                                       ),
                                     ),
                                   ),
@@ -820,7 +819,7 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
                                             _isSyncing
                                                 ? 'Syncing...'
                                                 : 'Sync Now',
-                                            style: GoogleFonts.inter(
+                                            style: GoogleFonts.googleSans(
                                               fontSize: 11,
                                               fontWeight: FontWeight.w600,
                                               color: const Color(0xFF60A5FA),
@@ -892,11 +891,10 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
       padding: const EdgeInsets.only(left: 4),
       child: Text(
         title.toUpperCase(),
-        style: GoogleFonts.inter(
+        style: GoogleFonts.googleSans(
           fontSize: 14,
           fontWeight: FontWeight.w600,
           color: const Color(0xFF6B7280), // gray-500
-          letterSpacing: 0.5, // tracking-wide
         ),
       ),
     );
@@ -933,7 +931,7 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
                     children: [
                       Text(
                         title,
-                        style: GoogleFonts.inter(
+                        style: GoogleFonts.googleSans(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
                           color: const Color(0xFF7F1D1D),
@@ -950,7 +948,7 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
                 else
                   Text(
                     title,
-                    style: GoogleFonts.inter(
+                    style: GoogleFonts.googleSans(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
                       color: Colors.black,
@@ -960,7 +958,7 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
                   const SizedBox(height: 4),
                   Text(
                     description,
-                    style: GoogleFonts.inter(
+                    style: GoogleFonts.googleSans(
                       fontSize: 12,
                       color: const Color(0xFF6B7280),
                     ),
@@ -1078,7 +1076,7 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
                 ],
                 Text(
                   label,
-                  style: GoogleFonts.inter(
+                  style: GoogleFonts.googleSans(
                     fontSize: 14,
                     fontWeight: FontWeight.w500,
                     color: textColor,
@@ -1126,7 +1124,7 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
         const SizedBox(width: 8),
         Text(
           isReady ? 'Operational' : 'Setup Needed',
-          style: GoogleFonts.inter(
+          style: GoogleFonts.googleSans(
             fontSize: 12,
             fontWeight: FontWeight.w500,
             color: isReady ? const Color(0xFF16A34A) : const Color(0xFFB45309),
@@ -1199,7 +1197,7 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
         const SizedBox(width: 8),
         Text(
           label,
-          style: GoogleFonts.inter(
+          style: GoogleFonts.googleSans(
             fontSize: 12,
             color: isDimmed
                 ? const Color(0xFF4B5563)
@@ -1221,7 +1219,7 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
               children: [
                 Text(
                   'Google Account',
-                  style: GoogleFonts.inter(
+                  style: GoogleFonts.googleSans(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
                     color: Colors.black,
@@ -1231,7 +1229,7 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
                 if (_googleUser != null)
                   Text(
                     _configurationStatus?.detail ?? _googleUser!.email,
-                    style: GoogleFonts.inter(
+                    style: GoogleFonts.googleSans(
                       fontSize: 12,
                       color: const Color(0xFF6B7280),
                     ),
@@ -1240,7 +1238,7 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
                   Text(
                     _configurationStatus?.detail ??
                         'Sign in to sync your data across devices.',
-                    style: GoogleFonts.inter(
+                    style: GoogleFonts.googleSans(
                       fontSize: 12,
                       color: const Color(0xFF6B7280),
                     ),

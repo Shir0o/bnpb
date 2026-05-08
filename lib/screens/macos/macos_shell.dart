@@ -191,11 +191,10 @@ class _MacOSShellState extends State<MacOSShell> {
       padding: const EdgeInsets.only(left: 8, bottom: 8),
       child: Text(
         title.toUpperCase(),
-        style: GoogleFonts.inter(
+        style: GoogleFonts.googleSans(
           fontSize: 11,
           fontWeight: FontWeight.w600,
           color: Colors.grey[500],
-          letterSpacing: 0.5,
         ),
       ),
     );
@@ -244,7 +243,7 @@ class _MacOSShellState extends State<MacOSShell> {
                 const SizedBox(width: 12),
                 Text(
                   label,
-                  style: GoogleFonts.inter(
+                  style: GoogleFonts.googleSans(
                     fontSize: 13,
                     fontWeight: FontWeight.w500,
                     color: isSelected ? Colors.white : Colors.grey[700],

@@ -121,7 +121,7 @@ class _PrayerDiaryEntryState extends State<PrayerDiaryEntry> {
                 width: 60,
                 child: Text(
                   timeStr,
-                  style: GoogleFonts.inter(
+                  style: GoogleFonts.googleSans(
                     fontSize: 12,
                     fontWeight: FontWeight.w500,
                     color: Colors.grey[400], // text-gray-400
@@ -151,7 +151,7 @@ class _PrayerDiaryEntryState extends State<PrayerDiaryEntry> {
                     const SizedBox(width: 4),
                     Text(
                       contactNames,
-                      style: GoogleFonts.inter(
+                      style: GoogleFonts.googleSans(
                         fontSize: 11,
                         fontWeight: FontWeight.w500,
                         color: const Color(0xFF0D7CF2),
@@ -198,7 +198,7 @@ class _PrayerDiaryEntryState extends State<PrayerDiaryEntry> {
                         ),
                       Text(
                         widget.request.status.label,
-                        style: GoogleFonts.inter(
+                        style: GoogleFonts.googleSans(
                           fontSize: 10,
                           fontWeight: FontWeight.w500,
                           color: Colors.grey[500],
@@ -224,7 +224,7 @@ class _PrayerDiaryEntryState extends State<PrayerDiaryEntry> {
                     ),
                     child: Text(
                       'Edit',
-                      style: GoogleFonts.inter(
+                      style: GoogleFonts.googleSans(
                         fontSize: 11,
                         fontWeight: FontWeight.w500,
                         color: const Color(0xFF0D7CF2),
@@ -249,7 +249,7 @@ class _PrayerDiaryEntryState extends State<PrayerDiaryEntry> {
               padding: const EdgeInsets.only(left: 16),
               child: Text(
                 widget.request.description,
-                style: GoogleFonts.inter(
+                style: GoogleFonts.googleSans(
                   fontSize: 14,
                   height: 1.5,
                   color: Colors.black87,
@@ -300,7 +300,7 @@ class _PrayerDiaryEntryState extends State<PrayerDiaryEntry> {
                 width: 60,
                 child: Text(
                   timeStr,
-                  style: GoogleFonts.inter(
+                  style: GoogleFonts.googleSans(
                     fontSize: 12,
                     fontWeight: FontWeight.w500,
                     color: Colors.grey[400],
@@ -326,7 +326,7 @@ class _PrayerDiaryEntryState extends State<PrayerDiaryEntry> {
                     const SizedBox(width: 4),
                     Text(
                       contactNamesLabel,
-                      style: GoogleFonts.inter(
+                      style: GoogleFonts.googleSans(
                         fontSize: 11,
                         fontWeight: FontWeight.w500,
                         color: const Color(0xFF0D7CF2),
@@ -358,7 +358,7 @@ class _PrayerDiaryEntryState extends State<PrayerDiaryEntry> {
                         autofocus: true,
                         maxLines: null,
                         minLines: 3,
-                        style: GoogleFonts.inter(
+                        style: GoogleFonts.googleSans(
                           fontSize: 14,
                           height: 1.5,
                           color: Colors.black87,
@@ -438,7 +438,7 @@ class _PrayerDiaryEntryState extends State<PrayerDiaryEntry> {
                                 onPressed: widget.onEditCancel,
                                 style: TextButton.styleFrom(
                                   foregroundColor: Colors.grey[600],
-                                  textStyle: GoogleFonts.inter(
+                                  textStyle: GoogleFonts.googleSans(
                                     fontSize: 12,
                                     fontWeight: FontWeight.w500,
                                   ),
@@ -459,7 +459,7 @@ class _PrayerDiaryEntryState extends State<PrayerDiaryEntry> {
                                     horizontal: 16,
                                     vertical: 12,
                                   ),
-                                  textStyle: GoogleFonts.inter(
+                                  textStyle: GoogleFonts.googleSans(
                                     fontSize: 12,
                                     fontWeight: FontWeight.w500,
                                   ),
@@ -518,7 +518,7 @@ class _PrayerDiaryEntryState extends State<PrayerDiaryEntry> {
             const SizedBox(width: 4),
             Text(
               label,
-              style: GoogleFonts.inter(
+              style: GoogleFonts.googleSans(
                 fontSize: 11,
                 fontWeight: FontWeight.w500,
                 color: isSelected ? color : Colors.grey[500],

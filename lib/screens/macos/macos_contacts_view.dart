@@ -110,17 +110,16 @@ class _MacOSContactsViewState extends State<MacOSContactsView> {
             children: [
               Text(
                 'All Contacts',
-                style: GoogleFonts.inter(
+                style: GoogleFonts.googleSans(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
                   color: Colors.black87,
-                  letterSpacing: -0.5,
                 ),
               ),
               const SizedBox(width: 8),
               Text(
                 '${_contacts.length} people',
-                style: GoogleFonts.inter(
+                style: GoogleFonts.googleSans(
                   fontSize: 13,
                   fontWeight: FontWeight.w500,
                   color: Colors.grey[500],
@@ -150,7 +149,7 @@ class _MacOSContactsViewState extends State<MacOSContactsView> {
                       vertical: 8,
                     ), // Adjusted for alignment
                   ),
-                  style: GoogleFonts.inter(fontSize: 13),
+                  style: GoogleFonts.googleSans(fontSize: 13),
                   textAlignVertical: TextAlignVertical.center,
                 ),
               ),

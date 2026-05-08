@@ -614,11 +614,15 @@ class _HomePageState extends State<HomePage>
                   IconData icon;
                   switch (rec.priority) {
                     case RecommendationPriority.critical:
-                      borderColor = Colors.red.withValues(alpha: 0.5);
+                      borderColor = theme.colorScheme.error.withValues(
+                        alpha: 0.5,
+                      );
                       icon = Icons.priority_high;
                       break;
                     case RecommendationPriority.high:
-                      borderColor = Colors.orange.withValues(alpha: 0.5);
+                      borderColor = theme.colorScheme.tertiary.withValues(
+                        alpha: 0.5,
+                      );
                       icon = Icons.star_outline;
                       break;
                     case RecommendationPriority.medium:

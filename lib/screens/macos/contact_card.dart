@@ -74,7 +74,7 @@ class ContactCard extends StatelessWidget {
                   child: contact.recognitionPhotoUris.isEmpty
                       ? Text(
                           contact.initials,
-                          style: GoogleFonts.inter(
+                          style: GoogleFonts.googleSans(
                             fontSize: 24,
                             fontWeight: FontWeight.w500,
                             color: Colors.grey[500],
@@ -86,7 +86,7 @@ class ContactCard extends StatelessWidget {
                 // Name
                 Text(
                   contact.displayName,
-                  style: GoogleFonts.inter(
+                  style: GoogleFonts.googleSans(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
                     color: Colors.grey[900],
@@ -101,7 +101,7 @@ class ContactCard extends StatelessWidget {
                   activeRequestCount > 0
                       ? '$activeRequestCount active request${activeRequestCount == 1 ? '' : 's'}'
                       : 'No active requests',
-                  style: GoogleFonts.inter(
+                  style: GoogleFonts.googleSans(
                     fontSize: 11,
                     fontWeight: FontWeight.w500,
                     color: activeRequestCount > 0
@@ -166,7 +166,7 @@ class AddContactCard extends StatelessWidget {
               const SizedBox(height: 12),
               Text(
                 'Add Contact',
-                style: GoogleFonts.inter(
+                style: GoogleFonts.googleSans(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
                   color: Colors.grey[400],
@@ -175,7 +175,7 @@ class AddContactCard extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               // Spacer to align with contact card text height
-              Text('', style: GoogleFonts.inter(fontSize: 11)),
+              Text('', style: GoogleFonts.googleSans(fontSize: 11)),
             ],
           ),
         ),

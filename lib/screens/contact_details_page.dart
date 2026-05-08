@@ -255,10 +255,14 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
         _isLoadingInteractions = false;
       });
       debugPrint('Error loading interactions: $e');
+      final colorScheme = Theme.of(context).colorScheme;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Unable to load interactions. Please try again.'),
-          backgroundColor: Colors.red,
+        SnackBar(
+          content: Text(
+            'Unable to load interactions. Please try again.',
+            style: TextStyle(color: colorScheme.onError),
+          ),
+          backgroundColor: colorScheme.error,
         ),
       );
     }
@@ -545,7 +549,10 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
                 Navigator.of(dialogContext).pop();
                 Navigator.of(pageContext).pop();
               },
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Theme.of(dialogContext).colorScheme.error,
+                foregroundColor: Theme.of(dialogContext).colorScheme.onError,
+              ),
               child: const Text('Delete'),
             ),
           ],
@@ -575,7 +582,10 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
                 Navigator.pop(context);
                 _deleteInteraction(interaction);
               },
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.error,
+                foregroundColor: Theme.of(context).colorScheme.onError,
+              ),
               child: const Text('Delete'),
             ),
           ],
@@ -722,7 +732,10 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
                 if (!context.mounted) return;
                 Navigator.pop(context);
               },
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.error,
+                foregroundColor: Theme.of(context).colorScheme.onError,
+              ),
               child: const Text('Delete'),
             ),
           ],
@@ -973,9 +986,11 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
             ),
             if (_filteredInteractionsCache.isEmpty) ...[
               const SizedBox(height: 12),
-              const Text(
+              Text(
                 'No interactions logged yet. Use the button below to record one.',
-                style: TextStyle(fontSize: 14, color: Colors.grey),
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.outline,
+                ),
               ),
             ],
           ],
@@ -1419,10 +1434,6 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
     return InputDecoration(
       labelText: label,
       border: const OutlineInputBorder(),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
-        borderSide: const BorderSide(color: Colors.blue, width: 2),
-      ),
     );
   }
 
@@ -2007,7 +2018,10 @@ class _InteractionDetailPageState extends State<InteractionDetailPage> {
                 Navigator.pop(context);
                 _deleteInteraction();
               },
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.error,
+                foregroundColor: Theme.of(context).colorScheme.onError,
+              ),
               child: const Text('Delete'),
             ),
           ],

@@ -208,12 +208,13 @@ class _AnalyticsPageState extends State<AnalyticsPage>
     final maxY = values.reduce(math.max);
     final double yInterval = (maxY == 0 ? 1 : math.max(1, maxY / 4)).toDouble();
 
+    final colorScheme = Theme.of(context).colorScheme;
     final List<Color> barColors = [
-      Colors.blue,
-      Colors.red,
-      Colors.green,
-      Colors.orange,
-      Colors.purple,
+      colorScheme.primary,
+      colorScheme.tertiary,
+      colorScheme.secondary,
+      colorScheme.primaryFixedDim,
+      colorScheme.tertiaryFixedDim,
     ];
 
     return Card(

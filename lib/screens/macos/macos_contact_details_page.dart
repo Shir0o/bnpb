@@ -199,25 +199,25 @@ class _MacOSContactDetailsPageState extends State<MacOSContactDetailsPage> {
       builder: (context) => AlertDialog(
         title: Text(
           'Delete Contact',
-          style: GoogleFonts.inter(fontWeight: FontWeight.bold),
+          style: GoogleFonts.googleSans(fontWeight: FontWeight.bold),
         ),
         content: Text(
           'Are you sure you want to delete this contact? This action cannot be undone.',
-          style: GoogleFonts.inter(fontSize: 14),
+          style: GoogleFonts.googleSans(fontSize: 14),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
             child: Text(
               'Cancel',
-              style: GoogleFonts.inter(color: Colors.grey[600]),
+              style: GoogleFonts.googleSans(color: Colors.grey[600]),
             ),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
             child: Text(
               'Delete',
-              style: GoogleFonts.inter(
+              style: GoogleFonts.googleSans(
                 color: Colors.red,
                 fontWeight: FontWeight.bold,
               ),
@@ -382,7 +382,7 @@ class _MacOSContactDetailsPageState extends State<MacOSContactDetailsPage> {
                 ),
                 label: Text(
                   'Contacts',
-                  style: GoogleFonts.inter(
+                  style: GoogleFonts.googleSans(
                     fontSize: 15,
                     fontWeight: FontWeight.w500,
                     color: const Color(0xFF007AFF),
@@ -454,7 +454,7 @@ class _MacOSContactDetailsPageState extends State<MacOSContactDetailsPage> {
               )
             : Text(
                 label,
-                style: GoogleFonts.inter(
+                style: GoogleFonts.googleSans(
                   fontSize: 13,
                   fontWeight: FontWeight.w500,
                 ),
@@ -517,7 +517,7 @@ class _MacOSContactDetailsPageState extends State<MacOSContactDetailsPage> {
                   ),
                   child: Text(
                     'Edit',
-                    style: GoogleFonts.inter(
+                    style: GoogleFonts.googleSans(
                       fontSize: 11,
                       fontWeight: FontWeight.w500,
                       color: Colors.white,
@@ -583,7 +583,7 @@ class _MacOSContactDetailsPageState extends State<MacOSContactDetailsPage> {
                 child: Text(
                   'Relationships',
                   textAlign: TextAlign.right,
-                  style: GoogleFonts.inter(
+                  style: GoogleFonts.googleSans(
                     fontSize: 12,
                     fontWeight: FontWeight.w500,
                     color: const Color(0xFF6B7280), // gray-500
@@ -600,7 +600,7 @@ class _MacOSContactDetailsPageState extends State<MacOSContactDetailsPage> {
                       padding: const EdgeInsets.symmetric(vertical: 8.0),
                       child: Text(
                         'No relationships added',
-                        style: GoogleFonts.inter(
+                        style: GoogleFonts.googleSans(
                           fontSize: 13,
                           color: Colors.grey[400],
                         ),
@@ -617,7 +617,7 @@ class _MacOSContactDetailsPageState extends State<MacOSContactDetailsPage> {
                     ), // green-600
                     label: Text(
                       'add relationship',
-                      style: GoogleFonts.inter(
+                      style: GoogleFonts.googleSans(
                         fontSize: 13,
                         fontWeight: FontWeight.w500,
                         color: const Color(0xFF16A34A),
@@ -678,7 +678,7 @@ class _MacOSContactDetailsPageState extends State<MacOSContactDetailsPage> {
                   ),
                   child: RichText(
                     text: TextSpan(
-                      style: GoogleFonts.inter(fontSize: 13),
+                      style: GoogleFonts.googleSans(fontSize: 13),
                       children: [
                         TextSpan(
                           text: '${rel.type}: ',
@@ -730,7 +730,7 @@ class _MacOSContactDetailsPageState extends State<MacOSContactDetailsPage> {
             child: Text(
               'Notes',
               textAlign: TextAlign.right,
-              style: GoogleFonts.inter(
+              style: GoogleFonts.googleSans(
                 fontSize: 12,
                 fontWeight: FontWeight.w500,
                 color: const Color(0xFF6B7280),
@@ -742,10 +742,11 @@ class _MacOSContactDetailsPageState extends State<MacOSContactDetailsPage> {
           child: TextField(
             controller: _notesController,
             maxLines: 6,
-            style: GoogleFonts.inter(fontSize: 13, color: Colors.grey[900]),
+            style:
+                GoogleFonts.googleSans(fontSize: 13, color: Colors.grey[900]),
             decoration: InputDecoration(
               hintText: 'Add notes about this contact...',
-              hintStyle: GoogleFonts.inter(
+              hintStyle: GoogleFonts.googleSans(
                 fontSize: 13,
                 color: Colors.grey[400],
               ),
@@ -790,7 +791,7 @@ class _MacOSContactDetailsPageState extends State<MacOSContactDetailsPage> {
             child: Text(
               'Interactions',
               textAlign: TextAlign.right,
-              style: GoogleFonts.inter(
+              style: GoogleFonts.googleSans(
                 fontSize: 12,
                 fontWeight: FontWeight.w500,
                 color: const Color(0xFF6B7280),
@@ -847,7 +848,7 @@ class _MacOSContactDetailsPageState extends State<MacOSContactDetailsPage> {
                     padding: const EdgeInsets.all(16.0),
                     child: Text(
                       'No interactions yet',
-                      style: GoogleFonts.inter(
+                      style: GoogleFonts.googleSans(
                         fontSize: 12,
                         color: Colors.grey[400],
                       ),
@@ -871,7 +872,7 @@ class _MacOSContactDetailsPageState extends State<MacOSContactDetailsPage> {
                             flex: 2,
                             child: Text(
                               _dateFormat.format(interaction.occurredAt),
-                              style: GoogleFonts.inter(
+                              style: GoogleFonts.googleSans(
                                 fontSize: 12,
                                 color: Colors.grey[900],
                               ),
@@ -889,7 +890,7 @@ class _MacOSContactDetailsPageState extends State<MacOSContactDetailsPage> {
                                 const SizedBox(width: 4),
                                 Text(
                                   _capitalize(interaction.medium),
-                                  style: GoogleFonts.inter(
+                                  style: GoogleFonts.googleSans(
                                     fontSize: 12,
                                     color: Colors.grey[500],
                                   ),
@@ -904,7 +905,7 @@ class _MacOSContactDetailsPageState extends State<MacOSContactDetailsPage> {
                                   ? '${interaction.durationMinutes}m'
                                   : '-',
                               textAlign: TextAlign.right,
-                              style: GoogleFonts.inter(
+                              style: GoogleFonts.googleSans(
                                 fontSize: 12,
                                 color: Colors.grey[500],
                               ),
@@ -928,7 +929,7 @@ class _MacOSContactDetailsPageState extends State<MacOSContactDetailsPage> {
                     alignment: Alignment.centerLeft,
                     child: Text(
                       'View all history',
-                      style: GoogleFonts.inter(
+                      style: GoogleFonts.googleSans(
                         fontSize: 12,
                         fontWeight: FontWeight.w500,
                         color: const Color(0xFF007AFF),
@@ -944,11 +945,10 @@ class _MacOSContactDetailsPageState extends State<MacOSContactDetailsPage> {
   }
 
   TextStyle _tableHeaderStyle() {
-    return GoogleFonts.inter(
+    return GoogleFonts.googleSans(
       fontSize: 11,
       fontWeight: FontWeight.w500,
       color: const Color(0xFF6B7280),
-      letterSpacing: 0.5,
     );
   }
 
@@ -973,7 +973,7 @@ class _MacOSContactDetailsPageState extends State<MacOSContactDetailsPage> {
             child: Text(
               label,
               textAlign: TextAlign.right,
-              style: GoogleFonts.inter(
+              style: GoogleFonts.googleSans(
                 fontSize: 12,
                 fontWeight: FontWeight.w500,
                 color: const Color(0xFF6B7280), // gray-500
@@ -988,10 +988,11 @@ class _MacOSContactDetailsPageState extends State<MacOSContactDetailsPage> {
               TextFormField(
                 controller: controller,
                 keyboardType: inputType,
-                style: GoogleFonts.inter(fontSize: 13, color: Colors.grey[900]),
+                style: GoogleFonts.googleSans(
+                    fontSize: 13, color: Colors.grey[900]),
                 decoration: InputDecoration(
                   hintText: placeholder,
-                  hintStyle: GoogleFonts.inter(
+                  hintStyle: GoogleFonts.googleSans(
                     fontSize: 13,
                     color: Colors.grey[400],
                   ),
@@ -1047,7 +1048,7 @@ class _MacOSContactDetailsPageState extends State<MacOSContactDetailsPage> {
         icon: const Icon(Icons.delete_outline, size: 18, color: Colors.red),
         label: Text(
           'Delete Contact',
-          style: GoogleFonts.inter(
+          style: GoogleFonts.googleSans(
             color: Colors.red,
             fontWeight: FontWeight.w500,
           ),

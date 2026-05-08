@@ -169,7 +169,7 @@ class _MacOSActiveContactsViewState extends State<MacOSActiveContactsView> {
                   children: [
                     Text(
                       '${_contacts.length} ACTIVE',
-                      style: GoogleFonts.inter(
+                      style: GoogleFonts.googleSans(
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
                         color: Colors.grey[500],
@@ -204,7 +204,7 @@ class _MacOSActiveContactsViewState extends State<MacOSActiveContactsView> {
                         child: Text(
                           'No active contacts.\nClick + to add.',
                           textAlign: TextAlign.center,
-                          style: GoogleFonts.inter(
+                          style: GoogleFonts.googleSans(
                             color: Colors.grey[400],
                             fontSize: 12,
                           ),
@@ -292,7 +292,7 @@ class _MacOSActiveContactsViewState extends State<MacOSActiveContactsView> {
                 alignment: Alignment.center,
                 child: Text(
                   contact.initials,
-                  style: GoogleFonts.inter(
+                  style: GoogleFonts.googleSans(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
                     color: isSelected ? Colors.white : avatarColor,
@@ -312,7 +312,7 @@ class _MacOSActiveContactsViewState extends State<MacOSActiveContactsView> {
                         Flexible(
                           child: Text(
                             contact.displayName,
-                            style: GoogleFonts.inter(
+                            style: GoogleFonts.googleSans(
                               fontSize: 13,
                               fontWeight: FontWeight.bold,
                               color: isSelected ? Colors.white : Colors.black,
@@ -325,7 +325,7 @@ class _MacOSActiveContactsViewState extends State<MacOSActiveContactsView> {
                           padding: const EdgeInsets.only(left: 4),
                           child: Text(
                             dateStr,
-                            style: GoogleFonts.inter(
+                            style: GoogleFonts.googleSans(
                               fontSize: 11,
                               color: isSelected
                                   ? Colors.white.withValues(alpha: 0.9)
@@ -338,7 +338,7 @@ class _MacOSActiveContactsViewState extends State<MacOSActiveContactsView> {
                     const SizedBox(height: 2),
                     Text(
                       snippet,
-                      style: GoogleFonts.inter(
+                      style: GoogleFonts.googleSans(
                         fontSize: 12,
                         color: isSelected
                             ? Colors.white.withValues(alpha: 0.8)
@@ -407,7 +407,7 @@ class _MacOSActiveContactsViewState extends State<MacOSActiveContactsView> {
                       alignment: Alignment.center,
                       child: Text(
                         contact.initials,
-                        style: GoogleFonts.inter(
+                        style: GoogleFonts.googleSans(
                           fontSize: 18,
                           fontWeight: FontWeight.w600,
                           color: Colors.white,
@@ -420,7 +420,7 @@ class _MacOSActiveContactsViewState extends State<MacOSActiveContactsView> {
                       children: [
                         Text(
                           contact.displayName,
-                          style: GoogleFonts.inter(
+                          style: GoogleFonts.googleSans(
                             fontSize: 20,
                             fontWeight: FontWeight.bold,
                             color: kTextPrimary,
@@ -444,7 +444,7 @@ class _MacOSActiveContactsViewState extends State<MacOSActiveContactsView> {
                                     ),
                                     child: Text(
                                       tag,
-                                      style: GoogleFonts.inter(
+                                      style: GoogleFonts.googleSans(
                                         fontSize: 11,
                                         color: kTextSecondary,
                                       ),
@@ -454,7 +454,7 @@ class _MacOSActiveContactsViewState extends State<MacOSActiveContactsView> {
                               ),
                             Text(
                               'Last prayed: Today', // Placeholder
-                              style: GoogleFonts.inter(
+                              style: GoogleFonts.googleSans(
                                 fontSize: 12,
                                 color: kTextSecondary,
                               ),
@@ -480,7 +480,7 @@ class _MacOSActiveContactsViewState extends State<MacOSActiveContactsView> {
                   ),
                   child: Text(
                     'Edit',
-                    style: GoogleFonts.inter(
+                    style: GoogleFonts.googleSans(
                       fontSize: 13,
                       fontWeight: FontWeight.w500,
                     ),
@@ -503,7 +503,7 @@ class _MacOSActiveContactsViewState extends State<MacOSActiveContactsView> {
                       padding: const EdgeInsets.only(bottom: 24),
                       child: Text(
                         'No active prayer requests.',
-                        style: GoogleFonts.inter(
+                        style: GoogleFonts.googleSans(
                           color: Colors.grey[400],
                           fontSize: 13,
                         ),
@@ -535,7 +535,7 @@ class _MacOSActiveContactsViewState extends State<MacOSActiveContactsView> {
                   if (recentInteractions.isEmpty)
                     Text(
                       'No recent interactions.',
-                      style: GoogleFonts.inter(
+                      style: GoogleFonts.googleSans(
                         color: Colors.grey[400],
                         fontSize: 13,
                       ),
@@ -556,11 +556,10 @@ class _MacOSActiveContactsViewState extends State<MacOSActiveContactsView> {
   Widget _buildSectionTitle(String title) {
     return Text(
       title.toUpperCase(),
-      style: GoogleFonts.inter(
+      style: GoogleFonts.googleSans(
         fontSize: 11,
         fontWeight: FontWeight.bold,
         color: const Color(0xFF9CA3AF),
-        letterSpacing: 0.5,
       ),
     );
   }
@@ -610,7 +609,7 @@ class _MacOSActiveContactsViewState extends State<MacOSActiveContactsView> {
               ), // Subtle alignment adjustment
               child: Text(
                 request.description,
-                style: GoogleFonts.inter(
+                style: GoogleFonts.googleSans(
                   fontSize: 14,
                   color: kTextPrimary,
                   height: 1.5, // Relaxed line height for readability
@@ -654,7 +653,7 @@ class _MacOSActiveContactsViewState extends State<MacOSActiveContactsView> {
                       alignment: Alignment.center,
                       child: Text(
                         contact.initials,
-                        style: GoogleFonts.inter(
+                        style: GoogleFonts.googleSans(
                           fontSize: 10,
                           fontWeight: FontWeight.bold,
                           color: getAvatarColor(contact.initials),
@@ -674,7 +673,7 @@ class _MacOSActiveContactsViewState extends State<MacOSActiveContactsView> {
                     children: [
                       Text(
                         formatDate(interaction.occurredAt),
-                        style: GoogleFonts.inter(
+                        style: GoogleFonts.googleSans(
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
                           color: kTextPrimary,
@@ -683,7 +682,7 @@ class _MacOSActiveContactsViewState extends State<MacOSActiveContactsView> {
                       const SizedBox(width: 8),
                       Text(
                         formatTime(interaction.occurredAt),
-                        style: GoogleFonts.inter(
+                        style: GoogleFonts.googleSans(
                           fontSize: 11,
                           color: kTextSecondary,
                         ),
@@ -707,7 +706,7 @@ class _MacOSActiveContactsViewState extends State<MacOSActiveContactsView> {
                           ),
                           child: Text(
                             '${interaction.durationMinutes}m',
-                            style: GoogleFonts.inter(
+                            style: GoogleFonts.googleSans(
                               fontSize: 11,
                               fontWeight: FontWeight.w500,
                               color: kTextSecondary,
@@ -720,7 +719,7 @@ class _MacOSActiveContactsViewState extends State<MacOSActiveContactsView> {
                   const SizedBox(height: 4),
                   Text(
                     interaction.summary,
-                    style: GoogleFonts.inter(
+                    style: GoogleFonts.googleSans(
                       fontSize: 13,
                       color: Colors.grey[700],
                       height: 1.5,

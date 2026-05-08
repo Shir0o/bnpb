@@ -152,7 +152,7 @@ class _MacOSPrayerDiaryViewState extends State<MacOSPrayerDiaryView> {
         children: [
           Text(
             'Prayer Diary',
-            style: GoogleFonts.inter(
+            style: GoogleFonts.googleSans(
               fontSize: 16,
               fontWeight: FontWeight.w600,
               color: Colors.black,
@@ -234,7 +234,8 @@ class _MacOSPrayerDiaryViewState extends State<MacOSPrayerDiaryView> {
             const SizedBox(height: 16),
             Text(
               'No prayer entries found',
-              style: GoogleFonts.inter(fontSize: 14, color: Colors.grey[600]),
+              style:
+                  GoogleFonts.googleSans(fontSize: 14, color: Colors.grey[600]),
             ),
           ],
         ),
@@ -305,11 +306,10 @@ class _MacOSPrayerDiaryViewState extends State<MacOSPrayerDiaryView> {
         children: [
           Text(
             title.toUpperCase(),
-            style: GoogleFonts.inter(
+            style: GoogleFonts.googleSans(
               fontSize: 13,
               fontWeight: FontWeight.w700,
               color: Colors.black,
-              letterSpacing: 0.5,
             ),
           ),
           if (dateStr.isNotEmpty)
