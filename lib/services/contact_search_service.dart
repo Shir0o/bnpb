@@ -139,18 +139,9 @@ class ContactSearchService {
         values: [contact.fullName, contact.nickname ?? ''],
       ),
       _SearchField(label: 'Location', values: [contact.location ?? '']),
-      _SearchField(label: 'Tags', values: contact.tags),
       _SearchField(
         label: 'First meeting notes',
         values: [contact.firstMeetingNotes ?? ''],
-      ),
-      _SearchField(
-        label: 'Recognition keywords',
-        values: contact.recognitionKeywords,
-      ),
-      _SearchField(
-        label: 'Recognition reminders',
-        values: contact.recognitionReminders,
       ),
       _SearchField(label: 'Interactions', values: interactionSummaries),
     ];

@@ -6,9 +6,6 @@ enum OnboardingFollowUp {
   /// Navigate to contact import tools on the home tab.
   importContacts,
 
-  /// Navigate to the add-contact experience so tags can be curated early.
-  manageTags,
-
   /// Navigate to notification settings for fine tuning reminders.
   notificationSettings,
 }
@@ -47,16 +44,6 @@ class _OnboardingWizardState extends State<OnboardingWizard> {
           'tab at any time to bring additional records in.',
       actionLabel: 'Import contacts',
       followUp: OnboardingFollowUp.importContacts,
-    ),
-    _OnboardingStep(
-      icon: Icons.sell_outlined,
-      title: 'Create meaningful tags',
-      description:
-          'Group people by ministry focus, campus, or teams. When adding or '
-          'editing a contact you can create new tags and reuse them to keep '
-          'lists organised from the start.',
-      actionLabel: 'Review tag options',
-      followUp: OnboardingFollowUp.manageTags,
     ),
     _OnboardingStep(
       icon: Icons.notifications_active_outlined,

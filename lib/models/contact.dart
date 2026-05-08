@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:uuid/uuid.dart';
 
 import 'interaction.dart';
@@ -17,15 +15,6 @@ class Contact {
   final String? phone; // Phone number of the contact (optional)
   final String? firstMeetingNotes; // Notes from the first meeting
   final String? notes; // General notes about the contact
-  final List<String> tags; // Relationship tags
-  /// Lightweight descriptors that help recognize the contact quickly.
-  final List<String> recognitionKeywords;
-
-  /// URIs (web links or storage references) that visually identify the contact.
-  final List<String> recognitionPhotoUris;
-
-  /// Gentle reminders tied to this contact (birthdays, follow-ups, etc.).
-  final List<String> recognitionReminders;
 
   /// Recorded interactions for the contact (e.g., meetings, calls).
   final List<Interaction> interactions;
@@ -50,20 +39,12 @@ class Contact {
     this.phone,
     this.firstMeetingNotes,
     this.notes,
-    List<String>? tags,
-    List<String>? recognitionKeywords,
-    List<String>? recognitionPhotoUris,
-    List<String>? recognitionReminders,
     List<Interaction>? interactions,
     List<PrayerRequest>? prayerRequests,
     List<Relationship>? relationships,
     DateTime? updatedAt,
     this.deletedAt,
-  })  : tags = tags ?? const [],
-        recognitionKeywords = recognitionKeywords ?? const [],
-        recognitionPhotoUris = recognitionPhotoUris ?? const [],
-        recognitionReminders = recognitionReminders ?? const [],
-        interactions = interactions ?? const [],
+  })  : interactions = interactions ?? const [],
         prayerRequests = prayerRequests ?? const [],
         relationships = relationships ?? const [],
         updatedAt = updatedAt ?? DateTime.now();
@@ -78,10 +59,6 @@ class Contact {
     String? phone,
     String? firstMeetingNotes,
     String? notes,
-    List<String>? tags,
-    List<String>? recognitionKeywords,
-    List<String>? recognitionPhotoUris,
-    List<String>? recognitionReminders,
     List<Interaction>? interactions,
     List<PrayerRequest>? prayerRequests,
     List<Relationship>? relationships,
@@ -99,10 +76,6 @@ class Contact {
       phone: phone ?? this.phone,
       firstMeetingNotes: firstMeetingNotes ?? this.firstMeetingNotes,
       notes: notes ?? this.notes,
-      tags: tags ?? this.tags,
-      recognitionKeywords: recognitionKeywords ?? this.recognitionKeywords,
-      recognitionPhotoUris: recognitionPhotoUris ?? this.recognitionPhotoUris,
-      recognitionReminders: recognitionReminders ?? this.recognitionReminders,
       interactions: interactions ?? this.interactions,
       prayerRequests: prayerRequests ?? this.prayerRequests,
       relationships: relationships ?? this.relationships,
@@ -125,10 +98,6 @@ class Contact {
       'phone': phone,
       'firstMeetingNotes': firstMeetingNotes,
       'notes': notes,
-      'tags': tags,
-      'recognitionKeywords': recognitionKeywords,
-      'recognitionPhotoUris': recognitionPhotoUris,
-      'recognitionReminders': recognitionReminders,
       'interactions': interactions.map((entry) => entry.toMap()).toList(),
       'prayerRequests': prayerRequests.map((entry) => entry.toMap()).toList(),
       'relationships': relationships.map((entry) => entry.toMap()).toList(),
@@ -150,10 +119,6 @@ class Contact {
       'phone': phone,
       'firstMeetingNotes': firstMeetingNotes,
       'notes': notes,
-      'tags': tags,
-      'recognitionKeywords': recognitionKeywords,
-      'recognitionPhotoUris': recognitionPhotoUris,
-      'recognitionReminders': recognitionReminders,
       'interactions': interactions.map((entry) => entry.toJson()).toList(),
       'prayerRequests': prayerRequests.map((entry) => entry.toMap()).toList(),
       'relationships': relationships.map((entry) => entry.toMap()).toList(),
@@ -178,10 +143,6 @@ class Contact {
       phone: map['phone'] as String?,
       firstMeetingNotes: map['firstMeetingNotes'] as String?,
       notes: map['notes'] as String?,
-      tags: _parseStringList(map['tags']),
-      recognitionKeywords: _parseStringList(map['recognitionKeywords']),
-      recognitionPhotoUris: _parseStringList(map['recognitionPhotoUris']),
-      recognitionReminders: _parseStringList(map['recognitionReminders']),
       interactions: _parseInteractions(map['interactions']),
       prayerRequests: _parsePrayerRequests(map['prayerRequests']),
       relationships: _parseRelationships(map['relationships']),
@@ -243,30 +204,6 @@ class Contact {
       return nickname![0].toUpperCase();
     }
     return '?';
-  }
-
-  static List<String> _parseStringList(dynamic value) {
-    if (value is List<String>) {
-      return value;
-    }
-    if (value is List) {
-      return value.map((entry) => entry.toString()).toList();
-    }
-    if (value is String && value.isNotEmpty) {
-      try {
-        final decoded = jsonDecode(value);
-        if (decoded is List) {
-          return decoded.map((entry) => entry.toString()).toList();
-        }
-      } catch (_) {
-        return value
-            .split(',')
-            .map((entry) => entry.trim())
-            .where((entry) => entry.isNotEmpty)
-            .toList();
-      }
-    }
-    return const [];
   }
 
   static List<Interaction> _parseInteractions(dynamic value) {

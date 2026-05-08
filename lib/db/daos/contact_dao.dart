@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'package:sqflite_sqlcipher/sqflite.dart';
 import '../../models/contact.dart';
 import '../base_dao.dart';
@@ -38,9 +37,6 @@ class ContactDao extends BaseDao {
       'location': contact.location,
       'email': contact.email,
       'phone': contact.phone,
-      'keywords': jsonEncode(contact.recognitionKeywords),
-      'photoCues': jsonEncode(contact.recognitionPhotoUris),
-      'reminderCues': jsonEncode(contact.recognitionReminders),
       'notes': contact.notes,
       'updatedAt': forceNowTimestamps
           ? DateTime.now().toUtc().toIso8601String()
@@ -65,7 +61,6 @@ class ContactDao extends BaseDao {
     }
 
     await _upsertMeetContext(txn, contact);
-    await _replaceContactTags(txn, contact);
 
     if (syncNested) {
       // NOTE: These call out to other DAOs ideally, but for now we'll use DBHelper instances or internal methods
@@ -99,24 +94,6 @@ class ContactDao extends BaseDao {
           'firstMeetingNotes': contact.firstMeetingNotes,
         },
         conflictAlgorithm: ConflictAlgorithm.replace);
-  }
-
-  Future<void> _replaceContactTags(
-    DatabaseExecutor txn,
-    Contact contact,
-  ) async {
-    await txn.delete(
-      'contact_tags',
-      where: 'contactId = ?',
-      whereArgs: [contact.id],
-    );
-
-    final batch = txn.batch();
-    for (final tag in contact.tags.toSet()) {
-      if (tag.isEmpty) continue;
-      batch.insert('contact_tags', {'contactId': contact.id, 'tag': tag});
-    }
-    await batch.commit(noResult: true);
   }
 
   Future<List<Contact>> getContacts({
@@ -167,29 +144,6 @@ class ContactDao extends BaseDao {
         updatedSince == null &&
         !includeDeleted;
 
-    // Fetch Tags
-    final List<Map<String, Object?>> tagRows;
-    if (isFetchAllActive) {
-      tagRows = await db.rawQuery('''
-        SELECT t.* FROM contact_tags t
-        JOIN contacts c ON t.contactId = c.id
-        WHERE c.deletedAt IS NULL
-      ''');
-    } else {
-      tagRows = await chunkedQuery(
-        table: 'contact_tags',
-        inColumn: 'contactId',
-        values: retrievedContactIds,
-      );
-    }
-
-    final tagsByContact = <String, List<String>>{};
-    for (final row in tagRows) {
-      final cId = row['contactId'] as String;
-      final tag = row['tag'] as String;
-      tagsByContact.putIfAbsent(cId, () => []).add(tag);
-    }
-
     // Fetch Interactions
     final interactionsByContact =
         await dbHelper.interactionDao.getInteractionsForContacts(
@@ -235,7 +189,6 @@ class ContactDao extends BaseDao {
     return contactRows.map((row) {
       final cId = row['id'] as String;
       final contactMap = Map<String, dynamic>.from(row);
-      contactMap['tags'] = tagsByContact[cId] ?? [];
       contactMap['interactions'] =
           (interactionsByContact[cId] ?? []).map((i) => i.toMap()).toList();
       contactMap['prayerRequests'] =
@@ -244,22 +197,6 @@ class ContactDao extends BaseDao {
           (relationshipsByContact[cId] ?? []).map((r) => r.toMap()).toList();
       contactMap['firstMeetingNotes'] = contextMap[cId];
 
-      if (contactMap['keywords'] != null) {
-        contactMap['recognitionKeywords'] =
-            _parseStringList(contactMap['keywords']);
-        contactMap.remove('keywords');
-      }
-      if (contactMap['photoCues'] != null) {
-        contactMap['recognitionPhotoUris'] =
-            _parseStringList(contactMap['photoCues']);
-        contactMap.remove('photoCues');
-      }
-      if (contactMap['reminderCues'] != null) {
-        contactMap['recognitionReminders'] =
-            _parseStringList(contactMap['reminderCues']);
-        contactMap.remove('reminderCues');
-      }
-
       return Contact.fromMap(contactMap);
     }).toList();
   }
@@ -267,6 +204,21 @@ class ContactDao extends BaseDao {
   Future<Contact?> getContactById(String id) async {
     final contacts = await getContacts(contactId: id);
     return contacts.isNotEmpty ? contacts.first : null;
+  }
+
+  /// Returns the distinct, non-empty `location` values across active contacts,
+  /// sorted case-insensitively. Used to populate location autocomplete; does
+  /// not hydrate nested data the way [getContacts] does.
+  Future<List<String>> getDistinctLocations() async {
+    final db = await database;
+    final rows = await db.rawQuery('''
+      SELECT DISTINCT location FROM contacts
+      WHERE deletedAt IS NULL
+        AND location IS NOT NULL
+        AND TRIM(location) != ''
+    ''');
+    return rows.map((row) => (row['location'] as String).trim()).toList()
+      ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
   }
 
   Future<int> deleteContact(String id) async {
@@ -280,44 +232,5 @@ class ContactDao extends BaseDao {
       where: 'id = ?',
       whereArgs: [id],
     );
-  }
-
-  Future<List<String>> getAllTags() async {
-    final db = await database;
-    final rows = await db.rawQuery('''
-      SELECT DISTINCT t.tag
-      FROM contact_tags t
-      JOIN contacts c ON c.id = t.contactId
-      WHERE c.deletedAt IS NULL
-    ''');
-
-    return rows
-        .map((row) => row['tag'] as String)
-        .where((tag) => tag.isNotEmpty)
-        .toList()
-      ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
-  }
-
-  List<String> _parseStringList(dynamic value) {
-    if (value == null) return const [];
-    if (value is String) {
-      if (value.isEmpty) return const [];
-      try {
-        final decoded = jsonDecode(value);
-        if (decoded is List) {
-          return decoded.map((entry) => entry.toString()).toList();
-        }
-      } catch (_) {
-        return value
-            .split(',')
-            .map((entry) => entry.trim())
-            .where((entry) => entry.isNotEmpty)
-            .toList();
-      }
-    }
-    if (value is List) {
-      return value.map((entry) => entry.toString()).toList();
-    }
-    return const [];
   }
 }

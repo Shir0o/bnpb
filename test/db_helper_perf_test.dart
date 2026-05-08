@@ -35,7 +35,6 @@ void main() {
           'lastName': '$i',
           'updatedAt': now,
         });
-        batch.insert('contact_tags', {'contactId': contactId, 'tag': 'Tag $i'});
 
         // Explicit interaction ID
         final interactionId = i + 1;
@@ -66,7 +65,6 @@ void main() {
       expect(fetched.length, greaterThanOrEqualTo(count));
 
       final first = fetched.first;
-      expect(first.tags, isNotEmpty, reason: 'Tags should be fetched');
       expect(
         first.interactions,
         isNotEmpty,

@@ -437,29 +437,6 @@ class _MacOSActiveContactsViewState extends State<MacOSActiveContactsView> {
                         const SizedBox(height: 4),
                         Row(
                           children: [
-                            if (contact.tags.isNotEmpty)
-                              ...contact.tags.map(
-                                (tag) => Padding(
-                                  padding: const EdgeInsets.only(right: 8),
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                      vertical: 2,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: colorScheme.surfaceContainerLow,
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    child: Text(
-                                      tag,
-                                      style: GoogleFonts.googleSans(
-                                        fontSize: 11,
-                                        color: colorScheme.onSurfaceVariant,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
                             Text(
                               'Last prayed: Today', // Placeholder
                               style: GoogleFonts.googleSans(

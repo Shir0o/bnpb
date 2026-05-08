@@ -1,4 +1,3 @@
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
@@ -64,12 +63,9 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
   final TextEditingController _firstMeetingNotesController =
       TextEditingController();
   final TextEditingController _notesController = TextEditingController();
-  final TextEditingController _tagController = TextEditingController();
   final TextEditingController _interactionSearchController =
       TextEditingController();
-  final TextEditingController _keywordController = TextEditingController();
-  final TextEditingController _reminderController = TextEditingController();
-  final TextEditingController _photoCueController = TextEditingController();
+  final FocusNode _locationFocusNode = FocusNode();
 
   List<Interaction> _interactions = [];
   List<Interaction> _filteredInteractionsCache = [];
@@ -80,13 +76,9 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
   Contact? _editingSnapshot;
   bool _isInitialLoad = true;
 
-  List<String> _selectedTags = [];
-  List<String> _keywords = [];
-  List<String> _reminderCues = [];
-  List<String> _photoCues = [];
   List<Contact> _availableContacts = [];
   Map<String, Contact> _contactLookup = {};
-  List<String> _availableTags = [];
+  List<String> _locationSuggestions = [];
   bool _isLoadingReferenceData = false;
   List<Relationship> _relationships = [];
   bool _isLoadingRelationships = false;
@@ -191,10 +183,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
     _locationController.dispose();
     _firstMeetingNotesController.dispose();
     _notesController.dispose();
-    _tagController.dispose();
-    _keywordController.dispose();
-    _reminderController.dispose();
-    _photoCueController.dispose();
+    _locationFocusNode.dispose();
     super.dispose();
   }
 
@@ -205,11 +194,14 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
     });
 
     final dbHelper = widget._dbHelper;
-    final contacts = await dbHelper.getContacts();
-    final tags = await dbHelper.getAllTags();
-    final relationships = await dbHelper.getRelationshipsForContact(
-      widget.contact.id,
-    );
+    final results = await Future.wait([
+      dbHelper.getContacts(),
+      dbHelper.getRelationshipsForContact(widget.contact.id),
+      dbHelper.getDistinctLocations(),
+    ]);
+    final contacts = results[0] as List<Contact>;
+    final relationships = results[1] as List<Relationship>;
+    final locations = results[2] as List<String>;
 
     setState(() {
       _contactLookup = {for (final contact in contacts) contact.id: contact};
@@ -219,9 +211,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
               (a, b) =>
                   a.fullName.toLowerCase().compareTo(b.fullName.toLowerCase()),
             );
-      final mergedTags = {...tags, ..._selectedTags};
-      _availableTags = mergedTags.toList()
-        ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+      _locationSuggestions = locations;
       _isLoadingReferenceData = false;
       _relationships = relationships;
       _isLoadingRelationships = false;
@@ -268,174 +258,6 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
     }
   }
 
-  void _addTagFromInput() {
-    final text = _tagController.text.trim();
-    if (text.isEmpty) return;
-    setState(() {
-      if (!_selectedTags.contains(text)) {
-        _selectedTags.add(text);
-      }
-      _tagController.clear();
-    });
-  }
-
-  void _toggleSuggestedTag(String tag) {
-    setState(() {
-      if (_selectedTags.contains(tag)) {
-        _selectedTags.remove(tag);
-      } else {
-        _selectedTags.add(tag);
-      }
-    });
-  }
-
-  void _removeTag(String tag) {
-    setState(() {
-      _selectedTags.remove(tag);
-    });
-  }
-
-  void _addKeyword() {
-    final text = _keywordController.text.trim();
-    if (text.isEmpty) return;
-    setState(() {
-      if (!_keywords.contains(text)) {
-        _keywords.add(text);
-      }
-      _keywordController.clear();
-    });
-  }
-
-  void _removeKeyword(String keyword) {
-    setState(() {
-      _keywords.remove(keyword);
-    });
-  }
-
-  void _addReminder() {
-    final text = _reminderController.text.trim();
-    if (text.isEmpty) return;
-    setState(() {
-      if (!_reminderCues.contains(text)) {
-        _reminderCues.add(text);
-      }
-      _reminderController.clear();
-    });
-  }
-
-  void _removeReminder(String reminder) {
-    setState(() {
-      _reminderCues.remove(reminder);
-    });
-  }
-
-  void _addPhotoCue(String value) {
-    final trimmed = value.trim();
-    if (trimmed.isEmpty) return;
-    setState(() {
-      if (!_photoCues.contains(trimmed)) {
-        _photoCues.add(trimmed);
-      }
-    });
-  }
-
-  void _addPhotoCueFromInput() {
-    final text = _photoCueController.text.trim();
-    if (text.isEmpty) return;
-    _addPhotoCue(text);
-    _photoCueController.clear();
-  }
-
-  Future<void> _pickPhotoCue() async {
-    final result = await FilePicker.platform.pickFiles(type: FileType.image);
-    if (result == null || result.files.isEmpty) {
-      return;
-    }
-    final path = result.files.single.path;
-    if (path != null) {
-      _addPhotoCue(path);
-    }
-  }
-
-  void _removePhotoCue(String cue) {
-    setState(() {
-      _photoCues.remove(cue);
-    });
-  }
-
-  Widget _buildCueInput({
-    required String label,
-    required TextEditingController controller,
-    required VoidCallback onAdd,
-    required List<String> entries,
-    required IconData leadingIcon,
-    required void Function(String value) onRemove,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: Theme.of(context).textTheme.titleSmall),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            Expanded(
-              child: TextField(
-                controller: controller,
-                decoration: _buildInputDecoration('Add $label').copyWith(
-                  suffixIcon: IconButton(
-                    icon: const Icon(Icons.add),
-                    onPressed: onAdd,
-                  ),
-                ),
-                onSubmitted: (_) => onAdd(),
-              ),
-            ),
-          ],
-        ),
-        if (entries.isNotEmpty) ...[
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: entries
-                .map(
-                  (entry) => InputChip(
-                    avatar: Icon(leadingIcon, size: 18),
-                    label: Text(entry),
-                    onDeleted: () => onRemove(entry),
-                  ),
-                )
-                .toList(),
-          ),
-        ],
-      ],
-    );
-  }
-
-  ImageProvider<Object>? _buildImageProviderForCue(String cue) {
-    final uri = Uri.tryParse(cue);
-    if (uri != null && uri.hasAbsolutePath) {
-      final scheme = uri.scheme.toLowerCase();
-      if (scheme == 'http' || scheme == 'https' || scheme == 'data') {
-        return NetworkImage(cue);
-      }
-    }
-    return null;
-  }
-
-  ImageProvider<Object>? _resizeProvider(
-    ImageProvider<Object>? provider,
-    double displaySize,
-  ) {
-    if (provider == null) return null;
-    // We use a multiplier to ensure we have enough resolution for aspect ratios
-    // where width < height (portrait), preventing blurriness when using BoxFit.cover.
-    // displaySize is the width of the container.
-    final cacheWidth =
-        (displaySize * MediaQuery.of(context).devicePixelRatio * 1.5).toInt();
-    return ResizeImage(provider, width: cacheWidth);
-  }
-
   Contact _buildContactFromState({List<Interaction>? interactionsOverride}) {
     final lastNameText = _lastNameController.text.trim();
     final nicknameText = _nicknameController.text.trim();
@@ -453,17 +275,13 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
       firstMeetingNotes:
           firstMeetingNotesText.isEmpty ? null : firstMeetingNotesText,
       notes: notesText.isEmpty ? null : notesText,
-      tags: List<String>.from(_selectedTags),
-      recognitionKeywords: List<String>.from(_keywords),
-      recognitionPhotoUris: List<String>.from(_photoCues),
-      recognitionReminders: List<String>.from(_reminderCues),
       interactions: List<Interaction>.from(
         interactionsOverride ?? _interactions,
       ),
     );
   }
 
-  void _applyContactData(Contact contact, {bool updateAvailableTags = true}) {
+  void _applyContactData(Contact contact) {
     _firstNameController.text = contact.firstName;
     _middleNameController.text = contact.middleName;
     _lastNameController.text = contact.lastName ?? '';
@@ -471,29 +289,12 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
     _locationController.text = contact.location ?? '';
     _firstMeetingNotesController.text = contact.firstMeetingNotes ?? '';
     _notesController.text = contact.notes ?? '';
-    _selectedTags = List<String>.from(contact.tags);
-    _keywords = List<String>.from(contact.recognitionKeywords);
-    _reminderCues = List<String>.from(contact.recognitionReminders);
-    _photoCues = List<String>.from(contact.recognitionPhotoUris);
-    if (updateAvailableTags) {
-      final merged = {..._availableTags, ..._selectedTags};
-      _availableTags = merged.toList()
-        ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
-    }
-    _tagController.clear();
-    _keywordController.clear();
-    _reminderController.clear();
-    _photoCueController.clear();
   }
 
   void _startEditing() {
     setState(() {
       _editingSnapshot = _buildContactFromState();
       _isEditing = true;
-      _tagController.clear();
-      _keywordController.clear();
-      _reminderController.clear();
-      _photoCueController.clear();
     });
   }
 
@@ -1044,8 +845,6 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
     }
 
     addSection(_buildEditDetailsCard());
-    addSection(_buildEditRecognitionCard());
-    addSection(_buildEditTagsCard());
     return sections;
   }
 
@@ -1059,10 +858,8 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
       sections.add(widget);
     }
 
-    addSection(_buildViewTagsCard(contact));
     addSection(_buildViewMeetingNotesCard(contact));
     addSection(_buildViewNotesCard(contact));
-    addSection(_buildViewRecognitionCard(contact));
     return sections;
   }
 
@@ -1086,9 +883,11 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
           label: 'Nickname (Optional)',
         ),
         const SizedBox(height: 16),
-        _buildTextField(
+        _buildSuggestionField(
           controller: _locationController,
+          focusNode: _locationFocusNode,
           label: 'Location (Optional)',
+          suggestions: _locationSuggestions,
         ),
         const SizedBox(height: 16),
         _buildTextField(
@@ -1102,140 +901,6 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
           label: 'Notes (Optional)',
           maxLines: 5,
         ),
-      ],
-    );
-  }
-
-  Widget _buildEditRecognitionCard() {
-    return _buildCard(
-      children: [
-        Text(
-          'Recognition cues',
-          style: Theme.of(context).textTheme.titleMedium,
-        ),
-        const SizedBox(height: 12),
-        _buildCueInput(
-          label: 'Keywords',
-          controller: _keywordController,
-          onAdd: _addKeyword,
-          entries: _keywords,
-          leadingIcon: Icons.style_outlined,
-          onRemove: _removeKeyword,
-        ),
-        const SizedBox(height: 12),
-        _buildCueInput(
-          label: 'Reminders',
-          controller: _reminderController,
-          onAdd: _addReminder,
-          entries: _reminderCues,
-          leadingIcon: Icons.alarm_add_outlined,
-          onRemove: _removeReminder,
-        ),
-        const SizedBox(height: 12),
-        Text('Photo cues', style: Theme.of(context).textTheme.titleSmall),
-        const SizedBox(height: 8),
-        if (_photoCues.isNotEmpty)
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: _photoCues
-                .map(
-                  (cue) => InputChip(
-                    label: Text(
-                      cue.length > 28 ? '${cue.substring(0, 25)}...' : cue,
-                    ),
-                    avatar: CircleAvatar(
-                      backgroundImage: _resizeProvider(
-                        _buildImageProviderForCue(cue),
-                        40,
-                      ),
-                      child: _buildImageProviderForCue(cue) == null
-                          ? const Icon(Icons.photo_outlined)
-                          : null,
-                    ),
-                    onDeleted: () => _removePhotoCue(cue),
-                  ),
-                )
-                .toList(),
-          ),
-        if (_photoCues.isNotEmpty) const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: TextField(
-                controller: _photoCueController,
-                decoration: _buildInputDecoration(
-                  'Link or path to a helpful photo',
-                ).copyWith(
-                  suffixIcon: IconButton(
-                    icon: const Icon(Icons.add),
-                    onPressed: _addPhotoCueFromInput,
-                  ),
-                ),
-                onSubmitted: (_) => _addPhotoCueFromInput(),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Align(
-          alignment: Alignment.centerLeft,
-          child: OutlinedButton.icon(
-            onPressed: _pickPhotoCue,
-            icon: const Icon(Icons.image_outlined),
-            label: const Text('Pick image from device'),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildEditTagsCard() {
-    return _buildCard(
-      children: [
-        Text('Tags', style: Theme.of(context).textTheme.titleMedium),
-        const SizedBox(height: 12),
-        TextField(
-          controller: _tagController,
-          decoration: _buildInputDecoration('Add a tag').copyWith(
-            suffixIcon: IconButton(
-              icon: const Icon(Icons.add),
-              onPressed: _addTagFromInput,
-            ),
-          ),
-          onSubmitted: (_) => _addTagFromInput(),
-        ),
-        const SizedBox(height: 12),
-        if (_selectedTags.isNotEmpty)
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: _selectedTags
-                .map(
-                  (tag) => InputChip(
-                    label: Text(tag),
-                    onDeleted: () => _removeTag(tag),
-                  ),
-                )
-                .toList(),
-          ),
-        if (_availableTags.isNotEmpty)
-          Padding(
-            padding: const EdgeInsets.only(top: 12),
-            child: Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: _availableTags
-                  .map(
-                    (tag) => FilterChip(
-                      label: Text(tag),
-                      selected: _selectedTags.contains(tag),
-                      onSelected: (_) => _toggleSuggestedTag(tag),
-                    ),
-                  )
-                  .toList(),
-            ),
-          ),
       ],
     );
   }
@@ -1264,132 +929,6 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
         Text('Notes', style: Theme.of(context).textTheme.titleMedium),
         const SizedBox(height: 12),
         Text(notes, style: Theme.of(context).textTheme.bodyMedium),
-      ],
-    );
-  }
-
-  Widget? _buildViewRecognitionCard(Contact contact) {
-    final theme = Theme.of(context);
-    final sections = <Widget>[];
-
-    if (contact.recognitionKeywords.isNotEmpty) {
-      sections.add(Text('Keywords', style: theme.textTheme.labelLarge));
-      sections.add(const SizedBox(height: 8));
-      sections.add(
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: contact.recognitionKeywords
-              .map((keyword) => Chip(label: Text(keyword)))
-              .toList(),
-        ),
-      );
-    }
-
-    if (contact.recognitionReminders.isNotEmpty) {
-      if (sections.isNotEmpty) {
-        sections.add(const SizedBox(height: 12));
-      }
-      sections.add(Text('Reminders', style: theme.textTheme.labelLarge));
-      sections.add(const SizedBox(height: 8));
-      sections.add(
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: contact.recognitionReminders
-              .map(
-                (reminder) => Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.alarm_outlined, size: 18),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          reminder,
-                          style: theme.textTheme.bodyMedium,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              )
-              .toList(),
-        ),
-      );
-    }
-
-    if (contact.recognitionPhotoUris.isNotEmpty) {
-      if (sections.isNotEmpty) {
-        sections.add(const SizedBox(height: 12));
-      }
-      sections.add(Text('Photo cues', style: theme.textTheme.labelLarge));
-      sections.add(const SizedBox(height: 8));
-      sections.add(
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: contact.recognitionPhotoUris.map((cue) {
-            final provider = _buildImageProviderForCue(cue);
-            return ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: Container(
-                width: 72,
-                height: 72,
-                color: theme.colorScheme.surfaceContainerHighest,
-                child: provider != null
-                    ? Image(
-                        image: _resizeProvider(provider, 72)!,
-                        fit: BoxFit.cover,
-                      )
-                    : Center(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(Icons.photo_outlined),
-                            const SizedBox(height: 4),
-                            Text(
-                              cue.length > 10
-                                  ? '${cue.substring(0, 10)}...'
-                                  : cue,
-                              textAlign: TextAlign.center,
-                              style: theme.textTheme.bodySmall,
-                            ),
-                          ],
-                        ),
-                      ),
-              ),
-            );
-          }).toList(),
-        ),
-      );
-    }
-
-    if (sections.isEmpty) {
-      return null;
-    }
-
-    return _buildCard(
-      children: [
-        Text('Recognition cues', style: theme.textTheme.titleMedium),
-        const SizedBox(height: 12),
-        ...sections,
-      ],
-    );
-  }
-
-  Widget? _buildViewTagsCard(Contact contact) {
-    if (contact.tags.isEmpty) {
-      return null;
-    }
-    return _buildCard(
-      children: [
-        Text('Tags', style: Theme.of(context).textTheme.titleMedium),
-        const SizedBox(height: 12),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: contact.tags.map((tag) => Chip(label: Text(tag))).toList(),
-        ),
       ],
     );
   }
@@ -1427,6 +966,64 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
           ? TextCapitalization.words
           : TextCapitalization.sentences,
       decoration: _buildInputDecoration(label),
+    );
+  }
+
+  Widget _buildSuggestionField({
+    required TextEditingController controller,
+    required FocusNode focusNode,
+    required String label,
+    required List<String> suggestions,
+  }) {
+    return RawAutocomplete<String>(
+      textEditingController: controller,
+      focusNode: focusNode,
+      optionsBuilder: (TextEditingValue value) {
+        if (suggestions.isEmpty) return const Iterable<String>.empty();
+        final query = value.text.trim().toLowerCase();
+        if (query.isEmpty) return suggestions;
+        return suggestions
+            .where((option) => option.toLowerCase().contains(query));
+      },
+      fieldViewBuilder: (context, textController, focusNode, onFieldSubmitted) {
+        return TextField(
+          controller: textController,
+          focusNode: focusNode,
+          textCapitalization: TextCapitalization.words,
+          decoration: _buildInputDecoration(label),
+          onSubmitted: (_) => onFieldSubmitted(),
+        );
+      },
+      optionsViewBuilder: (context, onSelected, options) {
+        return Align(
+          alignment: Alignment.topLeft,
+          child: Material(
+            elevation: 4,
+            borderRadius: BorderRadius.circular(8),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 220),
+              child: ListView.builder(
+                shrinkWrap: true,
+                padding: EdgeInsets.zero,
+                itemCount: options.length,
+                itemBuilder: (context, index) {
+                  final option = options.elementAt(index);
+                  return InkWell(
+                    onTap: () => onSelected(option),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                      child: Text(option),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 

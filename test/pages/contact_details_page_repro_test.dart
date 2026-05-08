@@ -94,14 +94,15 @@ void main() {
         () => mockDBHelper.getContacts(contactId: any(named: 'contactId')),
       ).thenAnswer((_) async => []);
 
-      when(() => mockDBHelper.getAllTags()).thenAnswer((_) async => []);
-
       when(
         () => mockDBHelper.getRelationshipsForContact('123'),
       ).thenAnswer((_) async => []);
       when(
         () => mockDBHelper.getRelationshipsForContact(any()),
       ).thenAnswer((_) async => []);
+
+      when(() => mockDBHelper.getDistinctLocations())
+          .thenAnswer((_) async => []);
 
       debugPrint('STEP: Stubs Setup Complete');
 

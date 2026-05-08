@@ -59,7 +59,6 @@ void main() {
           id: 'mobile-contact',
           firstName: 'Mobile',
           lastName: 'Friend',
-          tags: const ['mobile'],
         ),
       );
 
@@ -76,7 +75,6 @@ void main() {
           id: 'mac-contact',
           firstName: 'Mac',
           lastName: 'Friend',
-          tags: const ['mac'],
         ),
       );
       final macExport = await macCoordinator.exportChanges(syncDir);

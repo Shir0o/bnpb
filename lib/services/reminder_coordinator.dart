@@ -1,5 +1,3 @@
-import 'dart:math';
-
 import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
 
@@ -353,36 +351,12 @@ class ReminderCoordinator {
     );
   }
 
-  /// Synchronises significant date reminders for [contact].
+  /// Cancels any scheduled significant-date reminders for [contact].
   Future<void> syncSignificantDates(Contact contact) async {
     await _reminderService.cancelChannelForContact(
       ReminderChannel.significantDate,
       contact.id,
     );
-
-    final preference = await _preferencesRepository.resolve(
-      channel: ReminderChannel.significantDate,
-      contactId: contact.id,
-    );
-    if (!preference.enabled) {
-      return;
-    }
-
-    final significantDates = _extractSignificantDates(contact);
-    for (final date in significantDates) {
-      var scheduledFor = date.when.subtract(preference.leadTime);
-      if (!scheduledFor.isAfter(DateTime.now())) {
-        continue;
-      }
-      await _reminderService.scheduleReminder(
-        channel: ReminderChannel.significantDate,
-        contactId: contact.id,
-        key: 'significant_${contact.id}_${date.key}',
-        scheduledAt: scheduledFor,
-        title: 'Upcoming for ${contact.fullName}',
-        body: date.label,
-      );
-    }
   }
 
   Future<void> _refreshForContact(Contact contact) async {
@@ -398,110 +372,6 @@ class ReminderCoordinator {
       await syncPrayerRequestReminder(contact, request, silent: true);
     }
   }
-
-  List<_SignificantDate> _extractSignificantDates(Contact contact) {
-    final now = DateTime.now();
-    final results = <_SignificantDate>[];
-    for (final raw in contact.recognitionReminders) {
-      final reminder = raw.trim();
-      if (reminder.isEmpty) {
-        continue;
-      }
-      final parsed = _parseReminder(reminder, now);
-      if (parsed == null) {
-        continue;
-      }
-      if (!parsed.when.isAfter(now)) {
-        continue;
-      }
-      results.add(parsed);
-    }
-    return results;
-  }
-
-  _SignificantDate? _parseReminder(String reminder, DateTime reference) {
-    final normalized = reminder.trim();
-    final fullDateMatch = _fullDatePattern.firstMatch(normalized);
-    if (fullDateMatch != null) {
-      final year = int.tryParse(fullDateMatch.group(1)!);
-      final month = int.tryParse(fullDateMatch.group(2)!);
-      final day = int.tryParse(fullDateMatch.group(3)!);
-      if (year == null || month == null || day == null) {
-        return null;
-      }
-      final when = DateTime(year, month, day, 9);
-      return _SignificantDate(
-        key: _sanitizeKey(normalized),
-        when: when,
-        label: normalized,
-      );
-    }
-
-    final monthDayMatch = _monthDayPattern.firstMatch(normalized);
-    if (monthDayMatch != null) {
-      final month = int.tryParse(monthDayMatch.group(1)!);
-      final day = int.tryParse(monthDayMatch.group(2)!);
-      if (month == null || day == null) {
-        return null;
-      }
-      var year = reference.year;
-      var when = DateTime(year, month, min(day, _daysInMonth(year, month)), 9);
-      if (!when.isAfter(reference)) {
-        year += 1;
-        when = DateTime(year, month, min(day, _daysInMonth(year, month)), 9);
-      }
-      return _SignificantDate(
-        key: _sanitizeKey(normalized),
-        when: when,
-        label: normalized,
-      );
-    }
-
-    final textualMatch = _textualMonthPattern.firstMatch(normalized);
-    if (textualMatch != null) {
-      final monthName = textualMatch.group(1)!;
-      final month = _monthLookup[monthName.toLowerCase()];
-      final day = int.tryParse(textualMatch.group(2)!);
-      if (month == null || day == null) {
-        return null;
-      }
-      var year = reference.year;
-      var when = DateTime(year, month, min(day, _daysInMonth(year, month)), 9);
-      if (!when.isAfter(reference)) {
-        year += 1;
-        when = DateTime(year, month, min(day, _daysInMonth(year, month)), 9);
-      }
-      return _SignificantDate(
-        key: _sanitizeKey(normalized),
-        when: when,
-        label: normalized,
-      );
-    }
-
-    return null;
-  }
-
-  int _daysInMonth(int year, int month) {
-    final firstDayNextMonth =
-        (month == 12) ? DateTime(year + 1, 1, 1) : DateTime(year, month + 1, 1);
-    return firstDayNextMonth.subtract(const Duration(days: 1)).day;
-  }
-
-  String _sanitizeKey(String value) {
-    return value.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '_');
-  }
-}
-
-class _SignificantDate {
-  const _SignificantDate({
-    required this.key,
-    required this.when,
-    required this.label,
-  });
-
-  final String key;
-  final DateTime when;
-  final String label;
 }
 
 class _PrayerReviewItem {
@@ -566,38 +436,3 @@ DateTime _nextMonthlyAnchor(
   final year = reference.month == 12 ? reference.year + 1 : reference.year;
   return DateTime(year, month, 1, hour, minute);
 }
-
-final RegExp _fullDatePattern = RegExp(r'^(\d{4})[-/](\d{2})[-/](\d{2})');
-final RegExp _monthDayPattern = RegExp(r'^(\d{2})[-/](\d{2})');
-final RegExp _textualMonthPattern = RegExp(
-  r'^(January|February|March|April|May|June|July|August|September|'
-  r'October|November|December)\s+(\d{1,2})',
-  caseSensitive: false,
-);
-
-const Map<String, int> _monthLookup = {
-  'jan': 1,
-  'january': 1,
-  'feb': 2,
-  'february': 2,
-  'mar': 3,
-  'march': 3,
-  'apr': 4,
-  'april': 4,
-  'may': 5,
-  'jun': 6,
-  'june': 6,
-  'jul': 7,
-  'july': 7,
-  'aug': 8,
-  'august': 8,
-  'sep': 9,
-  'sept': 9,
-  'september': 9,
-  'oct': 10,
-  'october': 10,
-  'nov': 11,
-  'november': 11,
-  'dec': 12,
-  'december': 12,
-};
