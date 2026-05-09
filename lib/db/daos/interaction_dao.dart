@@ -170,21 +170,16 @@ class InteractionDao extends BaseDao {
   }
 
   Future<void> removeOrphanInteractions(DatabaseExecutor txn) async {
-    final orphans = await txn.rawQuery(
-      'SELECT id FROM interactions WHERE id NOT IN (SELECT interactionId FROM interaction_participants) AND deletedAt IS NULL',
+    final now = DateTime.now().toUtc().toIso8601String();
+    await txn.update(
+      'interactions',
+      {
+        'deletedAt': now,
+        'updatedAt': now,
+      },
+      where:
+          'id NOT IN (SELECT interactionId FROM interaction_participants) AND deletedAt IS NULL',
     );
-
-    for (final row in orphans) {
-      await txn.update(
-        'interactions',
-        {
-          'deletedAt': DateTime.now().toUtc().toIso8601String(),
-          'updatedAt': DateTime.now().toUtc().toIso8601String(),
-        },
-        where: 'id = ?',
-        whereArgs: [row['id']],
-      );
-    }
   }
 
   Future<Map<String, List<Interaction>>> getInteractionsForContacts(
