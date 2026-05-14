@@ -11,6 +11,7 @@ import '../services/contact_service.dart';
 import '../services/ai/ai_services.dart';
 import '../services/reminder_coordinator.dart';
 import '../widgets/ai/follow_up_suggestion_sheet.dart';
+import '../widgets/ai/interaction_summary_card.dart';
 import '../widgets/ai/tag_suggestion_sheet.dart';
 import '../widgets/contact_details_skeleton.dart';
 import '../widgets/contact_selection_sheet.dart';
@@ -802,12 +803,17 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
       ),
     );
 
+    final aiSummary = SliverToBoxAdapter(
+      child: InteractionSummaryCard(interactions: _interactions),
+    );
+
     if (_filteredInteractionsCache.isEmpty) {
-      return [header];
+      return [header, aiSummary];
     }
 
     return [
       header,
+      aiSummary,
       SliverPadding(
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
         sliver: SliverList(
