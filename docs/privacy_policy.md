@@ -47,9 +47,35 @@ BNPB provides options to keep your data safe across devices:
 - **Encrypted archives (.zip)** use AES-256 encryption to protect exported data. 
   You are responsible for the security of the passphrase used for these files.
 
+## On-device AI features (optional)
+BNPB includes optional AI-assisted features (such as suggested follow-up
+actions after logging an interaction, and tag suggestions for notes) that
+run entirely on your device.
+
+- **Off by default.** AI features are disabled until you explicitly enable
+  them in Settings.
+- **Model storage.** Enabling AI downloads a Gemma model file (Google's
+  open-weight on-device LLM, ~3 GB) from Hugging Face over HTTPS. Because
+  the Gemma repository is gated by Google, you must supply your own
+  Hugging Face access token, which is stored in the device key store and
+  is only sent in the Authorization header to huggingface.co during
+  download. The model file is stored in the app's private support
+  directory and can be removed from the AI settings screen at any time.
+- **No data leaves the device.** Inference runs locally. The model is given
+  only the contents of the interaction or note you are working on (summary,
+  medium, free-text notes); it does not receive your contact list, history,
+  or any data from other contacts.
+- **Outputs are suggestions only.** Generated tags or follow-up suggestions
+  are not stored unless you tap to accept them, in which case the result is
+  written to your local encrypted database the same way a manual entry
+  would be.
+- **No telemetry.** Prompts and model outputs are not transmitted to any
+  server and are not logged outside the in-memory call.
+
 ## Deletion & retention
 - The “Securely purge all data” action in Settings overwrites the encrypted 
-  database, removes local backups, clears encryption keys, and cancels all 
+  database, removes local backups, clears encryption keys, deletes any 
+  downloaded AI model file and Hugging Face token, and cancels all 
   scheduled notifications.
 - Deleting a contact removes all associated history and reminders from the 
   local database immediately.

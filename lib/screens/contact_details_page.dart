@@ -9,6 +9,7 @@ import '../models/relationship.dart';
 import '../services/backup_service.dart';
 import '../services/contact_service.dart';
 import '../services/reminder_coordinator.dart';
+import '../widgets/ai/follow_up_suggestion_sheet.dart';
 import '../widgets/contact_details_skeleton.dart';
 import '../widgets/contact_selection_sheet.dart';
 import '../widgets/people_card.dart';
@@ -2310,6 +2311,23 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
           ),
         ),
       );
+
+      if (!isEditing && mounted) {
+        await FollowUpSuggestionSheet.maybeShow(
+          context,
+          contact: widget.contact,
+          interaction: savedInteraction,
+          onInteractionUpdated: (updated) {
+            final list = List<Interaction>.from(committedInteractions);
+            final idx = list.indexWhere((i) => i.id == updated.id);
+            if (idx >= 0) {
+              list[idx] = updated;
+              list.sort((a, b) => b.occurredAt.compareTo(a.occurredAt));
+              widget.onInteractionsUpdated?.call(list);
+            }
+          },
+        );
+      }
 
       if (mounted) {
         Navigator.of(context).pop(savedInteraction);

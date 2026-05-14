@@ -14,6 +14,10 @@ while offering analytics and export tooling.
   encrypted archives require a user-supplied passphrase.
 - A “Securely purge all data” action overwrites and deletes the encrypted
   database, clears backups, removes credentials, and cancels notifications.
+- Optional on-device AI features (e.g. follow-up suggestions, auto-tagging)
+  are **off by default** and run entirely on the device using a locally
+  stored Gemma model. When enabled, only the active note/interaction is sent
+  to the model; no contact data leaves the device.
 - See the [Privacy Policy & Personal Usage Guidelines](docs/privacy_policy.md)
   for a detailed breakdown of how the app handles sensitive information.
 

@@ -252,6 +252,17 @@ class SecurityService {
       removedAnything = true;
     }
 
+    // 5. Remove any downloaded AI model files. These don't contain user
+    // data but they're large and re-downloading them after a purge is the
+    // user's explicit intent.
+    final supportDir = await getApplicationSupportDirectory();
+    final aiDir = Directory(p.join(supportDir.path, 'ai_models'));
+    if (await aiDir.exists()) {
+      await aiDir.delete(recursive: true);
+      removedAnything = true;
+    }
+    await _secureStorage.delete(key: 'ai.huggingface_token');
+
     return removedAnything;
   }
 
