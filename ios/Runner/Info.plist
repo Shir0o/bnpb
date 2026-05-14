@@ -26,6 +26,10 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>BNPB uses the microphone to transcribe voice notes into interaction entries. Audio is processed on-device by the system speech recognizer and is not uploaded.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>BNPB uses on-device speech recognition to transcribe your voice into interaction notes.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

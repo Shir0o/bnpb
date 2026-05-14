@@ -14,6 +14,7 @@ import '../widgets/ai/follow_up_suggestion_sheet.dart';
 import '../widgets/ai/interaction_summary_card.dart';
 import '../widgets/ai/outreach_draft_button.dart';
 import '../widgets/ai/tag_suggestion_sheet.dart';
+import '../widgets/ai/voice_to_note_button.dart';
 import '../widgets/contact_details_skeleton.dart';
 import '../widgets/contact_selection_sheet.dart';
 import '../widgets/people_card.dart';
@@ -2585,6 +2586,7 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
                       border: OutlineInputBorder(),
                     ),
                   ),
+                  VoiceToNoteButton(controller: _notesController),
                   if (_aiAvailable)
                     Align(
                       alignment: Alignment.centerRight,
