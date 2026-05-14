@@ -26,13 +26,29 @@ class RecommendationsSkeleton extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 12),
-            for (var i = 0; i < itemCount; i++) ...[
-              const _RecommendationRowSkeleton(),
-              if (i < itemCount - 1) const SizedBox(height: 12),
-            ],
+            RecommendationRowsSkeleton(itemCount: itemCount),
           ],
         ),
       ),
+    );
+  }
+}
+
+class RecommendationRowsSkeleton extends StatelessWidget {
+  const RecommendationRowsSkeleton({super.key, this.itemCount = 3});
+
+  final int itemCount;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (var i = 0; i < itemCount; i++) ...[
+          const _RecommendationRowSkeleton(),
+          if (i < itemCount - 1) const SizedBox(height: 12),
+        ],
+      ],
     );
   }
 }

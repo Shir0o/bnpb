@@ -17,6 +17,8 @@ import '../widgets/backup_restore_sheet.dart';
 import '../widgets/export_options_sheet.dart';
 import '../widgets/home_page_skeleton.dart';
 import '../widgets/people_card.dart';
+import '../widgets/recommendations_skeleton.dart';
+import '../widgets/skeleton_loader.dart';
 import '../services/follow_up_recommendation_service.dart';
 import '../services/import_service.dart';
 import 'contact_details_page.dart';
@@ -593,50 +595,57 @@ class _HomePageState extends State<HomePage>
               ],
             ),
             const SizedBox(height: 8),
-            Column(
-              children: topRecommendations.map((rec) {
-                Color iconColor;
-                IconData icon;
-                switch (rec.priority) {
-                  case RecommendationPriority.critical:
-                    iconColor = theme.colorScheme.error;
-                    icon = Icons.priority_high;
-                    break;
-                  case RecommendationPriority.high:
-                    iconColor = theme.colorScheme.tertiary;
-                    icon = Icons.star_outline;
-                    break;
-                  case RecommendationPriority.medium:
-                    iconColor = theme.colorScheme.primary;
-                    icon = Icons.chat_bubble_outline;
-                    break;
-                  case RecommendationPriority.low:
-                    iconColor = theme.colorScheme.outline;
-                    icon = Icons.person_outline;
-                    break;
-                }
+            if (_isRefreshingRecommendations)
+              SkeletonLoader(
+                child: RecommendationRowsSkeleton(
+                  itemCount: topRecommendations.length.clamp(1, 5),
+                ),
+              )
+            else
+              Column(
+                children: topRecommendations.map((rec) {
+                  Color iconColor;
+                  IconData icon;
+                  switch (rec.priority) {
+                    case RecommendationPriority.critical:
+                      iconColor = theme.colorScheme.error;
+                      icon = Icons.priority_high;
+                      break;
+                    case RecommendationPriority.high:
+                      iconColor = theme.colorScheme.tertiary;
+                      icon = Icons.star_outline;
+                      break;
+                    case RecommendationPriority.medium:
+                      iconColor = theme.colorScheme.primary;
+                      icon = Icons.chat_bubble_outline;
+                      break;
+                    case RecommendationPriority.low:
+                      iconColor = theme.colorScheme.outline;
+                      icon = Icons.person_outline;
+                      break;
+                  }
 
-                return ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: CircleAvatar(
-                    radius: 18,
-                    child: Text(rec.contact.initials),
-                  ),
-                  title: Text(
-                    rec.contact.displayName,
-                    style: theme.textTheme.titleSmall,
-                  ),
-                  subtitle: Text(
-                    rec.reason,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.bodySmall,
-                  ),
-                  trailing: Icon(icon, color: iconColor, size: 20),
-                  onTap: () => _navigateToContactDetails(rec.contact),
-                );
-              }).toList(),
-            ),
+                  return ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: CircleAvatar(
+                      radius: 18,
+                      child: Text(rec.contact.initials),
+                    ),
+                    title: Text(
+                      rec.contact.displayName,
+                      style: theme.textTheme.titleSmall,
+                    ),
+                    subtitle: Text(
+                      rec.reason,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodySmall,
+                    ),
+                    trailing: Icon(icon, color: iconColor, size: 20),
+                    onTap: () => _navigateToContactDetails(rec.contact),
+                  );
+                }).toList(),
+              ),
           ],
         ),
       ),
