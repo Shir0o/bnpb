@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'skeleton_loader.dart';
 import 'prayer_insights_skeleton.dart';
 import 'contact_item_skeleton.dart';
+import 'recommendations_skeleton.dart';
 
 class HomePageSkeleton extends StatelessWidget {
   const HomePageSkeleton({super.key});
@@ -23,7 +24,7 @@ class HomePageSkeleton extends StatelessWidget {
           const SizedBox(height: 16),
 
           // Recommendations Skeleton
-          _buildRecommendationsSkeleton(),
+          const RecommendationsSkeleton(),
           const SizedBox(height: 16),
 
           // Prayer Insights Card
@@ -76,31 +77,6 @@ class HomePageSkeleton extends StatelessWidget {
         const ContactItemSkeleton(),
         const SizedBox(height: 12),
         const ContactItemSkeleton(),
-      ],
-    );
-  }
-
-  Widget _buildRecommendationsSkeleton() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const SkeletonBox(width: 150, height: 18),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            const SkeletonBox(
-              width: 200,
-              height: 100,
-              borderRadius: BorderRadius.all(Radius.circular(12)),
-            ),
-            const SizedBox(width: 12),
-            const SkeletonBox(
-              width: 100,
-              height: 100,
-              borderRadius: BorderRadius.all(Radius.circular(12)),
-            ),
-          ],
-        ),
       ],
     );
   }
