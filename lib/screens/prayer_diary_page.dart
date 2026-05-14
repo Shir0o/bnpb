@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -92,6 +94,9 @@ class _PrayerDiaryPageState extends State<PrayerDiaryPage> {
         // the service's own cache handles dedupe when content is unchanged.
         _clusters = null;
       });
+      if (_viewMode == _PrayerViewMode.themed && mounted) {
+        unawaited(_ensureClusters());
+      }
     } finally {
       if (mounted) {
         setState(() {
@@ -329,7 +334,10 @@ class _PrayerDiaryPageState extends State<PrayerDiaryPage> {
       return _buildPrayerList();
     }
 
-    final byId = {for (final r in _requests) r.id: r};
+    final byId = {
+      for (final r in _requests)
+        if (r.id != null) r.id!: r,
+    };
     final items = <Widget>[];
     final claimed = <int>{};
     for (final cluster in clusters) {
