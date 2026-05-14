@@ -43,6 +43,7 @@ dependencies:
   googleapis: ^16.0.0
   extension_google_sign_in_as_googleapis_auth: ^3.0.0
   flutter_gemma: ^0.12.6
+  disk_space_plus: ^0.2.3
 
 
 dev_dependencies:

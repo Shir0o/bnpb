@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:crypto/crypto.dart';
+import 'package:disk_space_plus/disk_space_plus.dart';
 import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
@@ -195,22 +196,17 @@ class ModelManager {
   void dispose() => _http.close();
 }
 
-/// Default free-space probe. Uses `df -k` on Unix-likes (macOS, Linux,
-/// Android, iOS) and returns `null` elsewhere so the check effectively
-/// no-ops on platforms we can't read cheaply.
+/// Default free-space probe. Uses the `disk_space_plus` plugin, which
+/// goes through native platform APIs (`StatFs` on Android,
+/// `NSURL.volumeAvailableCapacity` on iOS/macOS, `GetDiskFreeSpaceEx`
+/// on Windows). Returns `null` if the plugin is unavailable on the
+/// current platform so the check effectively no-ops rather than blocking
+/// the download.
 Future<int?> _defaultFreeSpaceProbe(String path) async {
-  if (Platform.isWindows) return null;
   try {
-    final result = await Process.run('df', ['-k', path]);
-    if (result.exitCode != 0) return null;
-    final lines = (result.stdout as String).trim().split('\n');
-    if (lines.length < 2) return null;
-    // df -k columns: Filesystem 1K-blocks Used Available ... Mounted-on
-    final parts = lines.last.trim().split(RegExp(r'\s+'));
-    if (parts.length < 4) return null;
-    final availableKb = int.tryParse(parts[3]);
-    if (availableKb == null) return null;
-    return availableKb * 1024;
+    final freeMb = await DiskSpacePlus().getFreeDiskSpaceForPath(path);
+    if (freeMb == null) return null;
+    return (freeMb * 1024 * 1024).round();
   } catch (_) {
     return null;
   }
