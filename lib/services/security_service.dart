@@ -8,6 +8,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite_sqlcipher/sqflite.dart';
 
 import '../constants/storage.dart';
@@ -26,14 +27,21 @@ class SecurityService {
   static const _passwordHashKey = 'lock_password_hash';
   static const _passwordSaltKey = 'lock_password_salt';
   static const _biometricToggleKey = 'lock_biometric_enabled';
-  static const _geminiApiKeyKey = 'gemini_api_key';
+  // Legacy keys retained only to purge data left over from the removed
+  // Gemini integration.
+  static const _legacyGeminiApiKeyKey = 'gemini_api_key';
+  static const _legacyAiCachePrefsKeys = [
+    'ai_recommendations_cache',
+    'ai_recommendations_fingerprint',
+    'ai_recommendations_timestamp',
+  ];
 
   final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
   final LocalAuthentication _localAuth = LocalAuthentication();
 
   /// Lazily generates and returns the SQLCipher key used to encrypt the database.
-  /// Lazily generates and returns the SQLCipher key used to encrypt the database.
   Future<String> obtainDatabaseKey() async {
+    await _purgeLegacyGeminiData();
     try {
       final existing = await _secureStorage.read(key: _dbKeyStorageKey);
       if (existing != null && existing.isNotEmpty) {
@@ -81,24 +89,20 @@ class SecurityService {
     await file.writeAsString(key);
   }
 
-  /// Indicates whether a Gemini API key has been configured.
-  Future<bool> hasGeminiApiKey() async {
-    final key = await _secureStorage.read(key: _geminiApiKeyKey);
-    return key != null && key.isNotEmpty;
-  }
-
-  /// Stores the Gemini API key. Passing `null` clears it.
-  Future<void> setGeminiApiKey(String? key) async {
-    if (key == null || key.isEmpty) {
-      await _secureStorage.delete(key: _geminiApiKeyKey);
-      return;
+  Future<void> _purgeLegacyGeminiData() async {
+    try {
+      await _secureStorage.delete(key: _legacyGeminiApiKeyKey);
+    } catch (e) {
+      debugPrint('Legacy Gemini key purge failed: $e');
     }
-    await _secureStorage.write(key: _geminiApiKeyKey, value: key);
-  }
-
-  /// Retrieves the stored Gemini API key.
-  Future<String?> getGeminiApiKey() async {
-    return await _secureStorage.read(key: _geminiApiKeyKey);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      for (final key in _legacyAiCachePrefsKeys) {
+        await prefs.remove(key);
+      }
+    } catch (e) {
+      debugPrint('Legacy AI cache purge failed: $e');
+    }
   }
 
   /// Indicates whether a passcode has been configured.
@@ -208,7 +212,7 @@ class SecurityService {
     await _secureStorage.delete(key: _passwordHashKey);
     await _secureStorage.delete(key: _passwordSaltKey);
     await _secureStorage.delete(key: _biometricToggleKey);
-    await _secureStorage.delete(key: _geminiApiKeyKey);
+    await _secureStorage.delete(key: _legacyGeminiApiKeyKey);
 
     // 3. Securely wipe and remove database files.
     if (await dbFile.exists()) {

@@ -571,7 +571,7 @@ class _HomePageState extends State<HomePage>
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'Smart follow-up suggestions',
+                    'Follow-up suggestions',
                     style: theme.textTheme.titleMedium,
                   ),
                 ),
