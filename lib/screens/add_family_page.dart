@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:uuid/uuid.dart';
 
 import '../db/db_helper.dart';
 import '../models/contact.dart';
@@ -122,9 +121,19 @@ class _AddFamilyPageState extends State<AddFamilyPage> {
     if (!_formKey.currentState!.validate()) return;
     FocusScope.of(context).unfocus();
 
+    // Use ISO-timestamp IDs (matching AddContactPage) so ReminderCoordinator's
+    // creation-time parsing keeps working. Bump by 1µs per contact to guarantee
+    // uniqueness within the same save.
+    var stamp = DateTime.now();
+    String nextId() {
+      final id = stamp.toIso8601String();
+      stamp = stamp.add(const Duration(microseconds: 1));
+      return id;
+    }
+
     final anchorLast = _anchorLastName.text.trim();
     final anchor = Contact(
-      id: const Uuid().v4(),
+      id: nextId(),
       firstName: _anchorFirstName.text.trim(),
       middleName: _anchorMiddleName.text.trim(),
       lastName: anchorLast.isEmpty ? null : anchorLast,
@@ -141,7 +150,7 @@ class _AddFamilyPageState extends State<AddFamilyPage> {
 
     for (final m in _members) {
       final last = m.lastName.text.trim();
-      final memberId = const Uuid().v4();
+      final memberId = nextId();
       memberContacts.add(Contact(
         id: memberId,
         firstName: m.firstName.text.trim(),
@@ -188,12 +197,20 @@ class _AddFamilyPageState extends State<AddFamilyPage> {
     setState(() => _isSaving = true);
 
     try {
-      final db = DBHelper();
-      await db.insertContact(anchor);
-      for (final c in memberContacts) {
-        await db.insertContact(c);
-      }
-      await db.relationshipDao.insertRelationshipsBulk(relationships);
+      final dbHelper = DBHelper();
+      final database = await dbHelper.database;
+      await database.transaction((txn) async {
+        await dbHelper.contactDao
+            .upsertContactRow(txn, anchor, isUpdate: false);
+        for (final c in memberContacts) {
+          await dbHelper.contactDao.upsertContactRow(txn, c, isUpdate: false);
+        }
+        final batch = txn.batch();
+        for (final r in relationships) {
+          batch.insert('relationships', r.toMap(includeId: false));
+        }
+        await batch.commit(noResult: true);
+      });
 
       ContactService().notifyContactsChanged();
 
@@ -361,9 +378,6 @@ class _AddFamilyPageState extends State<AddFamilyPage> {
 
   Widget _memberCard(int index) {
     final m = _members[index];
-    final anchorName = _anchorFirstName.text.trim().isEmpty
-        ? 'the primary contact'
-        : _anchorFirstName.text.trim();
 
     return Card(
       elevation: 1,
@@ -437,9 +451,14 @@ class _AddFamilyPageState extends State<AddFamilyPage> {
               ),
             ],
             const SizedBox(height: 8),
-            Text(
-              _roleSummary(m, anchorName),
-              style: Theme.of(context).textTheme.bodySmall,
+            ListenableBuilder(
+              listenable: Listenable.merge(
+                [m.firstName, m.customRole, _anchorFirstName],
+              ),
+              builder: (context, _) => Text(
+                _roleSummary(m),
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
             ),
           ],
         ),
@@ -447,7 +466,10 @@ class _AddFamilyPageState extends State<AddFamilyPage> {
     );
   }
 
-  String _roleSummary(_MemberDraft m, String anchorName) {
+  String _roleSummary(_MemberDraft m) {
+    final anchorName = _anchorFirstName.text.trim().isEmpty
+        ? 'the primary contact'
+        : _anchorFirstName.text.trim();
     final first = m.firstName.text.trim().isEmpty
         ? 'This person'
         : m.firstName.text.trim();
