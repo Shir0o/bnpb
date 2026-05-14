@@ -49,6 +49,9 @@ class _FakeDownloader implements BackgroundDownloader {
     }
     yield DownloadProgressEvent(payload?.length ?? 0, payload?.length ?? 0);
   }
+
+  @override
+  void dispose() {}
 }
 
 void main() {

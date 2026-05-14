@@ -218,11 +218,7 @@ class ModelManager {
     return digest.toString();
   }
 
-  void dispose() {
-    if (_downloader is HttpBackgroundDownloader) {
-      (_downloader as HttpBackgroundDownloader).close();
-    }
-  }
+  void dispose() => _downloader.dispose();
 }
 
 /// Default free-space probe. Uses the `disk_space_plus` plugin, which
