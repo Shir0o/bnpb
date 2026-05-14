@@ -89,9 +89,12 @@ class _VoiceToNoteButtonState extends State<VoiceToNoteButton> {
     await _stt.listen(
       onResult: (result) {
         if (!mounted) return;
-        setState(() => _partial = result.recognizedWords);
         if (result.finalResult) {
           _appendToNotes(result.recognizedWords);
+          // Clear so _stop() doesn't append the same text a second time.
+          setState(() => _partial = '');
+        } else {
+          setState(() => _partial = result.recognizedWords);
         }
       },
       listenOptions: SpeechListenOptions(

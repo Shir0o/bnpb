@@ -92,8 +92,8 @@ Summary:''';
     text = text.replaceFirst(RegExp(r'```\s*$'), '');
     text = text.replaceFirst(
         RegExp(r'^(summary|digest)\s*:\s*', caseSensitive: false), '');
-    text = text.replaceAll(RegExp(r'^["‘’“”]'), '');
-    text = text.replaceAll(RegExp(r'["‘’“”]$'), '');
+    text = text.replaceAll(RegExp(r'^["‘’“”]+'), '');
+    text = text.replaceAll(RegExp(r'["‘’“”]+$'), '');
 
     text = text.trim();
     if (text.length > _maxSummaryChars) {

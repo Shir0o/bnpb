@@ -34,8 +34,9 @@ class _InteractionSummaryCardState extends State<InteractionSummaryCard> {
   void didUpdateWidget(covariant InteractionSummaryCard oldWidget) {
     super.didUpdateWidget(oldWidget);
     // Invalidate the cached summary when the underlying interactions change,
-    // so adding a new interaction doesn't leave a stale digest on screen.
-    if (oldWidget.interactions.length != widget.interactions.length) {
+    // so adding *or editing* an interaction doesn't leave a stale digest on
+    // screen. The parent rebuilds with a fresh list reference on any change.
+    if (!identical(oldWidget.interactions, widget.interactions)) {
       setState(() => _future = null);
     }
   }
