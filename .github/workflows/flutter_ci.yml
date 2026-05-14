@@ -21,7 +21,10 @@ jobs:
 
       - run: flutter pub get
 
+      - run: flutter analyze
 
-
-      # Run tests
       - run: flutter test
+
+      # Release build catches R8/proguard regressions from native deps
+      # (e.g. flutter_gemma's MediaPipe libs) that `flutter test` doesn't.
+      - run: flutter build apk --release --target-platform=android-arm64
