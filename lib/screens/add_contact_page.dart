@@ -7,6 +7,7 @@ import '../models/contact.dart';
 import '../services/backup_service.dart';
 import '../services/contact_service.dart';
 import '../services/reminder_coordinator.dart';
+import 'add_family_page.dart';
 
 class AddContactPage extends StatefulWidget {
   const AddContactPage({super.key});
@@ -181,6 +182,19 @@ class _AddContactPageState extends State<AddContactPage>
       appBar: AppBar(
         title: const Text('Add Contact'),
         actions: [
+          IconButton(
+            tooltip: 'Add family',
+            icon: const Icon(Icons.group_add_outlined),
+            onPressed: _isSavingContact
+                ? null
+                : () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const AddFamilyPage(),
+                      ),
+                    );
+                  },
+          ),
           if (_isSavingContact)
             const Padding(
               padding: EdgeInsets.symmetric(horizontal: 16.0),
