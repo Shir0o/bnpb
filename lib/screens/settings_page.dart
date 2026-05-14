@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:io' show Platform;
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:intl/intl.dart';
@@ -185,16 +187,18 @@ class _SettingsPageState extends State<SettingsPage>
             iconColor: Theme.of(context).colorScheme.error,
             onTap: _isPurging ? null : _confirmSecurePurge,
           ),
-          const Divider(),
-          _buildSectionHeader('AI'),
-          ListTile(
-            leading: const Icon(Icons.auto_awesome_outlined),
-            title: const Text('AI features'),
-            subtitle: const Text('On-device suggestions, off by default'),
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const AiSettingsPage()),
+          if (_aiSupportedPlatform) ...[
+            const Divider(),
+            _buildSectionHeader('AI'),
+            ListTile(
+              leading: const Icon(Icons.auto_awesome_outlined),
+              title: const Text('AI features'),
+              subtitle: const Text('On-device suggestions, off by default'),
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const AiSettingsPage()),
+              ),
             ),
-          ),
+          ],
           const Divider(),
           _buildSectionHeader('About'),
           ListTile(
@@ -209,6 +213,12 @@ class _SettingsPageState extends State<SettingsPage>
       ),
     );
   }
+
+  // flutter_gemma 0.12.6 only ships a viable runtime on Android and iOS.
+  // The desktop/web backends either fail at load time or are too rough to
+  // expose, so hide the entry rather than letting users hit a runtime error.
+  bool get _aiSupportedPlatform =>
+      !kIsWeb && (Platform.isAndroid || Platform.isIOS);
 
   Widget _buildSectionHeader(String title) {
     return Padding(

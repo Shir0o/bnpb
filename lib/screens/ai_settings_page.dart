@@ -175,6 +175,20 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
     }
   }
 
+  Future<void> _cancelDownload() async {
+    final sub = _downloadSub;
+    if (sub == null) return;
+    _downloadSub = null;
+    await sub.cancel();
+    await _modelManager.deletePartial();
+    if (!mounted) return;
+    setState(() {
+      _downloadProgress = null;
+      _busy = false;
+    });
+    await _refresh();
+  }
+
   Future<void> _delete() async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -268,7 +282,20 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
                       horizontal: 16,
                       vertical: 8,
                     ),
-                    child: LinearProgressIndicator(value: _downloadProgress),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: LinearProgressIndicator(
+                            value: _downloadProgress,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        TextButton(
+                          onPressed: _cancelDownload,
+                          child: const Text('Cancel'),
+                        ),
+                      ],
+                    ),
                   ),
                 ListTile(
                   leading: const Icon(Icons.delete_outline),
