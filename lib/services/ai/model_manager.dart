@@ -3,9 +3,10 @@ import 'dart:io';
 
 import 'package:crypto/crypto.dart';
 import 'package:disk_space_plus/disk_space_plus.dart';
-import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
+
+import 'background_downloader.dart';
 
 /// Status of the local LLM model on disk.
 enum ModelStatus { absent, downloading, ready, corrupt }
@@ -47,13 +48,13 @@ typedef FreeSpaceProbe = Future<int?> Function(String path);
 /// not in any backup-able location, since it can always be re-downloaded.
 class ModelManager {
   ModelManager({
-    http.Client? httpClient,
+    BackgroundDownloader? downloader,
     String modelUrl = _defaultModelUrl,
     String modelFilename = _defaultModelFilename,
     String? expectedSha256,
     int requiredFreeBytes = _defaultRequiredFreeBytes,
     FreeSpaceProbe? freeSpaceProbe,
-  })  : _http = httpClient ?? http.Client(),
+  })  : _downloader = downloader ?? defaultBackgroundDownloader(),
         _modelUrl = modelUrl,
         _modelFilename = modelFilename,
         _expectedSha256 = expectedSha256,
@@ -70,7 +71,7 @@ class ModelManager {
   // ~3 GB model + headroom for the `.part` file and FS overhead.
   static const int _defaultRequiredFreeBytes = 3500 * 1024 * 1024;
 
-  final http.Client _http;
+  final BackgroundDownloader _downloader;
   final String _modelUrl;
   final String _modelFilename;
   final String? _expectedSha256;
@@ -121,58 +122,82 @@ class ModelManager {
 
   /// Downloads the model with progress events. Atomic: writes to a `.part`
   /// file and renames on success, so partial downloads never look ready.
-  Stream<ModelDownloadProgress> download({String? huggingFaceToken}) async* {
-    await ensureFreeSpace();
-    final target = await _modelFile();
-    final partial = File('${target.path}.part');
-    if (await partial.exists()) await partial.delete();
+  /// On mobile, the underlying transfer continues if the app is
+  /// backgrounded (URLSession on iOS, WorkManager on Android).
+  Stream<ModelDownloadProgress> download({String? huggingFaceToken}) {
+    late final StreamController<ModelDownloadProgress> controller;
+    StreamSubscription<DownloadProgressEvent>? innerSub;
 
-    final request = http.Request('GET', Uri.parse(_modelUrl));
-    if (huggingFaceToken != null && huggingFaceToken.isNotEmpty) {
-      request.headers['Authorization'] = 'Bearer $huggingFaceToken';
-    }
+    controller = StreamController<ModelDownloadProgress>(
+      onCancel: () async {
+        await innerSub?.cancel();
+      },
+    );
 
-    final response = await _http.send(request);
-    if (response.statusCode == 401 || response.statusCode == 403) {
-      throw HttpException(
-        'Hugging Face rejected the download (HTTP ${response.statusCode}). '
-        'Make sure you have accepted the Gemma license on the model page '
-        'and provided a valid access token.',
-        uri: Uri.parse(_modelUrl),
-      );
-    }
-    if (response.statusCode != 200) {
-      throw HttpException(
-        'Model download failed: HTTP ${response.statusCode}',
-        uri: Uri.parse(_modelUrl),
-      );
-    }
+    Future<void> run() async {
+      try {
+        await ensureFreeSpace();
+        final target = await _modelFile();
+        final partial = File('${target.path}.part');
+        if (await partial.exists()) await partial.delete();
 
-    final total = response.contentLength;
-    var received = 0;
-    final sink = partial.openWrite();
-    try {
-      await for (final chunk in response.stream) {
-        sink.add(chunk);
-        received += chunk.length;
-        yield ModelDownloadProgress(received, total);
+        final headers = <String, String>{};
+        if (huggingFaceToken != null && huggingFaceToken.isNotEmpty) {
+          headers['Authorization'] = 'Bearer $huggingFaceToken';
+        }
+
+        final completer = Completer<void>();
+        innerSub = _downloader
+            .download(
+          url: _modelUrl,
+          savedDir: target.parent.path,
+          filename: p.basename(partial.path),
+          headers: headers,
+        )
+            .listen(
+          (event) => controller.add(
+            ModelDownloadProgress(event.bytesReceived, event.bytesTotal),
+          ),
+          onError: (Object e, StackTrace st) {
+            if (!completer.isCompleted) completer.completeError(e, st);
+          },
+          onDone: () {
+            if (!completer.isCompleted) completer.complete();
+          },
+          cancelOnError: true,
+        );
+        await completer.future;
+
+        if (!await partial.exists()) {
+          // The downloader reported completion but the file isn't there
+          // (e.g. cancelled mid-flight before any bytes landed). Surface
+          // this as an error rather than renaming a missing file.
+          throw StateError('Download completed without producing a file');
+        }
+
+        if (_expectedSha256 != null) {
+          final actual = await _sha256(partial);
+          if (actual != _expectedSha256) {
+            await partial.delete();
+            throw StateError(
+                'Model checksum mismatch (expected $_expectedSha256)');
+          }
+        }
+        // On Windows, rename fails if the destination already exists, so
+        // explicitly remove any prior copy first.
+        if (await target.exists()) await target.delete();
+        await partial.rename(target.path);
+        await controller.close();
+      } catch (e, st) {
+        if (!controller.isClosed) {
+          controller.addError(e, st);
+          await controller.close();
+        }
       }
-      await sink.flush();
-    } finally {
-      await sink.close();
     }
 
-    if (_expectedSha256 != null) {
-      final actual = await _sha256(partial);
-      if (actual != _expectedSha256) {
-        await partial.delete();
-        throw StateError('Model checksum mismatch (expected $_expectedSha256)');
-      }
-    }
-    // On Windows, rename fails if the destination already exists, so
-    // explicitly remove any prior copy first.
-    if (await target.exists()) await target.delete();
-    await partial.rename(target.path);
+    run();
+    return controller.stream;
   }
 
   Future<void> delete() async {
@@ -193,7 +218,11 @@ class ModelManager {
     return digest.toString();
   }
 
-  void dispose() => _http.close();
+  void dispose() {
+    if (_downloader is HttpBackgroundDownloader) {
+      (_downloader as HttpBackgroundDownloader).close();
+    }
+  }
 }
 
 /// Default free-space probe. Uses the `disk_space_plus` plugin, which

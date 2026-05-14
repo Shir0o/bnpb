@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'dart:io';
 import 'dart:ffi';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -19,6 +20,7 @@ import 'services/sync_service.dart';
 import 'services/google_drive_service.dart';
 import 'repositories/notification_preferences_repository.dart';
 import 'services/ai/ai_services.dart';
+import 'services/ai/background_downloader.dart';
 import 'services/onboarding_service.dart';
 import 'services/reminder_coordinator.dart';
 import 'services/reminder_service.dart';
@@ -201,6 +203,12 @@ Future<void> main() async {
     await ReminderService().initialize();
     final preferencesRepository = NotificationPreferencesRepository();
     await preferencesRepository.ensureDefaults();
+    // `flutter_downloader` powers the background-safe AI model download on
+    // mobile. Initialize it eagerly so it's ready by the time the user
+    // opens AI settings; harmless no-op on desktop/web.
+    if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) {
+      unawaited(FlutterBackgroundDownloader.ensureInitialized());
+    }
     unawaited(AiServices().maybeInitialize());
     runApp(const MyApp());
   } catch (error, stackTrace) {
