@@ -14,6 +14,7 @@ import '../services/security_service.dart';
 import '../services/sync_service.dart';
 import '../widgets/export_options_sheet.dart';
 import '../widgets/skeleton_loader.dart';
+import 'ai_settings_page.dart';
 import 'privacy_policy_page.dart';
 
 class SettingsPage extends StatefulWidget {
@@ -183,6 +184,16 @@ class _SettingsPageState extends State<SettingsPage>
             textColor: Theme.of(context).colorScheme.error,
             iconColor: Theme.of(context).colorScheme.error,
             onTap: _isPurging ? null : _confirmSecurePurge,
+          ),
+          const Divider(),
+          _buildSectionHeader('AI'),
+          ListTile(
+            leading: const Icon(Icons.auto_awesome_outlined),
+            title: const Text('AI features'),
+            subtitle: const Text('On-device suggestions, off by default'),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const AiSettingsPage()),
+            ),
           ),
           const Divider(),
           _buildSectionHeader('About'),

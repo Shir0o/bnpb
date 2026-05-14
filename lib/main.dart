@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui';
 import 'dart:io';
 import 'dart:ffi';
@@ -17,6 +18,7 @@ import 'screens/settings_page.dart';
 import 'services/sync_service.dart';
 import 'services/google_drive_service.dart';
 import 'repositories/notification_preferences_repository.dart';
+import 'services/ai/ai_services.dart';
 import 'services/onboarding_service.dart';
 import 'services/reminder_coordinator.dart';
 import 'services/reminder_service.dart';
@@ -199,6 +201,7 @@ Future<void> main() async {
     await ReminderService().initialize();
     final preferencesRepository = NotificationPreferencesRepository();
     await preferencesRepository.ensureDefaults();
+    unawaited(AiServices().maybeInitialize());
     runApp(const MyApp());
   } catch (error, stackTrace) {
     debugPrint('Initialization error: $error');
