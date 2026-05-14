@@ -8,8 +8,10 @@ import '../models/interaction.dart';
 import '../models/relationship.dart';
 import '../services/backup_service.dart';
 import '../services/contact_service.dart';
+import '../services/ai/ai_services.dart';
 import '../services/reminder_coordinator.dart';
 import '../widgets/ai/follow_up_suggestion_sheet.dart';
+import '../widgets/ai/tag_suggestion_sheet.dart';
 import '../widgets/contact_details_skeleton.dart';
 import '../widgets/contact_selection_sheet.dart';
 import '../widgets/people_card.dart';
@@ -1829,6 +1831,8 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
   bool _formWasSubmitted = false;
   bool _isSavingInteraction = false;
   bool _occurredAtManuallyChanged = false;
+  bool _aiAvailable = false;
+  bool _isSuggestingTags = false;
   List<Contact> _availableContacts = [];
   Map<String, Contact> _contactLookup = {};
   Set<String> _selectedParticipantIds = {};
@@ -2055,6 +2059,64 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
     _durationController.addListener(_updateSaveEnabled);
     _durationController.addListener(_updateOccurredAtFromDuration);
     _isSaveEnabled = _calculateSaveEnabled();
+    _checkAiAvailability();
+  }
+
+  Future<void> _checkAiAvailability() async {
+    final ready = await AiServices().isReady();
+    if (!mounted) return;
+    if (ready != _aiAvailable) {
+      setState(() => _aiAvailable = ready);
+    }
+  }
+
+  // Tokens like "#new_job" already present in the notes field, so we don't
+  // re-suggest them.
+  Set<String> _existingTagsInNotes() {
+    final matches = RegExp(r'#([a-z0-9_]+)')
+        .allMatches(_notesController.text.toLowerCase());
+    return {for (final m in matches) m.group(1)!};
+  }
+
+  Future<void> _suggestTags() async {
+    if (_isSuggestingTags) return;
+    final source = [
+      _summaryController.text.trim(),
+      _notesController.text.trim(),
+    ].where((s) => s.isNotEmpty).join('\n');
+    if (source.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Add a summary or note first.')),
+      );
+      return;
+    }
+    setState(() => _isSuggestingTags = true);
+    try {
+      final accepted = await TagSuggestionSheet.maybeShow(
+        context,
+        noteText: source,
+        existingTags: _existingTagsInNotes(),
+      );
+      if (!mounted) return;
+      if (accepted != null && accepted.isNotEmpty) {
+        final tokens = accepted.map((t) => '#$t').join(' ');
+        final current = _notesController.text;
+        final separator = current.isEmpty
+            ? ''
+            : current.endsWith('\n')
+                ? ''
+                : '\n';
+        _notesController.text = '$current$separator$tokens';
+        _updateSaveEnabled();
+      }
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not suggest tags: $error')),
+      );
+    } finally {
+      if (mounted) setState(() => _isSuggestingTags = false);
+    }
   }
 
   @override
@@ -2509,6 +2571,22 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
                       border: OutlineInputBorder(),
                     ),
                   ),
+                  if (_aiAvailable)
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton.icon(
+                        onPressed: _isSuggestingTags ? null : _suggestTags,
+                        icon: _isSuggestingTags
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child:
+                                    CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : const Icon(Icons.auto_awesome_outlined, size: 18),
+                        label: const Text('Suggest tags'),
+                      ),
+                    ),
                   const SizedBox(height: 12),
                   Text('Occurred at', style: theme.textTheme.labelLarge),
                   const SizedBox(height: 8),
