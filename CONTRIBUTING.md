@@ -9,7 +9,14 @@ By participating in this project, you agree to abide by our standards of profess
 1. Ensure you have the Flutter SDK installed (>= 3.0.0).
 2. Clone the repository.
 3. Run `flutter pub get` to install dependencies.
-4. Run `flutter test` to ensure the base state is stable.
+4. On iOS/macOS, run `cd ios && pod install && cd ..` (and the macOS equivalent) — required by the bundled native runtime for the optional on-device AI features.
+5. Run `flutter test` to ensure the base state is stable.
+
+## On-device AI code
+- Source lives under `lib/services/ai/` and `lib/widgets/ai/`.
+- AI is opt-in (`AiFeatureGate`) and gated at every call site through `AiServices().isReady()`. New AI features must follow the same gate.
+- All inference must happen on-device. Prompts must contain only the data the user is acting on — no aggregating across contacts.
+- Any new data flow into or out of the model must be reflected in `README.md` and `docs/privacy_policy.md` in the same change.
 
 ## Coding Conventions
 - **Lints**: We follow the `flutter_lints` ruleset. Run `flutter analyze` frequently.
