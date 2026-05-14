@@ -1,8 +1,11 @@
 import 'package:flutter_gemma/flutter_gemma.dart';
 
 import 'ai_feature_gate.dart';
+import 'auto_tag_service.dart';
 import 'follow_up_suggestion_service.dart';
+import 'interaction_summary_service.dart';
 import 'local_llm_service.dart';
+import 'outreach_draft_service.dart';
 import 'model_manager.dart';
 
 /// Process-wide accessor for AI services so call sites don't need to thread
@@ -18,11 +21,19 @@ class AiServices {
   LocalLlmService _llm = FlutterGemmaLlmService();
   AiFeatureGate _gate = AiFeatureGate();
   FollowUpSuggestionService? _followUpCache;
+  AutoTagService? _autoTagCache;
+  InteractionSummaryService? _summaryCache;
+  OutreachDraftService? _outreachCache;
 
   LocalLlmService get llm => _llm;
   AiFeatureGate get gate => _gate;
   FollowUpSuggestionService get followUp =>
       _followUpCache ??= FollowUpSuggestionService(_llm);
+  AutoTagService get autoTag => _autoTagCache ??= AutoTagService(_llm);
+  InteractionSummaryService get interactionSummary =>
+      _summaryCache ??= InteractionSummaryService(_llm);
+  OutreachDraftService get outreach =>
+      _outreachCache ??= OutreachDraftService(_llm);
 
   /// True only when the user has opted in AND the model is loaded.
   Future<bool> isReady() async {
@@ -58,6 +69,9 @@ class AiServices {
     if (llm != null) {
       _llm = llm;
       _followUpCache = null;
+      _autoTagCache = null;
+      _summaryCache = null;
+      _outreachCache = null;
     }
     if (gate != null) _gate = gate;
   }

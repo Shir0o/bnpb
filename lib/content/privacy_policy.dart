@@ -33,15 +33,37 @@ BNPB provides options to keep your data safe across devices:
   identity to facilitate the connection to your storage. We do not store your 
   profile information or track your Google account activity.
 
+On-device AI features (opt-in)
+• AI suggestions: When the "AI features" toggle in Settings is enabled, BNPB
+  downloads a Gemma language model and runs inference on your device. Prompts
+  and responses never leave the device. The follow-up suggestion path sends
+  only the just-saved interaction's fields to the model. The interaction
+  summary card and the outreach "Suggest opener" feature feed a wider slice
+  — the focal contact's last 5–10 interactions plus active prayer requests
+  — to generate their output. No participant ids, no other-contact names,
+  and no data from contacts other than the one being viewed are included in
+  any AI prompt.
+• Voice-to-note dictation: The dictation button in the interaction editor
+  uses the operating system's built-in speech recognizer (Android
+  SpeechRecognizer / iOS SFSpeechRecognizer). Audio is captured only while
+  recording is active and is converted to text by the OS. Apple and Google
+  document their own retention behavior for speech recognition; consult
+  those terms if it matters for your context. BNPB itself does not upload
+  audio.
+
 Permissions & Notifications
 • Notifications: Reminders for follow-ups and prayer updates are managed by the 
   operating system's local notification service.
 • Precise Scheduling (Android): On Android 12+, we may request the "Exact Alarm" 
   permission. This is used solely to ensure your reminders fire at the precise 
   minute requested, rather than being delayed by system battery-saving measures.
-• Biometrics: If enabled, BNPB uses system-level biometric prompts (Face ID, 
-  Touch ID, or Android Biometric) to unlock the app. The app never sees or 
+• Biometrics: If enabled, BNPB uses system-level biometric prompts (Face ID,
+  Touch ID, or Android Biometric) to unlock the app. The app never sees or
   stores your biometric data.
+• Microphone & Speech Recognition: Granted only when you tap the dictation
+  button in the interaction editor. Both permissions are released as soon
+  as dictation stops; BNPB does not record audio outside of an active
+  dictation session.
 
 Exports
 • CSV, PDF, and JSON exports are created on demand and stay local until you 
