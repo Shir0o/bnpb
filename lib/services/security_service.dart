@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
@@ -35,13 +36,15 @@ class SecurityService {
     'ai_recommendations_fingerprint',
     'ai_recommendations_timestamp',
   ];
+  static const _legacyGeminiPurgedFlagKey = 'legacy_gemini_purged';
 
   final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
   final LocalAuthentication _localAuth = LocalAuthentication();
 
   /// Lazily generates and returns the SQLCipher key used to encrypt the database.
   Future<String> obtainDatabaseKey() async {
-    await _purgeLegacyGeminiData();
+    // Fire-and-forget: don't block DB init on legacy cleanup.
+    unawaited(_purgeLegacyGeminiData());
     try {
       final existing = await _secureStorage.read(key: _dbKeyStorageKey);
       if (existing != null && existing.isNotEmpty) {
@@ -91,17 +94,21 @@ class SecurityService {
 
   Future<void> _purgeLegacyGeminiData() async {
     try {
-      await _secureStorage.delete(key: _legacyGeminiApiKeyKey);
-    } catch (e) {
-      debugPrint('Legacy Gemini key purge failed: $e');
-    }
-    try {
       final prefs = await SharedPreferences.getInstance();
+      if (prefs.getBool(_legacyGeminiPurgedFlagKey) ?? false) return;
+
+      try {
+        await _secureStorage.delete(key: _legacyGeminiApiKeyKey);
+      } catch (e) {
+        debugPrint('Legacy Gemini key purge failed: $e');
+        return; // Don't set the flag if secure-storage delete failed.
+      }
       for (final key in _legacyAiCachePrefsKeys) {
         await prefs.remove(key);
       }
+      await prefs.setBool(_legacyGeminiPurgedFlagKey, true);
     } catch (e) {
-      debugPrint('Legacy AI cache purge failed: $e');
+      debugPrint('Legacy Gemini data purge failed: $e');
     }
   }
 
