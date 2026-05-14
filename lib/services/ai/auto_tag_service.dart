@@ -47,11 +47,13 @@ Tags: ["new_job","relocation","anxiety","career"]
 Note: "Dad's surgery went well, family is grateful."
 Tags: ["health","surgery","family","gratitude"]
 
-Note: "${_escape(note)}"
+Note: ${_escape(note)}
 Tags:''';
   }
 
-  String _escape(String s) => s.replaceAll('"', '\\"').replaceAll('\n', ' ');
+  // jsonEncode wraps the string in quotes and escapes embedded quotes,
+  // newlines, and control characters — safer than hand-rolled replacement.
+  String _escape(String s) => jsonEncode(s);
 
   List<String> _parse(String raw) {
     final start = raw.indexOf('[');

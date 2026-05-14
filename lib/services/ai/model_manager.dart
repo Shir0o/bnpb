@@ -116,6 +116,9 @@ class ModelManager {
         throw StateError('Model checksum mismatch (expected $_expectedSha256)');
       }
     }
+    // On Windows, rename fails if the destination already exists, so
+    // explicitly remove any prior copy first.
+    if (await target.exists()) await target.delete();
     await partial.rename(target.path);
   }
 

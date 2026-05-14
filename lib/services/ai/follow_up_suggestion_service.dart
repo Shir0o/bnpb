@@ -74,14 +74,15 @@ Output: [
   {"action":"Check in on how the interview went","days":10,"reason":"Follow up on outcome"}
 ]
 
-Interaction summary: "${summary.isEmpty ? "(no summary)" : summary}"
-Medium: "$medium"
-Notes: "$notes"
+Interaction summary: ${summary == '""' ? '"(no summary)"' : summary}
+Medium: $medium
+Notes: $notes
 Output:''';
   }
 
-  String _escape(String s) =>
-      s.replaceAll('\\', '\\\\').replaceAll('"', '\\"').replaceAll('\n', ' ');
+  // jsonEncode quotes the string and escapes embedded control characters,
+  // safer than hand-rolled replacement against prompt-injection-style input.
+  String _escape(String s) => jsonEncode(s);
 
   List<FollowUpSuggestion> _parse(String raw) {
     final start = raw.indexOf('[');
@@ -134,7 +135,7 @@ Output:''';
   int? _int(dynamic v) {
     if (v is int) return v;
     if (v is num) return v.round();
-    if (v is String) return int.tryParse(v.trim());
+    if (v is String) return num.tryParse(v.trim())?.round();
     return null;
   }
 }
