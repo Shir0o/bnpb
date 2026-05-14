@@ -39,7 +39,9 @@ android {
 
     defaultConfig {
         applicationId = "com.bnpb.app"
-        minSdk = flutter.minSdkVersion
+        // Pinned to 24 because flutter_gemma's native MediaPipe LLM Inference
+        // runtime requires minSdk 24. Drops Android 5/6 support.
+        minSdk = 24
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName

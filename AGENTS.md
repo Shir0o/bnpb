@@ -9,6 +9,7 @@ This repository contains a Flutter application for managing contact information,
 - `lib/models/`: Dart data models (for example, contact records and history entries).
 - `lib/db/`: Local persistence helpers built on top of Sqflite and JSON-encoded history data.
 - `lib/repositories/`: Aggregated data accessors that wrap the database helper for analytics and preferences.
+- `lib/services/ai/`: Opt-in on-device LLM stack (model download/load, feature gate, follow-up suggestion + auto-tag services). All AI code paths must be gated by `AiServices().isReady()` and must not transmit data off-device.
 - Platform directories (`android`, `ios`, `web`, etc.) contain generated Flutter boilerplate and should not be edited unless the task explicitly targets them.
 
 ## Coding Conventions
