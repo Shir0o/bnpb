@@ -2,8 +2,6 @@ import '../models/contact.dart';
 import '../models/interaction.dart';
 import '../models/prayer_request.dart';
 import '../db/db_helper.dart';
-import 'ai_service.dart';
-import 'security_service.dart';
 
 enum RecommendationPriority {
   critical, // Overdue follow-up or extreme gap
@@ -36,16 +34,6 @@ class FollowUpRecommendationService {
     bool forceRefresh = false,
   }) async {
     final contacts = await _dbHelper.getContacts();
-
-    // Try AI recommendations first if API key is set
-    if (await SecurityService().hasGeminiApiKey()) {
-      final aiRecs = await AIService().getSmartRecommendations(
-        contacts,
-        forceRefresh: forceRefresh,
-      );
-      if (aiRecs.isNotEmpty) return aiRecs;
-    }
-
     final now = DateTime.now();
     final recommendations = <FollowUpRecommendation>[];
 
