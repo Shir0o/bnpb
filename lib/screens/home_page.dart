@@ -4,6 +4,8 @@ import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
 
 import '../db/db_helper.dart';
 import '../models/contact.dart';
@@ -20,6 +22,7 @@ import '../widgets/people_card.dart';
 import '../widgets/recommendations_skeleton.dart';
 import '../widgets/skeleton_loader.dart';
 import '../services/ai/ai_services.dart';
+import '../services/ai/semantic_search_service.dart';
 import '../services/follow_up_recommendation_service.dart';
 import '../services/import_duplicate_detector.dart';
 import '../services/import_service.dart';
@@ -131,6 +134,12 @@ class _HomePageState extends State<HomePage>
   bool _wasKeyboardVisible = false;
   StreamSubscription<void>? _syncSubscription;
   StreamSubscription<void>? _contactsChangedSubscription;
+
+  // Semantic ("Ask") search state.
+  bool _askMode = false;
+  bool _semanticInitialized = false;
+  bool _semanticInitializing = false;
+  Timer? _semanticRebuildDebounce;
 
   // Optimization: Cached DateFormat to avoid expensive parsing during build loops.
   late DateFormat _dateFormat;
@@ -283,6 +292,8 @@ class _HomePageState extends State<HomePage>
       _filteredContacts = filtered;
       _groupedFilteredContacts = grouped;
     });
+
+    _scheduleSemanticRebuild();
   }
 
   Future<void> _loadPrayerInsights() async {
@@ -327,6 +338,37 @@ class _HomePageState extends State<HomePage>
     if (query.isEmpty) {
       _activeMatches = {};
       baseList = source;
+    } else if (_askMode && AiServices().embedding.isReady) {
+      // Lazy-init the vector store on the first Ask query, then route through
+      // the semantic search service. Falls back to trigram search if init or
+      // query fails (e.g. embedder unloaded mid-flight).
+      try {
+        await _ensureSemanticReady();
+        final lookup = _contactLookup;
+        final results = await AiServices()
+            .semanticSearch
+            .query(query, contactsById: lookup);
+        if (_searchController.text.trim() != query) return [];
+        _activeMatches = {
+          for (final r in results)
+            r.contact.id: ContactMatch(
+              contact: r.contact,
+              score: r.score,
+              matchDescription: r.type == IndexDocumentType.prayerRequest
+                  ? 'From a prayer request'
+                  : 'From a coffee chat',
+              snippet: r.snippet,
+            ),
+        };
+        baseList = results.map((r) => r.contact).toList();
+      } catch (_) {
+        final matches = await _searchService.search(query);
+        if (_searchController.text.trim() != query) return [];
+        _activeMatches = {
+          for (final match in matches) match.contact.id: match,
+        };
+        baseList = matches.map((match) => match.contact).toList();
+      }
     } else {
       final matches = await _searchService.search(query);
       if (_searchController.text.trim() != query) {
@@ -337,6 +379,42 @@ class _HomePageState extends State<HomePage>
     }
 
     return baseList;
+  }
+
+  Future<void> _ensureSemanticReady() async {
+    if (_semanticInitialized) return;
+    if (_semanticInitializing) {
+      // Avoid concurrent init storms; just wait until the in-flight one wins.
+      while (_semanticInitializing) {
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+      }
+      return;
+    }
+    _semanticInitializing = true;
+    try {
+      final dir = await getApplicationSupportDirectory();
+      final dbPath = p.join(dir.path, 'semantic_vectors.db');
+      await AiServices().semanticSearch.initialize(dbPath);
+      await AiServices().semanticSearch.rebuildIndex(_contacts);
+      _semanticInitialized = true;
+    } finally {
+      _semanticInitializing = false;
+    }
+  }
+
+  void _scheduleSemanticRebuild() {
+    if (!_semanticInitialized) return;
+    _semanticRebuildDebounce?.cancel();
+    _semanticRebuildDebounce =
+        Timer(const Duration(milliseconds: 800), () async {
+      if (!mounted) return;
+      try {
+        await AiServices().semanticSearch.rebuildIndex(_contacts);
+      } catch (_) {
+        // Best-effort: a failed rebuild just leaves the prior index in place
+        // until the next snapshot arrives.
+      }
+    });
   }
 
   Future<void> _filterContacts() async {
@@ -353,6 +431,64 @@ class _HomePageState extends State<HomePage>
       _filteredContacts = filtered;
       _groupedFilteredContacts = grouped;
     });
+  }
+
+  Widget _buildSearchModeToggle() {
+    return SegmentedButton<bool>(
+      style: const ButtonStyle(
+        visualDensity: VisualDensity(horizontal: -2, vertical: -2),
+      ),
+      segments: const [
+        ButtonSegment(
+          value: false,
+          icon: Icon(Icons.search, size: 16),
+          label: Text('Search'),
+        ),
+        ButtonSegment(
+          value: true,
+          icon: Icon(Icons.psychology_outlined, size: 16),
+          label: Text('Ask'),
+        ),
+      ],
+      selected: {_askMode},
+      showSelectedIcon: false,
+      onSelectionChanged: (sel) {
+        setState(() {
+          _askMode = sel.first;
+        });
+        _filterContacts();
+      },
+    );
+  }
+
+  Widget _buildAskSetupCta() {
+    final theme = Theme.of(context);
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.tertiaryContainer.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.info_outline,
+            size: 18,
+            color: theme.colorScheme.onTertiaryContainer,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'Set up the embedder in AI Settings to enable Ask search.',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onTertiaryContainer,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildSearchSuggestions() {
@@ -943,6 +1079,7 @@ class _HomePageState extends State<HomePage>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _semanticRebuildDebounce?.cancel();
     _searchController.dispose();
     _searchFocusNode.dispose();
     _syncSubscription?.cancel();
@@ -1008,34 +1145,47 @@ class _HomePageState extends State<HomePage>
                     SliverToBoxAdapter(
                       child: Padding(
                         padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-                        child: TextField(
-                          controller: _searchController,
-                          focusNode: _searchFocusNode,
-                          decoration: InputDecoration(
-                            hintText: 'Search contacts...',
-                            prefixIcon: const Icon(Icons.search),
-                            suffixIcon: _searchController.text.isNotEmpty
-                                ? IconButton(
-                                    icon: const Icon(Icons.clear),
-                                    onPressed: () {
-                                      _searchController.clear();
-                                    },
-                                  )
-                                : null,
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide.none,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            _buildSearchModeToggle(),
+                            const SizedBox(height: 8),
+                            if (_askMode && !AiServices().embedding.isReady)
+                              _buildAskSetupCta(),
+                            TextField(
+                              controller: _searchController,
+                              focusNode: _searchFocusNode,
+                              decoration: InputDecoration(
+                                hintText: _askMode
+                                    ? 'Ask about your contacts…'
+                                    : 'Search contacts...',
+                                prefixIcon: Icon(_askMode
+                                    ? Icons.psychology_outlined
+                                    : Icons.search),
+                                suffixIcon: _searchController.text.isNotEmpty
+                                    ? IconButton(
+                                        icon: const Icon(Icons.clear),
+                                        onPressed: () {
+                                          _searchController.clear();
+                                        },
+                                      )
+                                    : null,
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide.none,
+                                ),
+                                filled: true,
+                                fillColor: Theme.of(context)
+                                    .colorScheme
+                                    .secondaryContainer
+                                    .withValues(alpha: 0.3),
+                                contentPadding: const EdgeInsets.symmetric(
+                                  vertical: 0,
+                                  horizontal: 16,
+                                ),
+                              ),
                             ),
-                            filled: true,
-                            fillColor: Theme.of(context)
-                                .colorScheme
-                                .secondaryContainer
-                                .withValues(alpha: 0.3),
-                            contentPadding: const EdgeInsets.symmetric(
-                              vertical: 0,
-                              horizontal: 16,
-                            ),
-                          ),
+                          ],
                         ),
                       ),
                     ),
