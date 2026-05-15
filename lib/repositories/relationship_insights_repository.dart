@@ -295,10 +295,7 @@ class RelationshipInsightsRepository {
   }
 
   bool _hasInteractionAfter(List<Interaction> sorted, DateTime when) {
-    for (final interaction in sorted) {
-      if (interaction.occurredAt.isAfter(when)) return true;
-    }
-    return false;
+    return sorted.isNotEmpty && sorted.last.occurredAt.isAfter(when);
   }
 
   int _median(List<int> values) {

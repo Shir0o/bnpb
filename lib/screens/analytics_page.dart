@@ -68,15 +68,20 @@ class _AnalyticsPageState extends State<AnalyticsPage>
 
     final now = DateTime.now();
     final start = _startForRange(_selectedRange, now);
-    final results = await Future.wait([
-      _repository.buildSummary(rangeStart: start, rangeEnd: now),
-      _insightsRepository.buildInsights(),
-      SharedPreferences.getInstance().then(
-        (prefs) =>
-            prefs.getStringList(_dismissedInsightsPrefKey)?.toSet() ??
-            <String>{},
-      ),
-    ]);
+    List<Object>? results;
+    try {
+      results = await Future.wait([
+        _repository.buildSummary(rangeStart: start, rangeEnd: now),
+        _insightsRepository.buildInsights(),
+        SharedPreferences.getInstance().then(
+          (prefs) =>
+              prefs.getStringList(_dismissedInsightsPrefKey)?.toSet() ??
+              <String>{},
+        ),
+      ]);
+    } catch (_) {
+      // Surface the error state instead of leaving the page spinning.
+    }
 
     final elapsed = stopwatch.elapsedMilliseconds;
     if (elapsed < 300) {
@@ -85,9 +90,14 @@ class _AnalyticsPageState extends State<AnalyticsPage>
 
     if (!mounted) return;
     setState(() {
-      _summary = results[0] as AnalyticsSummary;
-      _insights = results[1] as List<RelationshipInsight>;
-      _dismissedInsightIds = results[2] as Set<String>;
+      if (results != null) {
+        _summary = results[0] as AnalyticsSummary;
+        _insights = results[1] as List<RelationshipInsight>;
+        _dismissedInsightIds = results[2] as Set<String>;
+      } else {
+        _summary = null;
+        _insights = const [];
+      }
       _isLoading = false;
     });
   }
