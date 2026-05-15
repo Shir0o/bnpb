@@ -2,11 +2,13 @@ import 'package:flutter_gemma/flutter_gemma.dart';
 
 import 'ai_feature_gate.dart';
 import 'auto_tag_service.dart';
+import 'embedding_service.dart';
 import 'follow_up_suggestion_service.dart';
 import 'interaction_summary_service.dart';
 import 'local_llm_service.dart';
 import 'outreach_draft_service.dart';
 import 'prayer_clustering_service.dart';
+import 'semantic_search_service.dart';
 import 'model_manager.dart';
 
 /// Process-wide accessor for AI services so call sites don't need to thread
@@ -21,6 +23,8 @@ class AiServices {
 
   LocalLlmService _llm = FlutterGemmaLlmService();
   AiFeatureGate _gate = AiFeatureGate();
+  EmbeddingService _embedding = FlutterGemmaEmbeddingService();
+  SemanticSearchService? _semanticSearchCache;
   FollowUpSuggestionService? _followUpCache;
   AutoTagService? _autoTagCache;
   InteractionSummaryService? _summaryCache;
@@ -29,6 +33,9 @@ class AiServices {
 
   LocalLlmService get llm => _llm;
   AiFeatureGate get gate => _gate;
+  EmbeddingService get embedding => _embedding;
+  SemanticSearchService get semanticSearch =>
+      _semanticSearchCache ??= FlutterGemmaSemanticSearchService(_embedding);
   FollowUpSuggestionService get followUp =>
       _followUpCache ??= FollowUpSuggestionService(_llm);
   AutoTagService get autoTag => _autoTagCache ??= AutoTagService(_llm);
@@ -69,7 +76,12 @@ class AiServices {
   }
 
   /// Test-only seam.
-  void debugOverride({LocalLlmService? llm, AiFeatureGate? gate}) {
+  void debugOverride({
+    LocalLlmService? llm,
+    AiFeatureGate? gate,
+    EmbeddingService? embedding,
+    SemanticSearchService? semanticSearch,
+  }) {
     if (llm != null) {
       _llm = llm;
       _followUpCache = null;
@@ -79,5 +91,10 @@ class AiServices {
       _prayerClusteringCache = null;
     }
     if (gate != null) _gate = gate;
+    if (embedding != null) {
+      _embedding = embedding;
+      _semanticSearchCache = null;
+    }
+    if (semanticSearch != null) _semanticSearchCache = semanticSearch;
   }
 }
