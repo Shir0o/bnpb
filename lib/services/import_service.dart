@@ -4,6 +4,7 @@ import 'dart:io';
 import '../db/db_helper.dart';
 import '../models/contact.dart';
 import '../models/prayer_list.dart';
+import 'ai/ai_services.dart';
 import 'import_duplicate_detector.dart';
 import 'reminder_coordinator.dart';
 import 'sync_coordinator.dart';
@@ -19,6 +20,17 @@ typedef DuplicateReviewCallback = Future<List<Contact>?> Function(
 class ImportService {
   final DBHelper _dbHelper = DBHelper();
   final ReminderCoordinator _reminderCoordinator = ReminderCoordinator();
+
+  /// Best-effort: wipe the semantic search vector store so it doesn't keep
+  /// pointing at contact ids that no longer exist after a destructive
+  /// overwrite import. The home page will rebuild it on the next snapshot.
+  Future<void> _clearSemanticIndex() async {
+    try {
+      await AiServices().semanticSearch.clear();
+    } catch (_) {
+      // Index might not be initialized yet (Ask never used). Nothing to clear.
+    }
+  }
 
   /// Imports a JSON export file (legacy list or V2 map format).
   ///
@@ -93,6 +105,7 @@ class ImportService {
 
     // Overwrite behavior: clear existing data before importing.
     await _dbHelper.clearAllData();
+    await _clearSemanticIndex();
 
     // Pass 1: Insert all contacts first (without interactions/requests to avoid FK issues)
     // This ensures all contact IDs exist before we try to link interactions.

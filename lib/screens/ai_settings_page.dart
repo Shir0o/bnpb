@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../services/ai/ai_services.dart';
+import '../services/ai/embedder_manager.dart';
 import '../services/ai/hf_token_store.dart';
 import '../services/ai/model_manager.dart';
 
@@ -15,14 +16,18 @@ class AiSettingsPage extends StatefulWidget {
 
 class _AiSettingsPageState extends State<AiSettingsPage> {
   final ModelManager _modelManager = ModelManager();
+  final EmbedderManager _embedderManager = EmbedderManager();
   final HfTokenStore _tokenStore = HfTokenStore();
   bool _enabled = false;
   ModelStatus _status = ModelStatus.absent;
+  EmbedderStatus _embedderStatus = EmbedderStatus.absent;
   bool _hasToken = false;
   bool _loading = true;
   bool _busy = false;
   double? _downloadProgress;
+  double? _embedderDownloadProgress;
   StreamSubscription<ModelDownloadProgress>? _downloadSub;
+  StreamSubscription<EmbedderDownloadProgress>? _embedderDownloadSub;
 
   @override
   void initState() {
@@ -33,18 +38,22 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
   @override
   void dispose() {
     _downloadSub?.cancel();
+    _embedderDownloadSub?.cancel();
     _modelManager.dispose();
+    _embedderManager.dispose();
     super.dispose();
   }
 
   Future<void> _refresh() async {
     final enabled = await AiServices().gate.isEnabled();
     final status = await _modelManager.status();
+    final embedderStatus = await _embedderManager.status();
     final token = await _tokenStore.read();
     if (!mounted) return;
     setState(() {
       _enabled = enabled;
       _status = status;
+      _embedderStatus = embedderStatus;
       _hasToken = token != null && token.isNotEmpty;
       _loading = false;
     });
@@ -218,6 +227,115 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
     if (mounted) setState(() => _busy = false);
   }
 
+  Future<void> _downloadEmbedder() async {
+    setState(() {
+      _busy = true;
+      _embedderDownloadProgress = 0;
+    });
+    try {
+      final stream = _embedderManager.download();
+      _embedderDownloadSub = stream.listen(
+        (progress) {
+          if (!mounted) return;
+          setState(() => _embedderDownloadProgress = progress.fraction);
+        },
+        onDone: () async {
+          if (!mounted) return;
+          setState(() {
+            _embedderDownloadProgress = null;
+            _busy = false;
+          });
+          await _refresh();
+          if (_enabled && _embedderStatus == EmbedderStatus.ready) {
+            try {
+              await AiServices().embedding.load(
+                    modelPath: await _embedderManager.modelPath(),
+                    tokenizerPath: await _embedderManager.tokenizerPath(),
+                  );
+            } catch (_) {}
+          }
+        },
+        onError: (error) {
+          if (!mounted) return;
+          setState(() {
+            _embedderDownloadProgress = null;
+            _busy = false;
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Embedder download failed: $error')),
+          );
+        },
+        cancelOnError: true,
+      );
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _embedderDownloadProgress = null;
+        _busy = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Embedder download failed: $error')),
+      );
+    }
+  }
+
+  Future<void> _cancelEmbedderDownload() async {
+    final sub = _embedderDownloadSub;
+    if (sub == null) return;
+    _embedderDownloadSub = null;
+    await sub.cancel();
+    await _embedderManager.deletePartial();
+    if (!mounted) return;
+    setState(() {
+      _embedderDownloadProgress = null;
+      _busy = false;
+    });
+    await _refresh();
+  }
+
+  Future<void> _deleteEmbedder() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete embedder?'),
+        content: const Text(
+          'The embedder model and tokenizer will be removed from this device. '
+          'Ask search will be unavailable until you download them again.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    setState(() => _busy = true);
+    await AiServices().embedding.unload();
+    await AiServices().semanticSearch.clear();
+    await _embedderManager.delete();
+    await _refresh();
+    if (mounted) setState(() => _busy = false);
+  }
+
+  String _embedderStatusLabel() {
+    switch (_embedderStatus) {
+      case EmbedderStatus.absent:
+        return 'Not installed';
+      case EmbedderStatus.partial:
+        return 'Incomplete — re-download required';
+      case EmbedderStatus.ready:
+        return 'Ready on device';
+      case EmbedderStatus.corrupt:
+        return 'Corrupt — re-download required';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -304,6 +422,63 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
                   enabled: !_busy && _status != ModelStatus.absent,
                   onTap:
                       _busy || _status == ModelStatus.absent ? null : _delete,
+                ),
+                const Divider(),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                  child: Text(
+                    'Ask search (semantic)',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                  child: Text(
+                    'Enables the "Ask" toggle on the search bar so you can '
+                    'ask questions like "who did I last pray for about job '
+                    'hunting?". Uses a small (~110 MB) Gecko embedder that '
+                    'runs entirely on this device.',
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.psychology_outlined),
+                  title: Text(_embedderStatus == EmbedderStatus.ready
+                      ? 'Re-download embedder'
+                      : 'Download embedder'),
+                  subtitle: Text(_embedderStatusLabel()),
+                  enabled: !_busy,
+                  onTap: _busy ? null : _downloadEmbedder,
+                ),
+                if (_embedderDownloadProgress != null)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: LinearProgressIndicator(
+                            value: _embedderDownloadProgress,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        TextButton(
+                          onPressed: _cancelEmbedderDownload,
+                          child: const Text('Cancel'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ListTile(
+                  leading: const Icon(Icons.delete_outline),
+                  title: const Text('Delete embedder'),
+                  subtitle: const Text('Frees device storage'),
+                  enabled: !_busy && _embedderStatus != EmbedderStatus.absent,
+                  onTap: _busy || _embedderStatus == EmbedderStatus.absent
+                      ? null
+                      : _deleteEmbedder,
                 ),
               ],
             ),

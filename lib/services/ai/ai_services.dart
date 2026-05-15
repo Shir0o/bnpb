@@ -9,6 +9,7 @@ import 'local_llm_service.dart';
 import 'outreach_draft_service.dart';
 import 'prayer_clustering_service.dart';
 import 'semantic_search_service.dart';
+import 'embedder_manager.dart';
 import 'model_manager.dart';
 
 /// Process-wide accessor for AI services so call sites don't need to thread
@@ -72,6 +73,21 @@ class AiServices {
     } catch (_) {
       // Best-effort: leave the model unloaded; the AI settings page can
       // re-attempt loading and surface errors there.
+    }
+    try {
+      final embedderMgr = EmbedderManager();
+      if (await embedderMgr.status() == EmbedderStatus.ready) {
+        await _embedding.load(
+          modelPath: await embedderMgr.modelPath(),
+          tokenizerPath: await embedderMgr.tokenizerPath(),
+        );
+      }
+      // Deliberately not calling embedderMgr.dispose(): the downloader
+      // returned by defaultBackgroundDownloader() backs onto shared native
+      // plugin state, so disposing it here would break any other in-flight
+      // download (e.g. a user-initiated LLM download still running).
+    } catch (_) {
+      // Best-effort, same reasoning as the LLM block above.
     }
   }
 

@@ -71,6 +71,14 @@ run entirely on your device.
   would be.
 - **No telemetry.** Prompts and model outputs are not transmitted to any
   server and are not logged outside the in-memory call.
+- **Ask search (semantic).** Enabling the "Ask" toggle on the search bar
+  requires a separate, smaller embedder model (Google Gecko 110M, ~110 MB)
+  that you download from AI Settings. The embedder runs on this device and
+  builds a local vector index of your interactions and prayer requests.
+  The vector index is stored next to the encrypted database in the app's
+  private support directory; query text is embedded on device and never
+  transmitted. The index is cleared automatically when you import data and
+  can be removed any time by deleting the embedder from AI Settings.
 
 ## Deletion & retention
 - The “Securely purge all data” action in Settings overwrites the encrypted 

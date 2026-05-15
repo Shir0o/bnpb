@@ -43,6 +43,14 @@ On-device AI features (opt-in)
   — to generate their output. No participant ids, no other-contact names,
   and no data from contacts other than the one being viewed are included in
   any AI prompt.
+• Ask search (semantic): When you download the Gecko embedder from AI
+  Settings, BNPB builds a local vector index of your interactions and
+  prayer requests so the search bar's "Ask" toggle can answer
+  intent-shaped questions. The embedder runs entirely on this device and
+  the vector index is stored next to the encrypted database in the app's
+  private support directory. Queries are embedded on device; no text is
+  sent to a server. The index is cleared automatically on import and can
+  be removed any time by deleting the embedder from AI Settings.
 • Voice-to-note dictation: The dictation button in the interaction editor
   uses the operating system's built-in speech recognizer (Android
   SpeechRecognizer / iOS SFSpeechRecognizer). Audio is captured only while
