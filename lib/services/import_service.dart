@@ -4,8 +4,17 @@ import 'dart:io';
 import '../db/db_helper.dart';
 import '../models/contact.dart';
 import '../models/prayer_list.dart';
+import 'import_duplicate_detector.dart';
 import 'reminder_coordinator.dart';
 import 'sync_coordinator.dart';
+
+/// Resolves a list of suspected duplicate groups in an incoming import.
+/// Returning a new list replaces [incoming]; returning `null` aborts the
+/// import.
+typedef DuplicateReviewCallback = Future<List<Contact>?> Function(
+  List<Contact> incoming,
+  List<DuplicateGroup> groups,
+);
 
 class ImportService {
   final DBHelper _dbHelper = DBHelper();
@@ -13,8 +22,17 @@ class ImportService {
 
   /// Imports a JSON export file (legacy list or V2 map format).
   ///
-  /// Returns the number of contacts restored.
-  Future<int> importJsonExport(File file) async {
+  /// When [onDuplicatesFound] is supplied and the legacy-list path detects
+  /// intra-import duplicates, the callback is invoked to let the user pick
+  /// merge / keep / skip per group. Returning `null` aborts the import; this
+  /// method then returns `-1`.
+  ///
+  /// Returns the number of contacts restored, or `-1` if the user aborted at
+  /// the duplicate-review step.
+  Future<int> importJsonExport(
+    File file, {
+    DuplicateReviewCallback? onDuplicatesFound,
+  }) async {
     final fileContent = await file.readAsString();
     final dynamic jsonData = jsonDecode(fileContent);
 
@@ -60,6 +78,17 @@ class ImportService {
 
     if (restoredContacts.isEmpty) {
       throw const FormatException('No contacts found in JSON.');
+    }
+
+    if (onDuplicatesFound != null) {
+      final groups =
+          ImportDuplicateDetector().findDuplicateGroups(restoredContacts);
+      if (groups.isNotEmpty) {
+        final resolved = await onDuplicatesFound(restoredContacts, groups);
+        if (resolved == null) return -1;
+        restoredContacts = resolved;
+        if (restoredContacts.isEmpty) return 0;
+      }
     }
 
     // Overwrite behavior: clear existing data before importing.

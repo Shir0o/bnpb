@@ -19,9 +19,12 @@ import '../widgets/home_page_skeleton.dart';
 import '../widgets/people_card.dart';
 import '../widgets/recommendations_skeleton.dart';
 import '../widgets/skeleton_loader.dart';
+import '../services/ai/ai_services.dart';
 import '../services/follow_up_recommendation_service.dart';
+import '../services/import_duplicate_detector.dart';
 import '../services/import_service.dart';
 import 'contact_details_page.dart';
+import 'import_duplicate_review_page.dart';
 import 'prayer_diary_page.dart';
 import 'prayer_request_details_page.dart';
 import 'prayer_lists_page.dart';
@@ -805,14 +808,24 @@ class _HomePageState extends State<HomePage>
 
       if (confirmed != true) return;
 
+      final aiEnabled = await AiServices().gate.isEnabled();
       final count = await _showLoading(
-        () => ImportService().importJsonExport(File(filePath)),
+        () => ImportService().importJsonExport(
+          File(filePath),
+          onDuplicatesFound: aiEnabled ? _reviewDuplicates : null,
+        ),
         'Importing contacts...\nThis may take a while...',
       );
 
       await _fetchContacts();
 
       if (!mounted) return;
+      if (count < 0) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Import cancelled.')),
+        );
+        return;
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('$count contacts restored successfully!')),
       );
@@ -822,6 +835,40 @@ class _HomePageState extends State<HomePage>
         context,
       ).showSnackBar(SnackBar(content: Text('Failed to restore contacts: $e')));
     }
+  }
+
+  Future<List<Contact>?> _reviewDuplicates(
+    List<Contact> incoming,
+    List<DuplicateGroup> groups,
+  ) async {
+    if (!mounted) return null;
+    // _showLoading pushes a dialog; pop it before showing the review page,
+    // then re-show after the user decides.
+    Navigator.of(context, rootNavigator: true).pop();
+    final resolved = await Navigator.of(context).push<List<Contact>>(
+      MaterialPageRoute(
+        builder: (_) => ImportDuplicateReviewPage(
+          incoming: incoming,
+          groups: groups,
+        ),
+      ),
+    );
+    if (!mounted) return resolved;
+    // Re-show loading dialog so _showLoading's finally-pop still has a target.
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const AlertDialog(
+        content: Row(
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(width: 24),
+            Expanded(child: Text('Importing contacts...')),
+          ],
+        ),
+      ),
+    );
+    return resolved;
   }
 
   Future<T> _showLoading<T>(Future<T> Function() action, String message) async {
