@@ -2590,14 +2590,7 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
                       alignment: Alignment.centerRight,
                       child: TextButton.icon(
                         onPressed: _isSuggestingTags ? null : _suggestTags,
-                        icon: _isSuggestingTags
-                            ? const SizedBox(
-                                width: 16,
-                                height: 16,
-                                child:
-                                    CircularProgressIndicator(strokeWidth: 2),
-                              )
-                            : const Icon(Icons.auto_awesome_outlined, size: 18),
+                        icon: const Icon(Icons.auto_awesome_outlined, size: 18),
                         label: const Text('Suggest tags'),
                       ),
                     ),
