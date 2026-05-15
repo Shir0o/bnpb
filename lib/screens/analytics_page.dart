@@ -3,8 +3,10 @@ import 'dart:math' as math;
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../repositories/analytics_repository.dart';
+import '../repositories/relationship_insights_repository.dart';
 import '../widgets/skeleton_loader.dart';
 
 /// Predefined ranges supported by the analytics dashboard.
@@ -36,12 +38,19 @@ class AnalyticsPage extends StatefulWidget {
 class _AnalyticsPageState extends State<AnalyticsPage>
     with AutomaticKeepAliveClientMixin {
   final AnalyticsRepository _repository = AnalyticsRepository();
+  final RelationshipInsightsRepository _insightsRepository =
+      RelationshipInsightsRepository();
   late final DateFormat _dateLabelFormatter;
   late final DateFormat _timelineLabelFormatter;
 
   AnalyticsSummary? _summary;
+  List<RelationshipInsight> _insights = const [];
+  Set<String> _dismissedInsightIds = const {};
   bool _isLoading = true;
   AnalyticsRange _selectedRange = AnalyticsRange.last30Days;
+
+  static const String _dismissedInsightsPrefKey =
+      'analytics.insights.dismissed';
 
   @override
   void initState() {
@@ -59,10 +68,20 @@ class _AnalyticsPageState extends State<AnalyticsPage>
 
     final now = DateTime.now();
     final start = _startForRange(_selectedRange, now);
-    final summary = await _repository.buildSummary(
-      rangeStart: start,
-      rangeEnd: now,
-    );
+    List<Object>? results;
+    try {
+      results = await Future.wait([
+        _repository.buildSummary(rangeStart: start, rangeEnd: now),
+        _insightsRepository.buildInsights(),
+        SharedPreferences.getInstance().then(
+          (prefs) =>
+              prefs.getStringList(_dismissedInsightsPrefKey)?.toSet() ??
+              <String>{},
+        ),
+      ]);
+    } catch (_) {
+      // Surface the error state instead of leaving the page spinning.
+    }
 
     final elapsed = stopwatch.elapsedMilliseconds;
     if (elapsed < 300) {
@@ -71,9 +90,25 @@ class _AnalyticsPageState extends State<AnalyticsPage>
 
     if (!mounted) return;
     setState(() {
-      _summary = summary;
+      if (results != null) {
+        _summary = results[0] as AnalyticsSummary;
+        _insights = results[1] as List<RelationshipInsight>;
+        _dismissedInsightIds = results[2] as Set<String>;
+      } else {
+        _summary = null;
+        _insights = const [];
+      }
       _isLoading = false;
     });
+  }
+
+  Future<void> _dismissInsight(String id) async {
+    final updated = {..._dismissedInsightIds, id};
+    setState(() {
+      _dismissedInsightIds = updated;
+    });
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList(_dismissedInsightsPrefKey, updated.toList());
   }
 
   @override
@@ -144,6 +179,7 @@ class _AnalyticsPageState extends State<AnalyticsPage>
         children: [
           _buildHeadlineCard(summary),
           const SizedBox(height: 16),
+          ..._buildInsightCards(),
           _buildTopContactsCard(summary),
           const SizedBox(height: 16),
           _buildCategoryCard(summary),
@@ -154,6 +190,53 @@ class _AnalyticsPageState extends State<AnalyticsPage>
         ],
       ),
     );
+  }
+
+  List<Widget> _buildInsightCards() {
+    final visible =
+        _insights.where((i) => !_dismissedInsightIds.contains(i.id)).toList();
+    if (visible.isEmpty) return const [];
+    return [
+      Text(
+        'Relationship insights',
+        style: Theme.of(context).textTheme.titleMedium,
+      ),
+      const SizedBox(height: 8),
+      ...visible.map(
+        (insight) => Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: _InsightCard(
+            insight: insight,
+            subtitle: _insightSubtitle(insight),
+            onDismiss: () => _dismissInsight(insight.id),
+          ),
+        ),
+      ),
+      const SizedBox(height: 4),
+    ];
+  }
+
+  String _insightSubtitle(RelationshipInsight insight) {
+    final details = insight.details ?? const {};
+    switch (insight.type) {
+      case RelationshipInsightType.driftingContact:
+        final median = details['medianGapDays'];
+        final current = details['currentGapDays'];
+        return 'Usually every $median day${median == 1 ? '' : 's'}, '
+            'silent for $current.';
+      case RelationshipInsightType.silenceStreak:
+        return '${details['gapDays']} days since the last interaction.';
+      case RelationshipInsightType.stalePrayerRequests:
+        return '${details['pendingCount']} pending, oldest '
+            '${details['oldestDays']} days old.';
+      case RelationshipInsightType.answeredPrayer:
+        final raw = (details['description'] as String?)?.trim() ?? '';
+        if (raw.isEmpty) return 'Answered recently.';
+        return raw.length > 80 ? '${raw.substring(0, 80)}…' : raw;
+      case RelationshipInsightType.followUpCompletionRate:
+        return '${details['completed']} of ${details['totalDue']} past '
+            'follow-ups had a later interaction.';
+    }
   }
 
   Widget _buildHeadlineCard(AnalyticsSummary summary) {
@@ -681,6 +764,80 @@ class _EmptyAnalyticsCard extends StatelessWidget {
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     color: Theme.of(context).colorScheme.outline,
                   ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _InsightCard extends StatelessWidget {
+  const _InsightCard({
+    required this.insight,
+    required this.subtitle,
+    required this.onDismiss,
+  });
+
+  final RelationshipInsight insight;
+  final String subtitle;
+  final VoidCallback onDismiss;
+
+  IconData get _icon {
+    switch (insight.type) {
+      case RelationshipInsightType.driftingContact:
+        return Icons.trending_down;
+      case RelationshipInsightType.silenceStreak:
+        return Icons.notifications_paused_outlined;
+      case RelationshipInsightType.stalePrayerRequests:
+        return Icons.event_note_outlined;
+      case RelationshipInsightType.answeredPrayer:
+        return Icons.celebration_outlined;
+      case RelationshipInsightType.followUpCompletionRate:
+        return Icons.check_circle_outline;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final phrasing = insight.phrasing?.trim();
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 12, 4, 12),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(_icon, color: theme.colorScheme.primary),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    insight.title,
+                    style: theme.textTheme.titleSmall
+                        ?.copyWith(fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(subtitle, style: theme.textTheme.bodySmall),
+                  if (phrasing != null && phrasing.isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    Text(
+                      phrasing,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        fontStyle: FontStyle.italic,
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            IconButton(
+              tooltip: 'Dismiss',
+              icon: const Icon(Icons.close, size: 18),
+              onPressed: onDismiss,
             ),
           ],
         ),
