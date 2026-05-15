@@ -8,7 +8,6 @@ list(APPEND FLUTTER_PLUGIN_LIST
   flutter_timezone
   local_auth_windows
   share_plus
-  speech_to_text_windows
   sqlcipher_flutter_libs
   url_launcher_windows
 )

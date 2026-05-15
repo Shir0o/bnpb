@@ -51,13 +51,6 @@ On-device AI features (opt-in)
   private support directory. Queries are embedded on device; no text is
   sent to a server. The index is cleared automatically on import and can
   be removed any time by deleting the embedder from AI Settings.
-• Voice-to-note dictation: The dictation button in the interaction editor
-  uses the operating system's built-in speech recognizer (Android
-  SpeechRecognizer / iOS SFSpeechRecognizer). Audio is captured only while
-  recording is active and is converted to text by the OS. Apple and Google
-  document their own retention behavior for speech recognition; consult
-  those terms if it matters for your context. BNPB itself does not upload
-  audio.
 
 Permissions & Notifications
 • Notifications: Reminders for follow-ups and prayer updates are managed by the 
@@ -68,10 +61,6 @@ Permissions & Notifications
 • Biometrics: If enabled, BNPB uses system-level biometric prompts (Face ID,
   Touch ID, or Android Biometric) to unlock the app. The app never sees or
   stores your biometric data.
-• Microphone & Speech Recognition: Granted only when you tap the dictation
-  button in the interaction editor. Both permissions are released as soon
-  as dictation stops; BNPB does not record audio outside of an active
-  dictation session.
 
 Exports
 • CSV, PDF, and JSON exports are created on demand and stay local until you 
