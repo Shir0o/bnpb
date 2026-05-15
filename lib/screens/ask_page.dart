@@ -4,10 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../db/db_helper.dart';
 import '../models/contact.dart';
 import '../services/ai/ai_services.dart';
 import '../services/ai/semantic_search_service.dart';
 import '../services/contact_service.dart';
+import '../services/reminder_coordinator.dart';
 import 'contact_details_page.dart';
 
 /// Natural-language semantic search across all interactions and prayer
@@ -31,6 +33,10 @@ class _AskPageState extends State<AskPage> {
   String? _lastQuery;
   List<SemanticMatch> _results = const [];
   Map<String, Contact> _contactsById = const {};
+  // Resolves once the initial contacts lookup load has completed. Used by
+  // `_submit` so a tap-immediately-after-open doesn't race the load and
+  // hand an empty lookup to the semantic search service.
+  Future<void>? _contactsLoadFuture;
   // Persisted history of past queries (most-recent-first). Surfaced when
   // the field is empty so the user can re-run prior searches without
   // retyping. We don't cache results — that would risk pointing the user
@@ -42,7 +48,7 @@ class _AskPageState extends State<AskPage> {
   @override
   void initState() {
     super.initState();
-    _loadContactsLookup();
+    _contactsLoadFuture = _loadContactsLookup();
     _loadHistory();
   }
 
@@ -101,6 +107,11 @@ class _AskPageState extends State<AskPage> {
     await SchedulerBinding.instance.endOfFrame;
     await Future<void>.delayed(const Duration(milliseconds: 50));
     try {
+      // initState kicks off the contacts load without awaiting it, so a
+      // user who taps Submit immediately on page open could race it.
+      // Block here until the initial load has resolved so the semantic
+      // search call gets a populated lookup map.
+      await _contactsLoadFuture;
       final contacts = _contactsById.values.toList();
       await AiServices().ensureSemanticIndex(contacts);
       final results = await AiServices().semanticSearch.query(
@@ -113,10 +124,14 @@ class _AskPageState extends State<AskPage> {
         _busy = false;
       });
       unawaited(_recordHistory(query));
-    } catch (e) {
+    } catch (e, st) {
+      // Log the raw exception for debugging; surface a friendly message
+      // to the user. Raw error strings from native plugins are noisy and
+      // unhelpful out of context.
+      debugPrint('Ask query failed: $e\n$st');
       if (!mounted) return;
       setState(() {
-        _error = '$e';
+        _error = "Something went wrong running that question. Try again.";
         _busy = false;
       });
     }
@@ -128,15 +143,46 @@ class _AskPageState extends State<AskPage> {
     _submit();
   }
 
-  void _openContact(Contact contact) {
-    Navigator.of(context).push(
+  Future<void> _openContact(Contact contact) async {
+    await Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => ContactDetailsPage(
           contact: contact,
-          onDelete: () async {},
+          onDelete: () => _deleteContactFromDetails(contact.id),
         ),
       ),
     );
+    // Refresh on return so an edit on the details page (or a delete the
+    // user might have undone elsewhere) is reflected the next time the
+    // user re-runs a history query.
+    ContactService().invalidateContacts();
+    if (mounted) {
+      await _loadContactsLookup();
+    }
+  }
+
+  Future<void> _deleteContactFromDetails(String id) async {
+    try {
+      await DBHelper().deleteContact(id);
+      await ReminderCoordinator().cancelAllForContact(id);
+      ContactService().invalidateContacts();
+      if (!mounted) return;
+      setState(() {
+        // Drop the deleted contact from the in-memory lookup so any
+        // results currently on screen that reference it disappear via
+        // `resultsToMatches`' missing-contact filter.
+        _contactsById = Map.of(_contactsById)..remove(id);
+        _results = _results.where((r) => r.contact.id != id).toList();
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Contact deleted successfully.')),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to delete contact: $error')),
+      );
+    }
   }
 
   @override
