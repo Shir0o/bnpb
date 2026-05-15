@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../models/contact.dart';
+import '../models/relationship.dart';
 import '../services/import_duplicate_detector.dart';
 
 enum _GroupDecision { merge, keepAll, skip }
@@ -191,19 +192,34 @@ Contact mergeContacts(List<Contact> members) {
     return fallback;
   }
 
+  final memberIds = {for (final c in members) c.id};
+  String rewrite(String id) => memberIds.contains(id) ? primary.id : id;
+  List<String> rewriteAll(List<String> ids) =>
+      [for (final id in ids) rewrite(id)];
+
   final interactions = {
     for (final c in members)
-      for (final x in c.interactions) x.syncId: x,
+      for (final x in c.interactions)
+        x.syncId: x.copyWith(participantIds: rewriteAll(x.participantIds)),
   }.values.toList();
   final prayerRequests = {
     for (final c in members)
-      for (final p in c.prayerRequests) p.syncId: p,
+      for (final p in c.prayerRequests)
+        p.syncId: p.copyWith(participantIds: rewriteAll(p.participantIds)),
   }.values.toList();
-  final relationships = {
-    for (final c in members)
-      for (final r in c.relationships)
-        '${r.sourceContactId}->${r.targetContactId}|${r.type}': r,
-  }.values.toList();
+  final relationships = <String, Relationship>{};
+  for (final c in members) {
+    for (final r in c.relationships) {
+      final source = rewrite(r.sourceContactId);
+      final target = rewrite(r.targetContactId);
+      if (source == target) continue;
+      final rewritten = r.copyWith(
+        sourceContactId: source,
+        targetContactId: target,
+      );
+      relationships['$source->$target|${r.type}'] = rewritten;
+    }
+  }
 
   return primary.copyWith(
     firstName: firstNonEmptyRequired((c) => c.firstName, primary.firstName),
@@ -217,6 +233,6 @@ Contact mergeContacts(List<Contact> members) {
     notes: firstNonEmpty((c) => c.notes),
     interactions: interactions,
     prayerRequests: prayerRequests,
-    relationships: relationships,
+    relationships: relationships.values.toList(),
   );
 }

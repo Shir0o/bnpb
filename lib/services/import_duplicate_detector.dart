@@ -23,6 +23,11 @@ class DuplicateGroup {
 ///
 /// Sibling false-positive avoidance: tiers 3/4 both require last-name AND
 /// first-name evidence, so "Alice Smith" vs "Bob Smith" does not match.
+///
+/// Performance: phone/email matches are found via O(N) hash bucketing, and
+/// the trigram-name comparison uses a last-name trigram inverted index so
+/// only contacts sharing at least one last-name trigram are pairwise scored
+/// — avoiding the naive O(N^2) sweep.
 class ImportDuplicateDetector {
   static const double _trigramThreshold = 0.6;
 
@@ -42,34 +47,67 @@ class ImportDuplicateDetector {
       reasons[root] = reasons[ra] ?? reasons[rb] ?? reason;
     }
 
+    void scorePair(int i, int j) {
+      final a = fingerprints[i];
+      final b = fingerprints[j];
+
+      final lastSim = _jaccard(a.lastNameTrigrams, b.lastNameTrigrams);
+      if (lastSim < _trigramThreshold) return;
+
+      final firstSim = _jaccard(a.firstNameTrigrams, b.firstNameTrigrams);
+      if (firstSim >= _trigramThreshold) {
+        link(i, j, 'Similar name');
+        return;
+      }
+
+      final nickToFirst = _jaccard(a.nicknameTrigrams, b.firstNameTrigrams);
+      final firstToNick = _jaccard(a.firstNameTrigrams, b.nicknameTrigrams);
+      if (nickToFirst >= _trigramThreshold ||
+          firstToNick >= _trigramThreshold) {
+        link(i, j, 'Nickname match');
+      }
+    }
+
+    // Pass 1: link via exact phone / email buckets in O(N).
+    final phoneBuckets = <String, List<int>>{};
+    final emailBuckets = <String, List<int>>{};
     for (var i = 0; i < fingerprints.length; i++) {
-      for (var j = i + 1; j < fingerprints.length; j++) {
-        final a = fingerprints[i];
-        final b = fingerprints[j];
+      final fp = fingerprints[i];
+      if (fp.phone.isNotEmpty) {
+        phoneBuckets.putIfAbsent(fp.phone, () => []).add(i);
+      }
+      if (fp.email.isNotEmpty) {
+        emailBuckets.putIfAbsent(fp.email, () => []).add(i);
+      }
+    }
+    for (final bucket in phoneBuckets.values) {
+      for (var k = 1; k < bucket.length; k++) {
+        link(bucket[0], bucket[k], 'Shared phone number');
+      }
+    }
+    for (final bucket in emailBuckets.values) {
+      for (var k = 1; k < bucket.length; k++) {
+        link(bucket[0], bucket[k], 'Shared email');
+      }
+    }
 
-        if (a.phone.isNotEmpty && a.phone == b.phone) {
-          link(i, j, 'Shared phone number');
-          continue;
-        }
-        if (a.email.isNotEmpty && a.email == b.email) {
-          link(i, j, 'Shared email');
-          continue;
-        }
-
-        final lastSim = _jaccard(a.lastNameTrigrams, b.lastNameTrigrams);
-        if (lastSim < _trigramThreshold) continue;
-
-        final firstSim = _jaccard(a.firstNameTrigrams, b.firstNameTrigrams);
-        if (firstSim >= _trigramThreshold) {
-          link(i, j, 'Similar name');
-          continue;
-        }
-
-        final nickToFirst = _jaccard(a.nicknameTrigrams, b.firstNameTrigrams);
-        final firstToNick = _jaccard(a.firstNameTrigrams, b.nicknameTrigrams);
-        if (nickToFirst >= _trigramThreshold ||
-            firstToNick >= _trigramThreshold) {
-          link(i, j, 'Nickname match');
+    // Pass 2: trigram-blocked name comparison. A pair only enters scoring
+    // if they share at least one last-name trigram (necessary condition for
+    // last-name Jaccard >= 0.6 / threshold > 0).
+    final lastNameIndex = <String, List<int>>{};
+    for (var i = 0; i < fingerprints.length; i++) {
+      for (final gram in fingerprints[i].lastNameTrigrams) {
+        lastNameIndex.putIfAbsent(gram, () => []).add(i);
+      }
+    }
+    final scored = <int>{};
+    for (var i = 0; i < fingerprints.length; i++) {
+      scored.clear();
+      for (final gram in fingerprints[i].lastNameTrigrams) {
+        for (final j in lastNameIndex[gram]!) {
+          if (j <= i || scored.contains(j)) continue;
+          scored.add(j);
+          scorePair(i, j);
         }
       }
     }
