@@ -8,11 +8,15 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:path/path.dart' as p;
 
 import '../../db/db_helper.dart';
+import '../../models/contact.dart';
+import '../../services/ai/ai_services.dart';
 import '../../services/backup_service.dart';
 import '../../services/google_drive_service.dart';
+import '../../services/import_duplicate_detector.dart';
 import '../../services/sync_service.dart';
 import '../../services/import_service.dart';
 import '../../widgets/export_options_sheet.dart';
+import '../import_duplicate_review_page.dart';
 
 enum _LogTone { normal, info, success, error }
 
@@ -206,11 +210,21 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
 
         if (confirmed != true) return;
 
+        final aiEnabled = await AiServices().gate.isEnabled();
         final count = await _showLoading(
-          () => ImportService().importJsonExport(file),
+          () => ImportService().importJsonExport(
+            file,
+            onDuplicatesFound: aiEnabled ? _reviewDuplicates : null,
+          ),
           'Importing contacts...\nThis may take a while...',
         );
         if (!mounted) return;
+        if (count < 0) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Import cancelled.')),
+          );
+          return;
+        }
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('$count contacts imported successfully')),
         );
@@ -271,6 +285,37 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
         ).showSnackBar(SnackBar(content: Text('Error restoring backup: $e')));
       }
     }
+  }
+
+  Future<List<Contact>?> _reviewDuplicates(
+    List<Contact> incoming,
+    List<DuplicateGroup> groups,
+  ) async {
+    if (!mounted) return null;
+    Navigator.of(context, rootNavigator: true).pop();
+    final resolved = await Navigator.of(context).push<List<Contact>>(
+      MaterialPageRoute(
+        builder: (_) => ImportDuplicateReviewPage(
+          incoming: incoming,
+          groups: groups,
+        ),
+      ),
+    );
+    if (!mounted) return resolved;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const AlertDialog(
+        content: Row(
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(width: 24),
+            Expanded(child: Text('Importing contacts...')),
+          ],
+        ),
+      ),
+    );
+    return resolved;
   }
 
   Future<T> _showLoading<T>(Future<T> Function() action, String message) async {
