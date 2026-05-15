@@ -138,7 +138,7 @@ class _HomePageState extends State<HomePage>
   // Semantic ("Ask") search state.
   bool _askMode = false;
   bool _semanticInitialized = false;
-  bool _semanticInitializing = false;
+  Future<void>? _semanticInitInFlight;
   Timer? _semanticRebuildDebounce;
 
   // Optimization: Cached DateFormat to avoid expensive parsing during build loops.
@@ -381,25 +381,21 @@ class _HomePageState extends State<HomePage>
     return baseList;
   }
 
-  Future<void> _ensureSemanticReady() async {
-    if (_semanticInitialized) return;
-    if (_semanticInitializing) {
-      // Avoid concurrent init storms; just wait until the in-flight one wins.
-      while (_semanticInitializing) {
-        await Future<void>.delayed(const Duration(milliseconds: 50));
+  Future<void> _ensureSemanticReady() {
+    if (_semanticInitialized) return Future.value();
+    // Re-use any init already in flight so concurrent Ask queries don't each
+    // kick off their own initialize+rebuild against the same vector store.
+    return _semanticInitInFlight ??= () async {
+      try {
+        final dir = await getApplicationSupportDirectory();
+        final dbPath = p.join(dir.path, 'semantic_vectors.db');
+        await AiServices().semanticSearch.initialize(dbPath);
+        await AiServices().semanticSearch.rebuildIndex(_contacts);
+        _semanticInitialized = true;
+      } finally {
+        _semanticInitInFlight = null;
       }
-      return;
-    }
-    _semanticInitializing = true;
-    try {
-      final dir = await getApplicationSupportDirectory();
-      final dbPath = p.join(dir.path, 'semantic_vectors.db');
-      await AiServices().semanticSearch.initialize(dbPath);
-      await AiServices().semanticSearch.rebuildIndex(_contacts);
-      _semanticInitialized = true;
-    } finally {
-      _semanticInitializing = false;
-    }
+    }();
   }
 
   void _scheduleSemanticRebuild() {

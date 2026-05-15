@@ -82,7 +82,10 @@ class AiServices {
           tokenizerPath: await embedderMgr.tokenizerPath(),
         );
       }
-      embedderMgr.dispose();
+      // Deliberately not calling embedderMgr.dispose(): the downloader
+      // returned by defaultBackgroundDownloader() backs onto shared native
+      // plugin state, so disposing it here would break any other in-flight
+      // download (e.g. a user-initiated LLM download still running).
     } catch (_) {
       // Best-effort, same reasoning as the LLM block above.
     }

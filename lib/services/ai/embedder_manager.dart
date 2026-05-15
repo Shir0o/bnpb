@@ -126,16 +126,34 @@ class EmbedderManager {
     }
   }
 
+  /// Hardcoded estimate of the combined download size, used as the progress
+  /// bar denominator so the bar advances monotonically across both legs
+  /// (~114 MB Gecko_256_quant + ~5 MB sentencepiece, with a little headroom).
+  /// If the actual transfer exceeds this estimate we clamp at the total so
+  /// the bar never reads above 100%.
+  static const int _combinedDownloadEstimate = 120 * 1024 * 1024;
+
   /// Downloads both files sequentially, emitting a single combined progress
   /// stream so the UI can render one bar. Each leg writes to a `.part` file
   /// and renames on success.
   Stream<EmbedderDownloadProgress> download() {
     late final StreamController<EmbedderDownloadProgress> controller;
     StreamSubscription<DownloadProgressEvent>? innerSub;
+    Completer<void>? activeLeg;
+    var cancelled = false;
 
     controller = StreamController<EmbedderDownloadProgress>(
       onCancel: () async {
+        cancelled = true;
         await innerSub?.cancel();
+        // The downloader's listener won't fire onDone/onError after a
+        // subscription cancel, so we have to manually unblock any in-flight
+        // leg waiter — otherwise run() would suspend forever and the
+        // background task would leak.
+        final leg = activeLeg;
+        if (leg != null && !leg.isCompleted) {
+          leg.completeError(const _DownloadCancelled());
+        }
       },
     );
 
@@ -143,11 +161,12 @@ class EmbedderManager {
       required String url,
       required File target,
       required int priorBytes,
-      required int? combinedTotalGuess,
     }) async {
+      if (cancelled) throw const _DownloadCancelled();
       final partial = File('${target.path}.part');
       if (await partial.exists()) await partial.delete();
       final completer = Completer<void>();
+      activeLeg = completer;
       innerSub = _downloader
           .download(
         url: url,
@@ -156,15 +175,17 @@ class EmbedderManager {
       )
           .listen(
         (event) {
-          // Combined progress = bytes already finished from prior legs +
-          // bytes received in this leg. If we don't know the total we leave
-          // it null and let the UI show an indeterminate spinner.
-          final total = combinedTotalGuess ??
-              (event.bytesTotal == null
-                  ? null
-                  : priorBytes + event.bytesTotal!);
-          controller.add(EmbedderDownloadProgress(
-              priorBytes + event.bytesReceived, total));
+          final received = priorBytes + event.bytesReceived;
+          // Use the static combined estimate as the denominator so the bar
+          // advances smoothly across both legs instead of jumping back when
+          // the second leg discovers its own content-length. Clamp to keep
+          // the displayed fraction <= 1.0 if the real total exceeds the
+          // estimate.
+          final clamped = received > _combinedDownloadEstimate
+              ? _combinedDownloadEstimate
+              : received;
+          controller.add(
+              EmbedderDownloadProgress(clamped, _combinedDownloadEstimate));
         },
         onError: (Object e, StackTrace st) {
           if (!completer.isCompleted) completer.completeError(e, st);
@@ -174,7 +195,12 @@ class EmbedderManager {
         },
         cancelOnError: true,
       );
-      await completer.future;
+      try {
+        await completer.future;
+      } finally {
+        activeLeg = null;
+      }
+      if (cancelled) throw const _DownloadCancelled();
       if (!await partial.exists()) {
         throw StateError('Download completed without producing $url');
       }
@@ -192,7 +218,6 @@ class EmbedderManager {
           url: _modelUrl,
           target: modelTarget,
           priorBytes: 0,
-          combinedTotalGuess: null,
         );
         if (_expectedModelSha256 != null) {
           final actual = await _sha256(modelTarget);
@@ -208,7 +233,6 @@ class EmbedderManager {
           url: _tokenizerUrl,
           target: tokTarget,
           priorBytes: modelBytes,
-          combinedTotalGuess: null,
         );
         if (_expectedTokenizerSha256 != null) {
           final actual = await _sha256(tokTarget);
@@ -219,6 +243,10 @@ class EmbedderManager {
           }
         }
         await controller.close();
+      } on _DownloadCancelled {
+        // Consumer cancelled the subscription mid-flight. The controller is
+        // already being torn down by the framework; nothing more to do.
+        if (!controller.isClosed) await controller.close();
       } catch (e, st) {
         if (!controller.isClosed) {
           controller.addError(e, st);
@@ -252,5 +280,16 @@ class EmbedderManager {
     return digest.toString();
   }
 
-  void dispose() => _downloader.dispose();
+  /// No-op: [BackgroundDownloader] instances returned by
+  /// `defaultBackgroundDownloader()` back onto shared native plugin state
+  /// (e.g. flutter_downloader's WorkManager registration), so disposing the
+  /// downloader from a single short-lived manager would break any other
+  /// in-flight downloads. Callers that inject their own downloader own its
+  /// lifecycle.
+  void dispose() {}
+}
+
+/// Sentinel error used internally to unwind a cancelled download cleanly.
+class _DownloadCancelled implements Exception {
+  const _DownloadCancelled();
 }
