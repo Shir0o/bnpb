@@ -140,6 +140,12 @@ class _HomePageState extends State<HomePage>
   bool _semanticInitialized = false;
   Future<void>? _semanticInitInFlight;
   Timer? _semanticRebuildDebounce;
+  // Tail of the serialized rebuild chain. Every scheduled rebuild appends
+  // itself via `.then(...)` so that two snapshots arriving in quick
+  // succession can never call rebuildIndex concurrently — the underlying
+  // vector store clears itself at the start of each rebuild, so overlapping
+  // calls would race to wipe each other's writes.
+  Future<void> _semanticRebuildTail = Future<void>.value();
 
   // Optimization: Cached DateFormat to avoid expensive parsing during build loops.
   late DateFormat _dateFormat;
@@ -401,15 +407,19 @@ class _HomePageState extends State<HomePage>
   void _scheduleSemanticRebuild() {
     if (!_semanticInitialized) return;
     _semanticRebuildDebounce?.cancel();
-    _semanticRebuildDebounce =
-        Timer(const Duration(milliseconds: 800), () async {
-      if (!mounted) return;
-      try {
-        await AiServices().semanticSearch.rebuildIndex(_contacts);
-      } catch (_) {
-        // Best-effort: a failed rebuild just leaves the prior index in place
-        // until the next snapshot arrives.
-      }
+    _semanticRebuildDebounce = Timer(const Duration(milliseconds: 800), () {
+      // Chain after the prior rebuild instead of firing in parallel — see the
+      // comment on _semanticRebuildTail for why concurrency would corrupt
+      // the index.
+      _semanticRebuildTail = _semanticRebuildTail.then((_) async {
+        if (!mounted) return;
+        try {
+          await AiServices().semanticSearch.rebuildIndex(_contacts);
+        } catch (_) {
+          // Best-effort: a failed rebuild leaves the prior index in place
+          // until the next snapshot arrives.
+        }
+      });
     });
   }
 
