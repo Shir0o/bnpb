@@ -49,15 +49,15 @@ class EmbedderManager {
         _requiredFreeBytes = requiredFreeBytes,
         _freeSpaceProbe = freeSpaceProbe;
 
-  // Gecko 110M English text-embedder, distributed by Google on Kaggle.
-  // The Kaggle Models API returns a tarball; we point at the unpacked
-  // individual files served from Kaggle's mirror. Confirm the exact paths
-  // and filenames before shipping — Google rotates these like they do with
-  // the Gemma LLM artifacts.
+  // Gecko 110M English text-embedder from the litert-community HuggingFace
+  // mirror. We use the 256-token int8-quantized variant: 256 tokens covers a
+  // typical interaction (date + summary + notes + location) without padding,
+  // and int8 quantization shrinks the model ~4x with negligible retrieval-
+  // quality impact for this corpus.
   static const String _defaultModelUrl =
-      'https://www.kaggle.com/api/v1/models/google/Gecko/tfLite/gecko-110m-en/1/files/Gecko_256_quant.tflite';
+      'https://huggingface.co/litert-community/Gecko-110m-en/resolve/main/Gecko_256_quant.tflite?download=true';
   static const String _defaultTokenizerUrl =
-      'https://www.kaggle.com/api/v1/models/google/Gecko/tfLite/gecko-110m-en/1/files/sentencepiece.model';
+      'https://huggingface.co/litert-community/Gecko-110m-en/resolve/main/sentencepiece.model?download=true';
   static const String _defaultModelFilename = 'gecko_110m_en.tflite';
   static const String _defaultTokenizerFilename = 'gecko_sentencepiece.model';
   // ~110 MB combined + headroom for both `.part` files and FS overhead.
