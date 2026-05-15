@@ -187,6 +187,10 @@ abstract class SemanticSearchService {
 
   /// Clears all documents from the vector store. Used on import / data wipe.
   Future<void> clear();
+
+  /// Number of documents currently in the persistent index. Used by callers
+  /// to skip a wholesale rebuild when the prior session's index is intact.
+  Future<int> documentCount();
 }
 
 /// Production impl wiring [FlutterGemmaEmbeddingService] to flutter_gemma's
@@ -249,6 +253,14 @@ class FlutterGemmaSemanticSearchService implements SemanticSearchService {
         );
         done += 1;
         onProgress?.call(done, docs.length);
+        // Each addDocument is a pigeon hop posted to the platform main
+        // thread; firing N back-to-back saturates that thread and starves
+        // the renderer (1000+ dropped frames at N≈250). Yielding every 8
+        // gives the UI a chance to paint between batches without
+        // measurably extending total rebuild time.
+        if (done % 8 == 0) {
+          await Future<void>.delayed(Duration.zero);
+        }
       }
       _status = SemanticIndexStatus.ready;
     } catch (e) {
@@ -278,6 +290,17 @@ class FlutterGemmaSemanticSearchService implements SemanticSearchService {
   Future<void> clear() async {
     if (!_vectorStoreReady) return;
     await FlutterGemmaPlugin.instance.clearVectorStore();
+  }
+
+  @override
+  Future<int> documentCount() async {
+    if (!_vectorStoreReady) return 0;
+    try {
+      final stats = await FlutterGemmaPlugin.instance.getVectorStoreStats();
+      return stats.documentCount;
+    } catch (_) {
+      return 0;
+    }
   }
 }
 

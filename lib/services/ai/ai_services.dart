@@ -1,5 +1,8 @@
 import 'package:flutter_gemma/flutter_gemma.dart';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
 
+import '../../models/contact.dart';
 import 'ai_feature_gate.dart';
 import 'auto_tag_service.dart';
 import 'embedding_service.dart';
@@ -46,6 +49,32 @@ class AiServices {
       _outreachCache ??= OutreachDraftService(_llm);
   PrayerClusteringService get prayerClustering =>
       _prayerClusteringCache ??= PrayerClusteringService(_llm);
+
+  bool _semanticInitialized = false;
+  Future<void>? _semanticInitInFlight;
+
+  /// Initializes the semantic search vector store (loads the persisted
+  /// SQLite + rebuilds the in-memory HNSW index). Performs a one-time
+  /// from-scratch rebuild only when the persisted store is empty. Safe
+  /// to call repeatedly from multiple call sites — concurrent calls
+  /// share the same in-flight future.
+  Future<void> ensureSemanticIndex(List<Contact> contacts) {
+    if (_semanticInitialized) return Future.value();
+    return _semanticInitInFlight ??= () async {
+      try {
+        final dir = await getApplicationSupportDirectory();
+        final dbPath = p.join(dir.path, 'semantic_vectors.db');
+        await semanticSearch.initialize(dbPath);
+        final actual = await semanticSearch.documentCount();
+        if (actual == 0) {
+          await semanticSearch.rebuildIndex(contacts);
+        }
+        _semanticInitialized = true;
+      } finally {
+        _semanticInitInFlight = null;
+      }
+    }();
+  }
 
   /// True only when the user has opted in AND the model is loaded.
   Future<bool> isReady() async {

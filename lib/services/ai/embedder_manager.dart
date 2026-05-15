@@ -126,12 +126,13 @@ class EmbedderManager {
     }
   }
 
-  /// Hardcoded estimate of the combined download size, used as the progress
-  /// bar denominator so the bar advances monotonically across both legs
-  /// (~114 MB Gecko_256_quant + ~5 MB sentencepiece, with a little headroom).
-  /// If the actual transfer exceeds this estimate we clamp at the total so
-  /// the bar never reads above 100%.
-  static const int _combinedDownloadEstimate = 120 * 1024 * 1024;
+  /// Hardcoded per-leg size estimates, used to weight each leg's fraction so
+  /// the bar advances monotonically across both legs. Absolute units don't
+  /// matter; only the ratio does. Model ≈ 114 MB, tokenizer ≈ 5 MB.
+  static const int _modelSizeEstimate = 114 * 1024 * 1024;
+  static const int _tokenizerSizeEstimate = 5 * 1024 * 1024;
+  static const int _combinedDownloadEstimate =
+      _modelSizeEstimate + _tokenizerSizeEstimate;
 
   /// Downloads both files sequentially, emitting a single combined progress
   /// stream so the UI can render one bar. Each leg writes to a `.part` file
@@ -161,6 +162,7 @@ class EmbedderManager {
       required String url,
       required File target,
       required int priorBytes,
+      required int legSizeEstimate,
     }) async {
       if (cancelled) throw const _DownloadCancelled();
       final partial = File('${target.path}.part');
@@ -175,12 +177,12 @@ class EmbedderManager {
       )
           .listen(
         (event) {
-          final received = priorBytes + event.bytesReceived;
-          // Use the static combined estimate as the denominator so the bar
-          // advances smoothly across both legs instead of jumping back when
-          // the second leg discovers its own content-length. Clamp to keep
-          // the displayed fraction <= 1.0 if the real total exceeds the
-          // estimate.
+          // The mobile downloader reports progress as a 0-100 percentage in
+          // `bytesReceived` with `bytesTotal = 100`, not absolute bytes, so
+          // we can't just sum `bytesReceived` across legs. Convert to a
+          // per-leg fraction first, then weight by the leg's estimated size.
+          final legFraction = event.fraction ?? 0;
+          final received = priorBytes + (legFraction * legSizeEstimate).round();
           final clamped = received > _combinedDownloadEstimate
               ? _combinedDownloadEstimate
               : received;
@@ -218,6 +220,7 @@ class EmbedderManager {
           url: _modelUrl,
           target: modelTarget,
           priorBytes: 0,
+          legSizeEstimate: _modelSizeEstimate,
         );
         if (_expectedModelSha256 != null) {
           final actual = await _sha256(modelTarget);
@@ -228,11 +231,11 @@ class EmbedderManager {
           }
         }
 
-        final modelBytes = await modelTarget.length();
         await downloadOne(
           url: _tokenizerUrl,
           target: tokTarget,
-          priorBytes: modelBytes,
+          priorBytes: _modelSizeEstimate,
+          legSizeEstimate: _tokenizerSizeEstimate,
         );
         if (_expectedTokenizerSha256 != null) {
           final actual = await _sha256(tokTarget);
