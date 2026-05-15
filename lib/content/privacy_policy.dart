@@ -51,6 +51,7 @@ On-device AI features (opt-in)
   private support directory. Queries are embedded on device; no text is
   sent to a server. The index is cleared automatically on import and can
   be removed any time by deleting the embedder from AI Settings.
+
 Permissions & Notifications
 • Notifications: Reminders for follow-ups and prayer updates are managed by the 
   operating system's local notification service.
