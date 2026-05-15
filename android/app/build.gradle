@@ -47,6 +47,20 @@ android {
         versionName = flutter.versionName
     }
 
+    // flutter_gemma ships MediaPipe vision + image-generator native libs that
+    // this app never uses (~38 MB). Drop them from every variant — they're
+    // dead weight in both debug and release. Embedding, text-chunker, and
+    // vector-store libs stay; they're needed by planned NL-search (#174).
+    packaging {
+        jniLibs {
+            excludes += [
+                'lib/*/libmediapipe_tasks_vision_jni.so',
+                'lib/*/libmediapipe_tasks_vision_image_generator_jni.so',
+                'lib/*/libimagegenerator_gpu.so',
+            ]
+        }
+    }
+
     buildTypes {
         release {
             // Use production signing if keys are available, otherwise fall back to debug.
@@ -55,7 +69,28 @@ android {
             } else {
                 signingConfig signingConfigs.debug
             }
+            minifyEnabled true
+            shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+
+            // Restrict shipped APK to the ABIs end-users actually need.
+            // Scoped to `release` so debug builds keep x86_64 for emulator dev.
+            ndk {
+                abiFilters 'arm64-v8a', 'armeabi-v7a'
+            }
+
+            // `ndk.abiFilters` does NOT reach AAR-bundled JNI libs in current
+            // AGP (flutter_gemma's AAR ships x86_64 builds for every MediaPipe
+            // library, ~60 MB). Explicit `packaging` excludes are the only
+            // reliable lever. Also scoped to release so debug emulators work.
+            packaging {
+                jniLibs {
+                    excludes += [
+                        'lib/x86_64/**',
+                        'lib/x86/**',
+                    ]
+                }
+            }
         }
     }
 }
