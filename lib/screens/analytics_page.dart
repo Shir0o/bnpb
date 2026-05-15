@@ -7,7 +7,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../repositories/analytics_repository.dart';
 import '../repositories/relationship_insights_repository.dart';
+import '../services/ai/ai_services.dart';
 import '../widgets/skeleton_loader.dart';
+import 'ask_page.dart';
 
 /// Predefined ranges supported by the analytics dashboard.
 enum AnalyticsRange { last30Days, last90Days, last365Days, allTime }
@@ -179,6 +181,10 @@ class _AnalyticsPageState extends State<AnalyticsPage>
         children: [
           _buildHeadlineCard(summary),
           const SizedBox(height: 16),
+          if (AiServices().embedding.isReady) ...[
+            _buildAskCard(),
+            const SizedBox(height: 16),
+          ],
           ..._buildInsightCards(),
           _buildTopContactsCard(summary),
           const SizedBox(height: 16),
@@ -237,6 +243,50 @@ class _AnalyticsPageState extends State<AnalyticsPage>
         return '${details['completed']} of ${details['totalDue']} past '
             'follow-ups had a later interaction.';
     }
+  }
+
+  Widget _buildAskCard() {
+    final theme = Theme.of(context);
+    return Card(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const AskPage()),
+          );
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Icon(
+                Icons.psychology_outlined,
+                color: theme.colorScheme.primary,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Ask about your contacts',
+                        style: theme.textTheme.titleMedium),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Semantic search across interactions and prayer requests.',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.arrow_forward_ios, size: 16),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   Widget _buildHeadlineCard(AnalyticsSummary summary) {
