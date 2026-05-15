@@ -6,6 +6,7 @@ import 'follow_up_suggestion_service.dart';
 import 'interaction_summary_service.dart';
 import 'local_llm_service.dart';
 import 'outreach_draft_service.dart';
+import 'prayer_clustering_service.dart';
 import 'model_manager.dart';
 
 /// Process-wide accessor for AI services so call sites don't need to thread
@@ -24,6 +25,7 @@ class AiServices {
   AutoTagService? _autoTagCache;
   InteractionSummaryService? _summaryCache;
   OutreachDraftService? _outreachCache;
+  PrayerClusteringService? _prayerClusteringCache;
 
   LocalLlmService get llm => _llm;
   AiFeatureGate get gate => _gate;
@@ -34,6 +36,8 @@ class AiServices {
       _summaryCache ??= InteractionSummaryService(_llm);
   OutreachDraftService get outreach =>
       _outreachCache ??= OutreachDraftService(_llm);
+  PrayerClusteringService get prayerClustering =>
+      _prayerClusteringCache ??= PrayerClusteringService(_llm);
 
   /// True only when the user has opted in AND the model is loaded.
   Future<bool> isReady() async {
@@ -72,6 +76,7 @@ class AiServices {
       _autoTagCache = null;
       _summaryCache = null;
       _outreachCache = null;
+      _prayerClusteringCache = null;
     }
     if (gate != null) _gate = gate;
   }
