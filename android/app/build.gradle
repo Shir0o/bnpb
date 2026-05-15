@@ -45,6 +45,27 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+
+        // Restrict packaged JNI libs to the ABIs we actually ship. flutter_gemma's
+        // AAR bundles x86_64 builds of every MediaPipe library (~55 MB) that
+        // would otherwise ride along even with `flutter build --target-platform`.
+        ndk {
+            abiFilters 'arm64-v8a', 'armeabi-v7a'
+        }
+    }
+
+    // flutter_gemma ships several MediaPipe native libs we don't use (image
+    // generation + vision tasks). Excluding them saves ~38 MB. Embedding,
+    // text chunker, and vector store libs stay — they're needed by planned
+    // NL-search work (#174).
+    packagingOptions {
+        jniLibs {
+            excludes += [
+                'lib/*/libmediapipe_tasks_vision_jni.so',
+                'lib/*/libmediapipe_tasks_vision_image_generator_jni.so',
+                'lib/*/libimagegenerator_gpu.so',
+            ]
+        }
     }
 
     buildTypes {
@@ -55,6 +76,8 @@ android {
             } else {
                 signingConfig signingConfigs.debug
             }
+            minifyEnabled true
+            shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
