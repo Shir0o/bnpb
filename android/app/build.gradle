@@ -58,12 +58,19 @@ android {
     // generation + vision tasks). Excluding them saves ~38 MB. Embedding,
     // text chunker, and vector store libs stay — they're needed by planned
     // NL-search work (#174).
+    //
+    // Also explicitly drop x86_64 from the packaged APK. `ndk.abiFilters`
+    // does NOT reach AAR-bundled libs in newer AGP — flutter_gemma ships
+    // full x86_64 builds (~60 MB) that ride along otherwise. Emulator
+    // users can use the debug/profile APK or a dedicated x86_64 variant.
     packagingOptions {
         jniLibs {
             excludes += [
                 'lib/*/libmediapipe_tasks_vision_jni.so',
                 'lib/*/libmediapipe_tasks_vision_image_generator_jni.so',
                 'lib/*/libimagegenerator_gpu.so',
+                'lib/x86_64/**',
+                'lib/x86/**',
             ]
         }
     }
