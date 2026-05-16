@@ -1,17 +1,11 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../db/db_helper.dart';
 import '../models/contact.dart';
 import '../models/prayer_request.dart';
-import '../services/ai/ai_services.dart';
-import '../services/ai/prayer_clustering_service.dart';
 import '../widgets/log_prayer_request_sheet.dart';
 import 'prayer_request_details_page.dart';
-
-enum _PrayerViewMode { chronological, themed }
 
 /// Pending requests older than this surface a "still asking" badge.
 const Duration _stillAskingThreshold = Duration(days: 28);
@@ -31,12 +25,6 @@ class _PrayerDiaryPageState extends State<PrayerDiaryPage> {
   List<PrayerRequest> _requests = [];
   bool _isLoading = false;
 
-  _PrayerViewMode _viewMode = _PrayerViewMode.chronological;
-  bool _aiEnabled = false;
-  bool _isClustering = false;
-  List<PrayerCluster>? _clusters;
-  Object? _clusteringError;
-
   late final DateFormat _dateFormat;
 
   @override
@@ -44,18 +32,6 @@ class _PrayerDiaryPageState extends State<PrayerDiaryPage> {
     super.initState();
     _dateFormat = DateFormat.yMMMd();
     _loadRequests();
-    _refreshAiAvailability();
-  }
-
-  Future<void> _refreshAiAvailability() async {
-    final enabled = await AiServices().isReady();
-    if (!mounted) return;
-    setState(() {
-      _aiEnabled = enabled;
-      if (!enabled && _viewMode == _PrayerViewMode.themed) {
-        _viewMode = _PrayerViewMode.chronological;
-      }
-    });
   }
 
   Future<void> _loadRequests() async {
@@ -90,13 +66,7 @@ class _PrayerDiaryPageState extends State<PrayerDiaryPage> {
           ..addEntries(
             contacts.map((contact) => MapEntry(contact.id, contact)),
           );
-        // Stale clusters get recomputed lazily next time themed view runs;
-        // the service's own cache handles dedupe when content is unchanged.
-        _clusters = null;
       });
-      if (_viewMode == _PrayerViewMode.themed && mounted) {
-        unawaited(_ensureClusters());
-      }
     } finally {
       if (mounted) {
         setState(() {
@@ -177,23 +147,7 @@ class _PrayerDiaryPageState extends State<PrayerDiaryPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Prayer diary'),
-        actions: [
-          if (_aiEnabled && _requests.length >= 2)
-            IconButton(
-              tooltip: _viewMode == _PrayerViewMode.themed
-                  ? 'Switch to chronological view'
-                  : 'Group by theme',
-              icon: Icon(
-                _viewMode == _PrayerViewMode.themed
-                    ? Icons.access_time
-                    : Icons.auto_awesome_outlined,
-              ),
-              onPressed: _toggleViewMode,
-            ),
-        ],
-      ),
+      appBar: AppBar(title: const Text('Prayer diary')),
       floatingActionButton: FloatingActionButton(
         onPressed: _openLogPrayerRequestSheet,
         tooltip: 'Log prayer request',
@@ -201,45 +155,6 @@ class _PrayerDiaryPageState extends State<PrayerDiaryPage> {
       ),
       body: RefreshIndicator(onRefresh: _loadRequests, child: _buildBody()),
     );
-  }
-
-  Future<void> _toggleViewMode() async {
-    if (_viewMode == _PrayerViewMode.chronological) {
-      setState(() {
-        _viewMode = _PrayerViewMode.themed;
-      });
-      await _ensureClusters();
-    } else {
-      setState(() {
-        _viewMode = _PrayerViewMode.chronological;
-      });
-    }
-  }
-
-  Future<void> _ensureClusters() async {
-    if (_clusters != null || _isClustering) return;
-    setState(() {
-      _isClustering = true;
-      _clusteringError = null;
-    });
-    try {
-      final clusters = await AiServices().prayerClustering.cluster(_requests);
-      if (!mounted) return;
-      setState(() {
-        _clusters = clusters;
-      });
-    } catch (error) {
-      if (!mounted) return;
-      setState(() {
-        _clusteringError = error;
-      });
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isClustering = false;
-        });
-      }
-    }
   }
 
   Widget _buildBody() {
@@ -257,9 +172,6 @@ class _PrayerDiaryPageState extends State<PrayerDiaryPage> {
       return _buildEmptyState();
     }
 
-    if (_viewMode == _PrayerViewMode.themed) {
-      return _buildThemedList();
-    }
     return _buildPrayerList();
   }
 
@@ -297,100 +209,6 @@ class _PrayerDiaryPageState extends State<PrayerDiaryPage> {
       },
       separatorBuilder: (context, index) =>
           const Divider(height: 0, indent: 72, endIndent: 16),
-    );
-  }
-
-  Widget _buildThemedList() {
-    if (_isClustering && _clusters == null) {
-      return ListView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        children: const [
-          SizedBox(height: 200),
-          Center(child: CircularProgressIndicator()),
-          SizedBox(height: 16),
-          Center(child: Text('Grouping by theme…')),
-        ],
-      );
-    }
-
-    if (_clusteringError != null) {
-      return ListView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 48),
-        children: [
-          const Icon(Icons.error_outline, size: 48),
-          const SizedBox(height: 16),
-          Text(
-            'Could not group prayers by theme. Falling back to chronological view.',
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.bodyMedium,
-          ),
-        ],
-      );
-    }
-
-    final clusters = _clusters ?? const <PrayerCluster>[];
-    if (clusters.isEmpty) {
-      return _buildPrayerList();
-    }
-
-    final byId = {
-      for (final r in _requests)
-        if (r.id != null) r.id!: r,
-    };
-    final items = <Widget>[];
-    final claimed = <int>{};
-    for (final cluster in clusters) {
-      final requests = cluster.requestIds
-          .map((id) => byId[id])
-          .whereType<PrayerRequest>()
-          .toList();
-      if (requests.isEmpty) continue;
-      claimed.addAll(cluster.requestIds);
-      items.add(_buildThemeHeader(cluster.theme, requests.length));
-      for (final request in requests) {
-        items.add(_buildPrayerTile(request));
-      }
-    }
-
-    final leftover = _requests
-        .where((r) => r.id == null || !claimed.contains(r.id))
-        .toList();
-    if (leftover.isNotEmpty) {
-      items.add(_buildThemeHeader('Other', leftover.length));
-      for (final request in leftover) {
-        items.add(_buildPrayerTile(request));
-      }
-    }
-
-    return ListView(
-      physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.symmetric(vertical: 12),
-      children: items,
-    );
-  }
-
-  Widget _buildThemeHeader(String theme, int count) {
-    final theme0 = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
-      child: Row(
-        children: [
-          Text(
-            theme,
-            style: theme0.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(width: 8),
-          Text(
-            '($count)',
-            style: theme0.textTheme.bodySmall?.copyWith(
-              color: theme0.colorScheme.outline,
-            ),
-          ),
-        ],
-      ),
     );
   }
 

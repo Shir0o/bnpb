@@ -11,7 +11,7 @@ import 'local_llm_service.dart';
 /// on the device with no network. When the user explicitly enables
 /// cloud AI in Settings and supplies their own API key, [AiServices]
 /// swaps the active backend to this class. The consumer services
-/// (AutoTag, FollowUp, PrayerClustering) see no change — they still
+/// (AutoTag, FollowUp) see no change — they still
 /// depend on the `LocalLlmService` interface.
 ///
 /// Network behavior: this service does **not** silently fall back to

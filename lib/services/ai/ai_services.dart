@@ -13,7 +13,6 @@ import 'follow_up_suggestion_service.dart';
 import 'gemini_api_llm_service.dart';
 import 'local_llm_service.dart';
 import 'model_manager.dart';
-import 'prayer_clustering_service.dart';
 import 'semantic_search_service.dart';
 
 /// Process-wide accessor for AI services so call sites don't need to thread
@@ -32,7 +31,6 @@ class AiServices {
   SemanticSearchService? _semanticSearchCache;
   FollowUpSuggestionService? _followUpCache;
   AutoTagService? _autoTagCache;
-  PrayerClusteringService? _prayerClusteringCache;
 
   LocalLlmService get llm => _llm;
   AiFeatureGate get gate => _gate;
@@ -42,8 +40,6 @@ class AiServices {
   FollowUpSuggestionService get followUp =>
       _followUpCache ??= FollowUpSuggestionService(_llm);
   AutoTagService get autoTag => _autoTagCache ??= AutoTagService(_llm);
-  PrayerClusteringService get prayerClustering =>
-      _prayerClusteringCache ??= PrayerClusteringService(_llm);
 
   bool _semanticInitialized = false;
   Future<void>? _semanticInitInFlight;
@@ -116,7 +112,6 @@ class AiServices {
     _llm = next;
     _followUpCache = null;
     _autoTagCache = null;
-    _prayerClusteringCache = null;
   }
 
   /// Initializes the underlying flutter_gemma runtime and, if AI features
@@ -188,7 +183,6 @@ class AiServices {
       _llm = llm;
       _followUpCache = null;
       _autoTagCache = null;
-      _prayerClusteringCache = null;
     }
     if (gate != null) _gate = gate;
     if (embedding != null) {
