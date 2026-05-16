@@ -122,6 +122,12 @@ class AutoTagService {
         '[ai.perf] autotag.done ms=${sw.elapsedMilliseconds} '
         'tagCount=${finalTags.length}',
       );
+      // Log the raw model output so we can spot the model returning a
+      // few-shot example verbatim, JSON malformation, etc. Capped to
+      // keep logcat readable.
+      final raw = buffer.toString();
+      final clipped = raw.length > 240 ? '${raw.substring(0, 240)}…' : raw;
+      debugPrint('[ai.perf] autotag.raw "${clipped.replaceAll('\n', '\\n')}"');
     }
   }
 

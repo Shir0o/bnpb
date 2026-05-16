@@ -80,10 +80,14 @@ class FlutterGemmaLlmService implements LocalLlmService {
   String? _loadedPath;
 
   // Warm session state. Keyed by the exact prefix string; if the next call
-  // passes a different prefix we close and recreate.
+  // passes a different prefix we close and recreate. `_pinnedPrefixSent`
+  // tracks whether the prefix has been included in any addQueryChunk call
+  // on this session yet — see the "lazy prefix encoding" note on
+  // [streamWithPrefix] for why we delay it instead of seeding at create.
   InferenceModelSession? _pinnedSession;
   String? _pinnedPrefix;
   double? _pinnedTemperature;
+  bool _pinnedPrefixSent = false;
 
   @override
   bool get isReady => _model != null;
@@ -134,6 +138,7 @@ class FlutterGemmaLlmService implements LocalLlmService {
     _pinnedSession = null;
     _pinnedPrefix = null;
     _pinnedTemperature = null;
+    _pinnedPrefixSent = false;
     if (s == null) return;
     try {
       await s.close();
@@ -168,14 +173,29 @@ class FlutterGemmaLlmService implements LocalLlmService {
   /// should use `generateStream(...)` on the abstract interface, not this
   /// method directly.
   ///
-  /// When [systemPrefix] is non-null, a session seeded with that prefix is
-  /// kept alive between calls; same prefix → KV-cache reuse; different
-  /// prefix → close + recreate. flutter_gemma 0.12.6 only accepts
-  /// `temperature` at session creation, so the warm-session path locks
-  /// temperature to the first call's value — a later call passing a
-  /// different temperature with the same prefix is logged but does NOT
-  /// rebuild the session (that'd defeat the warm cache). AutoTag uses 0.2
-  /// for every call, so this is fine in practice.
+  /// When [systemPrefix] is non-null, a session keyed to that prefix is
+  /// kept alive across calls. Same prefix → KV-cache reuse via the
+  /// session's prior-turn history; different prefix → close + recreate.
+  ///
+  /// **Lazy prefix encoding.** The prefix is NOT pre-added at session
+  /// creation. Instead, the first call on a fresh pinned session sends
+  /// `prefix + prompt` as a single chunk, and subsequent calls send only
+  /// the per-call `prompt`. This matters because flutter_gemma forwards
+  /// each `addQueryChunk` to MediaPipe's chunked-prefill path, and on
+  /// int4-quantized small models like `gemma-3n-e2b-int4` chunked prefill
+  /// (prefix then suffix as separate chunks) can produce slightly
+  /// different attention values than a single prefill of the same
+  /// concatenation — enough to make the cold call latch onto the last
+  /// few-shot example as its answer instead of generating new tags. The
+  /// single-prefill-on-first-call layout sidesteps that while still
+  /// reusing the prefix's KV cache for every subsequent call on the
+  /// same session.
+  ///
+  /// flutter_gemma 0.12.6 only accepts `temperature` at session creation,
+  /// so the warm-session path locks temperature to the first call's
+  /// value — a later call passing a different temperature with the same
+  /// prefix is logged but does NOT rebuild the session (that'd defeat
+  /// the warm cache). AutoTag uses 0.2 for every call, so this is fine.
   Stream<String> streamWithPrefix(
     String prompt, {
     String? systemPrefix,
@@ -189,6 +209,7 @@ class FlutterGemmaLlmService implements LocalLlmService {
 
     InferenceModelSession session;
     bool isPinned;
+    bool sendPrefixInline = false;
     if (systemPrefix == null) {
       session = await model.createSession(
         temperature: temperature,
@@ -199,6 +220,8 @@ class FlutterGemmaLlmService implements LocalLlmService {
     } else if (_pinnedSession != null && _pinnedPrefix == systemPrefix) {
       session = _pinnedSession!;
       isPinned = true;
+      // Already-active pinned session: prefix lives in prior-turn KV cache.
+      sendPrefixInline = !_pinnedPrefixSent;
       if (kDebugMode) {
         debugPrint(
           '[ai.perf] llm.warmSession.reuse '
@@ -221,13 +244,12 @@ class FlutterGemmaLlmService implements LocalLlmService {
         topK: 40,
         topP: 0.95,
       );
-      await session.addQueryChunk(
-        Message.text(text: systemPrefix, isUser: true),
-      );
       _pinnedSession = session;
       _pinnedPrefix = systemPrefix;
       _pinnedTemperature = temperature;
+      _pinnedPrefixSent = false;
       isPinned = true;
+      sendPrefixInline = true;
       if (kDebugMode) {
         debugPrint(
           '[ai.perf] llm.warmSession.create '
@@ -237,7 +259,11 @@ class FlutterGemmaLlmService implements LocalLlmService {
       }
     }
 
-    await session.addQueryChunk(Message.text(text: prompt, isUser: true));
+    final chunk = sendPrefixInline ? '$systemPrefix$prompt' : prompt;
+    await session.addQueryChunk(Message.text(text: chunk, isUser: true));
+    if (sendPrefixInline && isPinned) {
+      _pinnedPrefixSent = true;
+    }
     bool completed = false;
     try {
       await for (final chunk in session.getResponseAsync()) {
