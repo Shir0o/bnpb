@@ -152,7 +152,6 @@ class ReminderService {
     required String body,
     Map<String, dynamic>? additionalPayload,
   }) async {
-    await initialize();
     await ensurePermissions();
 
     await _guardOperation('scheduleReminder($channel, $key)', () async {
