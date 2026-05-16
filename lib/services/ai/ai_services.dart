@@ -11,10 +11,8 @@ import 'embedding_service.dart';
 import 'embedder_manager.dart';
 import 'follow_up_suggestion_service.dart';
 import 'gemini_api_llm_service.dart';
-import 'interaction_summary_service.dart';
 import 'local_llm_service.dart';
 import 'model_manager.dart';
-import 'outreach_draft_service.dart';
 import 'prayer_clustering_service.dart';
 import 'semantic_search_service.dart';
 
@@ -34,8 +32,6 @@ class AiServices {
   SemanticSearchService? _semanticSearchCache;
   FollowUpSuggestionService? _followUpCache;
   AutoTagService? _autoTagCache;
-  InteractionSummaryService? _summaryCache;
-  OutreachDraftService? _outreachCache;
   PrayerClusteringService? _prayerClusteringCache;
 
   LocalLlmService get llm => _llm;
@@ -46,10 +42,6 @@ class AiServices {
   FollowUpSuggestionService get followUp =>
       _followUpCache ??= FollowUpSuggestionService(_llm);
   AutoTagService get autoTag => _autoTagCache ??= AutoTagService(_llm);
-  InteractionSummaryService get interactionSummary =>
-      _summaryCache ??= InteractionSummaryService(_llm);
-  OutreachDraftService get outreach =>
-      _outreachCache ??= OutreachDraftService(_llm);
   PrayerClusteringService get prayerClustering =>
       _prayerClusteringCache ??= PrayerClusteringService(_llm);
 
@@ -124,8 +116,6 @@ class AiServices {
     _llm = next;
     _followUpCache = null;
     _autoTagCache = null;
-    _summaryCache = null;
-    _outreachCache = null;
     _prayerClusteringCache = null;
   }
 
@@ -198,8 +188,6 @@ class AiServices {
       _llm = llm;
       _followUpCache = null;
       _autoTagCache = null;
-      _summaryCache = null;
-      _outreachCache = null;
       _prayerClusteringCache = null;
     }
     if (gate != null) _gate = gate;
