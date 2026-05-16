@@ -1,4 +1,8 @@
+import 'dart:async';
 import 'dart:convert';
+import 'dart:developer' as developer;
+
+import 'package:flutter/foundation.dart';
 
 import 'local_llm_service.dart';
 
@@ -22,23 +26,100 @@ class AutoTagService {
       throw StateError('AutoTagService called before LLM was loaded');
     }
 
-    final prompt = _buildPrompt(trimmed);
-    final raw = await _llm.generate(
-      prompt,
+    // Funnel through the streaming path so all callers benefit from the
+    // pinned warm session on FlutterGemmaLlmService. For fake LLMs the
+    // stream emits a single chunk and this collapses back to the original
+    // behavior.
+    final stream = suggestTagsStream(trimmed);
+    List<String> latest = const [];
+    await for (final tags in stream) {
+      latest = tags;
+    }
+    return latest;
+  }
+
+  /// Streaming variant. Emits incrementally-growing tag lists as the model
+  /// produces tokens. The final emit is the same value that
+  /// [suggestTags] would have returned.
+  Stream<List<String>> suggestTagsStream(String note) async* {
+    final trimmed = note.trim();
+    if (trimmed.isEmpty) {
+      yield const [];
+      return;
+    }
+    if (!_llm.isReady) {
+      throw StateError('AutoTagService called before LLM was loaded');
+    }
+
+    final sw = Stopwatch()..start();
+    if (kDebugMode) {
+      developer.log(
+        'autotag.generate.start noteChars=${trimmed.length}',
+        name: 'ai.perf',
+      );
+    }
+
+    final stream = _llm.generateStream(
+      _buildSuffix(trimmed),
+      systemPrefix: _systemPrefix,
       maxTokens: 96,
       temperature: 0.2,
     );
-    return _parse(raw);
+
+    final buffer = StringBuffer();
+    bool firstToken = true;
+    bool firstChip = true;
+    List<String> lastEmit = const [];
+
+    await for (final chunk in stream) {
+      if (chunk.isEmpty) continue;
+      if (firstToken) {
+        firstToken = false;
+        if (kDebugMode) {
+          developer.log(
+            'autotag.firstToken ms=${sw.elapsedMilliseconds}',
+            name: 'ai.perf',
+          );
+        }
+      }
+      buffer.write(chunk);
+      final parsed = _parsePartial(buffer.toString());
+      if (!_listEquals(parsed, lastEmit)) {
+        if (firstChip && parsed.isNotEmpty) {
+          firstChip = false;
+          if (kDebugMode) {
+            developer.log(
+              'autotag.firstChip ms=${sw.elapsedMilliseconds}',
+              name: 'ai.perf',
+            );
+          }
+        }
+        lastEmit = parsed;
+        yield parsed;
+      }
+    }
+
+    final finalTags = _parse(buffer.toString());
+    if (!_listEquals(finalTags, lastEmit)) {
+      yield finalTags;
+    }
+    if (kDebugMode) {
+      developer.log(
+        'autotag.done ms=${sw.elapsedMilliseconds} tagCount=${finalTags.length}',
+        name: 'ai.perf',
+      );
+    }
   }
 
-  String _buildPrompt(String note) {
-    // Few-shot prompt biased toward short, snake-case topical tags. We ask
-    // for JSON so parsing stays deterministic across small-model quirks.
-    return '''
+  // System prefix — rules + few-shot examples. Kept identical across calls
+  // so [FlutterGemmaLlmService] can pin a session keyed to this string and
+  // reuse its KV cache. Touching this string invalidates the warm cache, so
+  // do not interpolate per-call data here.
+  static const String _systemPrefix = '''
 You extract short topic tags from personal-relationship notes.
 Rules:
-- Output ONLY a JSON array of 1-$_maxTags lowercase strings, no prose.
-- Each tag is 1-3 words, snake_case, under $_maxTagLength chars.
+- Output ONLY a JSON array of 1-6 lowercase strings, no prose.
+- Each tag is 1-3 words, snake_case, under 24 chars.
 - Prefer topics, life events, relationships, emotions. Skip names.
 
 Note: "Caught up with Sarah, she just got a new job at a hospital and is anxious about moving."
@@ -47,13 +128,42 @@ Tags: ["new_job","relocation","anxiety","career"]
 Note: "Dad's surgery went well, family is grateful."
 Tags: ["health","surgery","family","gratitude"]
 
-Note: ${_escape(note)}
-Tags:''';
-  }
+''';
+
+  String _buildSuffix(String note) => 'Note: ${_escape(note)}\nTags:';
 
   // jsonEncode wraps the string in quotes and escapes embedded quotes,
   // newlines, and control characters — safer than hand-rolled replacement.
   String _escape(String s) => jsonEncode(s);
+
+  // Parse a possibly-incomplete JSON array, returning whatever well-formed
+  // string elements have been emitted so far.
+  List<String> _parsePartial(String raw) {
+    final start = raw.indexOf('[');
+    if (start < 0) return const [];
+    final end = raw.indexOf(']', start + 1);
+    if (end >= 0) {
+      // Closed array — defer to the strict parser.
+      return _parse(raw);
+    }
+    // Open array: scan for completed quoted strings.
+    final body = raw.substring(start + 1);
+    final out = <String>{};
+    final matches = RegExp(r'"((?:[^"\\]|\\.)*)"').allMatches(body);
+    for (final m in matches) {
+      String? decoded;
+      try {
+        decoded = jsonDecode('"${m.group(1)}"') as String;
+      } catch (_) {
+        continue;
+      }
+      final tag = _normalize(decoded);
+      if (tag.isEmpty) continue;
+      out.add(tag);
+      if (out.length >= _maxTags) break;
+    }
+    return out.toList(growable: false);
+  }
 
   List<String> _parse(String raw) {
     final start = raw.indexOf('[');
@@ -88,5 +198,13 @@ Tags:''';
       return sanitized.substring(0, _maxTagLength);
     }
     return sanitized;
+  }
+
+  bool _listEquals(List<String> a, List<String> b) {
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
+    }
+    return true;
   }
 }

@@ -1,6 +1,9 @@
 import 'dart:async';
+import 'dart:developer' as developer;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_gemma/flutter_gemma.dart';
+import 'package:path/path.dart' as p;
 
 /// Thin abstraction over an on-device LLM backend.
 ///
@@ -28,12 +31,47 @@ abstract class LocalLlmService {
   });
 }
 
+/// Streaming + prefix-pinned generation. Implemented as an extension so
+/// existing fake `LocalLlmService` instances (5+ test files) keep compiling
+/// without changes. Default behavior yields a single chunk from
+/// [LocalLlmService.generate]; the production [FlutterGemmaLlmService] gets
+/// real token streaming and KV-cache reuse via its
+/// [FlutterGemmaLlmService.streamWithPrefix] hook.
+extension LocalLlmServiceStreaming on LocalLlmService {
+  Stream<String> generateStream(
+    String prompt, {
+    String? systemPrefix,
+    int maxTokens = 512,
+    double temperature = 0.4,
+  }) async* {
+    final self = this;
+    if (self is FlutterGemmaLlmService) {
+      yield* self.streamWithPrefix(
+        prompt,
+        systemPrefix: systemPrefix,
+        maxTokens: maxTokens,
+        temperature: temperature,
+      );
+      return;
+    }
+    final full = systemPrefix == null ? prompt : '$systemPrefix$prompt';
+    yield await self.generate(
+      full,
+      maxTokens: maxTokens,
+      temperature: temperature,
+    );
+  }
+}
+
 /// Production-backed implementation using `flutter_gemma` ^0.12.6.
 ///
-/// One [InferenceModel] is held for the lifetime of the service. Each
-/// `generate()` call creates a fresh single-shot session so that
-/// `temperature` can vary per call (the session-level parameter is the only
-/// way to control sampling in this version).
+/// One [InferenceModel] is held for the lifetime of the service. The
+/// non-streaming [generate] path still creates a fresh single-shot session so
+/// per-call `temperature` is honored. The streaming + prefix-pinned path
+/// (see [streamWithPrefix]) keeps a long-lived [InferenceModelSession] keyed
+/// by `systemPrefix`, so the KV cache for the (usually long) prompt prefix
+/// is reused across calls — this is the win that turns AutoTag's
+/// first-token latency from seconds into hundreds of ms on warm taps.
 class FlutterGemmaLlmService implements LocalLlmService {
   FlutterGemmaLlmService({this.contextWindowTokens = 2048});
 
@@ -41,6 +79,12 @@ class FlutterGemmaLlmService implements LocalLlmService {
 
   InferenceModel? _model;
   String? _loadedPath;
+
+  // Warm session state. Keyed by the exact prefix string; if the next call
+  // passes a different prefix we close and recreate.
+  InferenceModelSession? _pinnedSession;
+  String? _pinnedPrefix;
+  double? _pinnedTemperature;
 
   @override
   bool get isReady => _model != null;
@@ -50,15 +94,23 @@ class FlutterGemmaLlmService implements LocalLlmService {
     if (_loadedPath == modelPath && _model != null) return;
     await unload();
 
+    final sw = Stopwatch()..start();
     await FlutterGemma.installModel(modelType: ModelType.gemmaIt)
         .fromFile(modelPath)
         .install();
     _model = await FlutterGemma.getActiveModel(maxTokens: contextWindowTokens);
     _loadedPath = modelPath;
+    if (kDebugMode) {
+      developer.log(
+        'llm.load ms=${sw.elapsedMilliseconds} path=${p.basename(modelPath)}',
+        name: 'ai.perf',
+      );
+    }
   }
 
   @override
   Future<void> unload() async {
+    await _closePinnedSession();
     final model = _model;
     _model = null;
     _loadedPath = null;
@@ -69,6 +121,17 @@ class FlutterGemmaLlmService implements LocalLlmService {
       // Best-effort cleanup — model resources are reclaimed on process exit
       // regardless.
     }
+  }
+
+  Future<void> _closePinnedSession() async {
+    final s = _pinnedSession;
+    _pinnedSession = null;
+    _pinnedPrefix = null;
+    _pinnedTemperature = null;
+    if (s == null) return;
+    try {
+      await s.close();
+    } catch (_) {}
   }
 
   @override
@@ -93,4 +156,93 @@ class FlutterGemmaLlmService implements LocalLlmService {
       await session.close();
     }
   }
+
+  /// Streaming + prefix-pinned generation. Public so the
+  /// [LocalLlmServiceStreaming] extension can dispatch to it; call sites
+  /// should use `generateStream(...)` on the abstract interface, not this
+  /// method directly.
+  ///
+  /// When [systemPrefix] is non-null, a session seeded with that prefix is
+  /// kept alive between calls; same prefix → KV-cache reuse; different
+  /// prefix → close + recreate. flutter_gemma 0.12.6 only accepts
+  /// `temperature` at session creation, so the warm-session path locks
+  /// temperature to the first call's value — a later call passing a
+  /// different temperature with the same prefix is logged but does NOT
+  /// rebuild the session (that'd defeat the warm cache). AutoTag uses 0.2
+  /// for every call, so this is fine in practice.
+  Stream<String> streamWithPrefix(
+    String prompt, {
+    String? systemPrefix,
+    int maxTokens = 512,
+    double temperature = 0.4,
+  }) async* {
+    final model = _model;
+    if (model == null) {
+      throw StateError('LocalLlmService.generateStream called before load()');
+    }
+
+    InferenceModelSession session;
+    bool isPinned;
+    if (systemPrefix == null) {
+      session = await model.createSession(
+        temperature: temperature,
+        topK: 40,
+        topP: 0.95,
+      );
+      isPinned = false;
+    } else if (_pinnedSession != null && _pinnedPrefix == systemPrefix) {
+      session = _pinnedSession!;
+      isPinned = true;
+      if (kDebugMode) {
+        developer.log(
+          'llm.warmSession.reuse prefixHash=${_prefixHash(systemPrefix)}',
+          name: 'ai.perf',
+        );
+        if (_pinnedTemperature != null &&
+            (_pinnedTemperature! - temperature).abs() > 1e-6) {
+          developer.log(
+            'llm.warmSession.tempMismatch '
+            'pinned=$_pinnedTemperature got=$temperature '
+            '(temperature is locked to first call on the pinned session)',
+            name: 'ai.perf',
+          );
+        }
+      }
+    } else {
+      await _closePinnedSession();
+      final sw = Stopwatch()..start();
+      session = await model.createSession(
+        temperature: temperature,
+        topK: 40,
+        topP: 0.95,
+      );
+      await session.addQueryChunk(
+        Message.text(text: systemPrefix, isUser: true),
+      );
+      _pinnedSession = session;
+      _pinnedPrefix = systemPrefix;
+      _pinnedTemperature = temperature;
+      isPinned = true;
+      if (kDebugMode) {
+        developer.log(
+          'llm.warmSession.create '
+          'prefixHash=${_prefixHash(systemPrefix)} ms=${sw.elapsedMilliseconds}',
+          name: 'ai.perf',
+        );
+      }
+    }
+
+    await session.addQueryChunk(Message.text(text: prompt, isUser: true));
+    try {
+      yield* session.getResponseAsync();
+    } finally {
+      if (!isPinned) {
+        try {
+          await session.close();
+        } catch (_) {}
+      }
+    }
+  }
+
+  String _prefixHash(String s) => s.hashCode.toRadixString(16);
 }

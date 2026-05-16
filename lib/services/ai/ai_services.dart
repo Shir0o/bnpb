@@ -1,3 +1,6 @@
+import 'dart:developer' as developer;
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter_gemma/flutter_gemma.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
@@ -110,6 +113,22 @@ class AiServices {
           modelPath: await embedderMgr.modelPath(),
           tokenizerPath: await embedderMgr.tokenizerPath(),
         );
+        // One-shot warmup so the user's first Ask query doesn't pay the
+        // embedder cold-start cost.
+        if (_embedding.isReady) {
+          try {
+            final sw = Stopwatch()..start();
+            await _embedding.embed('warmup');
+            if (kDebugMode) {
+              developer.log(
+                'embedder.warmup ms=${sw.elapsedMilliseconds}',
+                name: 'ai.perf',
+              );
+            }
+          } catch (_) {
+            // Warmup is best-effort; a real query will surface any error.
+          }
+        }
       }
       // Deliberately not calling embedderMgr.dispose(): the downloader
       // returned by defaultBackgroundDownloader() backs onto shared native
