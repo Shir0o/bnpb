@@ -5,6 +5,17 @@ import 'package:flutter/foundation.dart';
 
 import 'local_llm_service.dart';
 
+// Compile-time flag for diagnostic logs that may include user note content
+// (raw model output, prompt echoes). Off in every build by default so that
+// even in debug builds note text never lands in logcat unless a developer
+// opts in explicitly:
+//
+//   flutter run --dart-define=AI_VERBOSE=true
+//
+// Independent from `kDebugMode`. The release-build tree-shaker eliminates
+// guarded branches because this is a compile-time const.
+const bool _kAiVerboseLogs = bool.fromEnvironment('AI_VERBOSE');
+
 /// Suggests tags for a free-text note (interaction body, prayer request,
 /// general contact note) using the on-device LLM.
 ///
@@ -122,9 +133,12 @@ class AutoTagService {
         '[ai.perf] autotag.done ms=${sw.elapsedMilliseconds} '
         'tagCount=${finalTags.length}',
       );
-      // Log the raw model output so we can spot the model returning a
-      // few-shot example verbatim, JSON malformation, etc. Capped to
-      // keep logcat readable.
+    }
+    if (kDebugMode && _kAiVerboseLogs) {
+      // Raw model output. Useful for diagnosing the model echoing a
+      // few-shot example, JSON malformation, etc., but it can contain
+      // fragments of the user's note text, so it stays behind the
+      // verbose flag instead of firing on every debug run.
       final raw = buffer.toString();
       final clipped = raw.length > 240 ? '${raw.substring(0, 240)}…' : raw;
       debugPrint('[ai.perf] autotag.raw "${clipped.replaceAll('\n', '\\n')}"');
