@@ -157,21 +157,21 @@ class _TagChipSkeleton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const widths = <double>[88, 120, 72, 104, 96];
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: SkeletonLoader(
-        child: Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            for (final w in widths)
-              SkeletonBox(
+    return SkeletonLoader(
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 4,
+        children: [
+          for (final w in widths)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: SkeletonBox(
                 width: w,
                 height: 32,
                 borderRadius: BorderRadius.circular(16),
               ),
-          ],
-        ),
+            ),
+        ],
       ),
     );
   }
