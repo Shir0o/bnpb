@@ -32,6 +32,8 @@ class ReminderService {
   Future<void>? _initializationFuture;
   bool _timeZoneInitialized = false;
   bool _notificationsSupported = true;
+  bool _permissionsRequested = false;
+  Future<void>? _permissionRequestFuture;
   bool? _exactAlarmOptIn;
 
   /// Ensures the plugin and time zone data are available before scheduling.
@@ -53,10 +55,14 @@ class ReminderService {
       const androidSettings = AndroidInitializationSettings(
         '@mipmap/ic_launcher',
       );
+      // requestXPermission flags are false so plugin.initialize() does NOT
+      // trigger the iOS/macOS permission dialog. The prompt is deferred to
+      // ensurePermissions(), which scheduleReminder() calls at the first
+      // actual scheduling intent.
       const iosSettings = DarwinInitializationSettings(
-        requestAlertPermission: true,
-        requestBadgePermission: true,
-        requestSoundPermission: true,
+        requestAlertPermission: false,
+        requestBadgePermission: false,
+        requestSoundPermission: false,
       );
 
       final settings = InitializationSettings(
@@ -67,12 +73,6 @@ class ReminderService {
 
       await _plugin.initialize(settings);
       await _configureLocalTimeZone();
-      try {
-        await _requestPlatformPermissions();
-      } catch (e) {
-        // Ignore permission errors during init, we can request later or functionality just won't work
-        debugPrint('Permission request failed: $e');
-      }
 
       _initialized = true;
     } catch (error, stackTrace) {
@@ -86,22 +86,46 @@ class ReminderService {
     }
   }
 
-  Future<void> _requestPlatformPermissions() async {
-    final androidImpl = _plugin.resolvePlatformSpecificImplementation<
-        AndroidFlutterLocalNotificationsPlugin>();
-    await androidImpl?.requestNotificationsPermission();
-
-    if (await _shouldRequestExactAlarmPermission()) {
-      await androidImpl?.requestExactAlarmsPermission();
+  /// Requests notification (and, if opted-in, exact alarm) permissions from
+  /// the OS. Called lazily by [scheduleReminder] so the prompt fires at the
+  /// user's first scheduling intent rather than on app launch. Idempotent
+  /// within a process.
+  Future<void> ensurePermissions() async {
+    if (!_notificationsSupported || _permissionsRequested) {
+      return;
     }
+    if (_permissionRequestFuture != null) {
+      return _permissionRequestFuture;
+    }
+    _permissionRequestFuture = _doRequestPermissions();
+    try {
+      await _permissionRequestFuture;
+    } finally {
+      _permissionsRequested = true;
+    }
+  }
 
-    final iosImpl = _plugin.resolvePlatformSpecificImplementation<
-        IOSFlutterLocalNotificationsPlugin>();
-    await iosImpl?.requestPermissions(alert: true, badge: true, sound: true);
+  Future<void> _doRequestPermissions() async {
+    await initialize();
+    try {
+      final androidImpl = _plugin.resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin>();
+      await androidImpl?.requestNotificationsPermission();
 
-    final macImpl = _plugin.resolvePlatformSpecificImplementation<
-        MacOSFlutterLocalNotificationsPlugin>();
-    await macImpl?.requestPermissions(alert: true, badge: true, sound: true);
+      if (await _shouldRequestExactAlarmPermission()) {
+        await androidImpl?.requestExactAlarmsPermission();
+      }
+
+      final iosImpl = _plugin.resolvePlatformSpecificImplementation<
+          IOSFlutterLocalNotificationsPlugin>();
+      await iosImpl?.requestPermissions(alert: true, badge: true, sound: true);
+
+      final macImpl = _plugin.resolvePlatformSpecificImplementation<
+          MacOSFlutterLocalNotificationsPlugin>();
+      await macImpl?.requestPermissions(alert: true, badge: true, sound: true);
+    } catch (e) {
+      debugPrint('Permission request failed: $e');
+    }
   }
 
   Future<void> _configureLocalTimeZone() async {
@@ -129,6 +153,7 @@ class ReminderService {
     Map<String, dynamic>? additionalPayload,
   }) async {
     await initialize();
+    await ensurePermissions();
 
     await _guardOperation('scheduleReminder($channel, $key)', () async {
       final id = _notificationId(channel, key);
