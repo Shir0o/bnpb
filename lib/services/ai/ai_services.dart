@@ -1,5 +1,3 @@
-import 'dart:developer' as developer;
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter_gemma/flutter_gemma.dart';
 import 'package:path/path.dart' as p;
@@ -120,10 +118,8 @@ class AiServices {
             final sw = Stopwatch()..start();
             await _embedding.embed('warmup');
             if (kDebugMode) {
-              developer.log(
-                'embedder.warmup ms=${sw.elapsedMilliseconds}',
-                name: 'ai.perf',
-              );
+              debugPrint(
+                  '[ai.perf] embedder.warmup ms=${sw.elapsedMilliseconds}');
             }
           } catch (_) {
             // Warmup is best-effort; a real query will surface any error.

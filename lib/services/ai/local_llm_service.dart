@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:developer' as developer;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_gemma/flutter_gemma.dart';
@@ -101,9 +100,9 @@ class FlutterGemmaLlmService implements LocalLlmService {
     _model = await FlutterGemma.getActiveModel(maxTokens: contextWindowTokens);
     _loadedPath = modelPath;
     if (kDebugMode) {
-      developer.log(
-        'llm.load ms=${sw.elapsedMilliseconds} path=${p.basename(modelPath)}',
-        name: 'ai.perf',
+      debugPrint(
+        '[ai.perf] llm.load ms=${sw.elapsedMilliseconds} '
+        'path=${p.basename(modelPath)}',
       );
     }
   }
@@ -194,17 +193,16 @@ class FlutterGemmaLlmService implements LocalLlmService {
       session = _pinnedSession!;
       isPinned = true;
       if (kDebugMode) {
-        developer.log(
-          'llm.warmSession.reuse prefixHash=${_prefixHash(systemPrefix)}',
-          name: 'ai.perf',
+        debugPrint(
+          '[ai.perf] llm.warmSession.reuse '
+          'prefixHash=${_prefixHash(systemPrefix)}',
         );
         if (_pinnedTemperature != null &&
             (_pinnedTemperature! - temperature).abs() > 1e-6) {
-          developer.log(
-            'llm.warmSession.tempMismatch '
+          debugPrint(
+            '[ai.perf] llm.warmSession.tempMismatch '
             'pinned=$_pinnedTemperature got=$temperature '
             '(temperature is locked to first call on the pinned session)',
-            name: 'ai.perf',
           );
         }
       }
@@ -224,10 +222,10 @@ class FlutterGemmaLlmService implements LocalLlmService {
       _pinnedTemperature = temperature;
       isPinned = true;
       if (kDebugMode) {
-        developer.log(
-          'llm.warmSession.create '
-          'prefixHash=${_prefixHash(systemPrefix)} ms=${sw.elapsedMilliseconds}',
-          name: 'ai.perf',
+        debugPrint(
+          '[ai.perf] llm.warmSession.create '
+          'prefixHash=${_prefixHash(systemPrefix)} '
+          'ms=${sw.elapsedMilliseconds}',
         );
       }
     }

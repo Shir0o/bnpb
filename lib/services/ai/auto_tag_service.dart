@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:developer' as developer;
 
 import 'package:flutter/foundation.dart';
 
@@ -18,6 +17,9 @@ class AutoTagService {
 
   static const int _maxTags = 6;
   static const int _maxTagLength = 24;
+
+  // Hoisted so we don't recompile on every streamed chunk.
+  static final RegExp _quotedStringRegex = RegExp(r'"((?:[^"\\]|\\.)*)"');
 
   Future<List<String>> suggestTags(String note) async {
     final trimmed = note.trim();
@@ -53,10 +55,8 @@ class AutoTagService {
 
     final sw = Stopwatch()..start();
     if (kDebugMode) {
-      developer.log(
-        'autotag.generate.start noteChars=${trimmed.length}',
-        name: 'ai.perf',
-      );
+      debugPrint(
+          '[ai.perf] autotag.generate.start noteChars=${trimmed.length}');
     }
 
     final stream = _llm.generateStream(
@@ -76,21 +76,19 @@ class AutoTagService {
       if (firstToken) {
         firstToken = false;
         if (kDebugMode) {
-          developer.log(
-            'autotag.firstToken ms=${sw.elapsedMilliseconds}',
-            name: 'ai.perf',
+          debugPrint(
+            '[ai.perf] autotag.firstToken ms=${sw.elapsedMilliseconds}',
           );
         }
       }
       buffer.write(chunk);
       final parsed = _parsePartial(buffer.toString());
-      if (!_listEquals(parsed, lastEmit)) {
+      if (!listEquals(parsed, lastEmit)) {
         if (firstChip && parsed.isNotEmpty) {
           firstChip = false;
           if (kDebugMode) {
-            developer.log(
-              'autotag.firstChip ms=${sw.elapsedMilliseconds}',
-              name: 'ai.perf',
+            debugPrint(
+              '[ai.perf] autotag.firstChip ms=${sw.elapsedMilliseconds}',
             );
           }
         }
@@ -100,13 +98,13 @@ class AutoTagService {
     }
 
     final finalTags = _parse(buffer.toString());
-    if (!_listEquals(finalTags, lastEmit)) {
+    if (!listEquals(finalTags, lastEmit)) {
       yield finalTags;
     }
     if (kDebugMode) {
-      developer.log(
-        'autotag.done ms=${sw.elapsedMilliseconds} tagCount=${finalTags.length}',
-        name: 'ai.perf',
+      debugPrint(
+        '[ai.perf] autotag.done ms=${sw.elapsedMilliseconds} '
+        'tagCount=${finalTags.length}',
       );
     }
   }
@@ -149,7 +147,7 @@ Tags: ["health","surgery","family","gratitude"]
     // Open array: scan for completed quoted strings.
     final body = raw.substring(start + 1);
     final out = <String>{};
-    final matches = RegExp(r'"((?:[^"\\]|\\.)*)"').allMatches(body);
+    final matches = _quotedStringRegex.allMatches(body);
     for (final m in matches) {
       String? decoded;
       try {
@@ -198,13 +196,5 @@ Tags: ["health","surgery","family","gratitude"]
       return sanitized.substring(0, _maxTagLength);
     }
     return sanitized;
-  }
-
-  bool _listEquals(List<String> a, List<String> b) {
-    if (a.length != b.length) return false;
-    for (var i = 0; i < a.length; i++) {
-      if (a[i] != b[i]) return false;
-    }
-    return true;
   }
 }
