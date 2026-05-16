@@ -47,11 +47,14 @@ BNPB provides options to keep your data safe across devices:
 - **Encrypted archives (.zip)** use AES-256 encryption to protect exported data. 
   You are responsible for the security of the passphrase used for these files.
 
-## On-device AI features (optional)
+## AI features (optional)
 BNPB includes optional AI-assisted features (such as suggested follow-up
-actions after logging an interaction, and tag suggestions for notes) that
-run entirely on your device.
+actions after logging an interaction, and tag suggestions for notes). AI
+is off by default; when enabled, it runs on this device by default and
+only sends note text off-device if you explicitly turn on the cloud
+backend.
 
+### On-device backend (default)
 - **Off by default.** AI features are disabled until you explicitly enable
   them in Settings.
 - **Model storage.** Enabling AI downloads a Gemma model file (Google's
@@ -61,16 +64,49 @@ run entirely on your device.
   is only sent in the Authorization header to huggingface.co during
   download. The model file is stored in the app's private support
   directory and can be removed from the AI settings screen at any time.
-- **No data leaves the device.** Inference runs locally. The model is given
-  only the contents of the interaction or note you are working on (summary,
-  medium, free-text notes); it does not receive your contact list, history,
-  or any data from other contacts.
+- **No data leaves the device while this backend is selected.** Inference
+  runs locally. The model is given only the contents of the interaction
+  or note you are working on (summary, medium, free-text notes); it does
+  not receive your contact list, history, or any data from other contacts.
 - **Outputs are suggestions only.** Generated tags or follow-up suggestions
   are not stored unless you tap to accept them, in which case the result is
   written to your local encrypted database the same way a manual entry
   would be.
 - **No telemetry.** Prompts and model outputs are not transmitted to any
   server and are not logged outside the in-memory call.
+
+### Cloud backend (opt-in, off by default)
+A separate, explicitly opt-in cloud backend routes AI requests to Google's
+Gemini API. It is off by default and requires both a deliberate toggle in
+AI Settings and an API key you supply yourself.
+
+- **Default off, explicit consent.** Turning the cloud backend on shows a
+  disclosure dialog describing exactly what is sent and to where. Closing
+  the dialog or choosing "Keep on-device" leaves AI on the local backend.
+- **Bring your own key.** You generate a free Google AI Studio API key
+  yourself and paste it into AI Settings. The key is stored in this
+  device's secure key store (Keychain on iOS/macOS, Keystore on Android)
+  and is only sent in the Authorization header to
+  `generativelanguage.googleapis.com`. BNPB does not run a server, has no
+  account with Google on your behalf, and never sees your key.
+- **What is sent.** When the cloud backend is active, every AI request
+  sends the text BNPB would have given to the local model (the note,
+  interaction summary, or prayer-request text you asked the AI to
+  process) to Google's Gemini API over HTTPS. Your contact list,
+  unrelated interactions, vector index, and database key are never
+  transmitted.
+- **Governed by Google's terms.** Data sent to the Gemini API is
+  processed under Google's API terms of service and privacy policy in
+  addition to this one.
+- **No silent fallback.** If the network is unreachable or Google rejects
+  the request, the affected AI feature shows a visible error. BNPB will
+  not run the same prompt on the local model behind your back —
+  switching backends silently would obscure which path produced (or
+  failed to produce) the result.
+- **Reversible at any time.** You can switch the toggle back to
+  on-device or clear the API key from AI Settings. Clearing the key
+  removes it from the device key store immediately and disables the
+  cloud backend on the next AI call.
 - **Ask search (semantic).** Enabling the "Ask" toggle on the search bar
   requires a separate, smaller embedder model (Google Gecko 110M, ~110 MB)
   that you download from AI Settings. The embedder runs on this device and

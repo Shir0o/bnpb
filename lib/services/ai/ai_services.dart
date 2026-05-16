@@ -1,19 +1,22 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_gemma/flutter_gemma.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
 import '../../models/contact.dart';
+import '../security_service.dart';
 import 'ai_feature_gate.dart';
 import 'auto_tag_service.dart';
 import 'embedding_service.dart';
+import 'embedder_manager.dart';
 import 'follow_up_suggestion_service.dart';
+import 'gemini_api_llm_service.dart';
 import 'interaction_summary_service.dart';
 import 'local_llm_service.dart';
+import 'model_manager.dart';
 import 'outreach_draft_service.dart';
 import 'prayer_clustering_service.dart';
 import 'semantic_search_service.dart';
-import 'embedder_manager.dart';
-import 'model_manager.dart';
 
 /// Process-wide accessor for AI services so call sites don't need to thread
 /// dependencies through widget constructors. Mirrors the
@@ -76,10 +79,54 @@ class AiServices {
     }();
   }
 
-  /// True only when the user has opted in AND the model is loaded.
+  /// True only when the user has opted in AND the active backend is ready.
   Future<bool> isReady() async {
     if (!await _gate.isEnabled()) return false;
     return _llm.isReady;
+  }
+
+  /// Swaps the active LLM backend to match the user's current preference
+  /// (local Gemma vs cloud Gemini). Idempotent — calling with the
+  /// already-active backend type is a no-op aside from picking up a
+  /// changed API key. Cached AI services are invalidated so the next
+  /// access wires them up against the new backend.
+  Future<void> refreshBackend() async {
+    final backend = await _gate.backend();
+    if (backend == AiBackend.cloud) {
+      final apiKey = await SecurityService().getGeminiApiKey();
+      if (apiKey == null || apiKey.isEmpty) {
+        // User asked for cloud but never supplied a key — fall back to
+        // local so existing call sites that null-check `isReady` still
+        // give a coherent answer. AiSettingsPage's toggle UI is what
+        // surfaces this state to the user.
+        await _setBackend(FlutterGemmaLlmService());
+        return;
+      }
+      await _setBackend(GeminiApiLlmService(apiKey: apiKey));
+      return;
+    }
+    await _setBackend(FlutterGemmaLlmService());
+  }
+
+  Future<void> _setBackend(LocalLlmService next) async {
+    if (identical(_llm, next)) return;
+    if (_llm.runtimeType == next.runtimeType &&
+        _llm is GeminiApiLlmService &&
+        next is GeminiApiLlmService) {
+      // Same backend type — only the API key could have changed. Drop
+      // the previous cached SDK model so the next call rebuilds with
+      // the new key.
+      await _llm.unload();
+    }
+    try {
+      await _llm.unload();
+    } catch (_) {}
+    _llm = next;
+    _followUpCache = null;
+    _autoTagCache = null;
+    _summaryCache = null;
+    _outreachCache = null;
+    _prayerClusteringCache = null;
   }
 
   /// Initializes the underlying flutter_gemma runtime and, if AI features
@@ -92,16 +139,22 @@ class AiServices {
       return;
     }
     if (!await _gate.isEnabled()) return;
-    try {
-      final manager = ModelManager();
-      final status = await manager.status();
-      if (status == ModelStatus.ready) {
-        await _llm.load(await manager.modelPath());
+    // Pick the right backend before doing any backend-specific setup.
+    // Cloud backend has nothing to load locally; local backend needs
+    // the model file on disk.
+    await refreshBackend();
+    if (_llm is FlutterGemmaLlmService) {
+      try {
+        final manager = ModelManager();
+        final status = await manager.status();
+        if (status == ModelStatus.ready) {
+          await _llm.load(await manager.modelPath());
+        }
+        manager.dispose();
+      } catch (_) {
+        // Best-effort: leave the model unloaded; the AI settings page can
+        // re-attempt loading and surface errors there.
       }
-      manager.dispose();
-    } catch (_) {
-      // Best-effort: leave the model unloaded; the AI settings page can
-      // re-attempt loading and surface errors there.
     }
     try {
       final embedderMgr = EmbedderManager();
@@ -110,6 +163,20 @@ class AiServices {
           modelPath: await embedderMgr.modelPath(),
           tokenizerPath: await embedderMgr.tokenizerPath(),
         );
+        // One-shot warmup so the user's first Ask query doesn't pay the
+        // embedder cold-start cost.
+        if (_embedding.isReady) {
+          try {
+            final sw = Stopwatch()..start();
+            await _embedding.embed('warmup');
+            if (kDebugMode) {
+              debugPrint(
+                  '[ai.perf] embedder.warmup ms=${sw.elapsedMilliseconds}');
+            }
+          } catch (_) {
+            // Warmup is best-effort; a real query will surface any error.
+          }
+        }
       }
       // Deliberately not calling embedderMgr.dispose(): the downloader
       // returned by defaultBackgroundDownloader() backs onto shared native

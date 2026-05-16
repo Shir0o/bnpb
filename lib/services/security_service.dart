@@ -28,6 +28,9 @@ class SecurityService {
   static const _passwordHashKey = 'lock_password_hash';
   static const _passwordSaltKey = 'lock_password_salt';
   static const _biometricToggleKey = 'lock_biometric_enabled';
+  // Opt-in cloud AI (Gemini). New namespace, not the legacy key, so the
+  // one-shot legacy purge below can never race with a freshly-set V2 key.
+  static const _geminiApiKeyV2Key = 'gemini_api_key_v2';
   // Legacy keys retained only to purge data left over from the removed
   // Gemini integration.
   static const _legacyGeminiApiKeyKey = 'gemini_api_key';
@@ -110,6 +113,29 @@ class SecurityService {
     } catch (e) {
       debugPrint('Legacy Gemini data purge failed: $e');
     }
+  }
+
+  /// Whether a Gemini API key is stored for the opt-in cloud AI path.
+  Future<bool> hasGeminiApiKey() async {
+    final key = await _secureStorage.read(key: _geminiApiKeyV2Key);
+    return key != null && key.isNotEmpty;
+  }
+
+  /// Stores the user-supplied Gemini API key. Pass `null` or empty to
+  /// clear it. The key is held in platform secure storage
+  /// (Keychain/Keystore) and only ever leaves the device in the
+  /// Authorization header of requests to generativelanguage.googleapis.com.
+  Future<void> setGeminiApiKey(String? key) async {
+    if (key == null || key.isEmpty) {
+      await _secureStorage.delete(key: _geminiApiKeyV2Key);
+      return;
+    }
+    await _secureStorage.write(key: _geminiApiKeyV2Key, value: key);
+  }
+
+  /// Retrieves the stored Gemini API key, or `null` if none is set.
+  Future<String?> getGeminiApiKey() async {
+    return _secureStorage.read(key: _geminiApiKeyV2Key);
   }
 
   /// Indicates whether a passcode has been configured.
@@ -220,6 +246,7 @@ class SecurityService {
     await _secureStorage.delete(key: _passwordSaltKey);
     await _secureStorage.delete(key: _biometricToggleKey);
     await _secureStorage.delete(key: _legacyGeminiApiKeyKey);
+    await _secureStorage.delete(key: _geminiApiKeyV2Key);
 
     // 3. Securely wipe and remove database files.
     if (await dbFile.exists()) {

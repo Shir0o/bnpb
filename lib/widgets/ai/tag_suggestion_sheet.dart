@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../services/ai/ai_services.dart';
@@ -50,18 +52,45 @@ class TagSuggestionSheet extends StatefulWidget {
 }
 
 class _TagSuggestionSheetState extends State<TagSuggestionSheet> {
-  late Future<List<String>> _future;
+  StreamSubscription<List<String>>? _sub;
   final Set<String> _selected = <String>{};
+  List<String> _suggested = const <String>[];
+  bool _done = false;
+  Object? _error;
 
   @override
   void initState() {
     super.initState();
-    _future = _loadSuggestions();
+    _sub = AiServices().autoTag.suggestTagsStream(widget.noteText).listen(
+      (tags) {
+        if (!mounted) return;
+        final filtered = tags
+            .where((t) => !widget.existingTags.contains(t))
+            .toList(growable: false);
+        setState(() {
+          _suggested = filtered;
+        });
+      },
+      onError: (Object e, StackTrace _) {
+        if (!mounted) return;
+        setState(() {
+          _error = e;
+          _done = true;
+        });
+      },
+      onDone: () {
+        if (!mounted) return;
+        setState(() {
+          _done = true;
+        });
+      },
+    );
   }
 
-  Future<List<String>> _loadSuggestions() async {
-    final tags = await AiServices().autoTag.suggestTags(widget.noteText);
-    return tags.where((t) => !widget.existingTags.contains(t)).toList();
+  @override
+  void dispose() {
+    _sub?.cancel();
+    super.dispose();
   }
 
   @override
@@ -83,50 +112,7 @@ class _TagSuggestionSheetState extends State<TagSuggestionSheet> {
               style: Theme.of(context).textTheme.bodySmall,
             ),
             const SizedBox(height: 12),
-            FutureBuilder<List<String>>(
-              future: _future,
-              builder: (context, snapshot) {
-                if (snapshot.connectionState != ConnectionState.done) {
-                  return const _TagChipSkeleton();
-                }
-                if (snapshot.hasError) {
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    child: Text(
-                      'Could not generate tags.',
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
-                  );
-                }
-                final items = snapshot.data ?? const <String>[];
-                if (items.isEmpty) {
-                  return const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 16),
-                    child: Text('No new tags for this note.'),
-                  );
-                }
-                return Wrap(
-                  spacing: 8,
-                  runSpacing: 4,
-                  children: [
-                    for (final tag in items)
-                      FilterChip(
-                        label: Text('#$tag'),
-                        selected: _selected.contains(tag),
-                        onSelected: (on) {
-                          setState(() {
-                            if (on) {
-                              _selected.add(tag);
-                            } else {
-                              _selected.remove(tag);
-                            }
-                          });
-                        },
-                      ),
-                  ],
-                );
-              },
-            ),
+            _buildBody(context),
             const SizedBox(height: 12),
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
@@ -149,6 +135,72 @@ class _TagSuggestionSheetState extends State<TagSuggestionSheet> {
       ),
     );
   }
+
+  Widget _buildBody(BuildContext context) {
+    if (_error != null) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        child: Text(
+          'Could not generate tags.',
+          style: Theme.of(context).textTheme.bodyMedium,
+        ),
+      );
+    }
+    if (_suggested.isEmpty) {
+      if (_done) {
+        return const Padding(
+          padding: EdgeInsets.symmetric(vertical: 16),
+          child: Text('No new tags for this note.'),
+        );
+      }
+      return const _TagChipSkeleton();
+    }
+    return Wrap(
+      spacing: 8,
+      runSpacing: 4,
+      children: [
+        for (final tag in _suggested)
+          FilterChip(
+            label: Text('#$tag'),
+            selected: _selected.contains(tag),
+            onSelected: (on) {
+              setState(() {
+                if (on) {
+                  _selected.add(tag);
+                } else {
+                  _selected.remove(tag);
+                }
+              });
+            },
+          ),
+        if (!_done) const _StreamingSkeletonChips(),
+      ],
+    );
+  }
+}
+
+class _StreamingSkeletonChips extends StatelessWidget {
+  const _StreamingSkeletonChips();
+
+  @override
+  Widget build(BuildContext context) {
+    return SkeletonLoader(
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (final w in const <double>[72, 88])
+            Padding(
+              padding: const EdgeInsets.fromLTRB(0, 8, 8, 8),
+              child: SkeletonBox(
+                width: w,
+                height: 32,
+                borderRadius: BorderRadius.circular(16),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
 }
 
 class _TagChipSkeleton extends StatelessWidget {
@@ -156,15 +208,13 @@ class _TagChipSkeleton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const widths = <double>[88, 120, 72, 104, 96];
     return SkeletonLoader(
-      child: Wrap(
-        spacing: 8,
-        runSpacing: 4,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          for (final w in widths)
+          for (final w in const <double>[88, 104, 72])
             Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8),
+              padding: const EdgeInsets.fromLTRB(0, 8, 8, 8),
               child: SkeletonBox(
                 width: w,
                 height: 32,
