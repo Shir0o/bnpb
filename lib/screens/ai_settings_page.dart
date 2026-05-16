@@ -441,31 +441,48 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
 
   Future<void> _setBackend(bool useCloud) async {
     if (useCloud == (_backend == AiBackend.cloud)) return;
+
     if (useCloud) {
+      // Disclosure must happen BEFORE the optimistic flip — the toggle
+      // represents consent and we can't grant it on the user's behalf.
       final confirmed = await _showCloudDisclosure();
       if (!confirmed) return;
-      await AiServices().gate.setBackend(AiBackend.cloud);
-      // Make sure they have a key. If not, prompt for one right away —
-      // without it the cloud backend can't initialize and `refreshBackend`
-      // silently falls back to local, which would be confusing here.
-      if (!await SecurityService().hasGeminiApiKey()) {
-        await _promptForGeminiApiKey();
-      } else {
-        await AiServices().refreshBackend();
-      }
+      // Optimistic: user has confirmed consent, so flip the toggle now
+      // and persist + maybe prompt for a key in the background. If they
+      // back out of the key prompt, the toggle stays on with the
+      // "no API key set" subtitle and a tap on the API key tile finishes
+      // the setup.
+      setState(() => _backend = AiBackend.cloud);
+      unawaited(_applyCloudBackend());
     } else {
-      await AiServices().gate.setBackend(AiBackend.local);
-      await AiServices().refreshBackend();
-      // If AI is enabled and the on-device model is on disk, get it loaded
-      // so the user can use AI immediately after switching back.
-      if (_enabled && _status == ModelStatus.ready) {
-        try {
-          final path = await _modelManager.modelPath();
-          await AiServices().llm.load(path);
-        } catch (_) {}
-      }
+      // Optimistic flip — turning cloud off doesn't need confirmation.
+      setState(() => _backend = AiBackend.local);
+      unawaited(_applyLocalBackend());
     }
-    await _refresh();
+  }
+
+  Future<void> _applyCloudBackend() async {
+    await AiServices().gate.setBackend(AiBackend.cloud);
+    if (!await SecurityService().hasGeminiApiKey()) {
+      if (mounted) await _promptForGeminiApiKey();
+    } else {
+      await AiServices().refreshBackend();
+    }
+    if (mounted) await _refresh();
+  }
+
+  Future<void> _applyLocalBackend() async {
+    await AiServices().gate.setBackend(AiBackend.local);
+    await AiServices().refreshBackend();
+    // If AI is enabled and the on-device model is on disk, load it so the
+    // user can use AI immediately after switching back.
+    if (_enabled && _status == ModelStatus.ready) {
+      try {
+        final path = await _modelManager.modelPath();
+        await AiServices().llm.load(path);
+      } catch (_) {}
+    }
+    if (mounted) await _refresh();
   }
 
   String _embedderStatusLabel() {
@@ -492,7 +509,7 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
                   child: Text(
-                    'On-device AI suggestions',
+                    'AI suggestions',
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                 ),
@@ -500,24 +517,12 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                   child: Text(
                     'BNPB can suggest follow-up actions and tags after you '
-                    'log an interaction. By default all inference happens '
-                    'on this device using a Gemma model that you download '
-                    'below (~3.1 GB). An optional cloud backend (Google '
-                    'Gemini) is available further down and is off until '
-                    'you explicitly turn it on.',
+                    'log an interaction. AI is off until you turn it on, and '
+                    'runs entirely on this device unless you explicitly '
+                    'switch the backend to Google Gemini in the Backend '
+                    'section below.',
                     style: Theme.of(context).textTheme.bodyMedium,
                   ),
-                ),
-                ListTile(
-                  leading: const Icon(Icons.vpn_key_outlined),
-                  title: const Text('Hugging Face token'),
-                  subtitle: Text(
-                    _hasToken
-                        ? 'Saved — tap to update'
-                        : 'Required to download the gated Gemma model',
-                  ),
-                  enabled: !_busy,
-                  onTap: _busy ? null : _promptForToken,
                 ),
                 SwitchListTile.adaptive(
                   title: const Text('Enable AI features'),
@@ -533,7 +538,10 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
                   value: _enabled,
                   onChanged: _busy ? null : _setEnabled,
                 ),
+
                 const Divider(),
+
+                // ── Backend section ────────────────────────────────
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
                   child: Text(
@@ -574,7 +582,43 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
                     enabled: !_busy,
                     onTap: _busy ? null : _promptForGeminiApiKey,
                   ),
+
                 const Divider(),
+
+                // ── On-device model section ────────────────────────
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                  child: Text(
+                    'On-device model',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                  child: Text(
+                    _backend == AiBackend.cloud
+                        ? 'Used when the backend above is set back to '
+                            'on-device. The Gemma model file (~3.1 GB) can '
+                            'stay on disk as a fallback or be deleted to '
+                            'free space.'
+                        : 'The Gemma model (~3.1 GB) is downloaded from '
+                            'Hugging Face. A read-only access token is '
+                            'required because the repository is gated by '
+                            'Google.',
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.vpn_key_outlined),
+                  title: const Text('Hugging Face token'),
+                  subtitle: Text(
+                    _hasToken
+                        ? 'Saved — tap to update'
+                        : 'Required to download the gated Gemma model',
+                  ),
+                  enabled: !_busy,
+                  onTap: _busy ? null : _promptForToken,
+                ),
                 ListTile(
                   leading: const Icon(Icons.download_outlined),
                   title: Text(_status == ModelStatus.ready
@@ -615,6 +659,7 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
                   onTap:
                       _busy || _status == ModelStatus.absent ? null : _delete,
                 ),
+
                 const Divider(),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
