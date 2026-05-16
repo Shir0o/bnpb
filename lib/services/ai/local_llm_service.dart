@@ -4,6 +4,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_gemma/flutter_gemma.dart';
 import 'package:path/path.dart' as p;
 
+import 'gemini_api_llm_service.dart';
+
 /// Thin abstraction over an on-device LLM backend.
 ///
 /// The default implementation wraps `flutter_gemma`, but we depend on the
@@ -45,6 +47,15 @@ extension LocalLlmServiceStreaming on LocalLlmService {
   }) async* {
     final self = this;
     if (self is FlutterGemmaLlmService) {
+      yield* self.streamWithPrefix(
+        prompt,
+        systemPrefix: systemPrefix,
+        maxTokens: maxTokens,
+        temperature: temperature,
+      );
+      return;
+    }
+    if (self is GeminiApiLlmService) {
       yield* self.streamWithPrefix(
         prompt,
         systemPrefix: systemPrefix,

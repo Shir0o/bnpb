@@ -60,16 +60,23 @@ downloaded Gemma model; embeddings use a separate local Gecko 110M model.
   via the `LocalLlmServiceStreaming` extension so partial results can be
   rendered as tokens arrive. Backend selection (`PreferredBackend.gpu`,
   falling back to CPU) is configured in `load()`.
-- **Privacy posture.** Inference is local; prompts and outputs are never
-  transmitted. A previous integration that sent contact data to Google's
-  Gemini API was removed (see commit `2a613ba`) because the disclosure
-  was not comfortable in a pastoral context.
-- **Planned: opt-in cloud backend.** A second backend implementation
-  (Gemini API or similar) is planned behind an explicit, default-off
-  consent flow with clear disclosure of which fields are sent. When it
-  lands, the change is confined to a new `LocalLlmService` implementation
-  plus a settings/disclosure surface — no changes to the consuming
-  services. Until then, all AI runs on-device.
+- **Privacy posture.** By default inference is local; prompts and outputs
+  are never transmitted. A previous always-on integration that sent
+  contact data to Google's Gemini API was removed (see commit `2a613ba`)
+  because the disclosure was not comfortable in a pastoral context.
+- **Opt-in cloud backend.** A second backend, `GeminiApiLlmService`
+  (`gemini_api_llm_service.dart`), routes the same `LocalLlmService`
+  interface to Google's Gemini API. It is **off by default** and gated by
+  two separate explicit user actions: a Settings toggle that shows a
+  disclosure dialog explaining what data leaves the device, and the user
+  pasting their own Google AI Studio API key (BYOK; stored in the
+  platform secure key store via `SecurityService`). `AiServices`
+  swaps the active backend based on the user's preference; the five
+  consumer services see no change because they only depend on the
+  abstract interface. Network failures on the cloud backend surface as
+  visible errors — there is intentionally no silent fallback to the
+  local model, since switching backends without the user's knowledge
+  would defeat the consent the cloud opt-in is built on.
 
 ## Sync Architecture
 The system is designed for multi-device sync:
