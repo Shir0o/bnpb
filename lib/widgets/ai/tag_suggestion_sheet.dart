@@ -173,16 +173,32 @@ class _TagSuggestionSheetState extends State<TagSuggestionSheet> {
               });
             },
           ),
-        if (!_done)
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 4, vertical: 6),
-            child: SizedBox(
-              width: 14,
-              height: 14,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            ),
-          ),
+        if (!_done) const _StreamingSkeletonChips(),
       ],
+    );
+  }
+}
+
+class _StreamingSkeletonChips extends StatelessWidget {
+  const _StreamingSkeletonChips();
+
+  @override
+  Widget build(BuildContext context) {
+    return SkeletonLoader(
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (final w in const <double>[72, 88])
+            Padding(
+              padding: const EdgeInsets.fromLTRB(0, 8, 8, 8),
+              child: SkeletonBox(
+                width: w,
+                height: 32,
+                borderRadius: BorderRadius.circular(16),
+              ),
+            ),
+        ],
+      ),
     );
   }
 }
@@ -192,15 +208,13 @@ class _TagChipSkeleton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const widths = <double>[88, 120, 72, 104, 96];
     return SkeletonLoader(
-      child: Wrap(
-        spacing: 8,
-        runSpacing: 4,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          for (final w in widths)
+          for (final w in const <double>[88, 104, 72])
             Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8),
+              padding: const EdgeInsets.fromLTRB(0, 8, 8, 8),
               child: SkeletonBox(
                 width: w,
                 height: 32,

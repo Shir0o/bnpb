@@ -97,7 +97,14 @@ class FlutterGemmaLlmService implements LocalLlmService {
     await FlutterGemma.installModel(modelType: ModelType.gemmaIt)
         .fromFile(modelPath)
         .install();
-    _model = await FlutterGemma.getActiveModel(maxTokens: contextWindowTokens);
+    // Prefer GPU. flutter_gemma falls back GPU → CPU automatically if the
+    // device can't satisfy the request, so this is safe to default-on.
+    // Without this hint the engine picks XNNPack CPU, which on a Pixel
+    // takes ~1 token/sec for gemma-3n-e2b-int4 — unusable.
+    _model = await FlutterGemma.getActiveModel(
+      maxTokens: contextWindowTokens,
+      preferredBackend: PreferredBackend.gpu,
+    );
     _loadedPath = modelPath;
     if (kDebugMode) {
       debugPrint(
@@ -231,9 +238,23 @@ class FlutterGemmaLlmService implements LocalLlmService {
     }
 
     await session.addQueryChunk(Message.text(text: prompt, isUser: true));
+    bool completed = false;
     try {
-      yield* session.getResponseAsync();
+      await for (final chunk in session.getResponseAsync()) {
+        yield chunk;
+      }
+      completed = true;
     } finally {
+      // If the consumer broke out of the await loop early (e.g. AutoTag
+      // saw the closing `]` and doesn't need the trailing prose the model
+      // would still emit), tell the engine to stop. On a pinned session
+      // this is essential — without it the next call would be queued
+      // behind ongoing generation.
+      if (!completed) {
+        try {
+          await session.stopGeneration();
+        } catch (_) {}
+      }
       if (!isPinned) {
         try {
           await session.close();

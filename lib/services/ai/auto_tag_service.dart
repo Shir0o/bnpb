@@ -82,7 +82,8 @@ class AutoTagService {
         }
       }
       buffer.write(chunk);
-      final parsed = _parsePartial(buffer.toString());
+      final raw = buffer.toString();
+      final parsed = _parsePartial(raw);
       if (!listEquals(parsed, lastEmit)) {
         if (firstChip && parsed.isNotEmpty) {
           firstChip = false;
@@ -94,6 +95,21 @@ class AutoTagService {
         }
         lastEmit = parsed;
         yield parsed;
+      }
+      // Early stop: once the model has closed the JSON array, the answer
+      // is complete. Anything after `]` is trailing prose we'd discard,
+      // and on a slow decode path that prose can add 20+ seconds.
+      // Breaking here cancels the inner subscription, which routes
+      // through FlutterGemmaLlmService.streamWithPrefix's finally and
+      // calls session.stopGeneration() on the engine.
+      final openIdx = raw.indexOf('[');
+      if (openIdx >= 0 && raw.indexOf(']', openIdx + 1) >= 0) {
+        if (kDebugMode) {
+          debugPrint(
+            '[ai.perf] autotag.earlyStop ms=${sw.elapsedMilliseconds}',
+          );
+        }
+        break;
       }
     }
 

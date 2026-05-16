@@ -40,6 +40,37 @@ BNPB is a Flutter-based personal relationship manager designed with an offline-f
 - **Gating**: Biometric (FaceID/Fingerprint) and passcode authentication protect the app entry point.
 - **Privacy**: No user data is sent to external servers unless the user explicitly initiates an export or sync.
 
+## AI Layer (`lib/services/ai/`)
+AI features (AutoTag, FollowUpSuggestion, InteractionSummary, OutreachDraft,
+PrayerClustering, Ask semantic search) are gated, opt-in, and currently
+**on-device only**. Inference uses `flutter_gemma` against a locally
+downloaded Gemma model; embeddings use a separate local Gecko 110M model.
+
+- **Abstraction.** Every AI service depends on the `LocalLlmService`
+  interface (`local_llm_service.dart`) rather than the `flutter_gemma`
+  package directly. The production implementation is
+  `FlutterGemmaLlmService`; tests inject fakes. This seam exists
+  specifically so the backend can be swapped without rippling through
+  the seven services that consume it.
+- **Warm session + streaming.** `FlutterGemmaLlmService` keeps a long-lived
+  `InferenceModelSession` keyed by a `systemPrefix` string. Services that
+  send the same system-prompt prefix on every call (AutoTag, in particular)
+  get KV-cache reuse: the prefix is encoded once and reused on every
+  subsequent call until the prefix string changes. Streaming is exposed
+  via the `LocalLlmServiceStreaming` extension so partial results can be
+  rendered as tokens arrive. Backend selection (`PreferredBackend.gpu`,
+  falling back to CPU) is configured in `load()`.
+- **Privacy posture.** Inference is local; prompts and outputs are never
+  transmitted. A previous integration that sent contact data to Google's
+  Gemini API was removed (see commit `2a613ba`) because the disclosure
+  was not comfortable in a pastoral context.
+- **Planned: opt-in cloud backend.** A second backend implementation
+  (Gemini API or similar) is planned behind an explicit, default-off
+  consent flow with clear disclosure of which fields are sent. When it
+  lands, the change is confined to a new `LocalLlmService` implementation
+  plus a settings/disclosure surface — no changes to the consuming
+  services. Until then, all AI runs on-device.
+
 ## Sync Architecture
 The system is designed for multi-device sync:
 - Each record has a globally unique `syncId`.
