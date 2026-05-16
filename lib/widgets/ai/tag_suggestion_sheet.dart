@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../services/ai/ai_services.dart';
+import '../skeleton_loader.dart';
 
 /// Bottom sheet that runs the on-device [AutoTagService] against a free-text
 /// note and lets the user pick which suggested tags to keep. Accepted tags
@@ -86,10 +87,7 @@ class _TagSuggestionSheetState extends State<TagSuggestionSheet> {
               future: _future,
               builder: (context, snapshot) {
                 if (snapshot.connectionState != ConnectionState.done) {
-                  return const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 24),
-                    child: Center(child: CircularProgressIndicator()),
-                  );
+                  return const _TagChipSkeleton();
                 }
                 if (snapshot.hasError) {
                   return Padding(
@@ -148,6 +146,32 @@ class _TagSuggestionSheetState extends State<TagSuggestionSheet> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _TagChipSkeleton extends StatelessWidget {
+  const _TagChipSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    const widths = <double>[88, 120, 72, 104, 96];
+    return SkeletonLoader(
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 4,
+        children: [
+          for (final w in widths)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: SkeletonBox(
+                width: w,
+                height: 32,
+                borderRadius: BorderRadius.circular(16),
+              ),
+            ),
+        ],
       ),
     );
   }
