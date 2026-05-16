@@ -10,9 +10,9 @@ import 'local_llm_service.dart';
 /// This is an **opt-in** path — by default BNPB runs every AI feature
 /// on the device with no network. When the user explicitly enables
 /// cloud AI in Settings and supplies their own API key, [AiServices]
-/// swaps the active backend to this class. The five consumer services
-/// (AutoTag, FollowUp, InteractionSummary, OutreachDraft, PrayerClustering)
-/// see no change — they still depend on the `LocalLlmService` interface.
+/// swaps the active backend to this class. The consumer services
+/// (AutoTag, FollowUp, PrayerClustering) see no change — they still
+/// depend on the `LocalLlmService` interface.
 ///
 /// Network behavior: this service does **not** silently fall back to
 /// the local model on failure. If the network is unreachable or the

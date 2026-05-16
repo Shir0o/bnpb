@@ -41,9 +41,8 @@ BNPB is a Flutter-based personal relationship manager designed with an offline-f
 - **Privacy**: No user data is sent to external servers unless the user explicitly initiates an export or sync.
 
 ## AI Layer (`lib/services/ai/`)
-AI features (AutoTag, FollowUpSuggestion, InteractionSummary, OutreachDraft,
-PrayerClustering, Ask semantic search) are gated, opt-in, and currently
-**on-device only**. Inference uses `flutter_gemma` against a locally
+AI features (AutoTag, FollowUpSuggestion, PrayerClustering, Ask semantic
+search) are gated, opt-in, and currently **on-device only**. Inference uses `flutter_gemma` against a locally
 downloaded Gemma model; embeddings use a separate local Gecko 110M model.
 
 - **Abstraction.** Every AI service depends on the `LocalLlmService`
@@ -51,7 +50,7 @@ downloaded Gemma model; embeddings use a separate local Gecko 110M model.
   package directly. The production implementation is
   `FlutterGemmaLlmService`; tests inject fakes. This seam exists
   specifically so the backend can be swapped without rippling through
-  the seven services that consume it.
+  the services that consume it.
 - **Warm session + streaming.** `FlutterGemmaLlmService` keeps a long-lived
   `InferenceModelSession` keyed by a `systemPrefix` string. Services that
   send the same system-prompt prefix on every call (AutoTag, in particular)
