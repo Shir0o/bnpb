@@ -6,6 +6,7 @@ import '../services/ai/ai_feature_gate.dart';
 import '../services/ai/ai_services.dart';
 import '../services/ai/embedder_manager.dart';
 import '../services/ai/hf_token_store.dart';
+import '../services/ai/key_validation.dart';
 import '../services/ai/model_manager.dart';
 import '../services/security_service.dart';
 
@@ -70,50 +71,34 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
   Future<void> _promptForToken() async {
     final existing = await _tokenStore.read();
     if (!mounted) return;
-    final controller = TextEditingController(text: existing);
-    final result = await showDialog<String>(
+    final result = await showDialog<_KeyDialogResult>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Hugging Face access token'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'The Gemma model is gated by Google. Create a read-only token '
-              'at huggingface.co/settings/tokens, accept the Gemma license '
-              'on the model page, then paste the token below. It is stored '
-              'in the device key store and only sent to huggingface.co.',
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: controller,
-              obscureText: true,
-              decoration: const InputDecoration(
-                labelText: 'hf_…',
-                border: OutlineInputBorder(),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(null),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(controller.text.trim()),
-            child: const Text('Save'),
-          ),
-        ],
+      barrierDismissible: false,
+      builder: (ctx) => _KeyDialog(
+        title: 'Hugging Face access token',
+        explanation:
+            'The Gemma model is gated by Google. Create a read-only token '
+            'at huggingface.co/settings/tokens, accept the Gemma license on '
+            'the model page, then paste the token below. It is stored in '
+            'the device key store and only sent to huggingface.co.',
+        fieldLabel: 'hf_…',
+        initialValue: existing ?? '',
+        validate: KeyValidator.huggingFace,
       ),
     );
     if (result == null) return;
-    if (result.isEmpty) {
+    if (result.cleared) {
       await _tokenStore.delete();
     } else {
-      await _tokenStore.write(result);
+      await _tokenStore.write(result.value!);
     }
+    if (!mounted) return;
+    final msg = result.cleared
+        ? 'Hugging Face token cleared'
+        : result.validated
+            ? 'Hugging Face token saved and validated'
+            : 'Hugging Face token saved without validation';
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
     await _refresh();
   }
 
@@ -336,43 +321,88 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
   }
 
   Future<bool> _showCloudDisclosure() async {
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showModalBottomSheet<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Switch AI to Google Gemini?'),
-        content: const SingleChildScrollView(
-          child: Text(
-            'By default, BNPB runs every AI feature on this device and no '
-            'note text ever leaves it.\n\n'
-            'If you turn on cloud AI, the following changes:\n\n'
-            '•  The text you ask the AI to process — interaction notes, '
-            'prayer requests, summaries — will be sent over HTTPS to '
-            'generativelanguage.googleapis.com (Google Gemini) using your '
-            'own API key.\n\n'
-            '•  That data is governed by Google\'s API terms of service '
-            'and privacy policy, not just BNPB\'s.\n\n'
-            '•  Your Google AI Studio API key is stored in this device\'s '
-            'secure key store (Keychain / Keystore) and is only sent in '
-            'the Authorization header to Google.\n\n'
-            '•  AI features that depend on the network will fail with a '
-            'visible error when offline. BNPB will not silently fall back '
-            'to the on-device model — that would obscure which backend '
-            'produced the result.\n\n'
-            'You can switch back to on-device AI at any time, and '
-            'removing the API key disables the cloud path immediately.',
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Keep on-device'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Use cloud AI'),
-          ),
-        ],
-      ),
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (ctx) {
+        final theme = Theme.of(ctx);
+        return DraggableScrollableSheet(
+          expand: false,
+          initialChildSize: 0.75,
+          minChildSize: 0.4,
+          maxChildSize: 0.95,
+          builder: (context, scrollController) {
+            return SafeArea(
+              top: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: Text(
+                        'Switch AI to Google Gemini?',
+                        style: theme.textTheme.titleLarge,
+                      ),
+                    ),
+                    Expanded(
+                      child: SingleChildScrollView(
+                        controller: scrollController,
+                        child: Text(
+                          'By default, BNPB runs every AI feature on this '
+                          'device and no note text ever leaves it.\n\n'
+                          'If you turn on cloud AI, the following changes:\n\n'
+                          '•  The text you ask the AI to process — '
+                          'interaction notes, prayer requests, summaries — '
+                          'will be sent over HTTPS to '
+                          'generativelanguage.googleapis.com (Google '
+                          'Gemini) using your own API key.\n\n'
+                          '•  That data is governed by Google\'s API terms '
+                          'of service and privacy policy, not just '
+                          'BNPB\'s.\n\n'
+                          '•  Your Google AI Studio API key is stored in '
+                          'this device\'s secure key store (Keychain / '
+                          'Keystore) and is only sent in the Authorization '
+                          'header to Google.\n\n'
+                          '•  AI features that depend on the network will '
+                          'fail with a visible error when offline. BNPB '
+                          'will not silently fall back to the on-device '
+                          'model — that would obscure which backend '
+                          'produced the result.\n\n'
+                          'You can switch back to on-device AI at any time, '
+                          'and removing the API key disables the cloud path '
+                          'immediately.',
+                          style: theme.textTheme.bodyMedium,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextButton(
+                            onPressed: () => Navigator.of(ctx).pop(false),
+                            child: const Text('Keep on-device'),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: FilledButton(
+                            onPressed: () => Navigator.of(ctx).pop(true),
+                            child: const Text('Use cloud AI'),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
     );
     return confirmed == true;
   }
@@ -380,47 +410,32 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
   Future<void> _promptForGeminiApiKey() async {
     final existing = await SecurityService().getGeminiApiKey();
     if (!mounted) return;
-    final controller = TextEditingController(text: existing ?? '');
-    final result = await showDialog<String?>(
+    final result = await showDialog<_KeyDialogResult>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Google Gemini API key'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Create a free key at aistudio.google.com/app/apikey and '
-              'paste it here. The key is stored in this device\'s secure '
-              'key store and only sent to Google in the Authorization '
-              'header. Leave blank to clear.',
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: controller,
-              obscureText: true,
-              decoration: const InputDecoration(
-                labelText: 'AIza…',
-                border: OutlineInputBorder(),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(null),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(controller.text.trim()),
-            child: const Text('Save'),
-          ),
-        ],
+      barrierDismissible: false,
+      builder: (ctx) => _KeyDialog(
+        title: 'Google Gemini API key',
+        explanation:
+            'Create a free key at aistudio.google.com/app/apikey and paste '
+            'it here. The key is stored in this device\'s secure key store '
+            'and only sent to Google in the Authorization header. Leave '
+            'blank to clear.',
+        fieldLabel: 'AIza…',
+        initialValue: existing ?? '',
+        validate: KeyValidator.gemini,
       ),
     );
     if (result == null) return;
-    await SecurityService().setGeminiApiKey(result.isEmpty ? null : result);
+    await SecurityService()
+        .setGeminiApiKey(result.cleared ? null : result.value);
     await AiServices().refreshBackend();
+    if (!mounted) return;
+    final msg = result.cleared
+        ? 'Gemini API key cleared'
+        : result.validated
+            ? 'Gemini API key saved and validated'
+            : 'Gemini API key saved without validation';
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
     await _refresh();
   }
 
@@ -673,5 +688,146 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
       case ModelStatus.corrupt:
         return 'Corrupt — re-download required';
     }
+  }
+}
+
+/// Result of a key/token entry flow.
+///
+/// `null` Dialog result = user cancelled (caller does nothing).
+/// `cleared = true` = user left the field empty and confirmed (clear the
+/// stored value).
+/// Otherwise [value] is the trimmed credential to store; [validated]
+/// tells the caller whether the remote service accepted it, so a
+/// "saved without validation" snackbar can call that out.
+class _KeyDialogResult {
+  const _KeyDialogResult.saved(this.value, {required this.validated})
+      : cleared = false;
+  const _KeyDialogResult.cleared()
+      : value = null,
+        cleared = true,
+        validated = false;
+
+  final String? value;
+  final bool cleared;
+  final bool validated;
+}
+
+/// Generic credential-entry dialog that runs a health-check validator
+/// before letting the user save. Used for both the Hugging Face token
+/// and the Gemini API key — they have the same shape (paste, validate,
+/// either succeed or show inline error). Network-error states offer a
+/// "Save anyway" path so an offline user isn't locked out.
+class _KeyDialog extends StatefulWidget {
+  const _KeyDialog({
+    required this.title,
+    required this.explanation,
+    required this.fieldLabel,
+    required this.initialValue,
+    required this.validate,
+  });
+
+  final String title;
+  final String explanation;
+  final String fieldLabel;
+  final String initialValue;
+  final Future<KeyValidationResult> Function(String value) validate;
+
+  @override
+  State<_KeyDialog> createState() => _KeyDialogState();
+}
+
+class _KeyDialogState extends State<_KeyDialog> {
+  late final TextEditingController _controller =
+      TextEditingController(text: widget.initialValue);
+  bool _checking = false;
+  String? _errorText;
+  // Last network-error result. When non-null, we render a "Save anyway"
+  // affordance instead of plain Save.
+  KeyValidationResult? _networkError;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _onSave() async {
+    final value = _controller.text.trim();
+    if (value.isEmpty) {
+      Navigator.of(context).pop(const _KeyDialogResult.cleared());
+      return;
+    }
+    setState(() {
+      _checking = true;
+      _errorText = null;
+      _networkError = null;
+    });
+    final result = await widget.validate(value);
+    if (!mounted) return;
+    if (result.ok) {
+      Navigator.of(context).pop(
+        _KeyDialogResult.saved(value, validated: true),
+      );
+      return;
+    }
+    setState(() {
+      _checking = false;
+      _errorText = result.message;
+      _networkError = result.networkError ? result : null;
+    });
+  }
+
+  void _onSaveAnyway() {
+    final value = _controller.text.trim();
+    Navigator.of(context).pop(
+      _KeyDialogResult.saved(value, validated: false),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(widget.title),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(widget.explanation),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _controller,
+            obscureText: true,
+            enabled: !_checking,
+            decoration: InputDecoration(
+              labelText: widget.fieldLabel,
+              border: const OutlineInputBorder(),
+              errorText: _errorText,
+              errorMaxLines: 3,
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: _checking ? null : () => Navigator.of(context).pop(null),
+          child: const Text('Cancel'),
+        ),
+        if (_networkError != null)
+          TextButton(
+            onPressed: _checking ? null : _onSaveAnyway,
+            child: const Text('Save anyway'),
+          ),
+        TextButton(
+          onPressed: _checking ? null : _onSave,
+          child: _checking
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : Text(_networkError != null ? 'Retry' : 'Save'),
+        ),
+      ],
+    );
   }
 }
