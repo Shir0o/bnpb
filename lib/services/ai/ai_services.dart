@@ -172,6 +172,29 @@ class AiServices {
     }
   }
 
+  /// Releases AI resources held across the process — currently the
+  /// vector-store SQLite handle held inside flutter_gemma. Call from
+  /// `AppLifecycleState.detached` so Android's `CloseGuard` doesn't log
+  /// `flutter_gemma_vectors.db was leaked` at process teardown.
+  ///
+  /// Best-effort: any failure is swallowed since the OS will reclaim the
+  /// FD anyway. Idempotent — safe to call when the store was never
+  /// initialized.
+  Future<void> shutdown() async {
+    if (!_semanticInitialized && _semanticSearchCache == null) return;
+    try {
+      final sw = Stopwatch()..start();
+      await _semanticSearchCache?.close();
+      if (kDebugMode) {
+        debugPrint('[ai.perf] vectorStore.close ms=${sw.elapsedMilliseconds}');
+      }
+    } catch (_) {
+      // Best-effort cleanup.
+    } finally {
+      _semanticInitialized = false;
+    }
+  }
+
   /// Test-only seam.
   void debugOverride({
     LocalLlmService? llm,
