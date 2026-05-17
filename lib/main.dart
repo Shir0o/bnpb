@@ -511,6 +511,10 @@ class _MainPageState extends State<MainPage> with WidgetsBindingObserver {
     if (state == AppLifecycleState.resumed) {
       // Sync on resume - use cooldown to avoid "Google logging in" flashes.
       SyncService().performSync();
+    } else if (state == AppLifecycleState.detached) {
+      // Release the vector-store DB handle so Android's CloseGuard doesn't
+      // log `flutter_gemma_vectors.db was leaked` at process teardown.
+      unawaited(AiServices().shutdown());
     }
   }
 }

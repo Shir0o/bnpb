@@ -191,6 +191,11 @@ abstract class SemanticSearchService {
   /// Number of documents currently in the persistent index. Used by callers
   /// to skip a wholesale rebuild when the prior session's index is intact.
   Future<int> documentCount();
+
+  /// Releases the underlying vector-store DB handle. Safe to call when
+  /// uninitialized. Intended for app-teardown to silence Android's
+  /// `CloseGuard` `flutter_gemma_vectors.db was leaked` warning.
+  Future<void> close();
 }
 
 /// Production impl wiring [FlutterGemmaEmbeddingService] to flutter_gemma's
@@ -300,6 +305,22 @@ class FlutterGemmaSemanticSearchService implements SemanticSearchService {
       return stats.documentCount;
     } catch (_) {
       return 0;
+    }
+  }
+
+  @override
+  Future<void> close() async {
+    if (!_vectorStoreReady) return;
+    try {
+      // FlutterGemmaPlugin's high-level interface doesn't surface
+      // closeVectorStore, but the underlying pigeon channel does (it's
+      // what the plugin's own MobileVectorStoreRepository.close() calls).
+      // Hitting it directly keeps Android's CloseGuard from logging
+      // `flutter_gemma_vectors.db was leaked` at process teardown.
+      await PlatformService().closeVectorStore();
+    } finally {
+      _vectorStoreReady = false;
+      _status = SemanticIndexStatus.notInitialized;
     }
   }
 }
