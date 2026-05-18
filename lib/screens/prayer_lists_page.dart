@@ -118,9 +118,7 @@ class _PrayerListPageState extends State<PrayerListPage> {
     );
 
     if (selectedIds != null && selectedIds.isNotEmpty) {
-      for (final id in selectedIds) {
-        await _dbHelper.addContactToPrayerList(_list!.id, id);
-      }
+      await _dbHelper.addContactsToPrayerList(_list!.id, selectedIds);
       await _loadListContacts(_list!);
     }
   }

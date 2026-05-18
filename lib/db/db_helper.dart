@@ -815,6 +815,8 @@ class DBHelper {
       prayerListDao.deletePrayerList(id);
   Future<void> addContactToPrayerList(String listId, String contactId) =>
       prayerListDao.addContactToPrayerList(listId, contactId);
+  Future<void> addContactsToPrayerList(String listId, List<String> contactIds) =>
+      prayerListDao.addContactsToPrayerList(listId, contactIds);
   Future<void> removeContactFromPrayerList(String listId, String contactId) =>
       prayerListDao.removeContactFromPrayerList(listId, contactId);
 

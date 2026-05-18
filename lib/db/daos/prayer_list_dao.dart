@@ -145,15 +145,26 @@ class PrayerListDao extends BaseDao {
   }
 
   Future<void> addContactToPrayerList(String listId, String contactId) async {
+    await addContactsToPrayerList(listId, [contactId]);
+  }
+
+  Future<void> addContactsToPrayerList(
+    String listId,
+    List<String> contactIds,
+  ) async {
     final db = await database;
     await db.transaction((txn) async {
-      await txn.insert(
-          'prayer_list_members',
-          {
-            'listId': listId,
-            'contactId': contactId,
-          },
-          conflictAlgorithm: ConflictAlgorithm.ignore);
+      final batch = txn.batch();
+      for (final contactId in contactIds) {
+        batch.insert(
+            'prayer_list_members',
+            {
+              'listId': listId,
+              'contactId': contactId,
+            },
+            conflictAlgorithm: ConflictAlgorithm.ignore);
+      }
+      await batch.commit(noResult: true);
       await txn.update(
         'prayer_lists',
         {'updatedAt': DateTime.now().toUtc().toIso8601String()},

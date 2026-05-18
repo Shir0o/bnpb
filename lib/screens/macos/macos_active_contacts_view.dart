@@ -124,9 +124,7 @@ class _MacOSActiveContactsViewState extends State<MacOSActiveContactsView> {
     );
 
     if (selectedIds != null && selectedIds.isNotEmpty) {
-      for (final id in selectedIds) {
-        await _dbHelper.addContactToPrayerList(_activeList!.id, id);
-      }
+      await _dbHelper.addContactsToPrayerList(_activeList!.id, selectedIds);
       await _loadListContacts(_activeList!);
     }
   }
