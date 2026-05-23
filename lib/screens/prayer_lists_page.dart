@@ -11,14 +11,15 @@ import '../widgets/skeleton_loader.dart';
 import 'contact_details_page.dart';
 
 class PrayerListPage extends StatefulWidget {
-  const PrayerListPage({super.key});
+  final DBHelper? dbHelper;
+  const PrayerListPage({super.key, this.dbHelper});
 
   @override
   State<PrayerListPage> createState() => _PrayerListPageState();
 }
 
 class _PrayerListPageState extends State<PrayerListPage> {
-  final DBHelper _dbHelper = DBHelper();
+  late final DBHelper _dbHelper;
   PrayerList? _list;
   List<Contact> _contacts = [];
   bool _isLoading = true;
@@ -26,6 +27,7 @@ class _PrayerListPageState extends State<PrayerListPage> {
   @override
   void initState() {
     super.initState();
+    _dbHelper = widget.dbHelper ?? DBHelper();
     _ensureDefaultList();
   }
 
@@ -234,26 +236,59 @@ class _PrayerListPageState extends State<PrayerListPage> {
             itemCount: _contacts.length,
             itemBuilder: (context, index) {
               final contact = _contacts[index];
-              return ListTile(
-                leading: CircleAvatar(
-                  backgroundColor: Theme.of(
-                    context,
-                  ).colorScheme.primaryContainer,
-                  child: Text(
-                    contact.firstName.isNotEmpty ? contact.firstName[0] : '?',
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.onPrimaryContainer,
-                    ),
+              return Dismissible(
+                key: ValueKey(contact.id),
+                direction: DismissDirection.endToStart,
+                background: Container(
+                  color: Theme.of(context).colorScheme.error,
+                  alignment: Alignment.centerRight,
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Icon(
+                    Icons.delete,
+                    color: Theme.of(context).colorScheme.onError,
                   ),
                 ),
-                title: Text(contact.fullName),
-                subtitle:
-                    contact.location != null ? Text(contact.location!) : null,
-                onTap: () => _navigateToContactDetails(contact),
-                trailing: IconButton(
-                  icon: const Icon(Icons.remove_circle_outline),
-                  onPressed: () => _removeContact(contact.id),
-                  tooltip: 'Remove from list',
+                onDismissed: (direction) async {
+                  final contactName = contact.fullName;
+                  final contactId = contact.id;
+                  final listId = _list?.id;
+
+                  await _removeContact(contactId);
+
+                  if (!context.mounted) return;
+                  if (listId != null) {
+                    ScaffoldMessenger.of(context).clearSnackBars();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Removed $contactName from list'),
+                        action: SnackBarAction(
+                          label: 'UNDO',
+                          onPressed: () async {
+                            await _dbHelper.addContactToPrayerList(
+                                listId, contactId);
+                            await _loadListContacts(_list!);
+                          },
+                        ),
+                      ),
+                    );
+                  }
+                },
+                child: ListTile(
+                  leading: CircleAvatar(
+                    backgroundColor: Theme.of(
+                      context,
+                    ).colorScheme.primaryContainer,
+                    child: Text(
+                      contact.firstName.isNotEmpty ? contact.firstName[0] : '?',
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onPrimaryContainer,
+                      ),
+                    ),
+                  ),
+                  title: Text(contact.fullName),
+                  subtitle:
+                      contact.location != null ? Text(contact.location!) : null,
+                  onTap: () => _navigateToContactDetails(contact),
                 ),
               );
             },
