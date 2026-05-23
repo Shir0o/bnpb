@@ -241,8 +241,8 @@ class _PrayerListPageState extends State<PrayerListPage> {
                 direction: DismissDirection.endToStart,
                 background: Container(
                   color: Theme.of(context).colorScheme.error,
-                  alignment: Alignment.centerRight,
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  alignment: AlignmentDirectional.centerEnd,
+                  padding: const EdgeInsetsDirectional.only(end: 20),
                   child: Icon(
                     Icons.delete,
                     color: Theme.of(context).colorScheme.onError,
@@ -252,6 +252,10 @@ class _PrayerListPageState extends State<PrayerListPage> {
                   final contactName = contact.fullName;
                   final contactId = contact.id;
                   final listId = _list?.id;
+
+                  setState(() {
+                    _contacts.removeWhere((c) => c.id == contactId);
+                  });
 
                   await _removeContact(contactId);
 
