@@ -229,6 +229,7 @@ class ReminderService {
     await initialize();
     await _guardOperation('cancelChannel(${channel.name})', () async {
       final pending = await _plugin.pendingNotificationRequests();
+      final futures = <Future<void>>[];
       for (final request in pending) {
         final payload = request.payload;
         if (payload == null) {
@@ -237,12 +238,13 @@ class ReminderService {
         try {
           final decoded = jsonDecode(payload) as Map<String, dynamic>;
           if (decoded['channel'] == channel.name) {
-            await _plugin.cancel(request.id);
+            futures.add(_plugin.cancel(request.id));
           }
         } catch (_) {
           continue;
         }
       }
+      await Future.wait(futures);
     });
   }
 
@@ -266,6 +268,7 @@ class ReminderService {
       'cancelChannelForContact(${channel.name}, $contactId)',
       () async {
         final pending = await _plugin.pendingNotificationRequests();
+        final futures = <Future<void>>[];
         for (final request in pending) {
           final payload = request.payload;
           if (payload == null) {
@@ -275,12 +278,13 @@ class ReminderService {
             final decoded = jsonDecode(payload) as Map<String, dynamic>;
             if (decoded['channel'] == channel.name &&
                 decoded['contactId'] == contactId) {
-              await _plugin.cancel(request.id);
+              futures.add(_plugin.cancel(request.id));
             }
           } catch (_) {
             continue;
           }
         }
+        await Future.wait(futures);
       },
     );
   }
@@ -290,6 +294,7 @@ class ReminderService {
     await initialize();
     await _guardOperation('cancelAllForContact($contactId)', () async {
       final pending = await _plugin.pendingNotificationRequests();
+      final futures = <Future<void>>[];
       for (final request in pending) {
         final payload = request.payload;
         if (payload == null) {
@@ -298,12 +303,13 @@ class ReminderService {
         try {
           final decoded = jsonDecode(payload) as Map<String, dynamic>;
           if (decoded['contactId'] == contactId) {
-            await _plugin.cancel(request.id);
+            futures.add(_plugin.cancel(request.id));
           }
         } catch (_) {
           continue;
         }
       }
+      await Future.wait(futures);
     });
   }
 
