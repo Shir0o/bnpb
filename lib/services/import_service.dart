@@ -3,6 +3,7 @@ import 'dart:io';
 
 import '../db/db_helper.dart';
 import '../models/contact.dart';
+import 'package:sqflite_sqlcipher/sqflite.dart' as sqflite;
 import '../models/prayer_list.dart';
 import 'ai/ai_services.dart';
 import 'import_duplicate_detector.dart';
@@ -107,32 +108,24 @@ class ImportService {
     await _dbHelper.clearAllData();
     await _clearSemanticIndex();
 
-    // Pass 1: Insert all contacts first (without interactions/requests to avoid FK issues)
-    // This ensures all contact IDs exist before we try to link interactions.
-    for (final contact in restoredContacts) {
-      // Create a version without sub-items for the initial insert
-      // Note: insertContact in DBHelper actually handles the sub-items update internally
-      // if we pass the full object. However, to be safe with circular/peer references
-      // in interaction participants, it might be safer to insert contacts first.
-      // But DBHelper.insertContact `_upsertContactRow` does the whole tree for that contact.
-      //
-      // The issue is if Contact A references Contact B in an interaction, and B hasn't been inserted.
-      // SQLite FK constraints might fail if WE force them.
-      // The current DBHelper logic inserts the contact row first, THEN interactions.
-      // So as long as we iterate TWICE (once for contact rows, once for relations), we are safer.
-      //
-      // Existing logic in HomePage did:
-      // 1. Insert contact (with empty interactions)
-      // 2. Insert interactions
-      // 3. Insert prayer lists
-
-      final contactWithoutRelations = contact.copyWith(
-        interactions: [],
-        prayerRequests: [], // Logic in HomePage didn't explicitly clear requests, but stripping interactions is key
-      );
-      await _dbHelper.insertContact(contactWithoutRelations);
-    }
-
+    // Pass 1: Insert all contact rows first (without relations to avoid FK issues).
+    // Use a batched transaction to avoid N+1 query performance hits.
+    final db = await _dbHelper.database;
+    final nowStr = DateTime.now().toUtc().toIso8601String();
+    await db.transaction((txn) async {
+      final batch = txn.batch();
+      for (final contact in restoredContacts) {
+        final baseMap = contact.toMap();
+        // We only want to insert the contact row, not relations
+        baseMap.remove('interactions');
+        baseMap.remove('prayerRequests');
+        baseMap.remove('relationships');
+        baseMap.remove('tags');
+        baseMap['updatedAt'] = nowStr;
+        batch.insert('contacts', baseMap, conflictAlgorithm: sqflite.ConflictAlgorithm.replace);
+      }
+      await batch.commit(noResult: true);
+    });
     // Pass 2: Re-insert full contacts (or specifically interactions)
     // The previous HomePage logic iterated interactions manually.
     // Let's try to leverage DBHelper.insertContact for the full update if possible,
