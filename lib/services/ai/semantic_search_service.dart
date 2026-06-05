@@ -250,22 +250,30 @@ class FlutterGemmaSemanticSearchService implements SemanticSearchService {
       await FlutterGemmaPlugin.instance.clearVectorStore();
       final docs = documentsFor(contacts);
       var done = 0;
-      for (final doc in docs) {
-        await FlutterGemmaPlugin.instance.addDocument(
-          id: doc.id,
-          content: doc.content,
-          metadata: jsonEncode(doc.toMetadata()),
-        );
-        done += 1;
-        onProgress?.call(done, docs.length);
-        // Each addDocument is a pigeon hop posted to the platform main
-        // thread; firing N back-to-back saturates that thread and starves
-        // the renderer (1000+ dropped frames at N≈250). Yielding every 8
-        // gives the UI a chance to paint between batches without
-        // measurably extending total rebuild time.
-        if (done % 8 == 0) {
-          await Future<void>.delayed(Duration.zero);
+
+      // Process documents in batches using Future.wait to overlap platform channel
+      // IPC calls. This dramatically reduces total indexing time while still
+      // yielding to the UI thread between batches to prevent renderer starvation.
+      const batchSize = 10;
+      for (var i = 0; i < docs.length; i += batchSize) {
+        final end = (i + batchSize < docs.length) ? i + batchSize : docs.length;
+        final batch = docs.sublist(i, end);
+
+        final futures = <Future<void>>[];
+        for (final doc in batch) {
+          futures.add(FlutterGemmaPlugin.instance
+              .addDocument(
+            id: doc.id,
+            content: doc.content,
+            metadata: jsonEncode(doc.toMetadata()),
+          )
+              .then((_) {
+            done += 1;
+            onProgress?.call(done, docs.length);
+          }));
         }
+        await Future.wait(futures);
+        await Future<void>.delayed(Duration.zero);
       }
       _status = SemanticIndexStatus.ready;
     } catch (e) {
