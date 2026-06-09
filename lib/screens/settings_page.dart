@@ -9,6 +9,7 @@ import '../db/db_helper.dart';
 import '../models/contact.dart';
 import '../models/notification_preference.dart';
 import '../repositories/notification_preferences_repository.dart';
+import '../services/contact_service.dart';
 import '../services/google_drive_service.dart';
 import '../services/reminder_coordinator.dart';
 import '../services/reminder_service.dart';
@@ -179,6 +180,13 @@ class _SettingsPageState extends State<SettingsPage>
             title: const Text('Export options'),
             subtitle: const Text('CSV, PDF, JSON, or encrypted archive'),
             onTap: _isPurging ? null : _openExportOptions,
+          ),
+          ListTile(
+            leading: const Icon(Icons.cleaning_services_outlined),
+            title: const Text('De-duplicate interactions'),
+            subtitle:
+                const Text('Find and merge duplicate interaction entries'),
+            onTap: _isPurging || _isUpdating ? null : _confirmDeDuplicate,
           ),
           ListTile(
             leading: const Icon(Icons.delete_forever_outlined),
@@ -622,6 +630,56 @@ class _SettingsPageState extends State<SettingsPage>
       await ReminderService().cancelAll();
       await _securityService.secureDeleteAllData();
       _load();
+    }
+  }
+
+  Future<void> _confirmDeDuplicate() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('De-duplicate Interactions?'),
+        content: const Text(
+          'This will scan your interactions and merge duplicates sharing the same date and summary. This cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('De-duplicate'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      setState(() => _isUpdating = true);
+      try {
+        final mergedCount = await _dbHelper.deDuplicateInteractions();
+        ContactService().notifyContactsChanged();
+        await _load();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(mergedCount > 0
+                  ? 'Successfully merged $mergedCount duplicate interactions.'
+                  : 'No duplicate interactions found.'),
+            ),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to de-duplicate: $e')),
+          );
+        }
+      } finally {
+        if (mounted) {
+          setState(() => _isUpdating = false);
+        }
+      }
     }
   }
 

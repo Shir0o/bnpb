@@ -28,3 +28,5 @@ jobs:
       # Release build catches R8/proguard regressions from native deps
       # (e.g. flutter_gemma's MediaPipe libs) that `flutter test` doesn't.
       - run: flutter build apk --release --target-platform=android-arm64
+        env:
+          GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.vfs.watch=false"

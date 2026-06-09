@@ -249,6 +249,9 @@ class MockDBHelper implements DBHelper {
       throw UnimplementedError();
 
   @override
+  Future<int> deDuplicateInteractions() => throw UnimplementedError();
+
+  @override
   Future<Map<String, dynamic>> getGlobalMetadata() async {
     return {
       'contactCount': 0,

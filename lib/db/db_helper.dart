@@ -733,6 +733,8 @@ class DBHelper {
       interactionDao.getInteractions(updatedSince: since, includeDeleted: true);
   Future<Interaction?> getInteractionById(int id) =>
       interactionDao.getInteractionById(id);
+  Future<int> deDuplicateInteractions() =>
+      interactionDao.deDuplicateInteractions();
 
   @visibleForTesting
   Future<void> upsertContactRowForTest(

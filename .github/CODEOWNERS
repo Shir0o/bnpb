@@ -1,0 +1,8 @@
+# Define code owners for the repository.
+# These owners will be requested for review when pull requests modify files they own.
+
+# By default, owner @Shir0o owns all files in the repository.
+*       @Shir0o
+
+# Specific paths can have different owners if needed, for example:
+# /docs/   @Shir0o
