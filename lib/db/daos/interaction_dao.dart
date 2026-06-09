@@ -356,4 +356,126 @@ class InteractionDao extends BaseDao {
 
     return rows.isNotEmpty;
   }
+
+  Future<int> deDuplicateInteractions() async {
+    final db = await database;
+    // Fetch all active interactions
+    final activeInteractions = await getInteractions(includeDeleted: false);
+    if (activeInteractions.isEmpty) return 0;
+
+    // Group by occurredAt (UTC string representation) and normalized summary
+    final Map<String, List<Interaction>> groups = {};
+    for (final i in activeInteractions) {
+      final occurredKey = i.occurredAt.toUtc().toIso8601String();
+      final summaryKey = i.summary.trim().toLowerCase();
+      final key = '${occurredKey}_$summaryKey';
+      groups.putIfAbsent(key, () => []).add(i);
+    }
+
+    int mergedCount = 0;
+
+    await db.transaction((txn) async {
+      for (final entry in groups.entries) {
+        final group = entry.value;
+        if (group.length < 2) continue;
+
+        // Sort by id ascending so the oldest DB row is kept as primary
+        group.sort((a, b) {
+          if (a.id == null && b.id != null) return 1;
+          if (a.id != null && b.id == null) return -1;
+          if (a.id != null && b.id != null) return a.id!.compareTo(b.id!);
+          return a.updatedAt.compareTo(b.updatedAt);
+        });
+
+        var primary = group.first;
+        final duplicates = group.sublist(1);
+
+        // Merge properties
+        final participantIds = primary.participantIds.toSet();
+        final attachments = [...primary.attachments];
+        var markForPrayer = primary.markForPrayer;
+        var notes = primary.notes;
+        var durationMinutes = primary.durationMinutes;
+        var location = primary.location;
+        var followUpAt = primary.followUpAt;
+
+        for (final dup in duplicates) {
+          participantIds.addAll(dup.participantIds);
+          for (final att in dup.attachments) {
+            if (!attachments.any((a) => a.uri == att.uri)) {
+              attachments.add(att);
+            }
+          }
+          if (dup.markForPrayer) {
+            markForPrayer = true;
+          }
+          if (dup.notes != null && dup.notes!.isNotEmpty) {
+            if (notes == null || notes.isEmpty) {
+              notes = dup.notes;
+            } else if (notes != dup.notes) {
+              notes = '$notes\n${dup.notes}';
+            }
+          }
+          if (dup.durationMinutes != null) {
+            if (durationMinutes == null ||
+                dup.durationMinutes! > durationMinutes) {
+              durationMinutes = dup.durationMinutes;
+            }
+          }
+          if (location == null || location.isEmpty) {
+            location = dup.location;
+          }
+          followUpAt ??= dup.followUpAt;
+        }
+
+        // Update primary interaction with merged properties
+        final now = DateTime.now().toUtc();
+        primary = primary.copyWith(
+          participantIds: participantIds.toList(),
+          attachments: attachments,
+          markForPrayer: markForPrayer,
+          notes: notes,
+          durationMinutes: durationMinutes,
+          location: location,
+          followUpAt: followUpAt,
+          updatedAt: now,
+        );
+
+        final interactionMap = primary.toMap(
+          includeId: false,
+          encodeAttachments: true,
+        );
+        interactionMap.remove('participantIds');
+        interactionMap['updatedAt'] = now.toIso8601String();
+        interactionMap['deletedAt'] = null;
+
+        await txn.update(
+          'interactions',
+          interactionMap,
+          where: 'id = ?',
+          whereArgs: [primary.id],
+        );
+
+        await replaceInteractionParticipants(
+            txn, primary.id!, primary.participantIds);
+
+        // Soft delete the duplicates
+        final nowStr = now.toIso8601String();
+        for (final dup in duplicates) {
+          await txn.update(
+            'interactions',
+            {
+              'deletedAt': nowStr,
+              'updatedAt': nowStr,
+            },
+            where: 'id = ?',
+            whereArgs: [dup.id],
+          );
+          mergedCount++;
+        }
+      }
+    });
+
+    return mergedCount;
+  }
 }
