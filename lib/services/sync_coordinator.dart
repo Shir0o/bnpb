@@ -78,11 +78,46 @@ class SyncCoordinator {
     }
 
     // Enrich Prayer Requests with interactionSyncId for remote resolution
+    final interactionIds = prayers
+        .map((p) => p.interactionId)
+        .where((id) => id != null)
+        .cast<int>()
+        .toSet()
+        .toList();
+
+    final interactionSyncIds = <int, String>{};
+    if (interactionIds.isNotEmpty) {
+      final db = await _db.database;
+      final chunkSize = 900;
+      for (var i = 0; i < interactionIds.length; i += chunkSize) {
+        final end = (i + chunkSize < interactionIds.length)
+            ? i + chunkSize
+            : interactionIds.length;
+        final chunk = interactionIds.sublist(i, end);
+        final placeholders = List.filled(chunk.length, '?').join(',');
+
+        final rows = await db.query(
+          'interactions',
+          columns: ['id', 'syncId'],
+          where: 'id IN ($placeholders)',
+          whereArgs: chunk,
+        );
+
+        for (final row in rows) {
+          final id = row['id'] as int;
+          final syncId = row['syncId'] as String?;
+          if (syncId != null) {
+            interactionSyncIds[id] = syncId;
+          }
+        }
+      }
+    }
+
     final enrichedPrayers = <Map<String, dynamic>>[];
     for (final p in prayers) {
       final map = p.toMap();
       if (p.interactionId != null) {
-        final iSyncId = await _getInteractionSyncId(p.interactionId!);
+        final iSyncId = interactionSyncIds[p.interactionId!];
         if (iSyncId != null) {
           map['interactionSyncId'] = iSyncId;
         }
@@ -119,27 +154,14 @@ class SyncCoordinator {
     await _updateLastExportTime(now);
 
     return SyncResult(
-      exportedCount: contacts.length +
+      exportedCount:
+          contacts.length +
           interactions.length +
           prayers.length +
           prayerLists.length +
           relationships.length,
       importedCount: 0,
     );
-  }
-
-  Future<String?> _getInteractionSyncId(int id) async {
-    final db = await _db.database;
-    final rows = await db.query(
-      'interactions',
-      columns: ['syncId'],
-      where: 'id = ?',
-      whereArgs: [id],
-    );
-    if (rows.isNotEmpty) {
-      return rows.first['syncId'] as String?;
-    }
-    return null;
   }
 
   Future<SyncResult> importChanges(Directory syncDir) async {
@@ -150,13 +172,17 @@ class SyncCoordinator {
     final deviceId = await getDeviceId();
     final processed = await _getProcessedFiles();
 
-    final files =
-        await syncDir.list().where((f) => f is File).cast<File>().where((f) {
-      final name = p.basename(f.path);
-      return name.endsWith('_data.json') &&
-          !name.startsWith(deviceId) &&
-          !processed.contains(name);
-    }).toList();
+    final files = await syncDir
+        .list()
+        .where((f) => f is File)
+        .cast<File>()
+        .where((f) {
+          final name = p.basename(f.path);
+          return name.endsWith('_data.json') &&
+              !name.startsWith(deviceId) &&
+              !processed.contains(name);
+        })
+        .toList();
 
     files.sort((a, b) {
       final nameA = p.basename(a.path);
