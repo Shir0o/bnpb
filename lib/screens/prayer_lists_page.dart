@@ -12,7 +12,13 @@ import 'contact_details_page.dart';
 
 class PrayerListPage extends StatefulWidget {
   final DBHelper? dbHelper;
-  const PrayerListPage({super.key, this.dbHelper});
+  final void Function(BuildContext context, Contact contact)?
+      onNavigateToContactDetails;
+  const PrayerListPage({
+    super.key,
+    this.dbHelper,
+    this.onNavigateToContactDetails,
+  });
 
   @override
   State<PrayerListPage> createState() => _PrayerListPageState();
@@ -23,12 +29,26 @@ class _PrayerListPageState extends State<PrayerListPage> {
   PrayerList? _list;
   List<Contact> _contacts = [];
   bool _isLoading = true;
+  late ScaffoldMessengerState _scaffoldMessenger;
 
   @override
   void initState() {
     super.initState();
     _dbHelper = widget.dbHelper ?? DBHelper();
     _ensureDefaultList();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _scaffoldMessenger = ScaffoldMessenger.of(context);
+  }
+
+  @override
+  void dispose() {
+    debugPrint('PRAYER LIST PAGE DISPOSED');
+    _scaffoldMessenger.clearSnackBars();
+    super.dispose();
   }
 
   Future<void> _ensureDefaultList() async {
@@ -156,6 +176,11 @@ class _PrayerListPageState extends State<PrayerListPage> {
   }
 
   void _navigateToContactDetails(Contact contact) {
+    _scaffoldMessenger.clearSnackBars();
+    if (widget.onNavigateToContactDetails != null) {
+      widget.onNavigateToContactDetails!(context, contact);
+      return;
+    }
     Navigator.of(context)
         .push(
       MaterialPageRoute(
@@ -261,13 +286,14 @@ class _PrayerListPageState extends State<PrayerListPage> {
 
                   if (!context.mounted) return;
                   if (listId != null) {
-                    ScaffoldMessenger.of(context).clearSnackBars();
-                    ScaffoldMessenger.of(context).showSnackBar(
+                    _scaffoldMessenger.clearSnackBars();
+                    _scaffoldMessenger.showSnackBar(
                       SnackBar(
                         content: Text('Removed $contactName from list'),
                         action: SnackBarAction(
                           label: 'UNDO',
                           onPressed: () async {
+                            _scaffoldMessenger.hideCurrentSnackBar();
                             await _dbHelper.addContactToPrayerList(
                                 listId, contactId);
                             await _loadListContacts(_list!);

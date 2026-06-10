@@ -28,6 +28,9 @@ class AiFeatureGate {
     return prefs.getBool(_enabledKey) ?? false;
   }
 
+  static const String _showSuggestionsOnSaveKey =
+      'ai.features.show_suggestions_on_save';
+
   Future<void> setEnabled(bool value) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_enabledKey, value);
@@ -46,5 +49,15 @@ class AiFeatureGate {
       _backendKey,
       value == AiBackend.cloud ? _backendCloud : _backendLocal,
     );
+  }
+
+  Future<bool> isShowSuggestionsOnSaveEnabled() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_showSuggestionsOnSaveKey) ?? true;
+  }
+
+  Future<void> setShowSuggestionsOnSaveEnabled(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_showSuggestionsOnSaveKey, value);
   }
 }
