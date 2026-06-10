@@ -203,7 +203,8 @@ class FlutterBackgroundDownloader implements BackgroundDownloader {
               reachedTerminalNatively = true;
               if (!controller.isClosed) {
                 controller.addError(
-                    StateError('Background download failed (task $id)'));
+                  StateError('Background download failed (task $id)'),
+                );
               }
               await teardown(cancelTask: false);
               await controller.close();
@@ -225,7 +226,8 @@ class FlutterBackgroundDownloader implements BackgroundDownloader {
           );
           if (taskId == null) {
             controller.addError(
-                StateError('flutter_downloader returned a null task id'));
+              StateError('flutter_downloader returned a null task id'),
+            );
             await teardown(cancelTask: false);
             await controller.close();
           }
@@ -245,8 +247,9 @@ class FlutterBackgroundDownloader implements BackgroundDownloader {
 /// isolate. Forwards events to the UI isolate via the named send port.
 @pragma('vm:entry-point')
 void _downloadCallback(String id, int status, int progress) {
-  final send =
-      IsolateNameServer.lookupPortByName(FlutterBackgroundDownloader._portName);
+  final send = IsolateNameServer.lookupPortByName(
+    FlutterBackgroundDownloader._portName,
+  );
   send?.send([id, status, progress]);
 }
 

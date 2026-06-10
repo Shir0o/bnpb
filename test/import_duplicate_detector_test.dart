@@ -63,7 +63,11 @@ void main() {
   test('flags nickname expansion (Bob <-> Robert) when surnames match', () {
     final groups = detector.findDuplicateGroups([
       _contact(
-          id: '1', firstName: 'Robert', lastName: 'Smith', nickname: 'Bob'),
+        id: '1',
+        firstName: 'Robert',
+        lastName: 'Smith',
+        nickname: 'Bob',
+      ),
       _contact(id: '2', firstName: 'Bob', lastName: 'Smith'),
     ]);
     expect(groups, hasLength(1));
@@ -73,7 +77,11 @@ void main() {
   test('flags shared phone number across different formats', () {
     final groups = detector.findDuplicateGroups([
       _contact(
-          id: '1', firstName: 'Jane', lastName: 'Doe', phone: '(415) 555-0199'),
+        id: '1',
+        firstName: 'Jane',
+        lastName: 'Doe',
+        phone: '(415) 555-0199',
+      ),
       _contact(id: '2', firstName: 'J.', lastName: 'D.', phone: '4155550199'),
     ]);
     expect(groups, hasLength(1));
@@ -101,7 +109,11 @@ void main() {
     final groups = detector.findDuplicateGroups([
       _contact(id: '1', firstName: 'Robert', lastName: 'Smith'),
       _contact(
-          id: '2', firstName: 'Robert', lastName: 'Smith', phone: '5550100'),
+        id: '2',
+        firstName: 'Robert',
+        lastName: 'Smith',
+        phone: '5550100',
+      ),
       _contact(id: '3', firstName: 'Z', phone: '5550100'),
     ]);
     expect(groups, hasLength(1));
@@ -113,7 +125,11 @@ void main() {
       _contact(id: '1', firstName: 'Alice', lastName: 'Smith', phone: '111'),
       _contact(id: '2', firstName: 'Bob', lastName: 'Jones', phone: '222'),
       _contact(
-          id: '3', firstName: 'Carol', lastName: 'Brown', email: 'c@x.com'),
+        id: '3',
+        firstName: 'Carol',
+        lastName: 'Brown',
+        email: 'c@x.com',
+      ),
     ]);
     expect(groups, isEmpty);
   });

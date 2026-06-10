@@ -20,9 +20,20 @@ class SecurityService {
   SecurityService._();
 
   static final SecurityService _instance = SecurityService._();
+  static SecurityService? _testOverride;
 
   /// Singleton accessor.
-  factory SecurityService() => _instance;
+  factory SecurityService() => _testOverride ?? _instance;
+
+  @visibleForTesting
+  static void overrideForTest(SecurityService service) {
+    _testOverride = service;
+  }
+
+  @visibleForTesting
+  static void resetTestOverride() {
+    _testOverride = null;
+  }
 
   static const _dbKeyStorageKey = 'db_encryption_key';
   static const _passwordHashKey = 'lock_password_hash';

@@ -17,9 +17,20 @@ class ReminderService {
   ReminderService._();
 
   static final ReminderService _instance = ReminderService._();
+  static ReminderService? _testOverride;
 
   /// Singleton accessor.
-  factory ReminderService() => _instance;
+  factory ReminderService() => _testOverride ?? _instance;
+
+  @visibleForTesting
+  static void overrideForTest(ReminderService service) {
+    _testOverride = service;
+  }
+
+  @visibleForTesting
+  static void resetTestOverride() {
+    _testOverride = null;
+  }
 
   final FlutterLocalNotificationsPlugin _plugin =
       FlutterLocalNotificationsPlugin();

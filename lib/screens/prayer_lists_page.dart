@@ -269,7 +269,9 @@ class _PrayerListPageState extends State<PrayerListPage> {
                           label: 'UNDO',
                           onPressed: () async {
                             await _dbHelper.addContactToPrayerList(
-                                listId, contactId);
+                              listId,
+                              contactId,
+                            );
                             await _loadListContacts(_list!);
                           },
                         ),

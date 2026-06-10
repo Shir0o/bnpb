@@ -157,10 +157,7 @@ class RelationshipInsightsRepository {
       ...silent,
     ].take(maxPerContactInsights).toList();
 
-    final result = <RelationshipInsight>[
-      ...perContact,
-      ...stalePrayers,
-    ];
+    final result = <RelationshipInsight>[...perContact, ...stalePrayers];
 
     final globalFollowUp = _buildFollowUpRate(
       totalDueFollowUps,
@@ -182,7 +179,8 @@ class RelationshipInsightsRepository {
     final gapsDays = <int>[];
     for (var i = 1; i < sorted.length; i++) {
       gapsDays.add(
-          sorted[i].occurredAt.difference(sorted[i - 1].occurredAt).inDays);
+        sorted[i].occurredAt.difference(sorted[i - 1].occurredAt).inDays,
+      );
     }
     final medianGap = _median(gapsDays);
     if (medianGap <= 0) return null;
@@ -233,9 +231,11 @@ class RelationshipInsightsRepository {
   RelationshipInsight? _detectStalePrayers(Contact contact, DateTime now) {
     final cutoff = now.subtract(stalePrayerAge);
     final stale = contact.prayerRequests
-        .where((p) =>
-            p.status == PrayerRequestStatus.pending &&
-            p.requestedAt.isBefore(cutoff))
+        .where(
+          (p) =>
+              p.status == PrayerRequestStatus.pending &&
+              p.requestedAt.isBefore(cutoff),
+        )
         .toList();
     if (stale.length < stalePrayerMinCount) return null;
     return RelationshipInsight(
@@ -247,9 +247,11 @@ class RelationshipInsightsRepository {
       details: {
         'pendingCount': stale.length,
         'oldestDays': now
-            .difference(stale
-                .map((p) => p.requestedAt)
-                .reduce((a, b) => a.isBefore(b) ? a : b))
+            .difference(
+              stale
+                  .map((p) => p.requestedAt)
+                  .reduce((a, b) => a.isBefore(b) ? a : b),
+            )
             .inDays,
       },
     );
@@ -261,21 +263,25 @@ class RelationshipInsightsRepository {
   ) {
     final cutoff = now.subtract(answeredPrayerWindow);
     return contact.prayerRequests
-        .where((p) =>
-            p.status == PrayerRequestStatus.answered &&
-            p.answeredAt != null &&
-            p.answeredAt!.isAfter(cutoff))
-        .map((p) => RelationshipInsight(
-              id: 'answered:${contact.id}:${p.syncId}',
-              type: RelationshipInsightType.answeredPrayer,
-              contactId: contact.id,
-              contactName: contact.fullName,
-              title: 'Answered prayer for ${contact.fullName}',
-              details: {
-                'description': p.description,
-                'answeredAt': p.answeredAt!.toIso8601String(),
-              },
-            ));
+        .where(
+          (p) =>
+              p.status == PrayerRequestStatus.answered &&
+              p.answeredAt != null &&
+              p.answeredAt!.isAfter(cutoff),
+        )
+        .map(
+          (p) => RelationshipInsight(
+            id: 'answered:${contact.id}:${p.syncId}',
+            type: RelationshipInsightType.answeredPrayer,
+            contactId: contact.id,
+            contactName: contact.fullName,
+            title: 'Answered prayer for ${contact.fullName}',
+            details: {
+              'description': p.description,
+              'answeredAt': p.answeredAt!.toIso8601String(),
+            },
+          ),
+        );
   }
 
   RelationshipInsight? _buildFollowUpRate(int total, int completed) {
@@ -286,11 +292,7 @@ class RelationshipInsightsRepository {
       id: 'follow-up-rate',
       type: RelationshipInsightType.followUpCompletionRate,
       title: 'Follow-up completion: $percent%',
-      details: {
-        'totalDue': total,
-        'completed': completed,
-        'percent': percent,
-      },
+      details: {'totalDue': total, 'completed': completed, 'percent': percent},
     );
   }
 

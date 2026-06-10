@@ -14,7 +14,7 @@ const _standardRoles = <String>[
   'Child',
   'Spouse',
   'Sibling',
-  'Other'
+  'Other',
 ];
 
 String _inverseRole(String role, {String? customType}) {
@@ -151,27 +151,33 @@ class _AddFamilyPageState extends State<AddFamilyPage> {
     for (final m in _members) {
       final last = m.lastName.text.trim();
       final memberId = nextId();
-      memberContacts.add(Contact(
-        id: memberId,
-        firstName: m.firstName.text.trim(),
-        lastName: last.isEmpty ? null : last,
-      ));
+      memberContacts.add(
+        Contact(
+          id: memberId,
+          firstName: m.firstName.text.trim(),
+          lastName: last.isEmpty ? null : last,
+        ),
+      );
 
       final role = m.role;
       final customType = role == 'Other' ? m.customRole.text.trim() : null;
       final forwardType = role == 'Other' ? (customType ?? 'Other') : role;
       final inverseType = _inverseRole(role, customType: customType);
 
-      relationships.add(Relationship(
-        sourceContactId: anchor.id,
-        targetContactId: memberId,
-        type: forwardType,
-      ));
-      relationships.add(Relationship(
-        sourceContactId: memberId,
-        targetContactId: anchor.id,
-        type: inverseType,
-      ));
+      relationships.add(
+        Relationship(
+          sourceContactId: anchor.id,
+          targetContactId: memberId,
+          type: forwardType,
+        ),
+      );
+      relationships.add(
+        Relationship(
+          sourceContactId: memberId,
+          targetContactId: anchor.id,
+          type: inverseType,
+        ),
+      );
     }
 
     // Auto-sibling: any two members that are both Child of the anchor.
@@ -181,16 +187,12 @@ class _AddFamilyPageState extends State<AddFamilyPage> {
         if (_members[j].role != 'Child') continue;
         final a = memberContacts[i].id;
         final b = memberContacts[j].id;
-        relationships.add(Relationship(
-          sourceContactId: a,
-          targetContactId: b,
-          type: 'Sibling',
-        ));
-        relationships.add(Relationship(
-          sourceContactId: b,
-          targetContactId: a,
-          type: 'Sibling',
-        ));
+        relationships.add(
+          Relationship(sourceContactId: a, targetContactId: b, type: 'Sibling'),
+        );
+        relationships.add(
+          Relationship(sourceContactId: b, targetContactId: a, type: 'Sibling'),
+        );
       }
     }
 
@@ -200,8 +202,11 @@ class _AddFamilyPageState extends State<AddFamilyPage> {
       final dbHelper = DBHelper();
       final database = await dbHelper.database;
       await database.transaction((txn) async {
-        await dbHelper.contactDao
-            .upsertContactRow(txn, anchor, isUpdate: false);
+        await dbHelper.contactDao.upsertContactRow(
+          txn,
+          anchor,
+          isUpdate: false,
+        );
         for (final c in memberContacts) {
           await dbHelper.contactDao.upsertContactRow(txn, c, isUpdate: false);
         }
@@ -216,9 +221,9 @@ class _AddFamilyPageState extends State<AddFamilyPage> {
 
       if (!mounted) return;
       final total = 1 + memberContacts.length;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Saved $total contacts')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Saved $total contacts')));
 
       unawaited(BackupService().exportBackup());
       unawaited(ReminderCoordinator().syncSignificantDates(anchor));
@@ -229,9 +234,9 @@ class _AddFamilyPageState extends State<AddFamilyPage> {
       Navigator.of(context).pop();
     } catch (error, stackTrace) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to save family: $error')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to save family: $error')));
       debugPrint('Failed to save family: $error');
       debugPrintStack(stackTrace: stackTrace);
     } finally {
@@ -302,10 +307,9 @@ class _AddFamilyPageState extends State<AddFamilyPage> {
   Widget _sectionLabel(BuildContext context, String text) {
     return Text(
       text,
-      style: Theme.of(context)
-          .textTheme
-          .titleSmall
-          ?.copyWith(fontWeight: FontWeight.bold),
+      style: Theme.of(
+        context,
+      ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
     );
   }
 
@@ -452,9 +456,11 @@ class _AddFamilyPageState extends State<AddFamilyPage> {
             ],
             const SizedBox(height: 8),
             ListenableBuilder(
-              listenable: Listenable.merge(
-                [m.firstName, m.customRole, _anchorFirstName],
-              ),
+              listenable: Listenable.merge([
+                m.firstName,
+                m.customRole,
+                _anchorFirstName,
+              ]),
               builder: (context, _) => Text(
                 _roleSummary(m),
                 style: Theme.of(context).textTheme.bodySmall,

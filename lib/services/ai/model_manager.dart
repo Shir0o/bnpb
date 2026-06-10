@@ -180,7 +180,8 @@ class ModelManager {
           if (actual != _expectedSha256) {
             await partial.delete();
             throw StateError(
-                'Model checksum mismatch (expected $_expectedSha256)');
+              'Model checksum mismatch (expected $_expectedSha256)',
+            );
           }
         }
         // On Windows, rename fails if the destination already exists, so

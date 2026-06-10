@@ -189,9 +189,7 @@ class _AddContactPageState extends State<AddContactPage>
                 ? null
                 : () {
                     Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => const AddFamilyPage(),
-                      ),
+                      MaterialPageRoute(builder: (_) => const AddFamilyPage()),
                     );
                   },
           ),
@@ -338,8 +336,9 @@ class _AddContactPageState extends State<AddContactPage>
         if (query.isEmpty) {
           return suggestions;
         }
-        return suggestions
-            .where((option) => option.toLowerCase().contains(query));
+        return suggestions.where(
+          (option) => option.toLowerCase().contains(query),
+        );
       },
       fieldViewBuilder: (context, textController, focusNode, onFieldSubmitted) {
         return TextFormField(

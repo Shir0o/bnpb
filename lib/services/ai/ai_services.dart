@@ -156,7 +156,8 @@ class AiServices {
             await _embedding.embed('warmup');
             if (kDebugMode) {
               debugPrint(
-                  '[ai.perf] embedder.warmup ms=${sw.elapsedMilliseconds}');
+                '[ai.perf] embedder.warmup ms=${sw.elapsedMilliseconds}',
+              );
             }
           } catch (_) {
             // Warmup is best-effort; a real query will surface any error.

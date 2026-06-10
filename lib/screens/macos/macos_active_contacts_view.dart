@@ -145,8 +145,9 @@ class _MacOSActiveContactsViewState extends State<MacOSActiveContactsView> {
         Container(
           width: 300,
           decoration: BoxDecoration(
-            border:
-                Border(right: BorderSide(color: colorScheme.outlineVariant)),
+            border: Border(
+              right: BorderSide(color: colorScheme.outlineVariant),
+            ),
             color: colorScheme.surfaceContainerLowest,
           ),
           child: Column(
@@ -212,7 +213,9 @@ class _MacOSActiveContactsViewState extends State<MacOSActiveContactsView> {
                     : ListView.separated(
                         itemCount: _contacts.length,
                         separatorBuilder: (context, index) => Divider(
-                            height: 1, color: colorScheme.outlineVariant),
+                          height: 1,
+                          color: colorScheme.outlineVariant,
+                        ),
                         itemBuilder: (context, index) {
                           final contact = _contacts[index];
                           final isSelected = _selectedContact?.id == contact.id;
@@ -458,8 +461,9 @@ class _MacOSActiveContactsViewState extends State<MacOSActiveContactsView> {
                       horizontal: 16,
                       vertical: 8,
                     ),
-                    backgroundColor:
-                        colorScheme.primary.withValues(alpha: 0.08),
+                    backgroundColor: colorScheme.primary.withValues(
+                      alpha: 0.08,
+                    ),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(6),
                     ),

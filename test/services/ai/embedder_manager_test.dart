@@ -85,10 +85,7 @@ void main() {
     expect(downloader.requestedUrls, [modelUrl, tokUrl]);
     expect(await manager.status(), EmbedderStatus.ready);
     expect(await File(await manager.modelPath()).readAsBytes(), [1, 2, 3, 4]);
-    expect(
-      await File(await manager.tokenizerPath()).readAsBytes(),
-      [9, 8, 7],
-    );
+    expect(await File(await manager.tokenizerPath()).readAsBytes(), [9, 8, 7]);
   });
 
   test('status() returns partial when one file is missing', () async {

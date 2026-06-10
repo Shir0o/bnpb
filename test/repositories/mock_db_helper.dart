@@ -249,6 +249,10 @@ class MockDBHelper implements DBHelper {
       throw UnimplementedError();
 
   @override
+  Future<List<InteractionDuplicateGroup>> findDuplicateInteractions() =>
+      throw UnimplementedError();
+
+  @override
   Future<int> deDuplicateInteractions() => throw UnimplementedError();
 
   @override

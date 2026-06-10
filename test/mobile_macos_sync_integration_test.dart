@@ -48,70 +48,69 @@ void main() {
       }
     });
 
-    test('syncs both directions through a shared folder within one second',
-        () async {
-      final mobileCoordinator = SyncCoordinator(dbHelper);
-      final macCoordinator = SyncCoordinator(dbHelper);
+    test(
+      'syncs both directions through a shared folder within one second',
+      () async {
+        final mobileCoordinator = SyncCoordinator(dbHelper);
+        final macCoordinator = SyncCoordinator(dbHelper);
 
-      await mobile.activate();
-      await dbHelper.insertContact(
-        Contact(
-          id: 'mobile-contact',
-          firstName: 'Mobile',
-          lastName: 'Friend',
-        ),
-      );
+        await mobile.activate();
+        await dbHelper.insertContact(
+          Contact(
+            id: 'mobile-contact',
+            firstName: 'Mobile',
+            lastName: 'Friend',
+          ),
+        );
 
-      final stopwatch = Stopwatch()..start();
-      final mobileExport = await mobileCoordinator.exportChanges(syncDir);
-      await mobile.savePreferences();
+        final stopwatch = Stopwatch()..start();
+        final mobileExport = await mobileCoordinator.exportChanges(syncDir);
+        await mobile.savePreferences();
 
-      await mac.activate();
-      final macImport = await macCoordinator.importChanges(syncDir);
-      final macContactsAfterImport = await dbHelper.getContacts();
+        await mac.activate();
+        final macImport = await macCoordinator.importChanges(syncDir);
+        final macContactsAfterImport = await dbHelper.getContacts();
 
-      await dbHelper.insertContact(
-        Contact(
-          id: 'mac-contact',
-          firstName: 'Mac',
-          lastName: 'Friend',
-        ),
-      );
-      final macExport = await macCoordinator.exportChanges(syncDir);
-      await mac.savePreferences();
+        await dbHelper.insertContact(
+          Contact(id: 'mac-contact', firstName: 'Mac', lastName: 'Friend'),
+        );
+        final macExport = await macCoordinator.exportChanges(syncDir);
+        await mac.savePreferences();
 
-      await mobile.activate();
-      final mobileImport = await mobileCoordinator.importChanges(syncDir);
-      final mobileContactsAfterImport = await dbHelper.getContacts();
-      stopwatch.stop();
+        await mobile.activate();
+        final mobileImport = await mobileCoordinator.importChanges(syncDir);
+        final mobileContactsAfterImport = await dbHelper.getContacts();
+        stopwatch.stop();
 
-      expect(mobileExport.exportedCount, greaterThanOrEqualTo(1));
-      expect(macImport.importedCount, greaterThanOrEqualTo(1));
-      expect(macExport.exportedCount, greaterThanOrEqualTo(1));
-      expect(mobileImport.importedCount, greaterThanOrEqualTo(1));
+        expect(mobileExport.exportedCount, greaterThanOrEqualTo(1));
+        expect(macImport.importedCount, greaterThanOrEqualTo(1));
+        expect(macExport.exportedCount, greaterThanOrEqualTo(1));
+        expect(mobileImport.importedCount, greaterThanOrEqualTo(1));
 
-      expect(
-        macContactsAfterImport.map((contact) => contact.id),
-        contains('mobile-contact'),
-      );
-      expect(
-        mobileContactsAfterImport.map((contact) => contact.id),
-        containsAll(['mobile-contact', 'mac-contact']),
-      );
-      expect(
-        mobileContactsAfterImport
-            .where((contact) => contact.id == 'mobile-contact'),
-        hasLength(1),
-      );
+        expect(
+          macContactsAfterImport.map((contact) => contact.id),
+          contains('mobile-contact'),
+        );
+        expect(
+          mobileContactsAfterImport.map((contact) => contact.id),
+          containsAll(['mobile-contact', 'mac-contact']),
+        );
+        expect(
+          mobileContactsAfterImport.where(
+            (contact) => contact.id == 'mobile-contact',
+          ),
+          hasLength(1),
+        );
 
-      expect(
-        stopwatch.elapsed,
-        lessThan(const Duration(seconds: 1)),
-        reason:
-            'Local handoff should feel nearly instant for a small mobile/mac '
-            'delta payload.',
-      );
-    });
+        expect(
+          stopwatch.elapsed,
+          lessThan(const Duration(seconds: 1)),
+          reason:
+              'Local handoff should feel nearly instant for a small mobile/mac '
+              'delta payload.',
+        );
+      },
+    );
   });
 }
 

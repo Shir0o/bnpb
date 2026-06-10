@@ -63,8 +63,9 @@ void main() {
       final llm = _FakeLlm(
         'Sure, here are ideas: [{"action":"Pray for her","days":1}] done.',
       );
-      final suggestions =
-          await FollowUpSuggestionService(llm).suggest(_interaction());
+      final suggestions = await FollowUpSuggestionService(
+        llm,
+      ).suggest(_interaction());
       expect(suggestions, hasLength(1));
       expect(suggestions[0].action, 'Pray for her');
     });
@@ -75,16 +76,18 @@ void main() {
   {"action":"Immediate ping","days":0},
   {"action":"Far-future note","days":500}
 ]''');
-      final suggestions =
-          await FollowUpSuggestionService(llm).suggest(_interaction());
+      final suggestions = await FollowUpSuggestionService(
+        llm,
+      ).suggest(_interaction());
       expect(suggestions[0].daysFromNow, 1);
       expect(suggestions[1].daysFromNow, 90);
     });
 
     test('coerces stringified day numbers', () async {
       final llm = _FakeLlm('[{"action":"X","days":"7"}]');
-      final suggestions =
-          await FollowUpSuggestionService(llm).suggest(_interaction());
+      final suggestions = await FollowUpSuggestionService(
+        llm,
+      ).suggest(_interaction());
       expect(suggestions.single.daysFromNow, 7);
     });
 
@@ -97,10 +100,13 @@ void main() {
   "not even an object",
   {"action":"Another good one","days":10}
 ]''');
-      final suggestions =
-          await FollowUpSuggestionService(llm).suggest(_interaction());
-      expect(
-          suggestions.map((s) => s.action), ['Good one', 'Another good one']);
+      final suggestions = await FollowUpSuggestionService(
+        llm,
+      ).suggest(_interaction());
+      expect(suggestions.map((s) => s.action), [
+        'Good one',
+        'Another good one',
+      ]);
     });
 
     test('deduplicates suggestions with identical actions', () async {
@@ -110,8 +116,9 @@ void main() {
   {"action":"SEND A CARD","days":7},
   {"action":"Send a different thing","days":5}
 ]''');
-      final suggestions =
-          await FollowUpSuggestionService(llm).suggest(_interaction());
+      final suggestions = await FollowUpSuggestionService(
+        llm,
+      ).suggest(_interaction());
       expect(suggestions, hasLength(2));
       expect(suggestions[0].action, 'Send a card');
       expect(suggestions[1].action, 'Send a different thing');
@@ -124,35 +131,36 @@ void main() {
   {"action":"C","days":3},{"action":"D","days":4},
   {"action":"E","days":5},{"action":"F","days":6}
 ]''');
-      final suggestions =
-          await FollowUpSuggestionService(llm).suggest(_interaction());
+      final suggestions = await FollowUpSuggestionService(
+        llm,
+      ).suggest(_interaction());
       expect(suggestions, hasLength(4));
     });
 
     test('returns empty list when no JSON array present', () async {
       final llm = _FakeLlm("I can't help with that.");
-      final suggestions =
-          await FollowUpSuggestionService(llm).suggest(_interaction());
+      final suggestions = await FollowUpSuggestionService(
+        llm,
+      ).suggest(_interaction());
       expect(suggestions, isEmpty);
     });
 
     test(
-        'returns empty list when interaction has no content, without calling LLM',
-        () async {
-      final llm = _FakeLlm('[{"action":"should not appear","days":3}]');
-      final service = FollowUpSuggestionService(llm);
-      final empty =
-          await service.suggest(_interaction(summary: '', notes: null));
-      expect(empty, isEmpty);
-      expect(llm.lastPrompt, isNull);
-    });
+      'returns empty list when interaction has no content, without calling LLM',
+      () async {
+        final llm = _FakeLlm('[{"action":"should not appear","days":3}]');
+        final service = FollowUpSuggestionService(llm);
+        final empty = await service.suggest(
+          _interaction(summary: '', notes: null),
+        );
+        expect(empty, isEmpty);
+        expect(llm.lastPrompt, isNull);
+      },
+    );
 
     test('throws StateError when LLM is not ready', () async {
       final service = FollowUpSuggestionService(_FakeLlm('', ready: false));
-      expect(
-        () => service.suggest(_interaction()),
-        throwsA(isA<StateError>()),
-      );
+      expect(() => service.suggest(_interaction()), throwsA(isA<StateError>()));
     });
 
     test('suggestedDate adds days at 9am local time', () {

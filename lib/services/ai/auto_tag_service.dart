@@ -67,7 +67,8 @@ class AutoTagService {
     final sw = Stopwatch()..start();
     if (kDebugMode) {
       debugPrint(
-          '[ai.perf] autotag.generate.start noteChars=${trimmed.length}');
+        '[ai.perf] autotag.generate.start noteChars=${trimmed.length}',
+      );
     }
 
     final stream = _llm.generateStream(
