@@ -95,8 +95,9 @@ class _PrayerDiaryEntryState extends State<PrayerDiaryEntry> {
 
   Widget _buildViewMode() {
     final colorScheme = Theme.of(context).colorScheme;
-    final timeStr = _timeFormat
-        .format(widget.request.answeredAt ?? widget.request.requestedAt);
+    final timeStr = _timeFormat.format(
+      widget.request.answeredAt ?? widget.request.requestedAt,
+    );
     final contactNames = widget.contacts.isEmpty
         ? 'Unknown'
         : widget.contacts.map((c) => c.displayName).join(', ');
@@ -107,9 +108,7 @@ class _PrayerDiaryEntryState extends State<PrayerDiaryEntry> {
       // Match Stitch "entry-card" styling (padding, border)
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
       decoration: BoxDecoration(
-        border: Border(
-          bottom: BorderSide(color: colorScheme.outlineVariant),
-        ),
+        border: Border(bottom: BorderSide(color: colorScheme.outlineVariant)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -142,11 +141,7 @@ class _PrayerDiaryEntryState extends State<PrayerDiaryEntry> {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(
-                      Icons.person,
-                      size: 14,
-                      color: colorScheme.primary,
-                    ),
+                    Icon(Icons.person, size: 14, color: colorScheme.primary),
                     const SizedBox(width: 4),
                     Text(
                       contactNames,
@@ -263,8 +258,9 @@ class _PrayerDiaryEntryState extends State<PrayerDiaryEntry> {
 
   Widget _buildEditMode() {
     final colorScheme = Theme.of(context).colorScheme;
-    final timeStr = _timeFormat
-        .format(widget.request.answeredAt ?? widget.request.requestedAt);
+    final timeStr = _timeFormat.format(
+      widget.request.answeredAt ?? widget.request.requestedAt,
+    );
     final contactNamesLabel = widget.contacts.isEmpty
         ? 'Unknown'
         : widget.contacts.map((c) => c.displayName).join(', ');
@@ -318,11 +314,7 @@ class _PrayerDiaryEntryState extends State<PrayerDiaryEntry> {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(
-                      Icons.person,
-                      size: 14,
-                      color: colorScheme.primary,
-                    ),
+                    Icon(Icons.person, size: 14, color: colorScheme.primary),
                     const SizedBox(width: 4),
                     Text(
                       contactNamesLabel,
@@ -513,8 +505,11 @@ class _PrayerDiaryEntryState extends State<PrayerDiaryEntry> {
         ),
         child: Row(
           children: [
-            Icon(icon,
-                size: 14, color: isSelected ? color : colorScheme.outline),
+            Icon(
+              icon,
+              size: 14,
+              color: isSelected ? color : colorScheme.outline,
+            ),
             const SizedBox(width: 4),
             Text(
               label,

@@ -15,8 +15,10 @@ class KeyValidationResult {
     this.message,
   });
 
-  static const KeyValidationResult valid =
-      KeyValidationResult(ok: true, networkError: false);
+  static const KeyValidationResult valid = KeyValidationResult(
+    ok: true,
+    networkError: false,
+  );
 
   static KeyValidationResult rejected(String reason) =>
       KeyValidationResult(ok: false, networkError: false, message: reason);

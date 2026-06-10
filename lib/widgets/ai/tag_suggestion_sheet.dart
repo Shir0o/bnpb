@@ -40,10 +40,8 @@ class TagSuggestionSheet extends StatefulWidget {
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
-      builder: (ctx) => TagSuggestionSheet(
-        noteText: noteText,
-        existingTags: existingTags,
-      ),
+      builder: (ctx) =>
+          TagSuggestionSheet(noteText: noteText, existingTags: existingTags),
     );
   }
 

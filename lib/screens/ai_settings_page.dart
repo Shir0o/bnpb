@@ -177,9 +177,9 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
             _downloadProgress = null;
             _busy = false;
           });
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Download failed: $error')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Download failed: $error')));
         },
         cancelOnError: true,
       );
@@ -189,9 +189,9 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
         _downloadProgress = null;
         _busy = false;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Download failed: $error')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Download failed: $error')));
     }
   }
 
@@ -440,8 +440,9 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
       ),
     );
     if (result == null) return;
-    await SecurityService()
-        .setGeminiApiKey(result.cleared ? null : result.value);
+    await SecurityService().setGeminiApiKey(
+      result.cleared ? null : result.value,
+    );
     await AiServices().refreshBackend();
     if (!mounted) return;
     final msg = result.cleared
@@ -540,15 +541,17 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
                 ),
                 SwitchListTile.adaptive(
                   title: const Text('Enable AI features'),
-                  subtitle: Text(_enabled
-                      ? _backend == AiBackend.cloud
-                          ? _hasGeminiKey
-                              ? 'On — using Google Gemini (cloud)'
-                              : 'On — cloud selected, no API key set'
-                          : _status == ModelStatus.ready
-                              ? 'On — using on-device model'
-                              : 'On — model not downloaded'
-                      : 'Off'),
+                  subtitle: Text(
+                    _enabled
+                        ? _backend == AiBackend.cloud
+                            ? _hasGeminiKey
+                                ? 'On — using Google Gemini (cloud)'
+                                : 'On — cloud selected, no API key set'
+                            : _status == ModelStatus.ready
+                                ? 'On — using on-device model'
+                                : 'On — model not downloaded'
+                        : 'Off',
+                  ),
                   value: _enabled,
                   onChanged: _busy ? null : _setEnabled,
                 ),
@@ -585,11 +588,13 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
                 SwitchListTile.adaptive(
                   secondary: const Icon(Icons.cloud_outlined),
                   title: const Text('Use Google Gemini (cloud)'),
-                  subtitle: Text(_backend == AiBackend.cloud
-                      ? _hasGeminiKey
-                          ? 'On — note text is sent to Google'
-                          : 'On — add an API key below'
-                      : 'Off — AI runs entirely on this device'),
+                  subtitle: Text(
+                    _backend == AiBackend.cloud
+                        ? _hasGeminiKey
+                            ? 'On — note text is sent to Google'
+                            : 'On — add an API key below'
+                        : 'Off — AI runs entirely on this device',
+                  ),
                   value: _backend == AiBackend.cloud,
                   onChanged: _busy ? null : _setBackend,
                 ),
@@ -644,12 +649,16 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
                 ),
                 ListTile(
                   leading: const Icon(Icons.download_outlined),
-                  title: Text(_status == ModelStatus.ready
-                      ? 'Re-download model'
-                      : 'Download model'),
-                  subtitle: Text(_hasToken
-                      ? _statusLabel()
-                      : 'Add a Hugging Face token first'),
+                  title: Text(
+                    _status == ModelStatus.ready
+                        ? 'Re-download model'
+                        : 'Download model',
+                  ),
+                  subtitle: Text(
+                    _hasToken
+                        ? _statusLabel()
+                        : 'Add a Hugging Face token first',
+                  ),
                   enabled: !_busy && _hasToken,
                   onTap: _busy || !_hasToken ? null : _download,
                 ),
@@ -703,9 +712,11 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
                 ),
                 ListTile(
                   leading: const Icon(Icons.psychology_outlined),
-                  title: Text(_embedderStatus == EmbedderStatus.ready
-                      ? 'Re-download embedder'
-                      : 'Download embedder'),
+                  title: Text(
+                    _embedderStatus == EmbedderStatus.ready
+                        ? 'Re-download embedder'
+                        : 'Download embedder',
+                  ),
                   subtitle: Text(_embedderStatusLabel()),
                   enabled: !_busy,
                   onTap: _busy ? null : _downloadEmbedder,
@@ -805,8 +816,9 @@ class _KeyDialog extends StatefulWidget {
 }
 
 class _KeyDialogState extends State<_KeyDialog> {
-  late final TextEditingController _controller =
-      TextEditingController(text: widget.initialValue);
+  late final TextEditingController _controller = TextEditingController(
+    text: widget.initialValue,
+  );
   bool _checking = false;
   String? _errorText;
   // Last network-error result. When non-null, we render a "Save anyway"
@@ -833,9 +845,7 @@ class _KeyDialogState extends State<_KeyDialog> {
     final result = await widget.validate(value);
     if (!mounted) return;
     if (result.ok) {
-      Navigator.of(context).pop(
-        _KeyDialogResult.saved(value, validated: true),
-      );
+      Navigator.of(context).pop(_KeyDialogResult.saved(value, validated: true));
       return;
     }
     setState(() {
@@ -847,9 +857,7 @@ class _KeyDialogState extends State<_KeyDialog> {
 
   void _onSaveAnyway() {
     final value = _controller.text.trim();
-    Navigator.of(context).pop(
-      _KeyDialogResult.saved(value, validated: false),
-    );
+    Navigator.of(context).pop(_KeyDialogResult.saved(value, validated: false));
   }
 
   @override

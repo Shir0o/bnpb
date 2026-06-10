@@ -26,11 +26,22 @@ class DBHelper {
   static const _dbVersion = 19;
 
   static final DBHelper _instance = DBHelper._();
+  static DBHelper? _testOverride;
   static Database? _database;
 
   DBHelper._();
 
-  factory DBHelper() => _instance;
+  factory DBHelper() => _testOverride ?? _instance;
+
+  @visibleForTesting
+  static void overrideForTest(DBHelper dbHelper) {
+    _testOverride = dbHelper;
+  }
+
+  @visibleForTesting
+  static void resetTestOverride() {
+    _testOverride = null;
+  }
 
   // DAO Instances
   late final ContactDao contactDao = ContactDao(this);
@@ -47,10 +58,14 @@ class DBHelper {
   @visibleForTesting
   Future<void> createSchemaForTest(Database db) => _createSchema(db);
 
-  Future<Database> get database async {
-    if (_database != null) return _database!;
-    _database = await _initDatabase();
-    return _database!;
+  Future<Database> get database {
+    if (_database != null) {
+      return Future.value(_database!);
+    }
+    return _initDatabase().then((db) {
+      _database = db;
+      return db;
+    });
   }
 
   /// Closes the cached database instance and clears the static reference.
@@ -546,14 +561,23 @@ class DBHelper {
 
   Future<Map<String, dynamic>> getGlobalMetadata() async {
     final db = await database;
-    final contactCount = Sqflite.firstIntValue(await db.rawQuery(
-            'SELECT COUNT(*) FROM contacts WHERE deletedAt IS NULL')) ??
+    final contactCount = Sqflite.firstIntValue(
+          await db.rawQuery(
+            'SELECT COUNT(*) FROM contacts WHERE deletedAt IS NULL',
+          ),
+        ) ??
         0;
-    final interactionCount = Sqflite.firstIntValue(await db.rawQuery(
-            'SELECT COUNT(*) FROM interactions WHERE deletedAt IS NULL')) ??
+    final interactionCount = Sqflite.firstIntValue(
+          await db.rawQuery(
+            'SELECT COUNT(*) FROM interactions WHERE deletedAt IS NULL',
+          ),
+        ) ??
         0;
-    final prayerCount = Sqflite.firstIntValue(await db.rawQuery(
-            'SELECT COUNT(*) FROM prayer_requests WHERE deletedAt IS NULL')) ??
+    final prayerCount = Sqflite.firstIntValue(
+          await db.rawQuery(
+            'SELECT COUNT(*) FROM prayer_requests WHERE deletedAt IS NULL',
+          ),
+        ) ??
         0;
 
     final lastUpdateRow = await db.rawQuery('''
@@ -733,6 +757,10 @@ class DBHelper {
       interactionDao.getInteractions(updatedSince: since, includeDeleted: true);
   Future<Interaction?> getInteractionById(int id) =>
       interactionDao.getInteractionById(id);
+
+  Future<List<InteractionDuplicateGroup>> findDuplicateInteractions() =>
+      interactionDao.findDuplicateInteractions();
+
   Future<int> deDuplicateInteractions() =>
       interactionDao.deDuplicateInteractions();
 

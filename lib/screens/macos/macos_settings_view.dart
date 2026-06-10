@@ -220,9 +220,9 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
         );
         if (!mounted) return;
         if (count < 0) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Import cancelled.')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('Import cancelled.')));
           return;
         }
         ScaffoldMessenger.of(context).showSnackBar(
@@ -295,10 +295,8 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
     Navigator.of(context, rootNavigator: true).pop();
     final resolved = await Navigator.of(context).push<List<Contact>>(
       MaterialPageRoute(
-        builder: (_) => ImportDuplicateReviewPage(
-          incoming: incoming,
-          groups: groups,
-        ),
+        builder: (_) =>
+            ImportDuplicateReviewPage(incoming: incoming, groups: groups),
       ),
     );
     if (!mounted) return resolved;
@@ -412,8 +410,9 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
           color: colorScheme.tertiaryContainer,
-          border:
-              Border.all(color: colorScheme.tertiary.withValues(alpha: 0.24)),
+          border: Border.all(
+            color: colorScheme.tertiary.withValues(alpha: 0.24),
+          ),
           borderRadius: BorderRadius.circular(4),
         ),
         child: Row(
@@ -441,8 +440,9 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
         color: colorScheme.secondaryContainer,
-        border:
-            Border.all(color: colorScheme.secondary.withValues(alpha: 0.24)),
+        border: Border.all(
+          color: colorScheme.secondary.withValues(alpha: 0.24),
+        ),
         borderRadius: BorderRadius.circular(4),
       ),
       child: Row(
@@ -518,9 +518,7 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
                         decoration: BoxDecoration(
                           color: colorScheme.surfaceContainerLowest,
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: colorScheme.outlineVariant,
-                          ),
+                          border: Border.all(color: colorScheme.outlineVariant),
                           boxShadow: [
                             BoxShadow(
                               color: colorScheme.shadow.withValues(alpha: 0.05),
@@ -675,9 +673,7 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
                         decoration: BoxDecoration(
                           color: colorScheme.surfaceContainerLowest,
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: colorScheme.outlineVariant,
-                          ),
+                          border: Border.all(color: colorScheme.outlineVariant),
                           boxShadow: [
                             BoxShadow(
                               color: colorScheme.shadow.withValues(alpha: 0.05),
@@ -1003,11 +999,7 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
                         ),
                       ),
                       const SizedBox(width: 8),
-                      Icon(
-                        Icons.error,
-                        size: 18,
-                        color: colorScheme.error,
-                      ),
+                      Icon(Icons.error, size: 18, color: colorScheme.error),
                     ],
                   )
                 else
@@ -1236,11 +1228,7 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
     );
   }
 
-  Widget _buildIndicator(
-    String label,
-    _LogTone tone, {
-    bool isDimmed = false,
-  }) {
+  Widget _buildIndicator(String label, _LogTone tone, {bool isDimmed = false}) {
     final colorScheme = Theme.of(context).colorScheme;
     final finalColor = _logToneColor(tone, colorScheme);
 

@@ -14,9 +14,13 @@ void main() {
     expect(lightTheme.useMaterial3, isTrue);
     expect(darkTheme.useMaterial3, isTrue);
     expect(
-        lightTheme.textTheme.bodyMedium?.fontFamily, startsWith('GoogleSans'));
+      lightTheme.textTheme.bodyMedium?.fontFamily,
+      startsWith('GoogleSans'),
+    );
     expect(
-        darkTheme.textTheme.bodyMedium?.fontFamily, startsWith('GoogleSans'));
+      darkTheme.textTheme.bodyMedium?.fontFamily,
+      startsWith('GoogleSans'),
+    );
     expect(lightTheme.colorScheme.brightness, Brightness.light);
     expect(darkTheme.colorScheme.brightness, Brightness.dark);
   });

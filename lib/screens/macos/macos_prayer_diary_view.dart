@@ -237,11 +237,7 @@ class _MacOSPrayerDiaryViewState extends State<MacOSPrayerDiaryView> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.book_outlined,
-              size: 48,
-              color: colorScheme.outline,
-            ),
+            Icon(Icons.book_outlined, size: 48, color: colorScheme.outline),
             const SizedBox(height: 16),
             Text(
               'No prayer entries found',

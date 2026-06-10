@@ -30,8 +30,10 @@ class _ImportDuplicateReviewPageState extends State<ImportDuplicateReviewPage> {
   @override
   void initState() {
     super.initState();
-    _decisions =
-        List<_GroupDecision>.filled(widget.groups.length, _GroupDecision.merge);
+    _decisions = List<_GroupDecision>.filled(
+      widget.groups.length,
+      _GroupDecision.merge,
+    );
   }
 
   void _confirm() {
@@ -73,12 +75,7 @@ class _ImportDuplicateReviewPageState extends State<ImportDuplicateReviewPage> {
           tooltip: 'Cancel import',
           onPressed: () => Navigator.of(context).pop(null),
         ),
-        actions: [
-          TextButton(
-            onPressed: _confirm,
-            child: const Text('Import'),
-          ),
-        ],
+        actions: [TextButton(onPressed: _confirm, child: const Text('Import'))],
       ),
       body: ListView.separated(
         padding: const EdgeInsets.all(16),
@@ -124,10 +121,7 @@ class _GroupCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              group.reason,
-              style: Theme.of(context).textTheme.labelMedium,
-            ),
+            Text(group.reason, style: Theme.of(context).textTheme.labelMedium),
             const SizedBox(height: 4),
             for (final c in group.members)
               Padding(
@@ -194,8 +188,9 @@ Contact mergeContacts(List<Contact> members) {
 
   final memberIds = {for (final c in members) c.id};
   String rewrite(String id) => memberIds.contains(id) ? primary.id : id;
-  List<String> rewriteAll(List<String> ids) =>
-      [for (final id in ids) rewrite(id)];
+  List<String> rewriteAll(List<String> ids) => [
+        for (final id in ids) rewrite(id),
+      ];
 
   final interactions = {
     for (final c in members)

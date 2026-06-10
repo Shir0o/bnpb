@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 
 import '../db/db_helper.dart';
 import '../models/contact.dart';
+import '../models/interaction.dart';
 import '../models/notification_preference.dart';
 import '../repositories/notification_preferences_repository.dart';
 import '../services/contact_service.dart';
@@ -184,8 +185,9 @@ class _SettingsPageState extends State<SettingsPage>
           ListTile(
             leading: const Icon(Icons.cleaning_services_outlined),
             title: const Text('De-duplicate interactions'),
-            subtitle:
-                const Text('Find and merge duplicate interaction entries'),
+            subtitle: const Text(
+              'Find and merge duplicate interaction entries',
+            ),
             onTap: _isPurging || _isUpdating ? null : _confirmDeDuplicate,
           ),
           ListTile(
@@ -202,9 +204,9 @@ class _SettingsPageState extends State<SettingsPage>
               leading: const Icon(Icons.auto_awesome_outlined),
               title: const Text('AI features'),
               subtitle: const Text('On-device suggestions, off by default'),
-              onTap: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const AiSettingsPage()),
-              ),
+              onTap: () => Navigator.of(
+                context,
+              ).push(MaterialPageRoute(builder: (_) => const AiSettingsPage())),
             ),
           ],
           const Divider(),
@@ -634,12 +636,129 @@ class _SettingsPageState extends State<SettingsPage>
   }
 
   Future<void> _confirmDeDuplicate() async {
+    setState(() => _isUpdating = true);
+
+    // Show a non-dismissible loading dialog
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const AlertDialog(
+        content: Row(
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(width: 20),
+            Text('Scanning for duplicates...'),
+          ],
+        ),
+      ),
+    );
+
+    List<InteractionDuplicateGroup> duplicates = [];
+    try {
+      duplicates = await _dbHelper.findDuplicateInteractions();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to scan for duplicates: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        Navigator.pop(context); // Dismiss the loading dialog
+        setState(() => _isUpdating = false);
+      }
+    }
+
+    if (duplicates.isEmpty) {
+      if (mounted) {
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('De-duplicate Interactions'),
+            content: const Text('No duplicate interactions found.'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('OK'),
+              ),
+            ],
+          ),
+        );
+      }
+      return;
+    }
+
+    final totalDuplicatesCount = duplicates.fold<int>(
+      0,
+      (sum, g) => sum + g.duplicates.length,
+    );
+
+    if (!mounted) return;
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('De-duplicate Interactions?'),
-        content: const Text(
-          'This will scan your interactions and merge duplicates sharing the same date and summary. This cannot be undone.',
+        title: const Text('Merge Duplicate Interactions?'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'We found ${duplicates.length} duplicate groups containing '
+              '${totalDuplicatesCount + duplicates.length} total entries. '
+              'The primary entries will be updated and $totalDuplicatesCount duplicate '
+              'entries will be merged and soft-deleted. This cannot be undone.',
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Duplicate groups found:',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            Container(
+              width: double.maxFinite,
+              decoration: BoxDecoration(
+                color: Theme.of(context)
+                    .colorScheme
+                    .surfaceContainerHighest
+                    .withValues(alpha: 0.3),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: Theme.of(context)
+                      .colorScheme
+                      .outline
+                      .withValues(alpha: 0.2),
+                ),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.of(context).size.height * 0.3,
+                ),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      for (final group in duplicates) ...[
+                        ListTile(
+                          dense: true,
+                          contentPadding: EdgeInsets.zero,
+                          title: Text(
+                            group.primary.summary,
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          subtitle: Text(
+                            '${DateFormat.yMMMd().format(group.primary.occurredAt.toLocal())} • '
+                            '${group.duplicates.length} duplicate${group.duplicates.length > 1 ? 's' : ''} to merge',
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
         actions: [
           TextButton(
@@ -663,17 +782,19 @@ class _SettingsPageState extends State<SettingsPage>
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(mergedCount > 0
-                  ? 'Successfully merged $mergedCount duplicate interactions.'
-                  : 'No duplicate interactions found.'),
+              content: Text(
+                mergedCount > 0
+                    ? 'Successfully merged $mergedCount duplicate interactions.'
+                    : 'No duplicate interactions found.',
+              ),
             ),
           );
         }
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to de-duplicate: $e')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Failed to de-duplicate: $e')));
         }
       } finally {
         if (mounted) {

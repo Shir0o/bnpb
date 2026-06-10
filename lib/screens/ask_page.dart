@@ -204,8 +204,9 @@ class _AskPageState extends State<AskPage> {
                       margin: const EdgeInsets.only(bottom: 12),
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: theme.colorScheme.tertiaryContainer
-                            .withValues(alpha: 0.5),
+                        color: theme.colorScheme.tertiaryContainer.withValues(
+                          alpha: 0.5,
+                        ),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
@@ -404,10 +405,9 @@ class _AskPageState extends State<AskPage> {
 class _SkeletonResultCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    final color = Theme.of(context)
-        .colorScheme
-        .surfaceContainerHighest
-        .withValues(alpha: 0.6);
+    final color = Theme.of(
+      context,
+    ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.6);
     Widget bar({required double width, required double height}) => Container(
           width: width,
           height: height,

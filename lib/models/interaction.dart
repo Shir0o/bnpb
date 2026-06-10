@@ -273,3 +273,14 @@ class Interaction {
     return trimmed;
   }
 }
+
+/// A group representing duplicate interactions identified during a dry run.
+class InteractionDuplicateGroup {
+  final Interaction primary;
+  final List<Interaction> duplicates;
+
+  const InteractionDuplicateGroup({
+    required this.primary,
+    required this.duplicates,
+  });
+}

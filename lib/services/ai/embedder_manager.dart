@@ -187,7 +187,8 @@ class EmbedderManager {
               ? _combinedDownloadEstimate
               : received;
           controller.add(
-              EmbedderDownloadProgress(clamped, _combinedDownloadEstimate));
+            EmbedderDownloadProgress(clamped, _combinedDownloadEstimate),
+          );
         },
         onError: (Object e, StackTrace st) {
           if (!completer.isCompleted) completer.completeError(e, st);
@@ -227,7 +228,8 @@ class EmbedderManager {
           if (actual != _expectedModelSha256) {
             await modelTarget.delete();
             throw StateError(
-                'Embedder model checksum mismatch (expected $_expectedModelSha256)');
+              'Embedder model checksum mismatch (expected $_expectedModelSha256)',
+            );
           }
         }
 
@@ -242,7 +244,8 @@ class EmbedderManager {
           if (actual != _expectedTokenizerSha256) {
             await tokTarget.delete();
             throw StateError(
-                'Embedder tokenizer checksum mismatch (expected $_expectedTokenizerSha256)');
+              'Embedder tokenizer checksum mismatch (expected $_expectedTokenizerSha256)',
+            );
           }
         }
         await controller.close();

@@ -94,8 +94,9 @@ class ImportService {
     }
 
     if (onDuplicatesFound != null) {
-      final groups =
-          ImportDuplicateDetector().findDuplicateGroups(restoredContacts);
+      final groups = ImportDuplicateDetector().findDuplicateGroups(
+        restoredContacts,
+      );
       if (groups.isNotEmpty) {
         final resolved = await onDuplicatesFound(restoredContacts, groups);
         if (resolved == null) return -1;
@@ -122,8 +123,11 @@ class ImportService {
         baseMap.remove('relationships');
         baseMap.remove('tags');
         baseMap['updatedAt'] = nowStr;
-        batch.insert('contacts', baseMap,
-            conflictAlgorithm: sqflite.ConflictAlgorithm.replace);
+        batch.insert(
+          'contacts',
+          baseMap,
+          conflictAlgorithm: sqflite.ConflictAlgorithm.replace,
+        );
       }
       await batch.commit(noResult: true);
     });

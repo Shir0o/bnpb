@@ -128,8 +128,10 @@ class _FollowUpSuggestionSheetState extends State<FollowUpSuggestionSheet> {
                 if (snapshot.hasError) {
                   return Padding(
                     padding: const EdgeInsets.symmetric(vertical: 16),
-                    child: Text('Could not generate suggestions.',
-                        style: Theme.of(context).textTheme.bodyMedium),
+                    child: Text(
+                      'Could not generate suggestions.',
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
                   );
                 }
                 final items = snapshot.data ?? const <FollowUpSuggestion>[];
@@ -182,11 +184,13 @@ class _SuggestionTile extends StatelessWidget {
     return Card(
       child: ListTile(
         title: Text(suggestion.action),
-        subtitle: Text([
-          whenLabel,
-          if (suggestion.reason != null && suggestion.reason!.isNotEmpty)
-            suggestion.reason!,
-        ].join(' • ')),
+        subtitle: Text(
+          [
+            whenLabel,
+            if (suggestion.reason != null && suggestion.reason!.isNotEmpty)
+              suggestion.reason!,
+          ].join(' • '),
+        ),
         trailing: const Icon(Icons.notifications_outlined),
         onTap: disabled ? null : onTap,
       ),

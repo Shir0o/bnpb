@@ -102,9 +102,10 @@ void main() {
           ],
           prayerRequests: [
             _request(
-                syncId: 'p-1',
-                contactId: 'c1',
-                deletedAt: DateTime.utc(2026, 4, 1)),
+              syncId: 'p-1',
+              contactId: 'c1',
+              deletedAt: DateTime.utc(2026, 4, 1),
+            ),
           ],
         ),
       ]);
@@ -118,7 +119,11 @@ void main() {
           firstName: 'Ada',
           interactions: [
             _interaction(
-                syncId: 'i-empty', summary: '', location: '', notes: ''),
+              syncId: 'i-empty',
+              summary: '',
+              location: '',
+              notes: '',
+            ),
           ],
           prayerRequests: [
             _request(syncId: 'p-empty', contactId: 'c1', description: ''),
@@ -161,8 +166,10 @@ void main() {
       final json =
           '{"contactId":"${encoded['contactId']}","type":"${encoded['type']}"}';
       expect(IndexDocument.contactIdFromMetadata(json), 'c1');
-      expect(IndexDocument.typeFromMetadata(json),
-          IndexDocumentType.prayerRequest);
+      expect(
+        IndexDocument.typeFromMetadata(json),
+        IndexDocumentType.prayerRequest,
+      );
     });
 
     test('tolerates missing or malformed metadata', () {

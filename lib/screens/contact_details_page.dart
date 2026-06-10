@@ -985,8 +985,9 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
         if (suggestions.isEmpty) return const Iterable<String>.empty();
         final query = value.text.trim().toLowerCase();
         if (query.isEmpty) return suggestions;
-        return suggestions
-            .where((option) => option.toLowerCase().contains(query));
+        return suggestions.where(
+          (option) => option.toLowerCase().contains(query),
+        );
       },
       fieldViewBuilder: (context, textController, focusNode, onFieldSubmitted) {
         return TextField(
@@ -2073,8 +2074,9 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
   // Tokens like "#new_job" already present in the notes field, so we don't
   // re-suggest them.
   Set<String> _existingTagsInNotes() {
-    final matches = RegExp(r'#([a-z0-9_]+)')
-        .allMatches(_notesController.text.toLowerCase());
+    final matches = RegExp(
+      r'#([a-z0-9_]+)',
+    ).allMatches(_notesController.text.toLowerCase());
     return {for (final m in matches) m.group(1)!};
   }
 
@@ -2111,9 +2113,9 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
       }
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Could not suggest tags: $error')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Could not suggest tags: $error')));
     } finally {
       if (mounted) setState(() => _isSuggestingTags = false);
     }

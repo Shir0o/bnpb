@@ -49,18 +49,18 @@ void main() {
       expect(tags, ['health', 'family']);
     });
 
-    test('normalizes casing, punctuation, and spacing into snake_case',
-        () async {
-      final llm = _FakeLlm('["New Job!", "Re-location", "ANXIETY  "]');
-      final service = AutoTagService(llm);
-      final tags = await service.suggestTags('note');
-      expect(tags, ['new_job', 're_location', 'anxiety']);
-    });
+    test(
+      'normalizes casing, punctuation, and spacing into snake_case',
+      () async {
+        final llm = _FakeLlm('["New Job!", "Re-location", "ANXIETY  "]');
+        final service = AutoTagService(llm);
+        final tags = await service.suggestTags('note');
+        expect(tags, ['new_job', 're_location', 'anxiety']);
+      },
+    );
 
     test('deduplicates and caps at 6 tags', () async {
-      final llm = _FakeLlm(
-        '["a","b","c","d","e","f","g","h","a"]',
-      );
+      final llm = _FakeLlm('["a","b","c","d","e","f","g","h","a"]');
       final service = AutoTagService(llm);
       final tags = await service.suggestTags('note');
       expect(tags.length, 6);
@@ -73,13 +73,15 @@ void main() {
       expect(await service.suggestTags('note'), isEmpty);
     });
 
-    test('returns empty list for empty input without invoking the model',
-        () async {
-      final llm = _FakeLlm('["should_not_appear"]');
-      final service = AutoTagService(llm);
-      expect(await service.suggestTags('   '), isEmpty);
-      expect(llm.lastPrompt, isNull);
-    });
+    test(
+      'returns empty list for empty input without invoking the model',
+      () async {
+        final llm = _FakeLlm('["should_not_appear"]');
+        final service = AutoTagService(llm);
+        expect(await service.suggestTags('   '), isEmpty);
+        expect(llm.lastPrompt, isNull);
+      },
+    );
 
     test('throws StateError when LLM is not ready', () async {
       final service = AutoTagService(_UnreadyLlm());

@@ -252,25 +252,24 @@ class _AnalyticsPageState extends State<AnalyticsPage>
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
         onTap: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const AskPage()),
-          );
+          Navigator.of(
+            context,
+          ).push(MaterialPageRoute(builder: (_) => const AskPage()));
         },
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Row(
             children: [
-              Icon(
-                Icons.psychology_outlined,
-                color: theme.colorScheme.primary,
-              ),
+              Icon(Icons.psychology_outlined, color: theme.colorScheme.primary),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Ask about your contacts',
-                        style: theme.textTheme.titleMedium),
+                    Text(
+                      'Ask about your contacts',
+                      style: theme.textTheme.titleMedium,
+                    ),
                     const SizedBox(height: 2),
                     Text(
                       'Semantic search across interactions and prayer requests.',
@@ -866,8 +865,9 @@ class _InsightCard extends StatelessWidget {
                 children: [
                   Text(
                     insight.title,
-                    style: theme.textTheme.titleSmall
-                        ?.copyWith(fontWeight: FontWeight.w600),
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                   const SizedBox(height: 4),
                   Text(subtitle, style: theme.textTheme.bodySmall),

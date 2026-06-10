@@ -325,10 +325,7 @@ class _MacOSContactDetailsPageState extends State<MacOSContactDetailsPage> {
                         _buildInteractionsSection(),
                         if (widget.contact != null) ...[
                           const SizedBox(height: 32),
-                          Divider(
-                            height: 1,
-                            color: colorScheme.outlineVariant,
-                          ),
+                          Divider(height: 1, color: colorScheme.outlineVariant),
                           const SizedBox(height: 32),
                           _buildDeleteSection(),
                         ],
@@ -351,9 +348,7 @@ class _MacOSContactDetailsPageState extends State<MacOSContactDetailsPage> {
       padding: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
         color: colorScheme.surfaceContainerLowest,
-        border: Border(
-          bottom: BorderSide(color: colorScheme.outlineVariant),
-        ),
+        border: Border(bottom: BorderSide(color: colorScheme.outlineVariant)),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -472,11 +467,7 @@ class _MacOSContactDetailsPageState extends State<MacOSContactDetailsPage> {
           ),
         ],
       ),
-      child: Icon(
-        Icons.person,
-        size: 64,
-        color: colorScheme.onSurfaceVariant,
-      ),
+      child: Icon(Icons.person, size: 64, color: colorScheme.onSurfaceVariant),
     );
   }
 
@@ -717,10 +708,7 @@ class _MacOSContactDetailsPageState extends State<MacOSContactDetailsPage> {
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(6),
-                borderSide: BorderSide(
-                  color: colorScheme.primary,
-                  width: 2,
-                ),
+                borderSide: BorderSide(color: colorScheme.primary, width: 2),
               ),
             ),
           ),

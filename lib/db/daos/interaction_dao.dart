@@ -357,11 +357,10 @@ class InteractionDao extends BaseDao {
     return rows.isNotEmpty;
   }
 
-  Future<int> deDuplicateInteractions() async {
-    final db = await database;
+  Future<List<InteractionDuplicateGroup>> findDuplicateInteractions() async {
     // Fetch all active interactions
     final activeInteractions = await getInteractions(includeDeleted: false);
-    if (activeInteractions.isEmpty) return 0;
+    if (activeInteractions.isEmpty) return const [];
 
     // Group by occurredAt (UTC string representation) and normalized summary
     final Map<String, List<Interaction>> groups = {};
@@ -372,23 +371,41 @@ class InteractionDao extends BaseDao {
       groups.putIfAbsent(key, () => []).add(i);
     }
 
+    final List<InteractionDuplicateGroup> duplicateGroups = [];
+
+    for (final entry in groups.entries) {
+      final group = entry.value;
+      if (group.length < 2) continue;
+
+      // Sort by id ascending so the oldest DB row is kept as primary
+      group.sort((a, b) {
+        if (a.id == null && b.id != null) return 1;
+        if (a.id != null && b.id == null) return -1;
+        if (a.id != null && b.id != null) return a.id!.compareTo(b.id!);
+        return a.updatedAt.compareTo(b.updatedAt);
+      });
+
+      final primary = group.first;
+      final duplicates = group.sublist(1);
+      duplicateGroups.add(
+        InteractionDuplicateGroup(primary: primary, duplicates: duplicates),
+      );
+    }
+
+    return duplicateGroups;
+  }
+
+  Future<int> deDuplicateInteractions() async {
+    final db = await database;
+    final duplicateGroups = await findDuplicateInteractions();
+    if (duplicateGroups.isEmpty) return 0;
+
     int mergedCount = 0;
 
     await db.transaction((txn) async {
-      for (final entry in groups.entries) {
-        final group = entry.value;
-        if (group.length < 2) continue;
-
-        // Sort by id ascending so the oldest DB row is kept as primary
-        group.sort((a, b) {
-          if (a.id == null && b.id != null) return 1;
-          if (a.id != null && b.id == null) return -1;
-          if (a.id != null && b.id != null) return a.id!.compareTo(b.id!);
-          return a.updatedAt.compareTo(b.updatedAt);
-        });
-
-        var primary = group.first;
-        final duplicates = group.sublist(1);
+      for (final groupInfo in duplicateGroups) {
+        var primary = groupInfo.primary;
+        final duplicates = groupInfo.duplicates;
 
         // Merge properties
         final participantIds = primary.participantIds.toSet();
@@ -457,17 +474,17 @@ class InteractionDao extends BaseDao {
         );
 
         await replaceInteractionParticipants(
-            txn, primary.id!, primary.participantIds);
+          txn,
+          primary.id!,
+          primary.participantIds,
+        );
 
         // Soft delete the duplicates
         final nowStr = now.toIso8601String();
         for (final dup in duplicates) {
           await txn.update(
             'interactions',
-            {
-              'deletedAt': nowStr,
-              'updatedAt': nowStr,
-            },
+            {'deletedAt': nowStr, 'updatedAt': nowStr},
             where: 'id = ?',
             whereArgs: [dup.id],
           );

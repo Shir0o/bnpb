@@ -821,9 +821,9 @@ class _HomePageState extends State<HomePage>
 
       if (!mounted) return;
       if (count < 0) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Import cancelled.')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Import cancelled.')));
         return;
       }
       ScaffoldMessenger.of(context).showSnackBar(
@@ -847,10 +847,8 @@ class _HomePageState extends State<HomePage>
     Navigator.of(context, rootNavigator: true).pop();
     final resolved = await Navigator.of(context).push<List<Contact>>(
       MaterialPageRoute(
-        builder: (_) => ImportDuplicateReviewPage(
-          incoming: incoming,
-          groups: groups,
-        ),
+        builder: (_) =>
+            ImportDuplicateReviewPage(incoming: incoming, groups: groups),
       ),
     );
     if (!mounted) return resolved;

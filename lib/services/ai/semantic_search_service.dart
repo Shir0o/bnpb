@@ -94,23 +94,27 @@ List<IndexDocument> documentsFor(List<Contact> contacts) {
       if (interaction.deletedAt != null) continue;
       final content = _interactionContent(interaction, formatter);
       if (content.isEmpty) continue;
-      out.add(IndexDocument(
-        id: 'interaction:${interaction.syncId}',
-        content: content,
-        contactId: contact.id,
-        type: IndexDocumentType.interaction,
-      ));
+      out.add(
+        IndexDocument(
+          id: 'interaction:${interaction.syncId}',
+          content: content,
+          contactId: contact.id,
+          type: IndexDocumentType.interaction,
+        ),
+      );
     }
     for (final prayer in contact.prayerRequests) {
       if (prayer.deletedAt != null) continue;
       final content = _prayerContent(prayer);
       if (content.isEmpty) continue;
-      out.add(IndexDocument(
-        id: 'prayer:${prayer.syncId}',
-        content: content,
-        contactId: contact.id,
-        type: IndexDocumentType.prayerRequest,
-      ));
+      out.add(
+        IndexDocument(
+          id: 'prayer:${prayer.syncId}',
+          content: content,
+          contactId: contact.id,
+          type: IndexDocumentType.prayerRequest,
+        ),
+      );
     }
   }
   return out;
@@ -152,7 +156,7 @@ enum SemanticIndexStatus {
   initializing,
   indexing,
   ready,
-  error
+  error,
 }
 
 /// High-level semantic search facade.
@@ -261,16 +265,18 @@ class FlutterGemmaSemanticSearchService implements SemanticSearchService {
 
         final futures = <Future<void>>[];
         for (final doc in batch) {
-          futures.add(FlutterGemmaPlugin.instance
-              .addDocument(
-            id: doc.id,
-            content: doc.content,
-            metadata: jsonEncode(doc.toMetadata()),
-          )
-              .then((_) {
-            done += 1;
-            onProgress?.call(done, docs.length);
-          }));
+          futures.add(
+            FlutterGemmaPlugin.instance
+                .addDocument(
+              id: doc.id,
+              content: doc.content,
+              metadata: jsonEncode(doc.toMetadata()),
+            )
+                .then((_) {
+              done += 1;
+              onProgress?.call(done, docs.length);
+            }),
+          );
         }
         await Future.wait(futures);
         await Future<void>.delayed(Duration.zero);
@@ -349,12 +355,14 @@ List<SemanticMatch> resultsToMatches(
     if (contact == null) continue;
     final type = IndexDocument.typeFromMetadata(r.metadata) ??
         IndexDocumentType.interaction;
-    matches.add(SemanticMatch(
-      contact: contact,
-      type: type,
-      snippet: r.content,
-      score: r.similarity,
-    ));
+    matches.add(
+      SemanticMatch(
+        contact: contact,
+        type: type,
+        snippet: r.content,
+        score: r.similarity,
+      ),
+    );
   }
   return matches;
 }

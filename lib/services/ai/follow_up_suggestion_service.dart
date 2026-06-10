@@ -41,15 +41,12 @@ class FollowUpSuggestionService {
     if (!hasContent) return const [];
     if (!_llm.isReady) {
       throw StateError(
-          'FollowUpSuggestionService called before LLM was loaded');
+        'FollowUpSuggestionService called before LLM was loaded',
+      );
     }
 
     final prompt = _buildPrompt(interaction);
-    final raw = await _llm.generate(
-      prompt,
-      maxTokens: 256,
-      temperature: 0.3,
-    );
+    final raw = await _llm.generate(prompt, maxTokens: 256, temperature: 0.3);
     return _parse(raw);
   }
 
@@ -120,11 +117,13 @@ Output:''';
       final dedupKey = trimmedAction.toLowerCase();
       if (!seen.add(dedupKey)) continue;
 
-      out.add(FollowUpSuggestion(
-        action: trimmedAction,
-        daysFromNow: clamped,
-        reason: reason,
-      ));
+      out.add(
+        FollowUpSuggestion(
+          action: trimmedAction,
+          daysFromNow: clamped,
+          reason: reason,
+        ),
+      );
       if (out.length >= _maxSuggestions) break;
     }
     return out;

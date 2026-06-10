@@ -98,10 +98,7 @@ void main() {
       });
 
       test('fromMap handles null lists by using defaults', () {
-        final map = {
-          'id': '1',
-          'firstName': 'Test',
-        };
+        final map = {'id': '1', 'firstName': 'Test'};
         final contact = Contact.fromMap(map);
         expect(contact.interactions, isEmpty);
       });
