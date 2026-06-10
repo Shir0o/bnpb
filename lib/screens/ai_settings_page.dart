@@ -22,6 +22,7 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
   final EmbedderManager _embedderManager = EmbedderManager();
   final HfTokenStore _tokenStore = HfTokenStore();
   bool _enabled = false;
+  bool _showSuggestionsOnSave = true;
   ModelStatus _status = ModelStatus.absent;
   EmbedderStatus _embedderStatus = EmbedderStatus.absent;
   bool _hasToken = false;
@@ -51,6 +52,8 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
 
   Future<void> _refresh() async {
     final enabled = await AiServices().gate.isEnabled();
+    final showSuggestionsOnSave =
+        await AiServices().gate.isShowSuggestionsOnSaveEnabled();
     final status = await _modelManager.status();
     final embedderStatus = await _embedderManager.status();
     final token = await _tokenStore.read();
@@ -59,6 +62,7 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
     if (!mounted) return;
     setState(() {
       _enabled = enabled;
+      _showSuggestionsOnSave = showSuggestionsOnSave;
       _status = status;
       _embedderStatus = embedderStatus;
       _hasToken = token != null && token.isNotEmpty;
@@ -126,6 +130,16 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
     if (!mounted) return;
     setState(() {
       _enabled = value;
+      _busy = false;
+    });
+  }
+
+  Future<void> _setShowSuggestionsOnSave(bool value) async {
+    setState(() => _busy = true);
+    await AiServices().gate.setShowSuggestionsOnSaveEnabled(value);
+    if (!mounted) return;
+    setState(() {
+      _showSuggestionsOnSave = value;
       _busy = false;
     });
   }
@@ -541,6 +555,15 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
                   value: _enabled,
                   onChanged: _busy ? null : _setEnabled,
                 ),
+                if (_enabled)
+                  SwitchListTile.adaptive(
+                    title: const Text('Show suggestions when saving'),
+                    subtitle: const Text(
+                      'Generate follow-up reminders automatically after logging an interaction',
+                    ),
+                    value: _showSuggestionsOnSave,
+                    onChanged: _busy ? null : _setShowSuggestionsOnSave,
+                  ),
 
                 const Divider(),
 
