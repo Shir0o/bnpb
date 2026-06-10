@@ -154,8 +154,7 @@ class SyncCoordinator {
     await _updateLastExportTime(now);
 
     return SyncResult(
-      exportedCount:
-          contacts.length +
+      exportedCount: contacts.length +
           interactions.length +
           prayers.length +
           prayerLists.length +
@@ -172,17 +171,13 @@ class SyncCoordinator {
     final deviceId = await getDeviceId();
     final processed = await _getProcessedFiles();
 
-    final files = await syncDir
-        .list()
-        .where((f) => f is File)
-        .cast<File>()
-        .where((f) {
-          final name = p.basename(f.path);
-          return name.endsWith('_data.json') &&
-              !name.startsWith(deviceId) &&
-              !processed.contains(name);
-        })
-        .toList();
+    final files =
+        await syncDir.list().where((f) => f is File).cast<File>().where((f) {
+      final name = p.basename(f.path);
+      return name.endsWith('_data.json') &&
+          !name.startsWith(deviceId) &&
+          !processed.contains(name);
+    }).toList();
 
     files.sort((a, b) {
       final nameA = p.basename(a.path);

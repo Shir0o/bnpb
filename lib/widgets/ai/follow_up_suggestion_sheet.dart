@@ -34,6 +34,7 @@ class FollowUpSuggestionSheet extends StatefulWidget {
   }) async {
     if (interaction.id == null) return;
     if (!await AiServices().isReady()) return;
+    if (!await AiServices().gate.isShowSuggestionsOnSaveEnabled()) return;
     if (!context.mounted) return;
     await showModalBottomSheet<void>(
       context: context,

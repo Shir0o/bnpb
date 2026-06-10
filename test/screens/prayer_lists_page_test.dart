@@ -103,5 +103,143 @@ void main() {
       expect(find.text('Alice Smith'), findsOneWidget);
       expect(find.text('Bob Jones'), findsOneWidget);
     });
+
+    testWidgets('clears snackbar when the page is disposed/popped',
+        (WidgetTester tester) async {
+      final contact1 = Contact(id: 'c1', firstName: 'Alice', lastName: 'Smith');
+      var currentContactIds = ['c1'];
+
+      when(() => mockDBHelper.getPrayerLists()).thenAnswer((_) async => [
+            PrayerList(
+              id: 'list-123',
+              name: 'My Prayer List',
+              description: 'People I am praying for',
+              contactIds: ['c1'],
+            )
+          ]);
+      when(() => mockDBHelper.getPrayerList('list-123')).thenAnswer((_) async {
+        return PrayerList(
+          id: 'list-123',
+          name: 'My Prayer List',
+          description: 'People I am praying for',
+          contactIds: currentContactIds,
+        );
+      });
+      when(() => mockDBHelper.getContacts(contactIds: any(named: 'contactIds')))
+          .thenAnswer((invocation) async {
+        final ids = invocation.namedArguments[const Symbol('contactIds')]
+            as List<String>?;
+        final list = <Contact>[];
+        if (ids != null && ids.contains('c1')) {
+          list.add(contact1);
+        }
+        return list;
+      });
+      when(() => mockDBHelper.removeContactFromPrayerList('list-123', 'c1'))
+          .thenAnswer((_) async {
+        currentContactIds = [];
+      });
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => ElevatedButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) =>
+                          PrayerListPage(dbHelper: mockDBHelper),
+                    ),
+                  );
+                },
+                child: const Text('Go to Prayer List'),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Go to Prayer List'));
+      await tester.pumpAndSettle();
+
+      await tester.fling(
+          find.text('Alice Smith'), const Offset(-500.0, 0.0), 1000.0);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Removed Alice Smith from list'), findsOneWidget);
+
+      Navigator.of(tester.element(find.text('My Prayer List'))).pop();
+      await tester.pumpAndSettle();
+
+      expect(find.text('Removed Alice Smith from list'), findsNothing);
+    });
+
+    testWidgets('clears snackbar when navigating to contact details',
+        (WidgetTester tester) async {
+      final contact1 = Contact(id: 'c1', firstName: 'Alice', lastName: 'Smith');
+      final contact2 = Contact(id: 'c2', firstName: 'Bob', lastName: 'Jones');
+      var currentContactIds = ['c1', 'c2'];
+
+      when(() => mockDBHelper.getPrayerLists()).thenAnswer((_) async => [
+            PrayerList(
+              id: 'list-123',
+              name: 'My Prayer List',
+              description: 'People I am praying for',
+              contactIds: ['c1', 'c2'],
+            )
+          ]);
+      when(() => mockDBHelper.getPrayerList('list-123')).thenAnswer((_) async {
+        return PrayerList(
+          id: 'list-123',
+          name: 'My Prayer List',
+          description: 'People I am praying for',
+          contactIds: currentContactIds,
+        );
+      });
+      when(() => mockDBHelper.getContacts(contactIds: any(named: 'contactIds')))
+          .thenAnswer((invocation) async {
+        final ids = invocation.namedArguments[const Symbol('contactIds')]
+            as List<String>?;
+        final list = <Contact>[];
+        if (ids != null) {
+          if (ids.contains('c1')) list.add(contact1);
+          if (ids.contains('c2')) list.add(contact2);
+        }
+        return list;
+      });
+      when(() => mockDBHelper.removeContactFromPrayerList('list-123', 'c1'))
+          .thenAnswer((_) async {
+        currentContactIds = ['c2'];
+      });
+
+      bool navigatedToDetails = false;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: PrayerListPage(
+            dbHelper: mockDBHelper,
+            onNavigateToContactDetails: (context, contact) {
+              navigatedToDetails = true;
+            },
+          ),
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.pump();
+
+      await tester.fling(
+          find.text('Alice Smith'), const Offset(-500.0, 0.0), 1000.0);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Removed Alice Smith from list'), findsOneWidget);
+
+      await tester.tap(find.text('Bob Jones'));
+      await tester.pumpAndSettle();
+
+      expect(navigatedToDetails, isTrue);
+      expect(find.text('Removed Alice Smith from list'), findsNothing);
+    });
   });
 }
