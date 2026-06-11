@@ -23,9 +23,9 @@ class FollowUpSuggestionSheet extends StatefulWidget {
   final Interaction interaction;
   final ValueChanged<Interaction> onInteractionUpdated;
 
-  /// Shows the sheet only when AI features are enabled, the model is loaded,
-  /// and the interaction has enough content to summarize. Returns silently
-  /// otherwise so the existing post-save flow is unaffected.
+  /// Shows the sheet when suggestions on save are enabled. If AI is ready, it
+  /// generates suggestions using the LLM model. Otherwise, it falls back to
+  /// smart heuristics.
   static Future<void> maybeShow(
     BuildContext context, {
     required Contact contact,
@@ -33,7 +33,6 @@ class FollowUpSuggestionSheet extends StatefulWidget {
     required ValueChanged<Interaction> onInteractionUpdated,
   }) async {
     if (interaction.id == null) return;
-    if (!await AiServices().isReady()) return;
     if (!await AiServices().gate.isShowSuggestionsOnSaveEnabled()) return;
     if (!context.mounted) return;
     await showModalBottomSheet<void>(
@@ -60,7 +59,18 @@ class _FollowUpSuggestionSheetState extends State<FollowUpSuggestionSheet> {
   @override
   void initState() {
     super.initState();
-    _future = AiServices().followUp.suggest(widget.interaction);
+    _future = _loadSuggestions();
+  }
+
+  Future<List<FollowUpSuggestion>> _loadSuggestions() async {
+    final isAiReady = await AiServices().isReady();
+    if (isAiReady) {
+      return AiServices().followUp.suggest(widget.interaction);
+    } else {
+      return AiServices()
+          .followUp
+          .suggestHeuristic(widget.interaction, DateTime.now());
+    }
   }
 
   Future<void> _accept(FollowUpSuggestion suggestion) async {
