@@ -715,45 +715,49 @@ class _SettingsPageState extends State<SettingsPage>
               style: TextStyle(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
-            Container(
-              width: double.maxFinite,
-              decoration: BoxDecoration(
-                color: Theme.of(context)
-                    .colorScheme
-                    .surfaceContainerHighest
-                    .withValues(alpha: 0.3),
+            Material(
+              color: Theme.of(context)
+                  .colorScheme
+                  .surfaceContainerHighest
+                  .withValues(alpha: 0.3),
+              clipBehavior: Clip.antiAlias,
+              shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(
+                side: BorderSide(
                   color: Theme.of(context)
                       .colorScheme
                       .outline
                       .withValues(alpha: 0.2),
                 ),
               ),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              child: ConstrainedBox(
-                constraints: BoxConstraints(
-                  maxHeight: MediaQuery.of(context).size.height * 0.3,
-                ),
-                child: SingleChildScrollView(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      for (final group in duplicates) ...[
-                        ListTile(
-                          dense: true,
-                          contentPadding: EdgeInsets.zero,
-                          title: Text(
-                            group.primary.summary,
-                            style: const TextStyle(fontWeight: FontWeight.bold),
+              child: Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxHeight: MediaQuery.of(context).size.height * 0.3,
+                  ),
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        for (final group in duplicates) ...[
+                          ListTile(
+                            dense: true,
+                            contentPadding: EdgeInsets.zero,
+                            title: Text(
+                              group.primary.summary,
+                              style:
+                                  const TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                            subtitle: Text(
+                              '${DateFormat.yMMMd().format(group.primary.occurredAt.toLocal())} • '
+                              '${group.duplicates.length} duplicate${group.duplicates.length > 1 ? 's' : ''} to merge',
+                            ),
                           ),
-                          subtitle: Text(
-                            '${DateFormat.yMMMd().format(group.primary.occurredAt.toLocal())} • '
-                            '${group.duplicates.length} duplicate${group.duplicates.length > 1 ? 's' : ''} to merge',
-                          ),
-                        ),
+                        ],
                       ],
-                    ],
+                    ),
                   ),
                 ),
               ),

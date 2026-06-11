@@ -479,31 +479,32 @@ class _HomePageState extends State<HomePage>
                         _contactLookup,
                         request.contactId,
                       );
-                      return Container(
-                        margin: const EdgeInsets.only(bottom: 8),
-                        decoration: BoxDecoration(
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: Material(
                           color: theme.colorScheme.secondaryContainer,
                           borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: ListTile(
-                          dense: true,
-                          leading: Icon(
-                            Icons.celebration_outlined,
-                            color: theme.colorScheme.onSecondaryContainer,
-                          ),
-                          title: Text(
-                            request.description,
-                            style: theme.textTheme.bodyMedium?.copyWith(
+                          clipBehavior: Clip.antiAlias,
+                          child: ListTile(
+                            dense: true,
+                            leading: Icon(
+                              Icons.celebration_outlined,
                               color: theme.colorScheme.onSecondaryContainer,
                             ),
-                          ),
-                          subtitle: Text(
-                            '${_formatDate(request.answeredAt ?? request.requestedAt)} • $contactName',
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: theme.colorScheme.onSecondaryContainer,
+                            title: Text(
+                              request.description,
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: theme.colorScheme.onSecondaryContainer,
+                              ),
                             ),
+                            subtitle: Text(
+                              '${_formatDate(request.answeredAt ?? request.requestedAt)} • $contactName',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: theme.colorScheme.onSecondaryContainer,
+                              ),
+                            ),
+                            onTap: () => _openPrayerRequestDetails(request),
                           ),
-                          onTap: () => _openPrayerRequestDetails(request),
                         ),
                       );
                     }),
