@@ -173,5 +173,116 @@ void main() {
       expect(out.hour, 9);
       expect(out.minute, 0);
     });
+
+    group('suggestHeuristic', () {
+      test('generates suggestions based on keywords', () async {
+        final service = FollowUpSuggestionService(_FakeLlm(''));
+        final now = DateTime(2026, 6, 11);
+
+        // Health keyword test
+        final suggestionsHealth = service.suggestHeuristic(
+          _interaction(
+              summary: 'Visited sick friend', notes: 'They had surgery'),
+          now,
+        );
+        expect(
+            suggestionsHealth.any((s) =>
+                s.action.contains('feeling') || s.action.contains('recovery')),
+            isTrue);
+
+        // Job keyword test
+        final suggestionsJob = service.suggestHeuristic(
+          _interaction(
+              summary: 'Interview prep', notes: 'Preparing for new job'),
+          now,
+        );
+        expect(
+            suggestionsJob.any((s) =>
+                s.action.contains('job') || s.action.contains('interview')),
+            isTrue);
+
+        // Birthday keyword test
+        final suggestionsBday = service.suggestHeuristic(
+          _interaction(summary: 'Upcoming birthday', notes: ''),
+          now,
+        );
+        expect(
+            suggestionsBday.any((s) =>
+                s.action.contains('birthday') || s.action.contains('wishes')),
+            isTrue);
+      });
+
+      test(
+          'generates medium-specific and general fallbacks to have at least 2 suggestions',
+          () async {
+        final service = FollowUpSuggestionService(_FakeLlm(''));
+        final now = DateTime(2026, 6, 11);
+
+        final suggestionsPhone = service.suggestHeuristic(
+          _interaction(summary: 'Catch up', medium: 'phone', notes: ''),
+          now,
+        );
+        expect(suggestionsPhone.length, greaterThanOrEqualTo(2));
+        expect(
+            suggestionsPhone.any(
+                (s) => s.action.contains('call') || s.action.contains('text')),
+            isTrue);
+
+        final suggestionsInPerson = service.suggestHeuristic(
+          _interaction(summary: 'Coffee', medium: 'in_person', notes: ''),
+          now,
+        );
+        expect(suggestionsInPerson.length, greaterThanOrEqualTo(2));
+        expect(
+            suggestionsInPerson.any((s) =>
+                s.action.contains('meetup') || s.action.contains('coffee')),
+            isTrue);
+      });
+    });
+
+    group('suggest (with LLM and fallbacks)', () {
+      test(
+          'routes to heuristic suggestions if total content length is < 15 characters',
+          () async {
+        final llm = _FakeLlm('[{"action":"LLM Suggestion","days":5}]');
+        final service = FollowUpSuggestionService(llm);
+        final now = DateTime(2026, 6, 11);
+
+        final suggestions = await service.suggest(
+          _interaction(summary: 'Short', notes: 'Brief', medium: 'phone'),
+          now: now,
+        );
+
+        // Should not have called the LLM because content length ("Short" + "Brief" = 10) < 15.
+        expect(llm.lastPrompt, isNull);
+        expect(suggestions.isNotEmpty, isTrue);
+        expect(suggestions.any((s) => s.action == 'LLM Suggestion'), isFalse);
+      });
+
+      test(
+          'uses LLM and includes temporal context in prompt when content is >= 15 characters',
+          () async {
+        final llm = _FakeLlm('[{"action":"LLM Suggestion","days":5}]');
+        final service = FollowUpSuggestionService(llm);
+        final now = DateTime(2026, 6, 11); // Thursday
+
+        final suggestions = await service.suggest(
+          _interaction(
+            summary: 'Longer discussion about future plans',
+            notes: 'He mentioned interviewing next Thursday.',
+            medium: 'in_person',
+          ),
+          now: now,
+        );
+
+        expect(llm.lastPrompt, isNotNull);
+        expect(
+            llm.lastPrompt!, contains('Current date: 2026-06-11 (Thursday)'));
+        expect(llm.lastPrompt!,
+            contains('Interaction date: 2026-05-13 (Wednesday)'));
+        expect(suggestions.length, 1);
+        expect(suggestions.first.action, 'LLM Suggestion');
+      });
+    });
   });
 }

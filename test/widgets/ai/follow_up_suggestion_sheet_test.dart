@@ -114,5 +114,44 @@ void main() {
       // The sheet should be visible now
       expect(find.text('Suggested follow-ups'), findsOneWidget);
     });
+
+    testWidgets(
+        'shows modal bottom sheet and falls back to heuristics when AI is disabled (enabled: false)',
+        (tester) async {
+      final fakeGate =
+          FakeAiFeatureGate(enabled: false, suggestionsEnabled: true);
+      final fakeLlm = FakeLocalLlmService();
+      AiServices().debugOverride(gate: fakeGate, llm: fakeLlm);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Builder(
+              builder: (context) {
+                return ElevatedButton(
+                  onPressed: () async {
+                    await FollowUpSuggestionSheet.maybeShow(
+                      context,
+                      contact: contact,
+                      interaction: interaction,
+                      onInteractionUpdated: (_) {},
+                    );
+                  },
+                  child: const Text('Show Sheet'),
+                );
+              },
+            ),
+          ),
+        ),
+      );
+
+      // Tap the button to trigger maybeShow
+      await tester.tap(find.text('Show Sheet'));
+      await tester.pump(); // Start animation
+      await tester.pump(const Duration(seconds: 1)); // finish animation
+
+      // The sheet should be visible and showing suggestions
+      expect(find.text('Suggested follow-ups'), findsOneWidget);
+    });
   });
 }

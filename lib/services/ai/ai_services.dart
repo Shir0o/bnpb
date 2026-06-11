@@ -67,9 +67,33 @@ class AiServices {
     }();
   }
 
+  Future<void>? _modelLoadInFlight;
+
+  Future<void> _ensureModelLoaded() async {
+    if (_llm.isReady) return;
+    if (_llm is! FlutterGemmaLlmService) return;
+    await (_modelLoadInFlight ??= () async {
+      try {
+        final manager = ModelManager();
+        final status = await manager.status();
+        if (status == ModelStatus.ready) {
+          await _llm.load(await manager.modelPath());
+        }
+        manager.dispose();
+      } catch (_) {
+        // Best-effort: ignore errors here, caller will handle LLM readiness.
+      } finally {
+        _modelLoadInFlight = null;
+      }
+    }());
+  }
+
   /// True only when the user has opted in AND the active backend is ready.
   Future<bool> isReady() async {
-    if (!await _gate.isEnabled()) return false;
+    if (!await _gate.isEnabled()) {
+      return false;
+    }
+    await _ensureModelLoaded();
     return _llm.isReady;
   }
 
@@ -115,7 +139,7 @@ class AiServices {
   }
 
   /// Initializes the underlying flutter_gemma runtime and, if AI features
-  /// are enabled and the model exists on disk, loads it. Safe to call once
+  /// are enabled and the model exists on disk, prepares them. Safe to call once
   /// at app startup. Failures are swallowed so AI never blocks app launch.
   Future<void> maybeInitialize() async {
     try {
@@ -128,19 +152,8 @@ class AiServices {
     // Cloud backend has nothing to load locally; local backend needs
     // the model file on disk.
     await refreshBackend();
-    if (_llm is FlutterGemmaLlmService) {
-      try {
-        final manager = ModelManager();
-        final status = await manager.status();
-        if (status == ModelStatus.ready) {
-          await _llm.load(await manager.modelPath());
-        }
-        manager.dispose();
-      } catch (_) {
-        // Best-effort: leave the model unloaded; the AI settings page can
-        // re-attempt loading and surface errors there.
-      }
-    }
+    // Local LLM model is not eagerly loaded here to keep app startup fast.
+    // It is loaded lazily on first access.
     try {
       final embedderMgr = EmbedderManager();
       if (await embedderMgr.status() == EmbedderStatus.ready) {
