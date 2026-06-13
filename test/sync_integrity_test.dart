@@ -8,10 +8,32 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import 'repositories/mock_db_helper.dart';
+import 'package:bnpb/db/daos/prayer_list_dao.dart';
+
+class _FakePrayerListDao implements PrayerListDao {
+  @override
+  Future<List<Map<String, Object?>>> chunkedQuery({
+    required String table,
+    required String inColumn,
+    required List<dynamic> values,
+    int chunkSize = 900,
+    String? where,
+    List<Object?>? whereArgs,
+  }) async {
+    return [];
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
 
 class IntegritySpyDBHelper extends MockDBHelper {
   late Database _db;
   int upsertCount = 0;
+  final _prayerListDao = _FakePrayerListDao();
+
+  @override
+  PrayerListDao get prayerListDao => _prayerListDao as dynamic;
 
   Future<void> init() async {
     _db = await databaseFactoryFfi.openDatabase(inMemoryDatabasePath);

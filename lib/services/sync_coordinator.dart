@@ -404,21 +404,33 @@ class SyncCoordinator {
 
   Future<void> _mergePrayerLists(List<dynamic> remoteLists) async {
     final db = await _db.database;
-    for (final item in remoteLists) {
-      final remoteList = PrayerList.fromMap(Map<String, dynamic>.from(item));
-      final localRows = await db.query(
-        'prayer_lists',
-        where: 'id = ?',
-        whereArgs: [remoteList.id],
-      );
 
+    final remotePrayerLists = remoteLists
+        .map((item) => PrayerList.fromMap(Map<String, dynamic>.from(item)))
+        .toList();
+    final remoteIds = remotePrayerLists.map((list) => list.id).toList();
+
+    // Fetch existing local lists in chunks
+    final existingRows = await _db.prayerListDao.chunkedQuery(
+      table: 'prayer_lists',
+      inColumn: 'id',
+      values: remoteIds,
+    );
+
+    // Create lookup map for existing lists
+    final localLists = {
+      for (final row in existingRows)
+        row['id'] as String: PrayerList.fromMap(row)
+    };
+
+    for (final remoteList in remotePrayerLists) {
       bool shouldUpdate = false;
-      if (localRows.isEmpty) {
+      final localList = localLists[remoteList.id];
+      if (localList == null) {
         if (remoteList.deletedAt == null) {
           shouldUpdate = true;
         }
       } else {
-        final localList = PrayerList.fromMap(localRows.first);
         if (remoteList.updatedAt.isAfter(localList.updatedAt)) {
           shouldUpdate = true;
         }
