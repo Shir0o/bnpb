@@ -139,17 +139,46 @@ class ImportService {
     // The HomePage logic manually inserted interactions to ensure participant IDs were valid.
     // Let's stick to the proven manual logic from HomePage for now to minimize regression risk.
 
-    for (final contact in restoredContacts) {
-      // We need to re-insert the contact's interactions and prayer requests.
-      // DBHelper.insertContact does this if we call it with the full object!
-      // Calling insertContact again will update the contact and replace relations.
-      // This is cleaner than manually looping interactions.
-      await _dbHelper.insertContact(contact);
-    }
+    await db.transaction((txn) async {
+      for (final contact in restoredContacts) {
+        // We need to re-insert the contact's interactions and prayer requests.
+        // Calling upsertContactRow inside a single transaction prevents N+1 query overhead.
+        await _dbHelper.contactDao.upsertContactRow(txn, contact,
+            isUpdate: true, forceNowTimestamps: false);
+      }
+    });
 
     // Pass 3: Insert Prayer Lists
-    for (final list in restoredPrayerLists) {
-      await _dbHelper.insertPrayerList(list);
+    // Wrap prayer lists in a transaction to prevent N+1 queries.
+    // While insertPrayerList creates its own transaction, nesting transactions
+    // in sqflite is supported (it ignores the nested transaction and uses the parent one).
+    if (restoredPrayerLists.isNotEmpty) {
+      await db.transaction((txn) async {
+        for (final list in restoredPrayerLists) {
+          final map = list.toMap();
+          map['updatedAt'] = nowStr;
+          map['deletedAt'] = null;
+
+          await txn.insert(
+            'prayer_lists',
+            map,
+            conflictAlgorithm: sqflite.ConflictAlgorithm.replace,
+          );
+
+          final batch = txn.batch();
+          for (final contactId in list.contactIds) {
+            batch.insert(
+              'prayer_list_members',
+              {
+                'listId': list.id,
+                'contactId': contactId,
+              },
+              conflictAlgorithm: sqflite.ConflictAlgorithm.ignore,
+            );
+          }
+          await batch.commit(noResult: true);
+        }
+      });
     }
 
     // Pass 3b: Insert relationships (insertContact does not sync these).
