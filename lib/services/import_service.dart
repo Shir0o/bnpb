@@ -154,18 +154,18 @@ class ImportService {
     // in sqflite is supported (it ignores the nested transaction and uses the parent one).
     if (restoredPrayerLists.isNotEmpty) {
       await db.transaction((txn) async {
+        final batch = txn.batch();
         for (final list in restoredPrayerLists) {
           final map = list.toMap();
           map['updatedAt'] = nowStr;
           map['deletedAt'] = null;
 
-          await txn.insert(
+          batch.insert(
             'prayer_lists',
             map,
             conflictAlgorithm: sqflite.ConflictAlgorithm.replace,
           );
 
-          final batch = txn.batch();
           for (final contactId in list.contactIds) {
             batch.insert(
               'prayer_list_members',
@@ -176,8 +176,8 @@ class ImportService {
               conflictAlgorithm: sqflite.ConflictAlgorithm.ignore,
             );
           }
-          await batch.commit(noResult: true);
         }
+        await batch.commit(noResult: true);
       });
     }
 
