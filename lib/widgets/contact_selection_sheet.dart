@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../db/db_helper.dart';
+import '../models/contact.dart';
+import '../screens/add_contact_page.dart';
 import '../services/contact_search_service.dart';
 import 'skeleton_loader.dart';
 
@@ -9,11 +11,13 @@ class ContactSelectionSheet extends StatefulWidget {
     this.initialSelectedIds = const {},
     this.disabledIds = const {},
     this.title = 'Select Contacts',
+    this.searchService,
   });
 
   final Set<String> initialSelectedIds;
   final Set<String> disabledIds;
   final String title;
+  final ContactSearchService? searchService;
 
   @override
   State<ContactSelectionSheet> createState() => _ContactSelectionSheetState();
@@ -21,7 +25,7 @@ class ContactSelectionSheet extends StatefulWidget {
 
 class _ContactSelectionSheetState extends State<ContactSelectionSheet> {
   final DBHelper _dbHelper = DBHelper();
-  final ContactSearchService _searchService = ContactSearchService();
+  late final ContactSearchService _searchService;
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
 
@@ -32,6 +36,7 @@ class _ContactSelectionSheetState extends State<ContactSelectionSheet> {
   @override
   void initState() {
     super.initState();
+    _searchService = widget.searchService ?? ContactSearchService();
     _selectedIds = Set.from(widget.initialSelectedIds);
     _loadContacts();
     _searchController.addListener(_onSearchChanged);
@@ -54,7 +59,8 @@ class _ContactSelectionSheetState extends State<ContactSelectionSheet> {
     _searchService.index(contacts);
 
     if (mounted) {
-      final results = await _searchService.search('');
+      final currentQuery = _searchController.text;
+      final results = await _searchService.search(currentQuery);
 
       // Ensure at least 400ms passes so the loading indicator doesn't "flash"
       final elapsed = stopwatch.elapsedMilliseconds;
@@ -63,7 +69,9 @@ class _ContactSelectionSheetState extends State<ContactSelectionSheet> {
       }
 
       if (mounted) {
-        if (_searchController.text.isNotEmpty) return;
+        if (_searchController.text != currentQuery) {
+          return;
+        }
         setState(() {
           _searchResults = results;
           _isLoading = false;
@@ -92,6 +100,39 @@ class _ContactSelectionSheetState extends State<ContactSelectionSheet> {
     });
   }
 
+  Future<void> _createNewContact(BuildContext context) async {
+    final query = _searchController.text.trim();
+    String? initialFirstName;
+    String? initialLastName;
+    if (query.isNotEmpty) {
+      final parts = query.split(RegExp(r'\s+'));
+      if (parts.length > 1) {
+        initialFirstName = parts.first;
+        initialLastName = parts.sublist(1).join(' ');
+      } else {
+        initialFirstName = query;
+      }
+    }
+
+    final newContact = await Navigator.push<Contact>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => AddContactPage(
+          popOnSave: true,
+          initialFirstName: initialFirstName,
+          initialLastName: initialLastName,
+        ),
+      ),
+    );
+
+    if (newContact != null && mounted) {
+      await _loadContacts();
+      setState(() {
+        _selectedIds.add(newContact.id);
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -99,137 +140,177 @@ class _ContactSelectionSheetState extends State<ContactSelectionSheet> {
 
     final displayList = _searchResults;
 
-    return Container(
-      height: MediaQuery.of(context).size.height * 0.9,
-      decoration: BoxDecoration(
-        color: theme.scaffoldBackgroundColor,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      child: Column(
-        children: [
-          // Header
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Row(
-              children: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('Cancel'),
-                ),
-                Expanded(
-                  child: Text(
-                    widget.title,
-                    textAlign: TextAlign.center,
-                    style: theme.textTheme.titleMedium,
+    return Material(
+      color: theme.scaffoldBackgroundColor,
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+      clipBehavior: Clip.antiAlias,
+      child: SizedBox(
+        height: MediaQuery.of(context).size.height * 0.9,
+        child: Column(
+          children: [
+            // Header
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Row(
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('Cancel'),
                   ),
-                ),
-                TextButton(
-                  onPressed: () =>
-                      Navigator.pop(context, _selectedIds.toList()),
-                  child: const Text('Done'),
-                ),
-              ],
+                  Expanded(
+                    child: Text(
+                      widget.title,
+                      textAlign: TextAlign.center,
+                      style: theme.textTheme.titleMedium,
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () =>
+                        Navigator.pop(context, _selectedIds.toList()),
+                    child: const Text('Done'),
+                  ),
+                ],
+              ),
             ),
-          ),
 
-          // Search Bar
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
-            child: TextField(
-              controller: _searchController,
-              focusNode: _searchFocusNode,
-              decoration: InputDecoration(
-                hintText: 'Search contacts...',
-                prefixIcon: const Icon(Icons.search),
-                filled: true,
-                fillColor: theme.colorScheme.surfaceContainerHighest.withValues(
-                  alpha: 0.3,
-                ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
-                ),
-                contentPadding: const EdgeInsets.symmetric(
-                  vertical: 0,
-                  horizontal: 16,
+            // Search Bar
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              child: TextField(
+                controller: _searchController,
+                focusNode: _searchFocusNode,
+                decoration: InputDecoration(
+                  hintText: 'Search contacts...',
+                  prefixIcon: const Icon(Icons.search),
+                  filled: true,
+                  fillColor:
+                      theme.colorScheme.surfaceContainerHighest.withValues(
+                    alpha: 0.3,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    vertical: 0,
+                    horizontal: 16,
+                  ),
                 ),
               ),
             ),
-          ),
-          const SizedBox(height: 8),
+            const SizedBox(height: 8),
 
-          // List
-          Expanded(
-            child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 300),
-              child: _isLoading
-                  ? const _ContactSelectionSkeleton(key: ValueKey('loading'))
-                  : displayList.isEmpty
-                      ? Center(
-                          key: const ValueKey('empty'),
-                          child: Text(
-                            isSearching
-                                ? 'No matching contacts found'
-                                : 'No contacts found',
-                            style: theme.textTheme.bodyLarge?.copyWith(
-                              color: theme.colorScheme.outline,
-                            ),
-                          ),
-                        )
-                      : ListView.builder(
-                          key: const ValueKey('list'),
-                          itemCount: displayList.length,
-                          itemBuilder: (context, index) {
-                            final match = displayList[index];
-                            final contact = match.contact;
-                            final isSelected =
-                                _selectedIds.contains(contact.id);
-                            final isDisabled = widget.disabledIds.contains(
-                              contact.id,
-                            );
-
+            // List
+            Expanded(
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 300),
+                child: _isLoading
+                    ? const _ContactSelectionSkeleton(key: ValueKey('loading'))
+                    : ListView.builder(
+                        key: const ValueKey('list'),
+                        itemCount:
+                            1 + (displayList.isEmpty ? 1 : displayList.length),
+                        itemBuilder: (context, index) {
+                          if (index == 0) {
+                            final query = _searchController.text.trim();
                             return ListTile(
                               leading: CircleAvatar(
-                                backgroundColor: isDisabled
-                                    ? theme.colorScheme.surfaceContainerHighest
-                                    : theme.colorScheme.primaryContainer,
-                                foregroundColor: isDisabled
-                                    ? theme.colorScheme.outline
-                                    : theme.colorScheme.onPrimaryContainer,
-                                child: Text(
-                                  contact.firstName.isNotEmpty
-                                      ? contact.firstName[0].toUpperCase()
-                                      : '?',
-                                ),
+                                backgroundColor:
+                                    theme.colorScheme.primaryContainer,
+                                foregroundColor:
+                                    theme.colorScheme.onPrimaryContainer,
+                                child: const Icon(Icons.person_add),
                               ),
                               title: Text(
-                                contact.fullName,
+                                query.isEmpty
+                                    ? 'Create New Contact'
+                                    : "Create Contact '$query'",
                                 style: TextStyle(
-                                  color: isDisabled
-                                      ? theme.colorScheme.outline
-                                      : null,
+                                  color: theme.colorScheme.primary,
+                                  fontWeight: FontWeight.bold,
                                 ),
                               ),
-                              subtitle: match.snippet != null
-                                  ? Text(match.snippet!)
-                                  : (contact.location?.isNotEmpty == true
-                                      ? Text(contact.location!)
-                                      : null),
-                              trailing: Checkbox(
-                                value: isSelected || isDisabled,
-                                onChanged: isDisabled
-                                    ? null
-                                    : (_) => _toggleSelection(contact.id),
+                              subtitle: Text(
+                                query.isEmpty
+                                    ? 'Add a new person to your contacts'
+                                    : "Create and select '$query'",
+                                style: TextStyle(
+                                  color: theme.colorScheme.outline,
+                                ),
                               ),
-                              onTap: isDisabled
-                                  ? null
-                                  : () => _toggleSelection(contact.id),
+                              onTap: () => _createNewContact(context),
                             );
-                          },
-                        ),
+                          }
+
+                          if (displayList.isEmpty) {
+                            return Padding(
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 32.0,
+                                horizontal: 16.0,
+                              ),
+                              child: Center(
+                                child: Text(
+                                  isSearching
+                                      ? 'No matching contacts found'
+                                      : 'No contacts found',
+                                  style: theme.textTheme.bodyLarge?.copyWith(
+                                    color: theme.colorScheme.outline,
+                                  ),
+                                ),
+                              ),
+                            );
+                          }
+
+                          final match = displayList[index - 1];
+                          final contact = match.contact;
+                          final isSelected = _selectedIds.contains(contact.id);
+                          final isDisabled = widget.disabledIds.contains(
+                            contact.id,
+                          );
+
+                          return ListTile(
+                            leading: CircleAvatar(
+                              backgroundColor: isDisabled
+                                  ? theme.colorScheme.surfaceContainerHighest
+                                  : theme.colorScheme.primaryContainer,
+                              foregroundColor: isDisabled
+                                  ? theme.colorScheme.outline
+                                  : theme.colorScheme.onPrimaryContainer,
+                              child: Text(
+                                contact.firstName.isNotEmpty
+                                    ? contact.firstName[0].toUpperCase()
+                                    : '?',
+                              ),
+                            ),
+                            title: Text(
+                              contact.fullName,
+                              style: TextStyle(
+                                color: isDisabled
+                                    ? theme.colorScheme.outline
+                                    : null,
+                              ),
+                            ),
+                            subtitle: match.snippet != null
+                                ? Text(match.snippet!)
+                                : (contact.location?.isNotEmpty == true
+                                    ? Text(contact.location!)
+                                    : null),
+                            trailing: Checkbox(
+                              value: isSelected || isDisabled,
+                              onChanged: isDisabled
+                                  ? null
+                                  : (_) => _toggleSelection(contact.id),
+                            ),
+                            onTap: isDisabled
+                                ? null
+                                : () => _toggleSelection(contact.id),
+                          );
+                        },
+                      ),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

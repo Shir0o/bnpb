@@ -10,7 +10,15 @@ import '../services/reminder_coordinator.dart';
 import 'add_family_page.dart';
 
 class AddContactPage extends StatefulWidget {
-  const AddContactPage({super.key});
+  final bool popOnSave;
+  final String? initialFirstName;
+  final String? initialLastName;
+  const AddContactPage({
+    super.key,
+    this.popOnSave = false,
+    this.initialFirstName,
+    this.initialLastName,
+  });
 
   @override
   State<AddContactPage> createState() => _AddContactPageState();
@@ -38,6 +46,12 @@ class _AddContactPageState extends State<AddContactPage>
   @override
   void initState() {
     super.initState();
+    if (widget.initialFirstName != null) {
+      _firstNameController.text = widget.initialFirstName!;
+    }
+    if (widget.initialLastName != null) {
+      _lastNameController.text = widget.initialLastName!;
+    }
     unawaited(_loadSuggestions());
   }
 
@@ -127,8 +141,14 @@ class _AddContactPageState extends State<AddContactPage>
 
       await ReminderCoordinator().syncSignificantDates(newContact);
 
-      _resetForm();
-      unawaited(_loadSuggestions());
+      if (!mounted) return;
+
+      if (widget.popOnSave) {
+        Navigator.of(context).pop(newContact);
+      } else {
+        _resetForm();
+        unawaited(_loadSuggestions());
+      }
     } catch (error, stackTrace) {
       if (!mounted) {
         return;
