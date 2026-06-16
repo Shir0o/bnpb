@@ -59,9 +59,15 @@ class BackupService {
   BackupService._();
 
   static final BackupService _instance = BackupService._();
+  static BackupService? _testOverride;
 
   /// Singleton accessor.
-  factory BackupService() => _instance;
+  factory BackupService() => _testOverride ?? _instance;
+
+  @visibleForTesting
+  static void overrideForTest(BackupService? service) {
+    _testOverride = service;
+  }
 
   @visibleForTesting
   String? mockDatabasePath;
