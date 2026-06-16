@@ -50,12 +50,9 @@ class _ContactSelectionSheetState extends State<ContactSelectionSheet> {
   }
 
   Future<void> _loadContacts() async {
-    debugPrint(
-        'DEBUG: _loadContacts called, query: "${_searchController.text}"');
     setState(() => _isLoading = true);
     final stopwatch = Stopwatch()..start();
     final contacts = await _dbHelper.getContacts();
-    debugPrint('DEBUG: _loadContacts fetched ${contacts.length} contacts');
     // Sort by name by default
     contacts.sort((a, b) => a.fullName.compareTo(b.fullName));
 
@@ -63,32 +60,22 @@ class _ContactSelectionSheetState extends State<ContactSelectionSheet> {
 
     if (mounted) {
       final currentQuery = _searchController.text;
-      debugPrint('DEBUG: _loadContacts searching for "$currentQuery"');
       final results = await _searchService.search(currentQuery);
-      debugPrint(
-          'DEBUG: _loadContacts search finished, matches: ${results.length}');
 
       // Ensure at least 400ms passes so the loading indicator doesn't "flash"
       final elapsed = stopwatch.elapsedMilliseconds;
       if (elapsed < 400) {
-        debugPrint(
-            'DEBUG: _loadContacts waiting for delay: ${400 - elapsed}ms');
         await Future.delayed(Duration(milliseconds: 400 - elapsed));
       }
 
       if (mounted) {
-        debugPrint(
-            'DEBUG: _loadContacts after delay check: searchController="${_searchController.text}", currentQuery="$currentQuery"');
         if (_searchController.text != currentQuery) {
-          debugPrint(
-              'DEBUG: _loadContacts searchController.text changed, returning early');
           return;
         }
         setState(() {
           _searchResults = results;
           _isLoading = false;
         });
-        debugPrint('DEBUG: _loadContacts setState completed, isLoading=false');
       }
     }
   }
