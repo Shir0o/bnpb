@@ -241,12 +241,7 @@ class SyncCoordinator {
 
     // Merge Prayer Requests
     if (data['prayerRequests'] != null) {
-      for (final item in (data['prayerRequests'] as List)) {
-        final map = Map<String, dynamic>.from(item);
-        final remotePrayer = PrayerRequest.fromMap(map);
-        final interactionSyncId = map['interactionSyncId'] as String?;
-        await _mergePrayerRequest(remotePrayer, interactionSyncId);
-      }
+      await _mergePrayerRequests(data['prayerRequests'] as List);
     }
 
     // Merge Prayer Lists
@@ -326,80 +321,157 @@ class SyncCoordinator {
     }
   }
 
-  Future<void> _mergePrayerRequest(
-    PrayerRequest remote,
-    String? interactionSyncId,
-  ) async {
+  Future<void> _mergePrayerRequests(List<dynamic> remoteList) async {
     final db = await _db.database;
-    final rows = await db.query(
-      'prayer_requests',
-      where: 'syncId = ?',
-      whereArgs: [remote.syncId],
-    );
 
-    int? localInteractionId;
-    if (interactionSyncId != null) {
-      localInteractionId = await _getLocalInteractionIdBySyncId(
-        interactionSyncId,
-      );
+    final remotePrayers = <PrayerRequest>[];
+    final remoteInteractionSyncIds =
+        <String, String>{}; // prayerSyncId -> interactionSyncId
+    final interactionSyncIds = <String>{};
+
+    for (final item in remoteList) {
+      final map = Map<String, dynamic>.from(item);
+      final remotePrayer = PrayerRequest.fromMap(map);
+      remotePrayers.add(remotePrayer);
+
+      final interactionSyncId = map['interactionSyncId'] as String?;
+      if (interactionSyncId != null) {
+        remoteInteractionSyncIds[remotePrayer.syncId] = interactionSyncId;
+        interactionSyncIds.add(interactionSyncId);
+      }
     }
 
-    if (rows.isEmpty) {
-      if (remote.deletedAt != null) return;
-
-      final map = remote.toMap(includeId: false);
-      map.remove('participantIds');
-      map['updatedAt'] = remote.updatedAt.toIso8601String();
-      map['deletedAt'] = remote.deletedAt?.toIso8601String();
-      map['syncId'] = remote.syncId;
-      if (localInteractionId != null) {
-        map['interactionId'] = localInteractionId;
-      } else {
-        map.remove('interactionId');
+    // Fetch local interaction IDs by syncId
+    final localInteractionIds = <String, int>{}; // syncId -> id
+    if (interactionSyncIds.isNotEmpty) {
+      final interactionRows = await _db.interactionDao.chunkedQuery(
+        table: 'interactions',
+        inColumn: 'syncId',
+        values: interactionSyncIds.toList(),
+      );
+      for (final row in interactionRows) {
+        localInteractionIds[row['syncId'] as String] = row['id'] as int;
       }
+    }
 
-      final id = await db.insert('prayer_requests', map);
-      await _db.replacePrayerRequestParticipants(db, id, remote.participantIds);
-    } else {
-      final localRow = rows.first;
-      final localUpdated = DateTime.parse(localRow['updatedAt'] as String);
-      if (remote.updatedAt.isAfter(localUpdated)) {
-        final localId = localRow['id'] as int;
-        final map = remote.toMap(includeId: false);
-        map.remove('participantIds');
-        map['updatedAt'] = remote.updatedAt.toIso8601String();
-        map['deletedAt'] = remote.deletedAt?.toIso8601String();
-        if (localInteractionId != null) {
-          map['interactionId'] = localInteractionId;
-        } else {
-          map.remove('interactionId');
+    // Fetch local prayer requests by syncId
+    final localPrayerRequests = <String, Map<String, dynamic>>{};
+    final syncIds = remotePrayers.map((p) => p.syncId).toList();
+
+    if (syncIds.isNotEmpty) {
+      final prayerRows = await _db.prayerRequestDao.chunkedQuery(
+        table: 'prayer_requests',
+        inColumn: 'syncId',
+        values: syncIds,
+      );
+      for (final row in prayerRows) {
+        localPrayerRequests[row['syncId'] as String] = row;
+      }
+    }
+
+    await db.transaction((txn) async {
+      final batch = txn.batch();
+
+      for (final remote in remotePrayers) {
+        final interactionSyncId = remoteInteractionSyncIds[remote.syncId];
+        int? localInteractionId;
+        if (interactionSyncId != null) {
+          localInteractionId = localInteractionIds[interactionSyncId];
         }
 
-        await db.update(
-          'prayer_requests',
-          map,
-          where: 'id = ?',
-          whereArgs: [localId],
-        );
-        await _db.replacePrayerRequestParticipants(
-          db,
-          localId,
-          remote.participantIds,
-        );
-      }
-    }
-  }
+        final localRow = localPrayerRequests[remote.syncId];
 
-  Future<int?> _getLocalInteractionIdBySyncId(String syncId) async {
-    final db = await _db.database;
-    final rows = await db.query(
-      'interactions',
-      columns: ['id'],
-      where: 'syncId = ?',
-      whereArgs: [syncId],
-    );
-    if (rows.isNotEmpty) return rows.first['id'] as int;
-    return null;
+        if (localRow == null) {
+          if (remote.deletedAt != null) continue;
+
+          final map = remote.toMap(includeId: false);
+          map.remove('participantIds');
+          map['updatedAt'] = remote.updatedAt.toIso8601String();
+          map['deletedAt'] = remote.deletedAt?.toIso8601String();
+          map['syncId'] = remote.syncId;
+          if (localInteractionId != null) {
+            map['interactionId'] = localInteractionId;
+          } else {
+            map.remove('interactionId');
+          }
+
+          batch.insert('prayer_requests', map);
+        } else {
+          final localUpdated = DateTime.parse(localRow['updatedAt'] as String);
+          if (remote.updatedAt.isAfter(localUpdated)) {
+            final localId = localRow['id'] as int;
+            final map = remote.toMap(includeId: false);
+            map.remove('participantIds');
+            map['updatedAt'] = remote.updatedAt.toIso8601String();
+            map['deletedAt'] = remote.deletedAt?.toIso8601String();
+            if (localInteractionId != null) {
+              map['interactionId'] = localInteractionId;
+            } else {
+              map.remove('interactionId');
+            }
+
+            batch.update(
+              'prayer_requests',
+              map,
+              where: 'id = ?',
+              whereArgs: [localId],
+            );
+          }
+        }
+      }
+
+      final results = await batch.commit();
+
+      // Now handle participants - this needs to be done after the first batch
+      // because we need the generated IDs for new prayer requests
+      final participantBatch = txn.batch();
+
+      int index = 0;
+      for (final remote in remotePrayers) {
+        final localRow = localPrayerRequests[remote.syncId];
+
+        if (localRow == null) {
+          if (remote.deletedAt != null) continue;
+
+          final localId = results[index] as int;
+          index++;
+
+          participantBatch.delete(
+            'prayer_request_participants',
+            where: 'prayerRequestId = ?',
+            whereArgs: [localId],
+          );
+
+          for (final participantId in remote.participantIds) {
+            participantBatch.insert('prayer_request_participants', {
+              'prayerRequestId': localId,
+              'contactId': participantId,
+            });
+          }
+        } else {
+          final localUpdated = DateTime.parse(localRow['updatedAt'] as String);
+          if (remote.updatedAt.isAfter(localUpdated)) {
+            final localId = localRow['id'] as int;
+            index++;
+
+            participantBatch.delete(
+              'prayer_request_participants',
+              where: 'prayerRequestId = ?',
+              whereArgs: [localId],
+            );
+
+            for (final participantId in remote.participantIds) {
+              participantBatch.insert('prayer_request_participants', {
+                'prayerRequestId': localId,
+                'contactId': participantId,
+              });
+            }
+          }
+        }
+      }
+
+      await participantBatch.commit(noResult: true);
+    });
   }
 
   Future<void> _mergePrayerLists(List<dynamic> remoteLists) async {
