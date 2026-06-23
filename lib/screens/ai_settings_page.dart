@@ -22,7 +22,7 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
   final EmbedderManager _embedderManager = EmbedderManager();
   final HfTokenStore _tokenStore = HfTokenStore();
   bool _enabled = false;
-  bool _showSuggestionsOnSave = true;
+  bool _showSuggestionsOnSave = false;
   ModelStatus _status = ModelStatus.absent;
   EmbedderStatus _embedderStatus = EmbedderStatus.absent;
   bool _hasToken = false;

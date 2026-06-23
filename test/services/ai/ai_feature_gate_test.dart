@@ -8,9 +8,9 @@ void main() {
       SharedPreferences.setMockInitialValues({});
     });
 
-    test('defaults to true when no value is stored', () async {
+    test('defaults to false when no value is stored', () async {
       final gate = AiFeatureGate();
-      expect(await gate.isShowSuggestionsOnSaveEnabled(), isTrue);
+      expect(await gate.isShowSuggestionsOnSaveEnabled(), isFalse);
     });
 
     test('reads stored value correctly', () async {
