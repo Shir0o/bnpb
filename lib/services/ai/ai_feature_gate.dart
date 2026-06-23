@@ -53,7 +53,7 @@ class AiFeatureGate {
 
   Future<bool> isShowSuggestionsOnSaveEnabled() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getBool(_showSuggestionsOnSaveKey) ?? true;
+    return prefs.getBool(_showSuggestionsOnSaveKey) ?? false;
   }
 
   Future<void> setShowSuggestionsOnSaveEnabled(bool value) async {
