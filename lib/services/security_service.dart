@@ -117,9 +117,9 @@ class SecurityService {
         debugPrint('Legacy Gemini key purge failed: $e');
         return; // Don't set the flag if secure-storage delete failed.
       }
-      for (final key in _legacyAiCachePrefsKeys) {
-        await prefs.remove(key);
-      }
+      await Future.wait(
+        _legacyAiCachePrefsKeys.map((key) => prefs.remove(key)),
+      );
       await prefs.setBool(_legacyGeminiPurgedFlagKey, true);
     } catch (e) {
       debugPrint('Legacy Gemini data purge failed: $e');
