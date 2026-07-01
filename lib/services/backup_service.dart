@@ -103,12 +103,14 @@ class BackupService {
 
     final snapshots = await listBackups();
     final stale = snapshots.skip(_maxRetainedBackups);
-    for (final snapshot in stale) {
-      final file = File(snapshot.path);
-      if (await file.exists()) {
-        await file.delete();
-      }
-    }
+    await Future.wait(
+      stale.map((snapshot) async {
+        final file = File(snapshot.path);
+        if (await file.exists()) {
+          await file.delete();
+        }
+      }),
+    );
 
     return createdBackup;
   }
