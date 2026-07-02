@@ -281,11 +281,7 @@ class SecurityService {
     // 4. Clean up backups.
     if (await backupDir.exists()) {
       final backups = await backupDir.list().toList();
-      for (final entity in backups) {
-        if (entity is File) {
-          await _securelyWipeFile(entity);
-        }
-      }
+      await Future.wait(backups.whereType<File>().map(_securelyWipeFile));
       await backupDir.delete(recursive: true);
       removedAnything = true;
     }
