@@ -257,9 +257,7 @@ class ExportService {
           flatRelationships.add(relationship.toMap(includeId: false));
         }
       }
-    }
 
-    for (final contact in contacts) {
       for (final prayer in contact.prayerRequests) {
         if (seenPrayerSyncIds.add(prayer.syncId)) {
           final map = prayer.toMap();
