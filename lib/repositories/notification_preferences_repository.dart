@@ -11,13 +11,17 @@ class NotificationPreferencesRepository {
 
   /// Ensures a baseline set of global preferences exist for every channel.
   Future<void> ensureDefaults() async {
+    final existingPreferences = await _dbHelper.getNotificationPreferences(
+      scopeType: NotificationScopeType.global,
+    );
+
+    final existingChannels = existingPreferences
+        .where((p) => p.scopeId == NotificationPreference.globalScopeId)
+        .map((p) => p.channel)
+        .toSet();
+
     for (final channel in ReminderChannel.values) {
-      final existing = await _dbHelper.getNotificationPreference(
-        scopeType: NotificationScopeType.global,
-        scopeId: NotificationPreference.globalScopeId,
-        channel: channel,
-      );
-      if (existing != null) {
+      if (existingChannels.contains(channel)) {
         continue;
       }
       await _dbHelper.upsertNotificationPreference(
