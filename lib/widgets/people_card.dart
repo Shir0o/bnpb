@@ -30,8 +30,8 @@ class PeopleCard extends StatelessWidget {
     final subtitleDetails = _buildSubtitleDetails(contact);
 
     return Card(
-      elevation: 1,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      elevation: 0,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: Color(0xFFE6EBE7))),
       // Optimization: Removed Clip.antiAlias to avoid expensive saveLayer calls.
       // Clipping is handled by InkWell.borderRadius for splashes, and padding for content.
       child: InkWell(
@@ -49,12 +49,23 @@ class PeopleCard extends StatelessWidget {
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    CircleAvatar(
-                      radius: 24,
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF0D7A4F),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      alignment: Alignment.center,
                       child: Text(
                         displayName.isNotEmpty
                             ? displayName.substring(0, 1).toUpperCase()
                             : '?',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 18,
+                        ),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -62,7 +73,7 @@ class PeopleCard extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(displayName, style: theme.textTheme.titleMedium),
+                          Text(displayName, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700, fontSize: 16.5, color: const Color(0xFF0F1512))),
                           if (contact.nickname != null &&
                               contact.nickname!.isNotEmpty &&
                               contact.nickname!.toLowerCase() !=
