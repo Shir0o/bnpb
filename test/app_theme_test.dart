@@ -8,8 +8,8 @@ void main() {
   GoogleFonts.config.allowRuntimeFetching = false;
 
   test('app themes use Material 3 and Plus Jakarta Sans typography', () {
-    final lightTheme = buildAppTheme(Brightness.light);
-    final darkTheme = buildAppTheme(Brightness.dark);
+    final lightTheme = buildAppTheme(Brightness.light, 13.0);
+    final darkTheme = buildAppTheme(Brightness.dark, 13.0);
 
     expect(lightTheme.useMaterial3, isTrue);
     expect(darkTheme.useMaterial3, isTrue);
@@ -17,11 +17,19 @@ void main() {
     // We enforce light mode colors for both
     expect(lightTheme.colorScheme.brightness, Brightness.light);
     expect(darkTheme.colorScheme.brightness, Brightness.light);
+
+    // Assert that scrolledUnderElevation is disabled
+    expect(lightTheme.appBarTheme.scrolledUnderElevation, 0.0);
+    expect(darkTheme.appBarTheme.scrolledUnderElevation, 0.0);
+
+    // Assert custom titleTextStyle on appBarTheme
+    expect(lightTheme.appBarTheme.titleTextStyle?.fontSize, 24.0);
+    expect(lightTheme.appBarTheme.titleTextStyle?.fontWeight, FontWeight.w800);
   });
 
   test('theme uses the provided Material 3 color palette for Crisp Utility',
       () {
-    final colorScheme = buildAppTheme(Brightness.light).colorScheme;
+    final colorScheme = buildAppTheme(Brightness.light, 13.0).colorScheme;
 
     expect(colorScheme.primary, const Color(0xFF0D7A4F));
     expect(colorScheme.onPrimary, const Color(0xFFFFFFFF));

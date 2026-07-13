@@ -246,14 +246,18 @@ class _AddFamilyPageState extends State<AddFamilyPage> {
 
   @override
   Widget build(BuildContext context) {
+    final double screenWidth = MediaQuery.of(context).size.width;
+    final bool isSmallScreen = screenWidth < 390;
+    final double titleSize = isSmallScreen ? 20.0 : 26.0;
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
+        title: Text(
           'Add Family',
           style: TextStyle(
-            fontSize: 22,
+            fontSize: titleSize,
             fontWeight: FontWeight.w800,
-            color: Color(0xFF0F1512),
+            color: const Color(0xFF0F1512),
           ),
         ),
         titleSpacing: 14,

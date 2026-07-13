@@ -943,7 +943,8 @@ class _HomePageState extends State<HomePage>
     required Color backgroundColor,
     required Color iconColor,
     required String tooltip,
-    double iconSize = 18.0,
+    required double containerSize,
+    required double iconSize,
   }) {
     return Tooltip(
       message: tooltip,
@@ -954,8 +955,8 @@ class _HomePageState extends State<HomePage>
         child: InkWell(
           onTap: onTap,
           child: SizedBox(
-            width: 38,
-            height: 38,
+            width: containerSize,
+            height: containerSize,
             child: Icon(
               icon,
               size: iconSize,
@@ -977,14 +978,22 @@ class _HomePageState extends State<HomePage>
     final searchSuggestions = _buildSearchSuggestions();
     final isShowingSuggestions = searchSuggestions is! SizedBox;
 
+    final double screenWidth = MediaQuery.of(context).size.width;
+    final bool isSmallScreen = screenWidth < 390;
+
+    final double buttonSize = isSmallScreen ? 36.0 : 42.0;
+    final double buttonIconSize = isSmallScreen ? 20.0 : 23.0;
+    final double buttonSpacing = isSmallScreen ? 4.0 : 6.0;
+    final double titleSize = isSmallScreen ? 26.0 : 34.0;
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
+        title: Text(
           'Contacts',
           style: TextStyle(
-            fontSize: 30,
+            fontSize: titleSize,
             fontWeight: FontWeight.w800,
-            color: Color(0xFF0F1512),
+            color: const Color(0xFF0F1512),
             letterSpacing: -0.6,
           ),
         ),
@@ -1011,9 +1020,10 @@ class _HomePageState extends State<HomePage>
                   backgroundColor: const Color(0xFFF1F5F2),
                   iconColor: const Color(0xFF3D4C44),
                   tooltip: 'Prayer Lists',
-                  iconSize: 19.0,
+                  containerSize: buttonSize,
+                  iconSize: buttonIconSize,
                 ),
-                const SizedBox(width: 5),
+                SizedBox(width: buttonSpacing),
                 _buildHeaderButton(
                   icon: Icons.format_list_bulleted_rounded,
                   onTap: () {
@@ -1026,22 +1036,28 @@ class _HomePageState extends State<HomePage>
                   backgroundColor: const Color(0xFFF1F5F2),
                   iconColor: const Color(0xFF3D4C44),
                   tooltip: 'Prayer Diary',
+                  containerSize: buttonSize,
+                  iconSize: buttonIconSize,
                 ),
-                const SizedBox(width: 5),
+                SizedBox(width: buttonSpacing),
                 _buildHeaderButton(
                   icon: Icons.history_rounded,
                   onTap: _openRestoreSheet,
                   backgroundColor: const Color(0xFFF1F5F2),
                   iconColor: const Color(0xFF3D4C44),
                   tooltip: 'Backup and Restore',
+                  containerSize: buttonSize,
+                  iconSize: buttonIconSize,
                 ),
-                const SizedBox(width: 5),
+                SizedBox(width: buttonSpacing),
                 _buildHeaderButton(
                   icon: Icons.upload_rounded,
                   onTap: _openExportSheet,
                   backgroundColor: const Color(0xFF0D7A4F),
                   iconColor: const Color(0xFFFFFFFF),
                   tooltip: 'Export',
+                  containerSize: buttonSize,
+                  iconSize: buttonIconSize,
                 ),
               ],
             ),

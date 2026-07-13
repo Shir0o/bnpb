@@ -8,7 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:sqlite3/open.dart';
-
+import 'package:shared_preferences/shared_preferences.dart';
 import 'screens/add_contact_page.dart';
 import 'screens/analytics_page.dart';
 import 'screens/home_page.dart';
@@ -25,6 +25,16 @@ import 'services/reminder_coordinator.dart';
 import 'services/reminder_service.dart';
 import 'widgets/security_gate.dart';
 import 'widgets/onboarding_wizard.dart';
+
+final ValueNotifier<double> fontSizeNotifier = ValueNotifier<double>(13.0);
+bool _hasUserCustomFontSize = false;
+
+Future<void> updateFontSize(double newSize) async {
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setDouble('app_font_size', newSize);
+  _hasUserCustomFontSize = true;
+  fontSizeNotifier.value = newSize;
+}
 
 const ColorScheme _lightColorScheme = ColorScheme.light(
   primary: Color(0xFF0D7A4F),
@@ -44,7 +54,7 @@ const ColorScheme _lightColorScheme = ColorScheme.light(
   onErrorContainer: Color(0xFFC25A3F),
 );
 
-ThemeData buildAppTheme(Brightness brightness) {
+ThemeData buildAppTheme(Brightness brightness, double baseFontSize) {
   final colorScheme = _lightColorScheme; // Crisp Utility is light-only
   final baseTheme = ThemeData(
     useMaterial3: true,
@@ -64,11 +74,18 @@ ThemeData buildAppTheme(Brightness brightness) {
       baseTheme.primaryTextTheme,
     ),
     scaffoldBackgroundColor: colorScheme.surface,
-    appBarTheme: const AppBarTheme(
+    appBarTheme: AppBarTheme(
       backgroundColor: Colors.white,
-      foregroundColor: Color(0xFF0F1512),
+      foregroundColor: const Color(0xFF0F1512),
       elevation: 0,
       centerTitle: true,
+      scrolledUnderElevation: 0.0,
+      titleTextStyle: const TextStyle(
+        fontSize: 24,
+        fontWeight: FontWeight.w800,
+        color: Color(0xFF0F1512),
+        letterSpacing: -0.48,
+      ),
     ),
     cardTheme: CardThemeData(
       color: Colors.white,
@@ -103,6 +120,12 @@ Future<void> main() async {
       databaseFactory = databaseFactoryFfi;
     }
     WidgetsFlutterBinding.ensureInitialized();
+
+    final prefs = await SharedPreferences.getInstance();
+    if (prefs.containsKey('app_font_size')) {
+      _hasUserCustomFontSize = true;
+      fontSizeNotifier.value = prefs.getDouble('app_font_size') ?? 13.0;
+    }
 
     // Pre-warm Google Sign-In silent login
     await GoogleDriveService().initialize();
@@ -206,16 +229,47 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'BNPB',
-      theme: buildAppTheme(Brightness.light),
-      darkTheme: buildAppTheme(Brightness.dark),
-      themeMode: ThemeMode.light,
-      home: SecurityGate(
-        child: Platform.isMacOS
-            ? const MacOSShell(child: MacOSActiveContactsView())
-            : const MainPage(),
-      ),
+    if (!_hasUserCustomFontSize) {
+      final double physicalWidth = View.of(context).physicalSize.width;
+      final double devicePixelRatio = View.of(context).devicePixelRatio;
+      final double logicalWidth =
+          devicePixelRatio > 0 ? physicalWidth / devicePixelRatio : 360.0;
+      final bool isSmallPhone = logicalWidth < 360;
+      final double defaultBase = isSmallPhone ? 12.0 : 13.0;
+
+      if (fontSizeNotifier.value != defaultBase) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!_hasUserCustomFontSize) {
+            fontSizeNotifier.value = defaultBase;
+          }
+        });
+      }
+    }
+
+    return ValueListenableBuilder<double>(
+      valueListenable: fontSizeNotifier,
+      builder: (context, baseFontSize, child) {
+        final theme = buildAppTheme(Brightness.light, baseFontSize);
+        return MaterialApp(
+          title: 'BNPB',
+          theme: theme,
+          darkTheme: theme,
+          themeMode: ThemeMode.light,
+          builder: (context, child) {
+            return MediaQuery(
+              data: MediaQuery.of(context).copyWith(
+                textScaler: TextScaler.linear(baseFontSize / 14.0),
+              ),
+              child: child!,
+            );
+          },
+          home: SecurityGate(
+            child: Platform.isMacOS
+                ? const MacOSShell(child: MacOSActiveContactsView())
+                : const MainPage(),
+          ),
+        );
+      },
     );
   }
 }

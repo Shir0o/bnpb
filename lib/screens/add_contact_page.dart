@@ -198,15 +198,19 @@ class _AddContactPageState extends State<AddContactPage>
   @override
   Widget build(BuildContext context) {
     super.build(context);
+    final double screenWidth = MediaQuery.of(context).size.width;
+    final bool isSmallScreen = screenWidth < 390;
+    final double titleSize = isSmallScreen ? 22.0 : 30.0;
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
+        title: Text(
           'Add contact',
           style: TextStyle(
-            fontSize: 26,
+            fontSize: titleSize,
             fontWeight: FontWeight.w800,
-            color: Color(0xFF0F1512),
-            letterSpacing: -0.52, // 26 * -0.02
+            color: const Color(0xFF0F1512),
+            letterSpacing: -0.52,
           ),
         ),
         titleSpacing: 22,
