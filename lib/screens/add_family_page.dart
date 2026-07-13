@@ -248,32 +248,68 @@ class _AddFamilyPageState extends State<AddFamilyPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Add Family'),
-        actions: [
-          if (_isSaving)
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16.0),
-              child: Center(
-                child: SizedBox(
-                  height: 20,
-                  width: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2),
+        title: const Text(
+          'Add Family',
+          style: TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.w800,
+            color: Color(0xFF0F1512),
+          ),
+        ),
+        titleSpacing: 14,
+        centerTitle: false,
+        elevation: 0,
+        backgroundColor: Colors.transparent,
+        toolbarHeight: 64,
+        automaticallyImplyLeading: false,
+        leadingWidth: 62,
+        leading: Padding(
+          padding: const EdgeInsets.only(left: 20),
+          child: Center(
+            child: SizedBox(
+              width: 40,
+              height: 40,
+              child: Material(
+                color: const Color(0xFFF1F5F2),
+                borderRadius: BorderRadius.circular(10),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(10),
+                  onTap: () => Navigator.of(context).pop(),
+                  child: const Icon(
+                    Icons.arrow_back_rounded,
+                    size: 20,
+                    color: Color(0xFF0F1512),
+                  ),
                 ),
               ),
-            )
-          else
-            Padding(
-              padding: const EdgeInsets.only(right: 8.0),
-              child: TextButton.icon(
-                onPressed: _saveAll,
-                icon: const Icon(Icons.save_alt),
-                label: const Text('Save all'),
-              ),
             ),
+          ),
+        ),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 20),
+            child: _isSaving
+                ? const SizedBox(
+                    height: 20,
+                    width: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : GestureDetector(
+                    onTap: _saveAll,
+                    child: const Text(
+                      'Save all',
+                      style: TextStyle(
+                        color: Color(0xFF0D7A4F),
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+          ),
         ],
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 40),
         child: Form(
           key: _formKey,
           child: Column(

@@ -145,7 +145,22 @@ class _SettingsPageState extends State<SettingsPage>
   Widget build(BuildContext context) {
     super.build(context);
     return Scaffold(
-      appBar: AppBar(title: const Text('Settings')),
+      appBar: AppBar(
+        title: const Text(
+          'Settings',
+          style: TextStyle(
+            fontSize: 30,
+            fontWeight: FontWeight.w800,
+            color: Color(0xFF0F1512),
+            letterSpacing: -0.6, // 30 * -0.02
+          ),
+        ),
+        titleSpacing: 22,
+        centerTitle: false,
+        elevation: 0,
+        backgroundColor: Colors.transparent,
+        toolbarHeight: 64,
+      ),
       body: AnimatedSwitcher(
         duration: const Duration(milliseconds: 300),
         child: _buildBody(),
