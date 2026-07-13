@@ -8,6 +8,7 @@ import '../services/backup_service.dart';
 import '../services/contact_service.dart';
 import '../services/reminder_coordinator.dart';
 import 'add_family_page.dart';
+import '../widgets/hide_on_scroll_scaffold.dart';
 
 class AddContactPage extends StatefulWidget {
   final bool popOnSave;
@@ -202,7 +203,7 @@ class _AddContactPageState extends State<AddContactPage>
     final bool isSmallScreen = screenWidth < 390;
     final double titleSize = isSmallScreen ? 22.0 : 30.0;
 
-    return Scaffold(
+    return HideOnScrollScaffold(
       appBar: AppBar(
         title: Text(
           'Add contact',

@@ -9,6 +9,7 @@ import '../services/reminder_service.dart';
 import '../services/security_service.dart';
 import '../widgets/export_options_sheet.dart';
 import 'privacy_policy_page.dart';
+import '../widgets/hide_on_scroll_scaffold.dart';
 
 class NotificationSettingsPage extends StatefulWidget {
   const NotificationSettingsPage({super.key});
@@ -115,7 +116,7 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
-    return Scaffold(
+    return HideOnScrollScaffold(
       appBar: AppBar(title: const Text('Notification settings')),
       body: RefreshIndicator(
         onRefresh: _load,

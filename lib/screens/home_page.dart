@@ -28,6 +28,7 @@ import 'import_duplicate_review_page.dart';
 import 'prayer_diary_page.dart';
 import 'prayer_lists_page.dart';
 import '../widgets/smooth_expansion_tile.dart';
+import '../widgets/hide_on_scroll_scaffold.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -986,7 +987,7 @@ class _HomePageState extends State<HomePage>
     final double buttonSpacing = isSmallScreen ? 4.0 : 6.0;
     final double titleSize = isSmallScreen ? 26.0 : 34.0;
 
-    return Scaffold(
+    return HideOnScrollScaffold(
       appBar: AppBar(
         title: Text(
           'Contacts',

@@ -11,6 +11,7 @@ import '../services/ai/semantic_search_service.dart';
 import '../services/contact_service.dart';
 import '../services/reminder_coordinator.dart';
 import 'contact_details_page.dart';
+import '../widgets/hide_on_scroll_scaffold.dart';
 
 /// Natural-language semantic search across all interactions and prayer
 /// requests. Lives on its own surface (rather than fighting the
@@ -189,7 +190,7 @@ class _AskPageState extends State<AskPage> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final embedderReady = AiServices().embedding.isReady;
-    return Scaffold(
+    return HideOnScrollScaffold(
       appBar: AppBar(title: const Text('Ask')),
       body: SafeArea(
         child: Column(

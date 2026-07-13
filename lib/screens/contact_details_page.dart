@@ -17,6 +17,7 @@ import '../widgets/contact_selection_sheet.dart';
 import '../widgets/contact_avatar.dart';
 import '../widgets/people_card.dart';
 import '../widgets/relationship_dialog.dart';
+import '../widgets/hide_on_scroll_scaffold.dart';
 
 // Optimization: Cached DateFormats to avoid expensive parsing during scroll/build loops.
 final _cardDateFormatter = DateFormat.yMMMd().add_jm();
@@ -692,7 +693,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
         ? _buildEditingSections()
         : _buildReadOnlySections(previewContact);
 
-    return Scaffold(
+    return HideOnScrollScaffold(
       appBar: AppBar(
         title: Text(displayName.isEmpty ? 'Contact Details' : displayName),
         actions: [
@@ -1650,7 +1651,7 @@ class _InteractionDetailPageState extends State<InteractionDetailPage> {
     final mediumLabel =
         _mediumLabels[_interaction.medium] ?? _interaction.medium;
 
-    return Scaffold(
+    return HideOnScrollScaffold(
       appBar: AppBar(
         title: const Text('Interaction details'),
         actions: [

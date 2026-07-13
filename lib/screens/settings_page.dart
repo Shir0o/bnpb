@@ -21,6 +21,7 @@ import '../widgets/export_options_sheet.dart';
 import '../widgets/skeleton_loader.dart';
 import 'ai_settings_page.dart';
 import 'privacy_policy_page.dart';
+import '../widgets/hide_on_scroll_scaffold.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -149,7 +150,7 @@ class _SettingsPageState extends State<SettingsPage>
     final bool isSmallScreen = screenWidth < 390;
     final double titleSize = isSmallScreen ? 26.0 : 34.0;
 
-    return Scaffold(
+    return HideOnScrollScaffold(
       appBar: AppBar(
         title: Text(
           'Settings',

@@ -6,6 +6,7 @@ import '../models/contact.dart';
 import '../models/prayer_request.dart';
 import '../widgets/contact_avatar.dart';
 import '../widgets/log_prayer_request_sheet.dart';
+import '../widgets/hide_on_scroll_scaffold.dart';
 
 /// Displays details for a single [PrayerRequest] and supports editing it.
 class PrayerRequestDetailsPage extends StatefulWidget {
@@ -203,7 +204,7 @@ class _PrayerRequestDetailsPageState extends State<PrayerRequestDetailsPage> {
     final theme = Theme.of(context);
     final participantBadges = _buildParticipantBadges();
 
-    return Scaffold(
+    return HideOnScrollScaffold(
       appBar: AppBar(
         title: const Text('Prayer request details'),
         leading: IconButton(

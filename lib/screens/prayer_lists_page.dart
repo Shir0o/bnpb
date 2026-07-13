@@ -10,6 +10,7 @@ import '../widgets/contact_avatar.dart';
 import '../widgets/contact_selection_sheet.dart';
 import '../widgets/skeleton_loader.dart';
 import 'contact_details_page.dart';
+import '../widgets/hide_on_scroll_scaffold.dart';
 
 class PrayerListPage extends StatefulWidget {
   final DBHelper? dbHelper;
@@ -201,7 +202,7 @@ class _PrayerListPageState extends State<PrayerListPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return HideOnScrollScaffold(
       appBar: AppBar(title: Text(_list?.name ?? 'Prayer List')),
       floatingActionButton: _list == null
           ? null
