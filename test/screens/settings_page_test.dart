@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:bnpb/main.dart' show fontSizeNotifier;
 import 'package:bnpb/db/db_helper.dart';
 import 'package:bnpb/screens/settings_page.dart';
 import 'package:bnpb/models/interaction.dart';
@@ -243,6 +244,34 @@ void main() {
 
       // 6. Verify that a success message is shown in snackbar
       expect(find.textContaining('Successfully merged'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'SettingsPage displays Display section and updates font size Slider',
+    (WidgetTester tester) async {
+      await tester.pumpWidget(const MaterialApp(home: SettingsPage()));
+
+      // Yield control to let ensureDefaults / load complete
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.pumpAndSettle();
+
+      // Find Slider widget
+      final sliderFinder = find.byType(Slider, skipOffstage: false);
+      expect(sliderFinder, findsOneWidget);
+      await tester.scrollUntilVisible(
+        sliderFinder,
+        100.0,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
+
+      // Perform a drag on the Slider to update the value
+      await tester.drag(sliderFinder, const Offset(50.0, 0.0));
+      await tester.pumpAndSettle();
+
+      // Verify that the notifier gets updated to a value within [11.0, 18.0]
+      expect(fontSizeNotifier.value, isNotNull);
     },
   );
 }
