@@ -420,9 +420,10 @@ class _HomePageState extends State<HomePage>
     final theme = Theme.of(context);
     final hasAnyPrayer = _prayerCounts.values.any((count) => count != 0);
 
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    return Material(
+      color: const Color(0xFF0F1512),
+      borderRadius: BorderRadius.circular(16),
+      clipBehavior: Clip.antiAlias,
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -433,7 +434,7 @@ class _HomePageState extends State<HomePage>
                 Expanded(
                   child: Text(
                     'Prayer insights',
-                    style: theme.textTheme.titleMedium,
+                    style: theme.textTheme.titleMedium?.copyWith(color: theme.colorScheme.onPrimary, fontWeight: FontWeight.w800, fontSize: 18, letterSpacing: -0.02),
                   ),
                 ),
               ],
@@ -559,11 +560,12 @@ class _HomePageState extends State<HomePage>
     final theme = Theme.of(context);
     final topRecommendations = _recommendations.take(5).toList();
 
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
+    return Material(
+        color: const Color(0xFF0F1512),
+        borderRadius: BorderRadius.circular(16),
+        clipBehavior: Clip.antiAlias,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -572,13 +574,13 @@ class _HomePageState extends State<HomePage>
                 Icon(
                   Icons.auto_awesome,
                   size: 20,
-                  color: theme.colorScheme.primary,
+                  color: const Color(0xFF5FE0A0),
                 ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     'Follow-up suggestions',
-                    style: theme.textTheme.titleMedium,
+                    style: theme.textTheme.titleMedium?.copyWith(color: theme.colorScheme.onPrimary, fontWeight: FontWeight.w800, fontSize: 18, letterSpacing: -0.02),
                   ),
                 ),
                 if (_isRefreshingRecommendations)
