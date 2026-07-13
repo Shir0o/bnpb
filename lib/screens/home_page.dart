@@ -23,6 +23,7 @@ import '../services/ai/ai_feature_gate.dart';
 import '../services/follow_up_recommendation_service.dart';
 import '../services/import_duplicate_detector.dart';
 import '../services/import_service.dart';
+import '../services/backup_service.dart';
 import 'contact_details_page.dart';
 import 'import_duplicate_review_page.dart';
 import 'prayer_diary_page.dart';
@@ -114,6 +115,12 @@ class _HomePageState extends State<HomePage>
   final FocusNode _searchFocusNode = FocusNode();
   final Map<String, Contact> _contactLookup = {};
   final ContactSearchService _searchService = ContactSearchService();
+
+  String? _anchorContactId;
+  final GlobalKey _anchorKey = GlobalKey();
+
+  bool _isBulkSelectMode = false;
+  final Set<String> _selectedContactIds = {};
   Map<PrayerRequestStatus, int> _prayerCounts = {
     for (final status in PrayerRequestStatus.values) status: 0,
   };
@@ -909,13 +916,86 @@ class _HomePageState extends State<HomePage>
     }
   }
 
-  void _navigateToContactDetails(Contact contact) {
-    setState(() {
-      _showRefreshSkeleton = true;
-    });
+  Future<void> _bulkEditLocation() async {
+    final controller = TextEditingController();
+    final formKey = GlobalKey<FormState>();
 
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Change Location'),
+          content: Form(
+            key: formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Enter a new location for the ${_selectedContactIds.length} selected contact(s).',
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: controller,
+                  decoration: const InputDecoration(
+                    labelText: 'New Location',
+                    hintText: 'e.g. London, Seattle, Remote',
+                    border: OutlineInputBorder(),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'Please enter a location';
+                    }
+                    return null;
+                  },
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () {
+                if (formKey.currentState?.validate() == true) {
+                  Navigator.pop(context, true);
+                }
+              },
+              child: const Text('Change'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed == true) {
+      final newLocation = controller.text.trim();
+      await _showLoading(() async {
+        final dbHelper = DBHelper();
+        for (final contactId in _selectedContactIds) {
+          final contact = _contactLookup[contactId];
+          if (contact != null) {
+            final updatedContact = contact.copyWith(location: newLocation);
+            await dbHelper.updateContact(updatedContact);
+            await ReminderCoordinator().refreshContact(contactId);
+          }
+        }
+        ContactService().invalidateContacts();
+        await BackupService().exportBackup();
+        await _fetchContacts(forceRefresh: true);
+        setState(() {
+          _isBulkSelectMode = false;
+          _selectedContactIds.clear();
+        });
+      }, 'Updating locations...');
+    }
+  }
+
+  void _navigateToContactDetails(Contact contact) {
     Navigator.of(context)
-        .push(
+        .push<Contact>(
       MaterialPageRoute(
         builder: (context) => ContactDetailsPage(
           contact: contact,
@@ -923,8 +1003,32 @@ class _HomePageState extends State<HomePage>
         ),
       ),
     )
-        .then((_) {
-      unawaited(_fetchContacts(useSkeleton: true));
+        .then((updatedContact) {
+      final targetContact = updatedContact ?? contact;
+      final targetLocation =
+          (targetContact.location != null && targetContact.location!.isNotEmpty)
+              ? targetContact.location!
+              : 'Unknown';
+
+      setState(() {
+        _anchorContactId = targetContact.id;
+        if (!_expandedLocations.contains(targetLocation)) {
+          _expandedLocations.add(targetLocation);
+        }
+      });
+
+      _fetchContacts(forceRefresh: true).then((_) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (_anchorContactId != null && _anchorKey.currentContext != null) {
+            Scrollable.ensureVisible(
+              _anchorKey.currentContext!,
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeInOut,
+            );
+            _anchorContactId = null;
+          }
+        });
+      });
     });
   }
 
@@ -978,7 +1082,6 @@ class _HomePageState extends State<HomePage>
     final groupedEntries = _groupedFilteredContacts;
     final searchSuggestions = _buildSearchSuggestions();
     final isShowingSuggestions = searchSuggestions is! SizedBox;
-
     final double screenWidth = MediaQuery.of(context).size.width;
     final bool isSmallScreen = screenWidth < 390;
 
@@ -988,83 +1091,153 @@ class _HomePageState extends State<HomePage>
     final double titleSize = isSmallScreen ? 26.0 : 34.0;
 
     return HideOnScrollScaffold(
-      appBar: AppBar(
-        title: Text(
-          'Contacts',
-          style: TextStyle(
-            fontSize: titleSize,
-            fontWeight: FontWeight.w800,
-            color: const Color(0xFF0F1512),
-            letterSpacing: -0.6,
-          ),
-        ),
-        titleSpacing: 22,
-        centerTitle: false,
-        elevation: 0,
-        backgroundColor: Colors.transparent,
-        toolbarHeight: 64,
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 18),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _buildHeaderButton(
-                  icon: Icons.people_outline_rounded,
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) => const PrayerListPage(),
-                      ),
-                    );
+      appBar: _isBulkSelectMode
+          ? AppBar(
+              leading: IconButton(
+                icon: const Icon(Icons.close, color: Color(0xFF3D4C44)),
+                onPressed: () {
+                  setState(() {
+                    _isBulkSelectMode = false;
+                    _selectedContactIds.clear();
+                  });
+                },
+              ),
+              title: Text(
+                '${_selectedContactIds.length} selected',
+                style: const TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF0F1512),
+                ),
+              ),
+              titleSpacing: 0,
+              centerTitle: false,
+              elevation: 0,
+              backgroundColor: Colors.transparent,
+              toolbarHeight: 64,
+              actions: [
+                IconButton(
+                  icon: const Icon(Icons.select_all_rounded,
+                      color: Color(0xFF3D4C44)),
+                  tooltip: 'Select All',
+                  onPressed: () {
+                    setState(() {
+                      _selectedContactIds
+                          .addAll(_filteredContacts.map((c) => c.id));
+                    });
                   },
-                  backgroundColor: const Color(0xFFF1F5F2),
-                  iconColor: const Color(0xFF3D4C44),
-                  tooltip: 'Prayer Lists',
-                  containerSize: buttonSize,
-                  iconSize: buttonIconSize,
                 ),
-                SizedBox(width: buttonSpacing),
-                _buildHeaderButton(
-                  icon: Icons.format_list_bulleted_rounded,
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => const PrayerDiaryPage(),
-                      ),
-                    );
+                IconButton(
+                  icon: const Icon(Icons.deselect, color: Color(0xFF3D4C44)),
+                  tooltip: 'Deselect All',
+                  onPressed: () {
+                    setState(() {
+                      _selectedContactIds.clear();
+                    });
                   },
-                  backgroundColor: const Color(0xFFF1F5F2),
-                  iconColor: const Color(0xFF3D4C44),
-                  tooltip: 'Prayer Diary',
-                  containerSize: buttonSize,
-                  iconSize: buttonIconSize,
                 ),
-                SizedBox(width: buttonSpacing),
-                _buildHeaderButton(
-                  icon: Icons.history_rounded,
-                  onTap: _openRestoreSheet,
-                  backgroundColor: const Color(0xFFF1F5F2),
-                  iconColor: const Color(0xFF3D4C44),
-                  tooltip: 'Backup and Restore',
-                  containerSize: buttonSize,
-                  iconSize: buttonIconSize,
+                IconButton(
+                  icon: const Icon(Icons.edit_location_alt_rounded,
+                      color: Color(0xFF0D7A4F)),
+                  tooltip: 'Edit Location',
+                  onPressed:
+                      _selectedContactIds.isEmpty ? null : _bulkEditLocation,
                 ),
-                SizedBox(width: buttonSpacing),
-                _buildHeaderButton(
-                  icon: Icons.upload_rounded,
-                  onTap: _openExportSheet,
-                  backgroundColor: const Color(0xFF0D7A4F),
-                  iconColor: const Color(0xFFFFFFFF),
-                  tooltip: 'Export',
-                  containerSize: buttonSize,
-                  iconSize: buttonIconSize,
+                const SizedBox(width: 14),
+              ],
+            )
+          : AppBar(
+              title: Text(
+                'Contacts',
+                style: TextStyle(
+                  fontSize: titleSize,
+                  fontWeight: FontWeight.w800,
+                  color: const Color(0xFF0F1512),
+                  letterSpacing: -0.6,
+                ),
+              ),
+              titleSpacing: 22,
+              centerTitle: false,
+              elevation: 0,
+              backgroundColor: Colors.transparent,
+              toolbarHeight: 64,
+              actions: [
+                Padding(
+                  padding: const EdgeInsets.only(right: 18),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _buildHeaderButton(
+                        icon: Icons.checklist_rounded,
+                        onTap: () {
+                          setState(() {
+                            _isBulkSelectMode = true;
+                            _selectedContactIds.clear();
+                          });
+                        },
+                        backgroundColor: const Color(0xFFF1F5F2),
+                        iconColor: const Color(0xFF3D4C44),
+                        tooltip: 'Bulk Select',
+                        containerSize: buttonSize,
+                        iconSize: buttonIconSize,
+                      ),
+                      SizedBox(width: buttonSpacing),
+                      _buildHeaderButton(
+                        icon: Icons.people_outline_rounded,
+                        onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (context) => const PrayerListPage(),
+                            ),
+                          );
+                        },
+                        backgroundColor: const Color(0xFFF1F5F2),
+                        iconColor: const Color(0xFF3D4C44),
+                        tooltip: 'Prayer Lists',
+                        containerSize: buttonSize,
+                        iconSize: buttonIconSize,
+                      ),
+                      SizedBox(width: buttonSpacing),
+                      _buildHeaderButton(
+                        icon: Icons.format_list_bulleted_rounded,
+                        onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => const PrayerDiaryPage(),
+                            ),
+                          );
+                        },
+                        backgroundColor: const Color(0xFFF1F5F2),
+                        iconColor: const Color(0xFF3D4C44),
+                        tooltip: 'Prayer Diary',
+                        containerSize: buttonSize,
+                        iconSize: buttonIconSize,
+                      ),
+                      SizedBox(width: buttonSpacing),
+                      _buildHeaderButton(
+                        icon: Icons.history_rounded,
+                        onTap: _openRestoreSheet,
+                        backgroundColor: const Color(0xFFF1F5F2),
+                        iconColor: const Color(0xFF3D4C44),
+                        tooltip: 'Backup and Restore',
+                        containerSize: buttonSize,
+                        iconSize: buttonIconSize,
+                      ),
+                      SizedBox(width: buttonSpacing),
+                      _buildHeaderButton(
+                        icon: Icons.upload_rounded,
+                        onTap: _openExportSheet,
+                        backgroundColor: const Color(0xFF0D7A4F),
+                        iconColor: const Color(0xFFFFFFFF),
+                        tooltip: 'Export',
+                        containerSize: buttonSize,
+                        iconSize: buttonIconSize,
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
-          ),
-        ],
-      ),
       body: AnimatedSwitcher(
         duration: const Duration(milliseconds: 500),
         switchInCurve: Curves.easeInOut,
@@ -1206,9 +1379,53 @@ class _HomePageState extends State<HomePage>
                                         bottom: 12,
                                       ),
                                       child: PeopleCard(
+                                        key: contact.id == _anchorContactId
+                                            ? _anchorKey
+                                            : null,
                                         contact: contact,
-                                        onTap: () =>
-                                            _navigateToContactDetails(contact),
+                                        onTap: _isBulkSelectMode
+                                            ? () {
+                                                setState(() {
+                                                  if (_selectedContactIds
+                                                      .contains(contact.id)) {
+                                                    _selectedContactIds
+                                                        .remove(contact.id);
+                                                  } else {
+                                                    _selectedContactIds
+                                                        .add(contact.id);
+                                                  }
+                                                });
+                                              }
+                                            : () => _navigateToContactDetails(
+                                                contact),
+                                        onLongPress: () {
+                                          if (!_isBulkSelectMode) {
+                                            setState(() {
+                                              _isBulkSelectMode = true;
+                                              _selectedContactIds
+                                                  .add(contact.id);
+                                            });
+                                          }
+                                        },
+                                        trailing: _isBulkSelectMode
+                                            ? Checkbox(
+                                                value: _selectedContactIds
+                                                    .contains(contact.id),
+                                                onChanged: (bool? checked) {
+                                                  setState(() {
+                                                    if (checked == true) {
+                                                      _selectedContactIds
+                                                          .add(contact.id);
+                                                    } else {
+                                                      _selectedContactIds
+                                                          .remove(contact.id);
+                                                    }
+                                                  });
+                                                },
+                                                activeColor:
+                                                    const Color(0xFF0D7A4F),
+                                              )
+                                            : null,
                                         highlightLabel: match?.matchDescription,
                                         highlightText: match?.snippet,
                                       ),
