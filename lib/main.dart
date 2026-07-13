@@ -27,8 +27,6 @@ import 'services/reminder_service.dart';
 import 'widgets/security_gate.dart';
 import 'widgets/onboarding_wizard.dart';
 
-
-
 const ColorScheme _lightColorScheme = ColorScheme.light(
   primary: Color(0xFF0D7A4F),
   onPrimary: Colors.white,
@@ -55,7 +53,8 @@ ThemeData buildAppTheme(Brightness brightness) {
     visualDensity: VisualDensity.standard,
   );
 
-  final textTheme = GoogleFonts.plusJakartaSansTextTheme(baseTheme.textTheme).apply(
+  final textTheme =
+      GoogleFonts.plusJakartaSansTextTheme(baseTheme.textTheme).apply(
     bodyColor: colorScheme.onSurface,
     displayColor: colorScheme.onSurface,
   );

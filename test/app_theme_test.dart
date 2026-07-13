@@ -19,7 +19,8 @@ void main() {
     expect(darkTheme.colorScheme.brightness, Brightness.light);
   });
 
-  test('theme uses the provided Material 3 color palette for Crisp Utility', () {
+  test('theme uses the provided Material 3 color palette for Crisp Utility',
+      () {
     final colorScheme = buildAppTheme(Brightness.light).colorScheme;
 
     expect(colorScheme.primary, const Color(0xFF0D7A4F));
