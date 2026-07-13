@@ -444,7 +444,7 @@ class _HomePageState extends State<HomePage>
                   child: Container(
                     padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF1F5F2),
+                      color: const Color(0xFFFBEEE9),
                       borderRadius: BorderRadius.circular(14),
                     ),
                     child: Column(
@@ -538,7 +538,7 @@ class _HomePageState extends State<HomePage>
 
     return Material(
       color: const Color(0xFF0F1512),
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(20),
       clipBehavior: Clip.antiAlias,
       child: Theme(
         data: theme.copyWith(
@@ -562,7 +562,7 @@ class _HomePageState extends State<HomePage>
           builder: (cardContext) {
             final cardTheme = Theme.of(cardContext);
             return Padding(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.fromLTRB(18, 16, 18, 12),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -579,9 +579,8 @@ class _HomePageState extends State<HomePage>
                           'Follow-up suggestions',
                           style: cardTheme.textTheme.titleMedium?.copyWith(
                             color: const Color(0xFFFFFFFF),
-                            fontWeight: FontWeight.w800,
-                            fontSize: 18,
-                            letterSpacing: -0.02,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 16,
                           ),
                         ),
                       ),
@@ -989,7 +988,7 @@ class _HomePageState extends State<HomePage>
             letterSpacing: -0.6,
           ),
         ),
-        titleSpacing: 18,
+        titleSpacing: 22,
         centerTitle: false,
         elevation: 0,
         backgroundColor: Colors.transparent,
@@ -1014,7 +1013,7 @@ class _HomePageState extends State<HomePage>
                   tooltip: 'Prayer Lists',
                   iconSize: 19.0,
                 ),
-                const SizedBox(width: 4),
+                const SizedBox(width: 5),
                 _buildHeaderButton(
                   icon: Icons.format_list_bulleted_rounded,
                   onTap: () {
@@ -1028,7 +1027,7 @@ class _HomePageState extends State<HomePage>
                   iconColor: const Color(0xFF3D4C44),
                   tooltip: 'Prayer Diary',
                 ),
-                const SizedBox(width: 4),
+                const SizedBox(width: 5),
                 _buildHeaderButton(
                   icon: Icons.history_rounded,
                   onTap: _openRestoreSheet,
@@ -1036,7 +1035,7 @@ class _HomePageState extends State<HomePage>
                   iconColor: const Color(0xFF3D4C44),
                   tooltip: 'Backup and Restore',
                 ),
-                const SizedBox(width: 4),
+                const SizedBox(width: 5),
                 _buildHeaderButton(
                   icon: Icons.upload_rounded,
                   onTap: _openExportSheet,

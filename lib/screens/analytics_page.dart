@@ -203,7 +203,7 @@ class _AnalyticsPageState extends State<AnalyticsPage>
       onRefresh: _loadSummary,
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(22, 16, 22, 16),
         children: [
           _buildHeadlineCard(summary),
           const SizedBox(height: 16),

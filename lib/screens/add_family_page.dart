@@ -530,7 +530,7 @@ class _AddFamilyPageState extends State<AddFamilyPage> {
       },
       borderRadius: BorderRadius.circular(20),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
         decoration: BoxDecoration(
           color: isSelected ? const Color(0xFFEAF6EF) : const Color(0xFFFFFFFF),
           borderRadius: BorderRadius.circular(20),
