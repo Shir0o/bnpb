@@ -177,18 +177,17 @@ void main() {
 
     await tester.pumpWidget(const MaterialApp(home: SettingsPage()));
     await tester.pump(const Duration(milliseconds: 400));
-    await tester.pump();
+    await tester.pumpAndSettle();
 
     // Scroll and click the Deduplicate button
-    final deDupTile = find
-        .byIcon(Icons.cleaning_services_outlined, skipOffstage: false)
-        .first;
-    expect(deDupTile, findsOneWidget);
+    final deDupTile =
+        find.byIcon(Icons.cleaning_services_outlined, skipOffstage: false);
     await tester.scrollUntilVisible(
       deDupTile,
       100.0,
       scrollable: find.byType(Scrollable).first,
     );
+    expect(deDupTile, findsOneWidget);
     await tester.pump(const Duration(milliseconds: 400));
     await tester.pump();
     await tester.tap(find.text('De-duplicate interactions'));

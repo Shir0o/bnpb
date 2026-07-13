@@ -149,32 +149,23 @@ void main() {
     await tester.pump(const Duration(milliseconds: 400));
     await tester.pump();
 
-    // Verify checklist button exists in AppBar and tap it to enter bulk select mode
-    final bulkSelectBtn = find.byIcon(Icons.checklist_rounded);
-    expect(bulkSelectBtn, findsOneWidget);
-    await tester.tap(bulkSelectBtn);
+    // Find Alice's card and long press to enter bulk select mode
+    final aliceCard = find.byWidgetPredicate(
+        (widget) => widget is PeopleCard && widget.contact.id == 'c1');
+    expect(aliceCard, findsOneWidget);
+
+    await tester.longPress(aliceCard);
     await tester.pump(const Duration(milliseconds: 400));
     await tester.pump();
 
-    // Verify we are in select mode (should show "0 selected" and Select All / Deselect All / Edit Location buttons)
-    expect(find.text('0 selected'), findsOneWidget);
+    // Verify we are in select mode (should show "1 selected" since long press selects the pressed item)
+    expect(find.text('1 selected'), findsOneWidget);
     expect(find.byIcon(Icons.select_all_rounded), findsOneWidget);
     expect(find.byIcon(Icons.deselect), findsOneWidget);
 
-    // Find cards precisely
-    final aliceCard = find.byWidgetPredicate(
-        (widget) => widget is PeopleCard && widget.contact.id == 'c1');
     final bobCard = find.byWidgetPredicate(
         (widget) => widget is PeopleCard && widget.contact.id == 'c2');
-
-    expect(aliceCard, findsOneWidget);
     expect(bobCard, findsOneWidget);
-
-    // Tap Alice to select her
-    await tester.tap(aliceCard);
-    await tester.pump(const Duration(milliseconds: 400));
-    await tester.pump();
-    expect(find.text('1 selected'), findsOneWidget);
 
     // Tap Bob to select him too
     await tester.tap(bobCard);

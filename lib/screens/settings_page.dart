@@ -5,7 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:intl/intl.dart';
 
-import '../main.dart' show fontSizeNotifier, updateFontSize;
+import '../main.dart'
+    show fontSizeNotifier, updateFontSize, themeModeNotifier, updateThemeMode;
 import '../db/db_helper.dart';
 import '../models/contact.dart';
 import '../models/interaction.dart';
@@ -225,6 +226,8 @@ class _SettingsPageState extends State<SettingsPage>
             _buildSectionHeader('Display'),
             _buildCardGroup(
               children: [
+                _buildDarkModeTile(context),
+                const Divider(height: 1, indent: 16, endIndent: 16),
                 _buildFontSizeTile(context),
               ],
             ),
@@ -309,6 +312,29 @@ class _SettingsPageState extends State<SettingsPage>
           color: Color(0xFF8A988F),
         ),
       ),
+    );
+  }
+
+  Widget _buildDarkModeTile(BuildContext context) {
+    return ValueListenableBuilder<ThemeMode>(
+      valueListenable: themeModeNotifier,
+      builder: (context, themeMode, child) {
+        final isDark = themeMode == ThemeMode.dark;
+        return SwitchListTile.adaptive(
+          secondary: const Icon(Icons.dark_mode_outlined),
+          title: const Text('Dark mode'),
+          subtitle: Text(
+            isDark
+                ? 'On · easier on the eyes at night'
+                : 'Off · matches light theme',
+          ),
+          value: isDark,
+          activeThumbColor: Theme.of(context).colorScheme.primary,
+          onChanged: (value) {
+            updateThemeMode(value ? ThemeMode.dark : ThemeMode.light);
+          },
+        );
+      },
     );
   }
 
