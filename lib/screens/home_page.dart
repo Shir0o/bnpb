@@ -420,8 +420,10 @@ class _HomePageState extends State<HomePage>
     final theme = Theme.of(context);
     final hasAnyPrayer = _prayerCounts.values.any((count) => count != 0);
 
-    return Container(
-      decoration: BoxDecoration(color: const Color(0xFF0F1512), borderRadius: BorderRadius.circular(16)),
+    return Material(
+      color: const Color(0xFF0F1512),
+      borderRadius: BorderRadius.circular(16),
+      clipBehavior: Clip.antiAlias,
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -558,9 +560,12 @@ class _HomePageState extends State<HomePage>
     final theme = Theme.of(context);
     final topRecommendations = _recommendations.take(5).toList();
 
-    return Container(
-        decoration: BoxDecoration(color: const Color(0xFF0F1512), borderRadius: BorderRadius.circular(16)),
-        padding: const EdgeInsets.all(16),
+    return Material(
+        color: const Color(0xFF0F1512),
+        borderRadius: BorderRadius.circular(16),
+        clipBehavior: Clip.antiAlias,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -649,6 +654,7 @@ class _HomePageState extends State<HomePage>
               ),
           ],
         ),
+      ),
     );
   }
 
