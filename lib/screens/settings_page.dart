@@ -165,58 +165,84 @@ class _SettingsPageState extends State<SettingsPage>
         children: [
           if (_isUpdating || _isPurging)
             const LinearProgressIndicator(minHeight: 2),
+          const SizedBox(height: 8),
           _buildSectionHeader('Reminders'),
-          _buildGlobalRemindersTile(context),
-          if (_supportsExactAlarmPermission) _buildExactAlarmTile(context),
-          const Divider(),
+          _buildCardGroup(
+            children: [
+              _buildGlobalRemindersTile(context),
+              if (_supportsExactAlarmPermission) ...[
+                const Divider(height: 1, indent: 16, endIndent: 16),
+                _buildExactAlarmTile(context),
+              ],
+            ],
+          ),
+          const SizedBox(height: 16),
           _buildSectionHeader('Sync & Backup'),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 8),
+            child: _buildSyncSegmentedButton(),
+          ),
           _buildSyncGroup(context),
-          const Divider(),
+          const SizedBox(height: 16),
           _buildSectionHeader('Security'),
-          _buildSecurityGroup(context),
-          const Divider(),
+          _buildCardGroup(
+            children: [
+              _buildSecurityGroup(context),
+            ],
+          ),
+          const SizedBox(height: 16),
           _buildSectionHeader('Data'),
-          ListTile(
-            leading: const Icon(Icons.ios_share_outlined),
-            title: const Text('Export options'),
-            subtitle: const Text('CSV, PDF, JSON, or encrypted archive'),
-            onTap: _isPurging ? null : _openExportOptions,
+          _buildCardGroup(
+            children: [
+              ListTile(
+                leading: const Icon(Icons.ios_share_outlined),
+                title: const Text('Export options'),
+                subtitle: const Text('CSV, PDF, JSON, or encrypted archive'),
+                onTap: _isPurging ? null : _openExportOptions,
+              ),
+              const Divider(height: 1, indent: 16, endIndent: 16),
+              ListTile(
+                leading: const Icon(Icons.cleaning_services_outlined),
+                title: const Text('De-duplicate interactions'),
+                subtitle: const Text(
+                  'Find and merge duplicate interaction entries',
+                ),
+                onTap: _isPurging || _isUpdating ? null : _confirmDeDuplicate,
+              ),
+              const Divider(height: 1, indent: 16, endIndent: 16),
+              ListTile(
+                leading: const Icon(Icons.delete_forever_outlined),
+                title: const Text('Securely purge all data'),
+                textColor: Theme.of(context).colorScheme.error,
+                iconColor: Theme.of(context).colorScheme.error,
+                onTap: _isPurging ? null : _confirmSecurePurge,
+              ),
+            ],
           ),
-          ListTile(
-            leading: const Icon(Icons.cleaning_services_outlined),
-            title: const Text('De-duplicate interactions'),
-            subtitle: const Text(
-              'Find and merge duplicate interaction entries',
-            ),
-            onTap: _isPurging || _isUpdating ? null : _confirmDeDuplicate,
-          ),
-          ListTile(
-            leading: const Icon(Icons.delete_forever_outlined),
-            title: const Text('Securely purge all data'),
-            textColor: Theme.of(context).colorScheme.error,
-            iconColor: Theme.of(context).colorScheme.error,
-            onTap: _isPurging ? null : _confirmSecurePurge,
-          ),
-          if (_aiSupportedPlatform) ...[
-            const Divider(),
-            _buildSectionHeader('AI'),
-            ListTile(
-              leading: const Icon(Icons.auto_awesome_outlined),
-              title: const Text('AI features'),
-              subtitle: const Text('On-device suggestions, off by default'),
-              onTap: () => Navigator.of(
-                context,
-              ).push(MaterialPageRoute(builder: (_) => const AiSettingsPage())),
-            ),
-          ],
-          const Divider(),
-          _buildSectionHeader('About'),
-          ListTile(
-            leading: const Icon(Icons.privacy_tip_outlined),
-            title: const Text('Privacy policy'),
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const PrivacyPolicyPage()),
-            ),
+          const SizedBox(height: 16),
+          _buildSectionHeader('AI & About'),
+          _buildCardGroup(
+            children: [
+              if (_aiSupportedPlatform) ...[
+                ListTile(
+                  leading: const Icon(Icons.auto_awesome_outlined),
+                  title: const Text('AI features'),
+                  subtitle: const Text('On-device suggestions, off by default'),
+                  onTap: () => Navigator.of(
+                    context,
+                  ).push(MaterialPageRoute(
+                      builder: (_) => const AiSettingsPage())),
+                ),
+                const Divider(height: 1, indent: 16, endIndent: 16),
+              ],
+              ListTile(
+                leading: const Icon(Icons.privacy_tip_outlined),
+                title: const Text('Privacy policy'),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const PrivacyPolicyPage()),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 32),
         ],
@@ -248,6 +274,8 @@ class _SettingsPageState extends State<SettingsPage>
       leading: const Icon(Icons.notifications_none_outlined),
       title: const Text('Global reminder defaults'),
       subtitle: const Text('Base settings for all notifications'),
+      shape: const Border(),
+      collapsedShape: const Border(),
       children: ReminderChannel.values.map((channel) {
         final pref = _globalDefaults[channel];
         final enabled = pref?.enabled ?? true;
@@ -280,33 +308,11 @@ class _SettingsPageState extends State<SettingsPage>
         ? DateFormat.yMMMd().add_jm().format(_lastBackupTime!.toLocal())
         : 'Never';
 
-    return Column(
+    final isLocal = _syncType == SyncType.local;
+
+    return _buildCardGroup(
       children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-          child: SegmentedButton<SyncType>(
-            segments: const [
-              ButtonSegment(
-                value: SyncType.local,
-                label: Text('Local'),
-                icon: Icon(Icons.folder_outlined),
-              ),
-              ButtonSegment(
-                value: SyncType.googleDrive,
-                label: Text('Google Drive'),
-                icon: Icon(Icons.cloud_outlined),
-              ),
-            ],
-            selected: {_syncType},
-            onSelectionChanged: (Set<SyncType> newSelection) async {
-              final newType = newSelection.first;
-              setState(() => _syncType = newType);
-              await SyncService().setSyncType(newType);
-              await _loadSyncState();
-            },
-          ),
-        ),
-        if (_syncType == SyncType.local)
+        if (isLocal)
           ListTile(
             leading: const Icon(Icons.location_on_outlined),
             title: const Text('Sync Location'),
@@ -359,7 +365,7 @@ class _SettingsPageState extends State<SettingsPage>
               child: Text(_googleUser == null ? 'Sign In' : 'Sign Out'),
             ),
           ),
-        const Divider(indent: 16, endIndent: 16),
+        const Divider(height: 1, indent: 16, endIndent: 16),
         ListTile(
           leading: const Icon(Icons.history),
           title: const Text('Last sync status'),
@@ -388,14 +394,96 @@ class _SettingsPageState extends State<SettingsPage>
           title: Text(_hasPasscode ? 'Change passcode' : 'Enable passcode'),
           onTap: _promptForPasscode,
         ),
-        if (_hasPasscode)
+        if (_hasPasscode) ...[
+          const Divider(height: 1, indent: 16, endIndent: 16),
           SwitchListTile.adaptive(
             secondary: const Icon(Icons.fingerprint),
             title: const Text('Biometric unlock'),
             value: _biometricEnabled,
             onChanged: _biometricAvailable ? _toggleBiometrics : null,
           ),
+        ],
       ],
+    );
+  }
+
+  Widget _buildCardGroup({required List<Widget> children}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 4),
+      child: Material(
+        color: const Color(0xFFFFFFFF),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+          side: const BorderSide(
+            color: Color(0xFFE6EBE7),
+            width: 1,
+          ),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: children,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSyncSegmentedButton() {
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFFF1F5F2), // Surface tint
+        borderRadius: BorderRadius.circular(12),
+      ),
+      padding: const EdgeInsets.all(4),
+      child: SegmentedButton<SyncType>(
+        segments: const [
+          ButtonSegment(
+            value: SyncType.local,
+            label: Text('Local'),
+            icon: Icon(Icons.folder_outlined, size: 16),
+          ),
+          ButtonSegment(
+            value: SyncType.googleDrive,
+            label: Text('Google Drive'),
+            icon: Icon(Icons.cloud_outlined, size: 16),
+          ),
+        ],
+        selected: {_syncType},
+        showSelectedIcon: false,
+        style: ButtonStyle(
+          backgroundColor: WidgetStateProperty.resolveWith<Color>((states) {
+            if (states.contains(WidgetState.selected)) {
+              return const Color(0xFFFFFFFF);
+            }
+            return Colors.transparent;
+          }),
+          foregroundColor: WidgetStateProperty.resolveWith<Color>((states) {
+            if (states.contains(WidgetState.selected)) {
+              return const Color(0xFF0F1512);
+            }
+            return const Color(0xFF57635C);
+          }),
+          elevation: WidgetStateProperty.resolveWith<double>((states) {
+            if (states.contains(WidgetState.selected)) {
+              return 1.0;
+            }
+            return 0.0;
+          }),
+          shadowColor: WidgetStateProperty.all(
+              const Color(0xFF000000).withValues(alpha: 0.1)),
+          side: WidgetStateProperty.all(BorderSide.none),
+          shape: WidgetStateProperty.all(
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(9)),
+          ),
+          visualDensity: VisualDensity.compact,
+        ),
+        onSelectionChanged: (Set<SyncType> newSelection) async {
+          final newType = newSelection.first;
+          setState(() => _syncType = newType);
+          await SyncService().setSyncType(newType);
+          await _loadSyncState();
+        },
+      ),
     );
   }
 

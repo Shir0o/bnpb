@@ -3,6 +3,7 @@ import '../db/db_helper.dart';
 import '../models/contact.dart';
 import '../screens/add_contact_page.dart';
 import '../services/contact_search_service.dart';
+import 'contact_avatar.dart';
 import 'skeleton_loader.dart';
 
 class ContactSelectionSheet extends StatefulWidget {
@@ -269,18 +270,10 @@ class _ContactSelectionSheetState extends State<ContactSelectionSheet> {
                           );
 
                           return ListTile(
-                            leading: CircleAvatar(
-                              backgroundColor: isDisabled
-                                  ? theme.colorScheme.surfaceContainerHighest
-                                  : theme.colorScheme.primaryContainer,
-                              foregroundColor: isDisabled
-                                  ? theme.colorScheme.outline
-                                  : theme.colorScheme.onPrimaryContainer,
-                              child: Text(
-                                contact.firstName.isNotEmpty
-                                    ? contact.firstName[0].toUpperCase()
-                                    : '?',
-                              ),
+                            leading: ContactAvatar(
+                              contact: contact,
+                              radius: 20,
+                              isDisabled: isDisabled,
                             ),
                             title: Text(
                               contact.fullName,

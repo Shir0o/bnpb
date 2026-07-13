@@ -14,6 +14,7 @@ import '../services/contact_service.dart';
 import '../services/reminder_coordinator.dart';
 import '../services/sync_service.dart';
 import '../widgets/backup_restore_sheet.dart';
+import '../widgets/contact_avatar.dart';
 import '../widgets/export_options_sheet.dart';
 import '../widgets/home_page_skeleton.dart';
 import '../widgets/people_card.dart';
@@ -424,131 +425,166 @@ class _HomePageState extends State<HomePage>
       color: const Color(0xFF0F1512),
       borderRadius: BorderRadius.circular(16),
       clipBehavior: Clip.antiAlias,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    'Prayer insights',
-                    style: theme.textTheme.titleMedium?.copyWith(color: theme.colorScheme.onPrimary, fontWeight: FontWeight.w800, fontSize: 18, letterSpacing: -0.02),
-                  ),
-                ),
-              ],
+      child: Theme(
+        data: theme.copyWith(
+          iconTheme: const IconThemeData(color: Color(0xFFEEF2EF)),
+          textTheme: theme.textTheme.apply(
+            bodyColor: const Color(0xFFFFFFFF),
+            displayColor: const Color(0xFFFFFFFF),
+          ),
+          listTileTheme: ListTileThemeData(
+            titleTextStyle: theme.textTheme.titleSmall?.copyWith(
+              color: const Color(0xFFFFFFFF),
+              fontWeight: FontWeight.w600,
             ),
-            const SizedBox(height: 12),
-            AnimatedSwitcher(
-              duration: const Duration(milliseconds: 300),
+            subtitleTextStyle: theme.textTheme.bodySmall?.copyWith(
+              color: const Color(0xFF8A988F),
+            ),
+            iconColor: const Color(0xFFEEF2EF),
+          ),
+        ),
+        child: Builder(
+          builder: (cardContext) {
+            final cardTheme = Theme.of(cardContext);
+            return Padding(
+              padding: const EdgeInsets.all(16),
               child: Column(
-                key: const ValueKey('insights_content'),
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  if (!hasAnyPrayer) const PrayerInsightsEmptyState(),
-                  if (_pendingPrayerReminders.isNotEmpty) ...[
-                    const SizedBox(height: 12),
-                    Text('Needs prayer', style: theme.textTheme.titleSmall),
-                    const SizedBox(height: 8),
-                    ..._pendingPrayerReminders.map((request) {
-                      final contactName = _displayNameForContactId(
-                        _contactLookup,
-                        request.contactId,
-                      );
-                      return ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        dense: true,
-                        leading: const Icon(Icons.hourglass_top_outlined),
-                        title: Text(request.description),
-                        subtitle: Text(
-                          '${_formatDate(request.requestedAt)} • $contactName',
-                        ),
-                        onTap: () => _openPrayerRequestDetails(request),
-                      );
-                    }),
-                  ],
-                  if (_recentAnsweredPrayers.isNotEmpty) ...[
-                    const SizedBox(height: 12),
-                    Text(
-                      'Answered recently',
-                      style: theme.textTheme.titleSmall,
-                    ),
-                    const SizedBox(height: 8),
-                    ..._recentAnsweredPrayers.map((request) {
-                      final contactName = _displayNameForContactId(
-                        _contactLookup,
-                        request.contactId,
-                      );
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 8),
-                        child: Material(
-                          color: theme.colorScheme.secondaryContainer,
-                          borderRadius: BorderRadius.circular(12),
-                          clipBehavior: Clip.antiAlias,
-                          child: ListTile(
-                            dense: true,
-                            leading: Icon(
-                              Icons.celebration_outlined,
-                              color: theme.colorScheme.onSecondaryContainer,
-                            ),
-                            title: Text(
-                              request.description,
-                              style: theme.textTheme.bodyMedium?.copyWith(
-                                color: theme.colorScheme.onSecondaryContainer,
-                              ),
-                            ),
-                            subtitle: Text(
-                              '${_formatDate(request.answeredAt ?? request.requestedAt)} • $contactName',
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: theme.colorScheme.onSecondaryContainer,
-                              ),
-                            ),
-                            onTap: () => _openPrayerRequestDetails(request),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'Prayer insights',
+                          style: cardTheme.textTheme.titleMedium?.copyWith(
+                            color: const Color(0xFFFFFFFF),
+                            fontWeight: FontWeight.w800,
+                            fontSize: 18,
+                            letterSpacing: -0.02,
                           ),
                         ),
-                      );
-                    }),
-                  ],
-                  if (_prayerFocusInteractions.isNotEmpty) ...[
-                    const SizedBox(height: 12),
-                    Text(
-                      'Prayer focus interactions',
-                      style: theme.textTheme.titleSmall,
-                    ),
-                    const SizedBox(height: 8),
-                    ..._prayerFocusInteractions.map((interaction) {
-                      final primaryContactId =
-                          interaction.participantIds.isNotEmpty
-                              ? interaction.participantIds.first
-                              : null;
-                      final contact = primaryContactId != null
-                          ? _contactLookup[primaryContactId]
-                          : null;
-                      final contactName = primaryContactId != null
-                          ? _displayNameForContactId(
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 300),
+                    child: Column(
+                      key: const ValueKey('insights_content'),
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        if (!hasAnyPrayer) const PrayerInsightsEmptyState(),
+                        if (_pendingPrayerReminders.isNotEmpty) ...[
+                          const SizedBox(height: 12),
+                          Text('Needs prayer',
+                              style: cardTheme.textTheme.titleSmall),
+                          const SizedBox(height: 8),
+                          ..._pendingPrayerReminders.map((request) {
+                            final contactName = _displayNameForContactId(
                               _contactLookup,
-                              primaryContactId,
-                            )
-                          : 'Unknown contact';
-                      return ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        dense: true,
-                        leading: const Icon(Icons.self_improvement_outlined),
-                        title: Text(interaction.summary),
-                        subtitle: Text(
-                          '${_formatDate(interaction.occurredAt)} • $contactName',
-                        ),
-                        onTap: contact != null
-                            ? () => _navigateToContactDetails(contact)
-                            : null,
-                      );
-                    }),
-                  ],
+                              request.contactId,
+                            );
+                            return ListTile(
+                              contentPadding: EdgeInsets.zero,
+                              dense: true,
+                              leading: const Icon(Icons.hourglass_top_outlined),
+                              title: Text(request.description),
+                              subtitle: Text(
+                                '${_formatDate(request.requestedAt)} • $contactName',
+                              ),
+                              onTap: () => _openPrayerRequestDetails(request),
+                            );
+                          }),
+                        ],
+                        if (_recentAnsweredPrayers.isNotEmpty) ...[
+                          const SizedBox(height: 12),
+                          Text(
+                            'Answered recently',
+                            style: cardTheme.textTheme.titleSmall,
+                          ),
+                          const SizedBox(height: 8),
+                          ..._recentAnsweredPrayers.map((request) {
+                            final contactName = _displayNameForContactId(
+                              _contactLookup,
+                              request.contactId,
+                            );
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 8),
+                              child: Material(
+                                color: theme.colorScheme.secondaryContainer,
+                                borderRadius: BorderRadius.circular(12),
+                                clipBehavior: Clip.antiAlias,
+                                child: ListTile(
+                                  dense: true,
+                                  leading: Icon(
+                                    Icons.celebration_outlined,
+                                    color:
+                                        theme.colorScheme.onSecondaryContainer,
+                                  ),
+                                  title: Text(
+                                    request.description,
+                                    style: theme.textTheme.bodyMedium?.copyWith(
+                                      color: theme
+                                          .colorScheme.onSecondaryContainer,
+                                    ),
+                                  ),
+                                  subtitle: Text(
+                                    '${_formatDate(request.answeredAt ?? request.requestedAt)} • $contactName',
+                                    style: theme.textTheme.bodySmall?.copyWith(
+                                      color: theme
+                                          .colorScheme.onSecondaryContainer,
+                                    ),
+                                  ),
+                                  onTap: () =>
+                                      _openPrayerRequestDetails(request),
+                                ),
+                              ),
+                            );
+                          }),
+                        ],
+                        if (_prayerFocusInteractions.isNotEmpty) ...[
+                          const SizedBox(height: 12),
+                          Text(
+                            'Prayer focus interactions',
+                            style: cardTheme.textTheme.titleSmall,
+                          ),
+                          const SizedBox(height: 8),
+                          ..._prayerFocusInteractions.map((interaction) {
+                            final primaryContactId =
+                                interaction.participantIds.isNotEmpty
+                                    ? interaction.participantIds.first
+                                    : null;
+                            final contact = primaryContactId != null
+                                ? _contactLookup[primaryContactId]
+                                : null;
+                            final contactName = primaryContactId != null
+                                ? _displayNameForContactId(
+                                    _contactLookup,
+                                    primaryContactId,
+                                  )
+                                : 'Unknown contact';
+                            return ListTile(
+                              contentPadding: EdgeInsets.zero,
+                              dense: true,
+                              leading:
+                                  const Icon(Icons.self_improvement_outlined),
+                              title: Text(interaction.summary),
+                              subtitle: Text(
+                                '${_formatDate(interaction.occurredAt)} • $contactName',
+                              ),
+                              onTap: contact != null
+                                  ? () => _navigateToContactDetails(contact)
+                                  : null,
+                            );
+                          }),
+                        ],
+                      ],
+                    ),
+                  ),
                 ],
               ),
-            ),
-          ],
+            );
+          },
         ),
       ),
     );
@@ -561,98 +597,126 @@ class _HomePageState extends State<HomePage>
     final topRecommendations = _recommendations.take(5).toList();
 
     return Material(
-        color: const Color(0xFF0F1512),
-        borderRadius: BorderRadius.circular(16),
-        clipBehavior: Clip.antiAlias,
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              children: [
-                Icon(
-                  Icons.auto_awesome,
-                  size: 20,
-                  color: const Color(0xFF5FE0A0),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'Follow-up suggestions',
-                    style: theme.textTheme.titleMedium?.copyWith(color: theme.colorScheme.onPrimary, fontWeight: FontWeight.w800, fontSize: 18, letterSpacing: -0.02),
-                  ),
-                ),
-                if (_isRefreshingRecommendations)
-                  const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                else
-                  IconButton(
-                    icon: const Icon(Icons.refresh, size: 20),
-                    onPressed: () => _loadRecommendations(forceRefresh: true),
-                    visualDensity: VisualDensity.compact,
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                    tooltip: 'Refresh suggestions',
-                  ),
-              ],
+      color: const Color(0xFF0F1512),
+      borderRadius: BorderRadius.circular(16),
+      clipBehavior: Clip.antiAlias,
+      child: Theme(
+        data: theme.copyWith(
+          iconTheme: const IconThemeData(color: Color(0xFFEEF2EF)),
+          textTheme: theme.textTheme.apply(
+            bodyColor: const Color(0xFFFFFFFF),
+            displayColor: const Color(0xFFFFFFFF),
+          ),
+          listTileTheme: ListTileThemeData(
+            titleTextStyle: theme.textTheme.titleSmall?.copyWith(
+              color: const Color(0xFFFFFFFF),
+              fontWeight: FontWeight.w600,
             ),
-            const SizedBox(height: 8),
-            if (_isRefreshingRecommendations)
-              SkeletonLoader(
-                child: RecommendationRowsSkeleton(
-                  itemCount: topRecommendations.length.clamp(1, 5),
-                ),
-              )
-            else
-              Column(
-                children: topRecommendations.map((rec) {
-                  Color iconColor;
-                  IconData icon;
-                  switch (rec.priority) {
-                    case RecommendationPriority.critical:
-                      iconColor = theme.colorScheme.error;
-                      icon = Icons.priority_high;
-                      break;
-                    case RecommendationPriority.high:
-                      iconColor = theme.colorScheme.tertiary;
-                      icon = Icons.star_outline;
-                      break;
-                    case RecommendationPriority.medium:
-                      iconColor = theme.colorScheme.primary;
-                      icon = Icons.chat_bubble_outline;
-                      break;
-                    case RecommendationPriority.low:
-                      iconColor = theme.colorScheme.outline;
-                      icon = Icons.person_outline;
-                      break;
-                  }
+            subtitleTextStyle: theme.textTheme.bodySmall?.copyWith(
+              color: const Color(0xFF8A988F),
+            ),
+            iconColor: const Color(0xFFEEF2EF),
+          ),
+        ),
+        child: Builder(
+          builder: (cardContext) {
+            final cardTheme = Theme.of(cardContext);
+            return Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.auto_awesome,
+                        size: 20,
+                        color: Color(0xFF5FE0A0),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Follow-up suggestions',
+                          style: cardTheme.textTheme.titleMedium?.copyWith(
+                            color: const Color(0xFFFFFFFF),
+                            fontWeight: FontWeight.w800,
+                            fontSize: 18,
+                            letterSpacing: -0.02,
+                          ),
+                        ),
+                      ),
+                      if (_isRefreshingRecommendations)
+                        const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      else
+                        IconButton(
+                          icon: const Icon(Icons.refresh, size: 20),
+                          onPressed: () =>
+                              _loadRecommendations(forceRefresh: true),
+                          visualDensity: VisualDensity.compact,
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                          tooltip: 'Refresh suggestions',
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  if (_isRefreshingRecommendations)
+                    SkeletonLoader(
+                      child: RecommendationRowsSkeleton(
+                        itemCount: topRecommendations.length.clamp(1, 5),
+                      ),
+                    )
+                  else
+                    Column(
+                      children: topRecommendations.map((rec) {
+                        Color iconColor;
+                        IconData icon;
+                        switch (rec.priority) {
+                          case RecommendationPriority.critical:
+                            iconColor = const Color(0xFFFF8C7A);
+                            icon = Icons.priority_high;
+                            break;
+                          case RecommendationPriority.high:
+                            iconColor = const Color(0xFF5FE0A0);
+                            icon = Icons.star_outline;
+                            break;
+                          case RecommendationPriority.medium:
+                            iconColor = const Color(0xFFEEF2EF);
+                            icon = Icons.chat_bubble_outline;
+                            break;
+                          case RecommendationPriority.low:
+                            iconColor = const Color(0xFF8A988F);
+                            icon = Icons.person_outline;
+                            break;
+                        }
 
-                  return ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: CircleAvatar(
-                      radius: 18,
-                      child: Text(rec.contact.initials),
+                        return ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          leading: ContactAvatar(
+                            contact: rec.contact,
+                            radius: 18,
+                          ),
+                          title: Text(
+                            rec.contact.displayName,
+                          ),
+                          subtitle: Text(
+                            rec.reason,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          trailing: Icon(icon, color: iconColor, size: 20),
+                          onTap: () => _navigateToContactDetails(rec.contact),
+                        );
+                      }).toList(),
                     ),
-                    title: Text(
-                      rec.contact.displayName,
-                      style: theme.textTheme.titleSmall,
-                    ),
-                    subtitle: Text(
-                      rec.reason,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.bodySmall,
-                    ),
-                    trailing: Icon(icon, color: iconColor, size: 20),
-                    onTap: () => _navigateToContactDetails(rec.contact),
-                  );
-                }).toList(),
+                ],
               ),
-          ],
+            );
+          },
         ),
       ),
     );

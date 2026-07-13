@@ -315,8 +315,11 @@ class _AddFamilyPageState extends State<AddFamilyPage> {
 
   Widget _anchorCard() {
     return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: const BorderSide(color: Color(0xFFE6EBE7)),
+      ),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -384,10 +387,13 @@ class _AddFamilyPageState extends State<AddFamilyPage> {
     final m = _members[index];
 
     return Card(
-      elevation: 1,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: const BorderSide(color: Color(0xFFE6EBE7)),
+      ),
       child: Padding(
-        padding: const EdgeInsets.all(12.0),
+        padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -429,14 +435,9 @@ class _AddFamilyPageState extends State<AddFamilyPage> {
             const SizedBox(height: 8),
             Wrap(
               spacing: 8,
+              runSpacing: 8,
               children: _standardRoles.map((role) {
-                return ChoiceChip(
-                  label: Text(role),
-                  selected: m.role == role,
-                  onSelected: (selected) {
-                    if (selected) setState(() => m.role = role);
-                  },
-                );
+                return _buildRoleChip(m, role);
               }).toList(),
             ),
             if (m.role == 'Other') ...[
@@ -483,5 +484,36 @@ class _AddFamilyPageState extends State<AddFamilyPage> {
         ? (m.customRole.text.trim().isEmpty ? '...' : m.customRole.text.trim())
         : m.role;
     return '$first is the $role of $anchorName';
+  }
+
+  Widget _buildRoleChip(_MemberDraft m, String role) {
+    final isSelected = m.role == role;
+    return InkWell(
+      onTap: () {
+        setState(() => m.role = role);
+      },
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? const Color(0xFFEAF6EF) : const Color(0xFFFFFFFF),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color:
+                isSelected ? const Color(0xFF0D7A4F) : const Color(0xFFE6EBE7),
+            width: 1,
+          ),
+        ),
+        child: Text(
+          role,
+          style: TextStyle(
+            color:
+                isSelected ? const Color(0xFF0D7A4F) : const Color(0xFF57635C),
+            fontWeight: FontWeight.w600,
+            fontSize: 13,
+          ),
+        ),
+      ),
+    );
   }
 }
