@@ -101,16 +101,19 @@ class PrayerRequestDao extends BaseDao {
     final now = DateTime.now().toUtc().toIso8601String();
     final idsToDelete = existingIds.difference(newIds);
     if (idsToDelete.isNotEmpty) {
-      final batch = txn.batch();
-      for (final id in idsToDelete) {
-        batch.update(
+      final idsList = idsToDelete.toList();
+      for (var i = 0; i < idsList.length; i += 900) {
+        final end = (i + 900 < idsList.length) ? i + 900 : idsList.length;
+        final chunk = idsList.sublist(i, end);
+        final placeholders = List.filled(chunk.length, '?').join(',');
+
+        await txn.update(
           'prayer_requests',
           {'deletedAt': now, 'updatedAt': now},
-          where: 'id = ?',
-          whereArgs: [id],
+          where: 'id IN ($placeholders)',
+          whereArgs: chunk,
         );
       }
-      await batch.commit(noResult: true);
     }
 
     if (contact.prayerRequests.isEmpty) return;
