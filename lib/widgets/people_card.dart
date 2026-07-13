@@ -12,6 +12,7 @@ class PeopleCard extends StatelessWidget {
     super.key,
     required this.contact,
     this.onTap,
+    this.onLongPress,
     this.trailing,
     this.highlightLabel,
     this.highlightText,
@@ -19,6 +20,7 @@ class PeopleCard extends StatelessWidget {
 
   final Contact contact;
   final VoidCallback? onTap;
+  final VoidCallback? onLongPress;
   final Widget? trailing;
   final String? highlightLabel;
   final String? highlightText;
@@ -40,6 +42,7 @@ class PeopleCard extends StatelessWidget {
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
         onTap: onTap,
+        onLongPress: onLongPress,
         // Optimization: Isolate the static content from the InkWell ripple animation.
         // The ripple is painted on the Card (Material), so wrapping the content prevents
         // it from being repainted on every frame of the splash.

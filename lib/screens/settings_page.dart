@@ -753,6 +753,114 @@ class _SettingsPageState extends State<SettingsPage>
     }
   }
 
+  List<String> _getProposedChanges(
+      InteractionDuplicateGroup group, Map<String, String> contactNames) {
+    final primary = group.primary;
+    final duplicates = group.duplicates;
+    final changes = <String>[];
+
+    // 1. Participant IDs
+    final primaryParticipants = primary.participantIds.toSet();
+    final addedParticipants = <String>{};
+    for (final dup in duplicates) {
+      for (final pid in dup.participantIds) {
+        if (!primaryParticipants.contains(pid)) {
+          final name = contactNames[pid] ?? pid;
+          addedParticipants.add(name);
+        }
+      }
+    }
+    if (addedParticipants.isNotEmpty) {
+      changes.add('Add participants: ${addedParticipants.join(", ")}');
+    }
+
+    // 2. Location
+    String? mergedLocation = primary.location;
+    for (final dup in duplicates) {
+      if ((mergedLocation == null || mergedLocation.isEmpty) &&
+          dup.location != null &&
+          dup.location!.isNotEmpty) {
+        mergedLocation = dup.location;
+      }
+    }
+    if (mergedLocation != primary.location && mergedLocation != null) {
+      changes.add('Location: [None] → "$mergedLocation"');
+    }
+
+    // 3. Mark for prayer
+    bool mergedMarkForPrayer = primary.markForPrayer;
+    for (final dup in duplicates) {
+      if (dup.markForPrayer) {
+        mergedMarkForPrayer = true;
+      }
+    }
+    if (mergedMarkForPrayer != primary.markForPrayer) {
+      changes.add('Mark for prayer: false → true');
+    }
+
+    // 4. Duration
+    int? mergedDuration = primary.durationMinutes;
+    for (final dup in duplicates) {
+      if (dup.durationMinutes != null) {
+        if (mergedDuration == null || dup.durationMinutes! > mergedDuration) {
+          mergedDuration = dup.durationMinutes;
+        }
+      }
+    }
+    if (mergedDuration != primary.durationMinutes) {
+      changes.add(
+          'Duration: ${primary.durationMinutes != null ? "${primary.durationMinutes} mins" : "[None]"} → $mergedDuration mins');
+    }
+
+    // 5. Follow up
+    DateTime? mergedFollowUp = primary.followUpAt;
+    for (final dup in duplicates) {
+      if (mergedFollowUp == null && dup.followUpAt != null) {
+        mergedFollowUp = dup.followUpAt;
+      }
+    }
+    if (mergedFollowUp != primary.followUpAt && mergedFollowUp != null) {
+      changes.add(
+          'Follow up: [None] → ${DateFormat.yMMMd().format(mergedFollowUp.toLocal())}');
+    }
+
+    // 6. Notes
+    var mergedNotes = primary.notes;
+    bool notesAppended = false;
+    for (final dup in duplicates) {
+      if (dup.notes != null && dup.notes!.isNotEmpty) {
+        if (mergedNotes == null || mergedNotes.isEmpty) {
+          mergedNotes = dup.notes;
+          notesAppended = true;
+        } else if (mergedNotes != dup.notes &&
+            !mergedNotes.contains(dup.notes!)) {
+          mergedNotes = '$mergedNotes\n${dup.notes}';
+          notesAppended = true;
+        }
+      }
+    }
+    if (notesAppended) {
+      changes.add('Notes: Appended additional notes');
+    }
+
+    // 7. Attachments
+    final primaryAttachments = primary.attachments.map((a) => a.uri).toSet();
+    int newAttachmentsCount = 0;
+    for (final dup in duplicates) {
+      for (final att in dup.attachments) {
+        if (!primaryAttachments.contains(att.uri)) {
+          newAttachmentsCount++;
+          primaryAttachments.add(att.uri);
+        }
+      }
+    }
+    if (newAttachmentsCount > 0) {
+      changes.add('Attachments: Added $newAttachmentsCount new attachment(s)');
+    }
+
+    return changes;
+  }
+
   Future<void> _confirmDeDuplicate() async {
     setState(() => _isUpdating = true);
 
@@ -811,6 +919,16 @@ class _SettingsPageState extends State<SettingsPage>
       (sum, g) => sum + g.duplicates.length,
     );
 
+    Map<String, String> contactNames = {};
+    try {
+      final contactsList = await ContactService().getContacts();
+      for (final c in contactsList) {
+        contactNames[c.id] = c.displayName;
+      }
+    } catch (e) {
+      debugPrint('Failed to load contacts for dry run: $e');
+    }
+
     if (!mounted) return;
 
     final confirmed = await showDialog<bool>(
@@ -868,9 +986,54 @@ class _SettingsPageState extends State<SettingsPage>
                               style:
                                   const TextStyle(fontWeight: FontWeight.bold),
                             ),
-                            subtitle: Text(
-                              '${DateFormat.yMMMd().format(group.primary.occurredAt.toLocal())} • '
-                              '${group.duplicates.length} duplicate${group.duplicates.length > 1 ? 's' : ''} to merge',
+                            subtitle: Builder(
+                              builder: (context) {
+                                final groupChanges =
+                                    _getProposedChanges(group, contactNames);
+                                return Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      '${DateFormat.yMMMd().format(group.primary.occurredAt.toLocal())} • '
+                                      '${group.duplicates.length} duplicate${group.duplicates.length > 1 ? 's' : ''} to merge',
+                                    ),
+                                    if (groupChanges.isNotEmpty) ...[
+                                      const SizedBox(height: 4),
+                                      const Text(
+                                        'Changes to apply:',
+                                        style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 11),
+                                      ),
+                                      for (final change in groupChanges)
+                                        Padding(
+                                          padding: const EdgeInsets.only(
+                                              left: 8.0, top: 2.0),
+                                          child: Text(
+                                            '• $change',
+                                            style: TextStyle(
+                                              fontSize: 11,
+                                              color: Theme.of(context)
+                                                  .colorScheme
+                                                  .primary,
+                                            ),
+                                          ),
+                                        ),
+                                    ] else ...[
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        '• No field changes (duplicate rows will be soft-deleted)',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .onSurfaceVariant,
+                                        ),
+                                      ),
+                                    ],
+                                  ],
+                                );
+                              },
                             ),
                           ),
                         ],
