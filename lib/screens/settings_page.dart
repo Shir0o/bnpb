@@ -145,7 +145,22 @@ class _SettingsPageState extends State<SettingsPage>
   Widget build(BuildContext context) {
     super.build(context);
     return Scaffold(
-      appBar: AppBar(title: const Text('Settings')),
+      appBar: AppBar(
+        title: const Text(
+          'Settings',
+          style: TextStyle(
+            fontSize: 30,
+            fontWeight: FontWeight.w800,
+            color: Color(0xFF0F1512),
+            letterSpacing: -0.6, // 30 * -0.02
+          ),
+        ),
+        titleSpacing: 22,
+        centerTitle: false,
+        elevation: 0,
+        backgroundColor: Colors.transparent,
+        toolbarHeight: 64,
+      ),
       body: AnimatedSwitcher(
         duration: const Duration(milliseconds: 300),
         child: _buildBody(),
@@ -161,91 +176,104 @@ class _SettingsPageState extends State<SettingsPage>
     return RefreshIndicator(
       key: const ValueKey('content'),
       onRefresh: _load,
-      child: ListView(
-        children: [
-          if (_isUpdating || _isPurging)
-            const LinearProgressIndicator(minHeight: 2),
-          const SizedBox(height: 8),
-          _buildSectionHeader('Reminders'),
-          _buildCardGroup(
-            children: [
-              _buildGlobalRemindersTile(context),
-              if (_supportsExactAlarmPermission) ...[
-                const Divider(height: 1, indent: 16, endIndent: 16),
-                _buildExactAlarmTile(context),
+      child: ListTileTheme.merge(
+        titleTextStyle: const TextStyle(
+          fontSize: 15,
+          fontWeight: FontWeight.w700,
+          color: Color(0xFF0F1512),
+        ),
+        subtitleTextStyle: const TextStyle(
+          fontSize: 12.5,
+          color: Color(0xFF8A988F),
+        ),
+        child: ListView(
+          children: [
+            if (_isUpdating || _isPurging)
+              const LinearProgressIndicator(minHeight: 2),
+            const SizedBox(height: 8),
+            _buildSectionHeader('Reminders'),
+            _buildCardGroup(
+              children: [
+                _buildGlobalRemindersTile(context),
+                if (_supportsExactAlarmPermission) ...[
+                  const Divider(height: 1, indent: 16, endIndent: 16),
+                  _buildExactAlarmTile(context),
+                ],
               ],
-            ],
-          ),
-          const SizedBox(height: 16),
-          _buildSectionHeader('Sync & Backup'),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 8),
-            child: _buildSyncSegmentedButton(),
-          ),
-          _buildSyncGroup(context),
-          const SizedBox(height: 16),
-          _buildSectionHeader('Security'),
-          _buildCardGroup(
-            children: [
-              _buildSecurityGroup(context),
-            ],
-          ),
-          const SizedBox(height: 16),
-          _buildSectionHeader('Data'),
-          _buildCardGroup(
-            children: [
-              ListTile(
-                leading: const Icon(Icons.ios_share_outlined),
-                title: const Text('Export options'),
-                subtitle: const Text('CSV, PDF, JSON, or encrypted archive'),
-                onTap: _isPurging ? null : _openExportOptions,
-              ),
-              const Divider(height: 1, indent: 16, endIndent: 16),
-              ListTile(
-                leading: const Icon(Icons.cleaning_services_outlined),
-                title: const Text('De-duplicate interactions'),
-                subtitle: const Text(
-                  'Find and merge duplicate interaction entries',
-                ),
-                onTap: _isPurging || _isUpdating ? null : _confirmDeDuplicate,
-              ),
-              const Divider(height: 1, indent: 16, endIndent: 16),
-              ListTile(
-                leading: const Icon(Icons.delete_forever_outlined),
-                title: const Text('Securely purge all data'),
-                textColor: Theme.of(context).colorScheme.error,
-                iconColor: Theme.of(context).colorScheme.error,
-                onTap: _isPurging ? null : _confirmSecurePurge,
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          _buildSectionHeader('AI & About'),
-          _buildCardGroup(
-            children: [
-              if (_aiSupportedPlatform) ...[
+            ),
+            const SizedBox(height: 16),
+            _buildSectionHeader('Sync & Backup'),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 8),
+              child: _buildSyncSegmentedButton(),
+            ),
+            _buildSyncGroup(context),
+            const SizedBox(height: 16),
+            _buildSectionHeader('Security'),
+            _buildCardGroup(
+              children: [
+                _buildSecurityGroup(context),
+              ],
+            ),
+            const SizedBox(height: 16),
+            _buildSectionHeader('Data'),
+            _buildCardGroup(
+              children: [
                 ListTile(
-                  leading: const Icon(Icons.auto_awesome_outlined),
-                  title: const Text('AI features'),
-                  subtitle: const Text('On-device suggestions, off by default'),
-                  onTap: () => Navigator.of(
-                    context,
-                  ).push(MaterialPageRoute(
-                      builder: (_) => const AiSettingsPage())),
+                  leading: const Icon(Icons.ios_share_outlined),
+                  title: const Text('Export options'),
+                  subtitle: const Text('CSV, PDF, JSON, or encrypted archive'),
+                  onTap: _isPurging ? null : _openExportOptions,
                 ),
                 const Divider(height: 1, indent: 16, endIndent: 16),
-              ],
-              ListTile(
-                leading: const Icon(Icons.privacy_tip_outlined),
-                title: const Text('Privacy policy'),
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const PrivacyPolicyPage()),
+                ListTile(
+                  leading: const Icon(Icons.cleaning_services_outlined),
+                  title: const Text('De-duplicate interactions'),
+                  subtitle: const Text(
+                    'Find and merge duplicate interaction entries',
+                  ),
+                  onTap: _isPurging || _isUpdating ? null : _confirmDeDuplicate,
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 32),
-        ],
+                const Divider(height: 1, indent: 16, endIndent: 16),
+                ListTile(
+                  leading: const Icon(Icons.delete_forever_outlined),
+                  title: const Text('Securely purge all data'),
+                  textColor: Theme.of(context).colorScheme.error,
+                  iconColor: Theme.of(context).colorScheme.error,
+                  onTap: _isPurging ? null : _confirmSecurePurge,
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            _buildSectionHeader('AI & About'),
+            _buildCardGroup(
+              children: [
+                if (_aiSupportedPlatform) ...[
+                  ListTile(
+                    leading: const Icon(Icons.auto_awesome_outlined),
+                    title: const Text('AI features'),
+                    subtitle:
+                        const Text('On-device suggestions, off by default'),
+                    onTap: () => Navigator.of(
+                      context,
+                    ).push(MaterialPageRoute(
+                        builder: (_) => const AiSettingsPage())),
+                  ),
+                  const Divider(height: 1, indent: 16, endIndent: 16),
+                ],
+                ListTile(
+                  leading: const Icon(Icons.privacy_tip_outlined),
+                  title: const Text('Privacy policy'),
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                        builder: (_) => const PrivacyPolicyPage()),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 32),
+          ],
+        ),
       ),
     );
   }
@@ -258,13 +286,15 @@ class _SettingsPageState extends State<SettingsPage>
 
   Widget _buildSectionHeader(String title) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+      padding: const EdgeInsets.fromLTRB(22, 16, 22, 10),
       child: Text(
         title.toUpperCase(),
-        style: Theme.of(context).textTheme.labelMedium?.copyWith(
-              color: Theme.of(context).colorScheme.primary,
-              fontWeight: FontWeight.bold,
-            ),
+        style: const TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 1.2,
+          color: Color(0xFF8A988F),
+        ),
       ),
     );
   }

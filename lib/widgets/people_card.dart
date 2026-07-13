@@ -45,7 +45,7 @@ class PeopleCard extends StatelessWidget {
         // it from being repainted on every frame of the splash.
         child: RepaintBoundary(
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(14),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [

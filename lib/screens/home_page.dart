@@ -3,11 +3,9 @@ import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 
 import '../db/db_helper.dart';
 import '../models/contact.dart';
-import '../models/interaction.dart';
 import '../models/prayer_request.dart';
 import '../services/contact_search_service.dart';
 import '../services/contact_service.dart';
@@ -21,13 +19,13 @@ import '../widgets/people_card.dart';
 import '../widgets/recommendations_skeleton.dart';
 import '../widgets/skeleton_loader.dart';
 import '../services/ai/ai_services.dart';
+import '../services/ai/ai_feature_gate.dart';
 import '../services/follow_up_recommendation_service.dart';
 import '../services/import_duplicate_detector.dart';
 import '../services/import_service.dart';
 import 'contact_details_page.dart';
 import 'import_duplicate_review_page.dart';
 import 'prayer_diary_page.dart';
-import 'prayer_request_details_page.dart';
 import 'prayer_lists_page.dart';
 import '../widgets/smooth_expansion_tile.dart';
 
@@ -118,12 +116,10 @@ class _HomePageState extends State<HomePage>
   Map<PrayerRequestStatus, int> _prayerCounts = {
     for (final status in PrayerRequestStatus.values) status: 0,
   };
-  List<PrayerRequest> _pendingPrayerReminders = [];
-  List<PrayerRequest> _recentAnsweredPrayers = [];
-  List<Interaction> _prayerFocusInteractions = [];
   List<FollowUpRecommendation> _recommendations = [];
   bool _isRefreshingRecommendations = false;
   Map<String, ContactMatch> _activeMatches = {};
+  String _aiLabel = 'on-device';
 
   final Set<String> _expandedLocations = <String>{};
 
@@ -132,15 +128,6 @@ class _HomePageState extends State<HomePage>
   bool _wasKeyboardVisible = false;
   StreamSubscription<void>? _syncSubscription;
   StreamSubscription<void>? _contactsChangedSubscription;
-
-  // Optimization: Cached DateFormat to avoid expensive parsing during build loops.
-  late DateFormat _dateFormat;
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _dateFormat = DateFormat.yMMMd();
-  }
 
   @override
   void initState() {
@@ -214,7 +201,11 @@ class _HomePageState extends State<HomePage>
           forceRefresh: forceRefresh,
         );
         _applyContactsSnapshot(contacts);
-        await Future.wait([_loadPrayerInsights(), _loadRecommendations()]);
+        await Future.wait([
+          _loadPrayerInsights(),
+          _loadRecommendations(),
+          _checkAiStatus(),
+        ]);
       })(),
       if (useSkeleton) Future.delayed(minDelay),
     ]);
@@ -243,6 +234,25 @@ class _HomePageState extends State<HomePage>
       if (mounted && forceRefresh) {
         setState(() => _isRefreshingRecommendations = false);
       }
+    }
+  }
+
+  Future<void> _checkAiStatus() async {
+    final gate = AiFeatureGate();
+    final enabled = await gate.isEnabled();
+    if (!enabled) {
+      if (mounted) {
+        setState(() {
+          _aiLabel = 'on-device';
+        });
+      }
+      return;
+    }
+    final backend = await gate.backend();
+    if (mounted) {
+      setState(() {
+        _aiLabel = backend == AiBackend.cloud ? 'cloud' : 'on-device';
+      });
     }
   }
 
@@ -287,38 +297,18 @@ class _HomePageState extends State<HomePage>
   }
 
   Future<void> _loadPrayerInsights() async {
-    const prayerFocusLimit = 5;
-
-    final results = await Future.wait([
-      _dbHelper.getPrayerRequestCounts(),
-      _dbHelper.getPrayerRequests(
-        status: PrayerRequestStatus.pending,
-        limit: 3,
-      ),
-      _dbHelper.getPrayerRequests(
-        status: PrayerRequestStatus.answered,
-        limit: 3,
-        latestAnsweredFirst: true,
-      ),
-      _dbHelper.getPrayerFocusInteractions(limit: prayerFocusLimit),
-    ]);
-
-    if (!mounted) return;
-
-    final counts = results[0] as Map<PrayerRequestStatus, int>;
-    final pending = results[1] as List<PrayerRequest>;
-    final answered = results[2] as List<PrayerRequest>;
-    final prayerFocusInteractions = results[3] as List<Interaction>;
-
-    setState(() {
-      _prayerCounts = {
-        for (final status in PrayerRequestStatus.values)
-          status: counts[status] ?? 0,
-      };
-      _pendingPrayerReminders = pending;
-      _recentAnsweredPrayers = answered;
-      _prayerFocusInteractions = prayerFocusInteractions;
-    });
+    try {
+      final counts = await _dbHelper.getPrayerRequestCounts();
+      if (!mounted) return;
+      setState(() {
+        _prayerCounts = {
+          for (final status in PrayerRequestStatus.values)
+            status: counts[status] ?? 0,
+        };
+      });
+    } catch (e) {
+      debugPrint('Failed to load prayer request counts: $e');
+    }
   }
 
   Future<List<Contact>> _applyFilters(List<Contact> source) async {
@@ -418,175 +408,125 @@ class _HomePageState extends State<HomePage>
   }
 
   Widget _buildPrayerInsightsCard() {
-    final theme = Theme.of(context);
-    final hasAnyPrayer = _prayerCounts.values.any((count) => count != 0);
+    final pendingCount = _prayerCounts[PrayerRequestStatus.pending] ?? 0;
+    final answeredCount = _prayerCounts[PrayerRequestStatus.answered] ?? 0;
 
-    return Material(
-      color: const Color(0xFF0F1512),
-      borderRadius: BorderRadius.circular(16),
-      clipBehavior: Clip.antiAlias,
-      child: Theme(
-        data: theme.copyWith(
-          iconTheme: const IconThemeData(color: Color(0xFFEEF2EF)),
-          textTheme: theme.textTheme.apply(
-            bodyColor: const Color(0xFFFFFFFF),
-            displayColor: const Color(0xFFFFFFFF),
-          ),
-          listTileTheme: ListTileThemeData(
-            titleTextStyle: theme.textTheme.titleSmall?.copyWith(
-              color: const Color(0xFFFFFFFF),
-              fontWeight: FontWeight.w600,
-            ),
-            subtitleTextStyle: theme.textTheme.bodySmall?.copyWith(
-              color: const Color(0xFF8A988F),
-            ),
-            iconColor: const Color(0xFFEEF2EF),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Prayer insights',
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w800,
+            color: Color(0xFF0F1512),
+            letterSpacing: -0.2,
           ),
         ),
-        child: Builder(
-          builder: (cardContext) {
-            final cardTheme = Theme.of(cardContext);
-            return Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          'Prayer insights',
-                          style: cardTheme.textTheme.titleMedium?.copyWith(
-                            color: const Color(0xFFFFFFFF),
-                            fontWeight: FontWeight.w800,
-                            fontSize: 18,
-                            letterSpacing: -0.02,
+        const SizedBox(height: 12),
+        IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                child: InkWell(
+                  onTap: () {
+                    Navigator.of(context)
+                        .push(
+                          MaterialPageRoute(
+                            builder: (_) =>
+                                const PrayerDiaryPage(initialFilter: 'Pending'),
+                          ),
+                        )
+                        .then((_) => _fetchContacts(forceRefresh: true));
+                  },
+                  borderRadius: BorderRadius.circular(14),
+                  child: Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFBEEE9),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Text(
+                          'NEEDS PRAYER',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.48, // 12 * 0.04em
+                            color: Color(0xFFC25A3F),
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 300),
-                    child: Column(
-                      key: const ValueKey('insights_content'),
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        if (!hasAnyPrayer) const PrayerInsightsEmptyState(),
-                        if (_pendingPrayerReminders.isNotEmpty) ...[
-                          const SizedBox(height: 12),
-                          Text('Needs prayer',
-                              style: cardTheme.textTheme.titleSmall),
-                          const SizedBox(height: 8),
-                          ..._pendingPrayerReminders.map((request) {
-                            final contactName = _displayNameForContactId(
-                              _contactLookup,
-                              request.contactId,
-                            );
-                            return ListTile(
-                              contentPadding: EdgeInsets.zero,
-                              dense: true,
-                              leading: const Icon(Icons.hourglass_top_outlined),
-                              title: Text(request.description),
-                              subtitle: Text(
-                                '${_formatDate(request.requestedAt)} • $contactName',
-                              ),
-                              onTap: () => _openPrayerRequestDetails(request),
-                            );
-                          }),
-                        ],
-                        if (_recentAnsweredPrayers.isNotEmpty) ...[
-                          const SizedBox(height: 12),
-                          Text(
-                            'Answered recently',
-                            style: cardTheme.textTheme.titleSmall,
+                        const SizedBox(height: 6),
+                        Text(
+                          pendingCount.toString(),
+                          style: const TextStyle(
+                            fontSize: 26,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF0F1512),
+                            height: 1.0,
                           ),
-                          const SizedBox(height: 8),
-                          ..._recentAnsweredPrayers.map((request) {
-                            final contactName = _displayNameForContactId(
-                              _contactLookup,
-                              request.contactId,
-                            );
-                            return Padding(
-                              padding: const EdgeInsets.only(bottom: 8),
-                              child: Material(
-                                color: theme.colorScheme.secondaryContainer,
-                                borderRadius: BorderRadius.circular(12),
-                                clipBehavior: Clip.antiAlias,
-                                child: ListTile(
-                                  dense: true,
-                                  leading: Icon(
-                                    Icons.celebration_outlined,
-                                    color:
-                                        theme.colorScheme.onSecondaryContainer,
-                                  ),
-                                  title: Text(
-                                    request.description,
-                                    style: theme.textTheme.bodyMedium?.copyWith(
-                                      color: theme
-                                          .colorScheme.onSecondaryContainer,
-                                    ),
-                                  ),
-                                  subtitle: Text(
-                                    '${_formatDate(request.answeredAt ?? request.requestedAt)} • $contactName',
-                                    style: theme.textTheme.bodySmall?.copyWith(
-                                      color: theme
-                                          .colorScheme.onSecondaryContainer,
-                                    ),
-                                  ),
-                                  onTap: () =>
-                                      _openPrayerRequestDetails(request),
-                                ),
-                              ),
-                            );
-                          }),
-                        ],
-                        if (_prayerFocusInteractions.isNotEmpty) ...[
-                          const SizedBox(height: 12),
-                          Text(
-                            'Prayer focus interactions',
-                            style: cardTheme.textTheme.titleSmall,
-                          ),
-                          const SizedBox(height: 8),
-                          ..._prayerFocusInteractions.map((interaction) {
-                            final primaryContactId =
-                                interaction.participantIds.isNotEmpty
-                                    ? interaction.participantIds.first
-                                    : null;
-                            final contact = primaryContactId != null
-                                ? _contactLookup[primaryContactId]
-                                : null;
-                            final contactName = primaryContactId != null
-                                ? _displayNameForContactId(
-                                    _contactLookup,
-                                    primaryContactId,
-                                  )
-                                : 'Unknown contact';
-                            return ListTile(
-                              contentPadding: EdgeInsets.zero,
-                              dense: true,
-                              leading:
-                                  const Icon(Icons.self_improvement_outlined),
-                              title: Text(interaction.summary),
-                              subtitle: Text(
-                                '${_formatDate(interaction.occurredAt)} • $contactName',
-                              ),
-                              onTap: contact != null
-                                  ? () => _navigateToContactDetails(contact)
-                                  : null,
-                            );
-                          }),
-                        ],
+                        ),
                       ],
                     ),
                   ),
-                ],
+                ),
               ),
-            );
-          },
+              const SizedBox(width: 8),
+              Expanded(
+                child: InkWell(
+                  onTap: () {
+                    Navigator.of(context)
+                        .push(
+                          MaterialPageRoute(
+                            builder: (_) => const PrayerDiaryPage(
+                                initialFilter: 'Answered'),
+                          ),
+                        )
+                        .then((_) => _fetchContacts(forceRefresh: true));
+                  },
+                  borderRadius: BorderRadius.circular(14),
+                  child: Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEAF6EF),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Text(
+                          'ANSWERED',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.48, // 12 * 0.04em
+                            color: Color(0xFF0D7A4F),
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          answeredCount.toString(),
+                          style: const TextStyle(
+                            fontSize: 26,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF0F1512),
+                            height: 1.0,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
-      ),
+      ],
     );
   }
 
@@ -598,7 +538,7 @@ class _HomePageState extends State<HomePage>
 
     return Material(
       color: const Color(0xFF0F1512),
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(20),
       clipBehavior: Clip.antiAlias,
       child: Theme(
         data: theme.copyWith(
@@ -622,7 +562,7 @@ class _HomePageState extends State<HomePage>
           builder: (cardContext) {
             final cardTheme = Theme.of(cardContext);
             return Padding(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.fromLTRB(18, 16, 18, 12),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -639,12 +579,20 @@ class _HomePageState extends State<HomePage>
                           'Follow-up suggestions',
                           style: cardTheme.textTheme.titleMedium?.copyWith(
                             color: const Color(0xFFFFFFFF),
-                            fontWeight: FontWeight.w800,
-                            fontSize: 18,
-                            letterSpacing: -0.02,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 16,
                           ),
                         ),
                       ),
+                      Text(
+                        _aiLabel,
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: Color(0xFF7D8A82),
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
                       if (_isRefreshingRecommendations)
                         const SizedBox(
                           width: 20,
@@ -720,32 +668,6 @@ class _HomePageState extends State<HomePage>
         ),
       ),
     );
-  }
-
-  String _formatDate(DateTime date) {
-    return _dateFormat.format(date);
-  }
-
-  Future<void> _openPrayerRequestDetails(PrayerRequest request) async {
-    final participants = request.participantIds
-        .map((id) => _contactLookup[id])
-        .whereType<Contact>()
-        .toList();
-
-    final didUpdate = await Navigator.of(context).push<bool>(
-      MaterialPageRoute(
-        builder: (context) => PrayerRequestDetailsPage(
-          request: request,
-          initialContacts: participants,
-        ),
-      ),
-    );
-
-    if (!mounted) return;
-
-    if (didUpdate == true) {
-      await _fetchContacts();
-    }
   }
 
   /// Groups the given list of contacts by their location.
@@ -1015,6 +937,36 @@ class _HomePageState extends State<HomePage>
     super.dispose();
   }
 
+  Widget _buildHeaderButton({
+    required IconData icon,
+    required VoidCallback onTap,
+    required Color backgroundColor,
+    required Color iconColor,
+    required String tooltip,
+    double iconSize = 18.0,
+  }) {
+    return Tooltip(
+      message: tooltip,
+      child: Material(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(10),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: SizedBox(
+            width: 38,
+            height: 38,
+            child: Icon(
+              icon,
+              size: iconSize,
+              color: iconColor,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   bool get wantKeepAlive => true;
 
@@ -1027,35 +979,72 @@ class _HomePageState extends State<HomePage>
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Contacts'),
+        title: const Text(
+          'Contacts',
+          style: TextStyle(
+            fontSize: 30,
+            fontWeight: FontWeight.w800,
+            color: Color(0xFF0F1512),
+            letterSpacing: -0.6,
+          ),
+        ),
+        titleSpacing: 22,
+        centerTitle: false,
+        elevation: 0,
+        backgroundColor: Colors.transparent,
+        toolbarHeight: 64,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.self_improvement_outlined),
-            tooltip: 'Prayer diary',
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const PrayerDiaryPage()),
-              );
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.list_alt),
-            tooltip: 'Prayer Lists',
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (context) => const PrayerListPage()),
-              );
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.settings_backup_restore),
-            tooltip: 'Backup and Restore',
-            onPressed: _openRestoreSheet,
-          ),
-          IconButton(
-            icon: const Icon(Icons.ios_share),
-            tooltip: 'Export',
-            onPressed: _openExportSheet,
+          Padding(
+            padding: const EdgeInsets.only(right: 18),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _buildHeaderButton(
+                  icon: Icons.people_outline_rounded,
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => const PrayerListPage(),
+                      ),
+                    );
+                  },
+                  backgroundColor: const Color(0xFFF1F5F2),
+                  iconColor: const Color(0xFF3D4C44),
+                  tooltip: 'Prayer Lists',
+                  iconSize: 19.0,
+                ),
+                const SizedBox(width: 5),
+                _buildHeaderButton(
+                  icon: Icons.format_list_bulleted_rounded,
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const PrayerDiaryPage(),
+                      ),
+                    );
+                  },
+                  backgroundColor: const Color(0xFFF1F5F2),
+                  iconColor: const Color(0xFF3D4C44),
+                  tooltip: 'Prayer Diary',
+                ),
+                const SizedBox(width: 5),
+                _buildHeaderButton(
+                  icon: Icons.history_rounded,
+                  onTap: _openRestoreSheet,
+                  backgroundColor: const Color(0xFFF1F5F2),
+                  iconColor: const Color(0xFF3D4C44),
+                  tooltip: 'Backup and Restore',
+                ),
+                const SizedBox(width: 5),
+                _buildHeaderButton(
+                  icon: Icons.upload_rounded,
+                  onTap: _openExportSheet,
+                  backgroundColor: const Color(0xFF0D7A4F),
+                  iconColor: const Color(0xFFFFFFFF),
+                  tooltip: 'Export',
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -1072,51 +1061,65 @@ class _HomePageState extends State<HomePage>
                   slivers: [
                     SliverToBoxAdapter(
                       child: Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            TextField(
-                              controller: _searchController,
-                              focusNode: _searchFocusNode,
-                              decoration: InputDecoration(
-                                hintText: 'Search contacts...',
-                                prefixIcon: const Icon(Icons.search),
-                                suffixIcon: _searchController.text.isNotEmpty
-                                    ? IconButton(
-                                        icon: const Icon(Icons.clear),
-                                        onPressed: () {
-                                          _searchController.clear();
-                                        },
-                                      )
-                                    : null,
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                  borderSide: BorderSide.none,
-                                ),
-                                filled: true,
-                                fillColor: Theme.of(context)
-                                    .colorScheme
-                                    .secondaryContainer
-                                    .withValues(alpha: 0.3),
-                                contentPadding: const EdgeInsets.symmetric(
-                                  vertical: 0,
-                                  horizontal: 16,
-                                ),
+                        padding: const EdgeInsets.fromLTRB(22, 0, 22, 18),
+                        child: TextField(
+                          controller: _searchController,
+                          focusNode: _searchFocusNode,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                            color: Color(0xFF0F1512),
+                          ),
+                          decoration: InputDecoration(
+                            hintText: 'Search contacts…',
+                            hintStyle: const TextStyle(
+                              color: Color(0xFF8A988F),
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                            ),
+                            prefixIcon: const Padding(
+                              padding: EdgeInsets.only(left: 15, right: 11),
+                              child: Icon(
+                                Icons.search,
+                                color: Color(0xFF8A988F),
+                                size: 19,
                               ),
                             ),
-                          ],
+                            prefixIconConstraints: const BoxConstraints(
+                              minWidth: 45,
+                              minHeight: 19,
+                            ),
+                            suffixIcon: _searchController.text.isNotEmpty
+                                ? IconButton(
+                                    icon: const Icon(Icons.clear, size: 18),
+                                    color: const Color(0xFF8A988F),
+                                    onPressed: () {
+                                      _searchController.clear();
+                                    },
+                                  )
+                                : null,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(13),
+                              borderSide: BorderSide.none,
+                            ),
+                            filled: true,
+                            fillColor: const Color(0xFFF1F5F2),
+                            contentPadding: const EdgeInsets.symmetric(
+                              vertical: 13,
+                              horizontal: 15,
+                            ),
+                          ),
                         ),
                       ),
                     ),
                     if (isShowingSuggestions)
                       SliverPadding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        padding: const EdgeInsets.symmetric(horizontal: 22),
                         sliver: SliverToBoxAdapter(child: searchSuggestions),
                       )
                     else ...[
                       SliverPadding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        padding: const EdgeInsets.symmetric(horizontal: 22),
                         sliver: SliverToBoxAdapter(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1131,7 +1134,7 @@ class _HomePageState extends State<HomePage>
                       ),
                       if (groupedEntries.isNotEmpty)
                         SliverPadding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          padding: const EdgeInsets.symmetric(horizontal: 22),
                           sliver: SliverList(
                             delegate: SliverChildBuilderDelegate((
                               context,
@@ -1239,21 +1242,5 @@ class _HomePageState extends State<HomePage>
               ),
       ),
     );
-  }
-
-  String _displayNameForContactId(
-    Map<String, Contact> lookup,
-    String contactId,
-  ) {
-    final contact = lookup[contactId];
-    if (contact == null) {
-      return 'Unknown contact';
-    }
-    final fullName = contact.fullName;
-    if (fullName.isNotEmpty) {
-      return fullName;
-    }
-    final nickname = contact.nickname ?? '';
-    return nickname.isNotEmpty ? nickname : 'Unknown contact';
   }
 }

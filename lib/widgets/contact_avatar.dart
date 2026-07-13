@@ -17,11 +17,17 @@ class ContactAvatar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final size = radius * 2;
 
     if (isDisabled) {
-      return CircleAvatar(
-        radius: radius,
-        backgroundColor: theme.colorScheme.surfaceContainerHighest,
+      return Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        alignment: Alignment.center,
         child: Text(
           contact.initials,
           style: TextStyle(
@@ -50,13 +56,18 @@ class ContactAvatar extends StatelessWidget {
     }
     final avatarColor = greens[h];
 
-    return CircleAvatar(
-      radius: radius,
-      backgroundColor: avatarColor,
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: avatarColor,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      alignment: Alignment.center,
       child: Text(
         contact.initials,
         style: TextStyle(
-          color: Colors.white,
+          color: const Color(0xFFFFFFFF),
           fontWeight: FontWeight.bold,
           fontSize: radius * 0.8,
         ),

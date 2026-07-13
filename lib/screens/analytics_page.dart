@@ -121,32 +121,58 @@ class _AnalyticsPageState extends State<AnalyticsPage>
     super.build(context);
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Analytics'),
+        title: const Text(
+          'Analytics',
+          style: TextStyle(
+            fontSize: 30,
+            fontWeight: FontWeight.w800,
+            color: Color(0xFF0F1512),
+            letterSpacing: -0.6,
+          ),
+        ),
+        centerTitle: false,
+        elevation: 0,
+        backgroundColor: Colors.transparent,
+        toolbarHeight: 64,
         actions: [
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
-            child: DropdownButtonHideUnderline(
-              child: DropdownButton<AnalyticsRange>(
-                value: _selectedRange,
-                icon: Icon(
-                  Icons.arrow_drop_down,
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+            padding: const EdgeInsets.only(right: 22.0),
+            child: Container(
+              height: 36,
+              decoration: BoxDecoration(
+                color: const Color(0xFFF1F5F2),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<AnalyticsRange>(
+                  value: _selectedRange,
+                  icon: const Icon(
+                    Icons.keyboard_arrow_down_rounded,
+                    color: Color(0xFF0F1512),
+                    size: 18,
+                  ),
+                  style: const TextStyle(
+                    color: Color(0xFF0F1512),
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13.5,
+                  ),
+                  onChanged: (value) {
+                    if (value == null) return;
+                    setState(() {
+                      _selectedRange = value;
+                    });
+                    _loadSummary();
+                  },
+                  items: AnalyticsRange.values
+                      .map(
+                        (range) => DropdownMenuItem(
+                          value: range,
+                          child: Text(range.label),
+                        ),
+                      )
+                      .toList(),
                 ),
-                onChanged: (value) {
-                  if (value == null) return;
-                  setState(() {
-                    _selectedRange = value;
-                  });
-                  _loadSummary();
-                },
-                items: AnalyticsRange.values
-                    .map(
-                      (range) => DropdownMenuItem(
-                        value: range,
-                        child: Text(range.label),
-                      ),
-                    )
-                    .toList(),
               ),
             ),
           ),
@@ -177,7 +203,7 @@ class _AnalyticsPageState extends State<AnalyticsPage>
       onRefresh: _loadSummary,
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(22, 16, 22, 16),
         children: [
           _buildHeadlineCard(summary),
           const SizedBox(height: 16),
@@ -247,20 +273,37 @@ class _AnalyticsPageState extends State<AnalyticsPage>
 
   Widget _buildAskCard() {
     final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: colorScheme.surfaceContainerHighest),
+      ),
       child: InkWell(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         onTap: () {
           Navigator.of(
             context,
           ).push(MaterialPageRoute(builder: (_) => const AskPage()));
         },
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           child: Row(
             children: [
-              Icon(Icons.psychology_outlined, color: theme.colorScheme.primary),
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: colorScheme.primaryContainer,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  Icons.search_outlined,
+                  color: colorScheme.primary,
+                  size: 19,
+                ),
+              ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -268,19 +311,28 @@ class _AnalyticsPageState extends State<AnalyticsPage>
                   children: [
                     Text(
                       'Ask about your contacts',
-                      style: theme.textTheme.titleMedium,
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                        color: colorScheme.onSurface,
+                      ),
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      'Semantic search across interactions and prayer requests.',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
+                      'Semantic search, fully on-device',
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        color: colorScheme.outline,
                       ),
                     ),
                   ],
                 ),
               ),
-              const Icon(Icons.arrow_forward_ios, size: 16),
+              Icon(
+                Icons.arrow_forward_ios_rounded,
+                size: 16,
+                color: const Color(0xFFC3CCC6),
+              ),
             ],
           ),
         ),
@@ -290,36 +342,49 @@ class _AnalyticsPageState extends State<AnalyticsPage>
 
   Widget _buildHeadlineCard(AnalyticsSummary summary) {
     final rangeText = _describeRange(summary);
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+    final colorScheme = Theme.of(context).colorScheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(bottom: 10, left: 4),
+          child: Text(
+            rangeText,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: colorScheme.outline,
+            ),
+          ),
+        ),
+        Row(
           children: [
-            Text(rangeText, style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: _MetricTile(
-                    label: 'Interactions',
-                    value: summary.totalInteractions.toString(),
-                    icon: Icons.forum_outlined,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: _MetricTile(
-                    label: 'Minutes invested',
-                    value: summary.totalMinutes.toString(),
-                    icon: Icons.timer_outlined,
-                  ),
-                ),
-              ],
+            Expanded(
+              child: _MetricTile(
+                label: 'Interactions',
+                value: summary.totalInteractions.toString(),
+                icon: Icons.chat_bubble_outline_rounded,
+                backgroundColor: colorScheme.onSurface,
+                valueColor: colorScheme.onPrimary,
+                labelColor: const Color(0xFF94A49B),
+                iconColor: const Color(0xFF5FE0A0),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _MetricTile(
+                label: 'Minutes invested',
+                value: summary.totalMinutes.toString(),
+                icon: Icons.timer_outlined,
+                backgroundColor: colorScheme.primary,
+                valueColor: colorScheme.onPrimary,
+                labelColor: const Color(0xFFBFE6D1),
+                iconColor: const Color(0xFFC7F0DA),
+              ),
             ),
           ],
         ),
-      ),
+      ],
     );
   }
 
@@ -338,18 +403,22 @@ class _AnalyticsPageState extends State<AnalyticsPage>
         )
         .toList();
     final maxY = values.reduce(math.max);
-    final double yInterval = (maxY == 0 ? 1 : math.max(1, maxY / 4)).toDouble();
 
     final colorScheme = Theme.of(context).colorScheme;
-    final List<Color> barColors = [
-      colorScheme.primary,
-      colorScheme.tertiary,
-      colorScheme.secondary,
-      colorScheme.primaryFixedDim,
-      colorScheme.tertiaryFixedDim,
+    final List<Color> barColors = const [
+      Color(0xFF0D7A4F),
+      Color(0xFF2AA06E),
+      Color(0xFF7FC7A6),
+      Color(0xFFA9DCC4),
+      Color(0xFFCDEADD),
     ];
 
     return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(18),
+        side: BorderSide(color: colorScheme.surfaceContainerHighest),
+      ),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -357,16 +426,20 @@ class _AnalyticsPageState extends State<AnalyticsPage>
           children: [
             Text(
               'Top contacts',
-              style: Theme.of(context).textTheme.titleMedium,
+              style: TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.w800,
+                color: colorScheme.onSurface,
+              ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
             SizedBox(
-              height: 240,
+              height: 130,
               child: RepaintBoundary(
                 child: BarChart(
                   BarChartData(
-                    maxY: maxY == 0 ? 1 : maxY * 1.2,
-                    gridData: FlGridData(show: false),
+                    maxY: maxY == 0 ? 1 : maxY * 1.1,
+                    gridData: const FlGridData(show: false),
                     borderData: FlBorderData(show: false),
                     barGroups: entries.asMap().entries.map((entry) {
                       final index = entry.key;
@@ -378,31 +451,25 @@ class _AnalyticsPageState extends State<AnalyticsPage>
                           BarChartRodData(
                             toY: value,
                             width: 18,
-                            borderRadius: BorderRadius.circular(6),
+                            borderRadius: const BorderRadius.vertical(
+                              top: Radius.circular(7),
+                            ),
                             color: color,
                           ),
                         ],
                       );
                     }).toList(),
-                    titlesData: FlTitlesData(
+                    titlesData: const FlTitlesData(
                       leftTitles: AxisTitles(
-                        sideTitles: SideTitles(
-                          showTitles: true,
-                          reservedSize: 40,
-                          interval: yInterval,
-                          getTitlesWidget: (value, meta) => Text(
-                            value.toStringAsFixed(0),
-                            style: Theme.of(context).textTheme.bodySmall,
-                          ),
-                        ),
-                      ),
-                      rightTitles: const AxisTitles(
                         sideTitles: SideTitles(showTitles: false),
                       ),
-                      topTitles: const AxisTitles(
+                      rightTitles: AxisTitles(
                         sideTitles: SideTitles(showTitles: false),
                       ),
-                      bottomTitles: const AxisTitles(
+                      topTitles: AxisTitles(
+                        sideTitles: SideTitles(showTitles: false),
+                      ),
+                      bottomTitles: AxisTitles(
                         sideTitles: SideTitles(showTitles: false),
                       ),
                     ),
@@ -410,51 +477,52 @@ class _AnalyticsPageState extends State<AnalyticsPage>
                 ),
               ),
             ),
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 16,
-              runSpacing: 8,
-              children: entries.asMap().entries.map((entry) {
-                final index = entry.key;
-                final contact = entry.value;
-                final color = barColors[index % barColors.length];
-                return Row(
-                  mainAxisSize: MainAxisSize.min,
+            Container(
+              height: 1,
+              color: colorScheme.surfaceContainerHighest,
+              margin: const EdgeInsets.symmetric(vertical: 12),
+            ),
+            ...entries.asMap().entries.map((entry) {
+              final index = entry.key;
+              final contact = entry.value;
+              final color = barColors[index % barColors.length];
+              final statText = contact.totalMinutes > 0
+                  ? '${contact.interactionCount} · ${contact.totalMinutes} min'
+                  : '${contact.interactionCount} logs';
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 7),
+                child: Row(
                   children: [
                     Container(
-                      width: 12,
-                      height: 12,
+                      width: 10,
+                      height: 10,
                       decoration: BoxDecoration(
                         color: color,
-                        shape: BoxShape.circle,
+                        borderRadius: BorderRadius.circular(3),
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        contact.contactName,
+                        style: TextStyle(
+                          fontSize: 14.5,
+                          fontWeight: FontWeight.w600,
+                          color: colorScheme.onSurface,
+                        ),
+                      ),
+                    ),
                     Text(
-                      contact.contactName,
-                      style: Theme.of(context).textTheme.bodyMedium,
+                      statText,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: colorScheme.outline,
+                      ),
                     ),
                   ],
-                );
-              }).toList(),
-            ),
-            const SizedBox(height: 12),
-            ...entries.map(
-              (entry) => ListTile(
-                dense: true,
-                contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.person_outline),
-                title: Text(entry.contactName),
-                subtitle: Text(
-                  '${entry.interactionCount} interaction${entry.interactionCount == 1 ? '' : 's'}',
                 ),
-                trailing: Text(
-                  entry.totalMinutes > 0
-                      ? '${entry.totalMinutes} min'
-                      : '${entry.interactionCount} logs',
-                ),
-              ),
-            ),
+              );
+            }),
           ],
         ),
       ),
@@ -463,9 +531,7 @@ class _AnalyticsPageState extends State<AnalyticsPage>
 
   Widget _buildCategoryCard(AnalyticsSummary summary) {
     final entries = summary.categoryBreakdown
-        .where((entry) {
-          return entry.interactionCount > 0;
-        })
+        .where((entry) => entry.interactionCount > 0)
         .take(6)
         .toList();
 
@@ -482,7 +548,22 @@ class _AnalyticsPageState extends State<AnalyticsPage>
           value + _resolveValue(entry.totalMinutes, entry.interactionCount),
     );
 
+    final colorScheme = Theme.of(context).colorScheme;
+    final List<Color> sectionColors = const [
+      Color(0xFF0D7A4F),
+      Color(0xFF2AA06E),
+      Color(0xFF7FC7A6),
+      Color(0xFFA9DCC4),
+      Color(0xFFCDEADD),
+      Color(0xFF127A6B),
+    ];
+
     return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(18),
+        side: BorderSide(color: colorScheme.surfaceContainerHighest),
+      ),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -490,11 +571,15 @@ class _AnalyticsPageState extends State<AnalyticsPage>
           children: [
             Text(
               'Prayer focus areas',
-              style: Theme.of(context).textTheme.titleMedium,
+              style: TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.w800,
+                color: colorScheme.onSurface,
+              ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
             SizedBox(
-              height: 220,
+              height: 200,
               child: LayoutBuilder(
                 builder: (context, constraints) {
                   final biggest = constraints.biggest;
@@ -509,20 +594,25 @@ class _AnalyticsPageState extends State<AnalyticsPage>
                         sectionsSpace: 2,
                         centerSpaceRadius: centerSpaceRadius,
                         sections: entries.asMap().entries.map((entry) {
+                          final idx = entry.key;
                           final value = _resolveValue(
                             entry.value.totalMinutes,
                             entry.value.interactionCount,
                           );
                           final percentage =
                               totalValue == 0 ? 0 : (value / totalValue) * 100;
+                          final color =
+                              sectionColors[idx % sectionColors.length];
                           return PieChartSectionData(
                             value: value,
                             title: '${percentage.toStringAsFixed(1)}%',
                             radius: sectionRadius,
-                            titleStyle: Theme.of(context)
-                                .textTheme
-                                .bodyMedium
-                                ?.copyWith(fontWeight: FontWeight.bold),
+                            color: color,
+                            titleStyle: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: colorScheme.onPrimary,
+                            ),
                           );
                         }).toList(),
                       ),
@@ -531,16 +621,46 @@ class _AnalyticsPageState extends State<AnalyticsPage>
                 },
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
             Wrap(
               spacing: 8,
               runSpacing: 8,
-              children: entries.map((entry) {
+              children: entries.asMap().entries.map((entry) {
+                final idx = entry.key;
+                final color = sectionColors[idx % sectionColors.length];
                 final label =
-                    '${entry.category} • ${entry.interactionCount} request${entry.interactionCount == 1 ? '' : 's'}';
-                return Chip(
-                  avatar: const Icon(Icons.label_outline, size: 18),
-                  label: Text(label),
+                    '${entry.value.category} • ${entry.value.interactionCount} request${entry.value.interactionCount == 1 ? '' : 's'}';
+                return Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: colorScheme.surfaceContainerLow,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color: color,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        label,
+                        style: TextStyle(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w600,
+                          color: colorScheme.onSurface,
+                        ),
+                      ),
+                    ],
+                  ),
                 );
               }).toList(),
             ),
@@ -554,7 +674,7 @@ class _AnalyticsPageState extends State<AnalyticsPage>
     final timeline = summary.timeline;
     if (timeline.isEmpty) {
       return const _EmptyAnalyticsCard(
-        title: 'Time series',
+        title: 'Activity trend',
         message: 'Log interactions to populate the activity trend.',
       );
     }
@@ -565,13 +685,14 @@ class _AnalyticsPageState extends State<AnalyticsPage>
         )
         .toList();
     final maxY = values.reduce(math.max);
-    final double yInterval = (maxY == 0 ? 1 : math.max(1, maxY / 4)).toDouble();
-    final labelStep = math.min(
-      timeline.length,
-      math.max(1, (timeline.length / 6).ceil()),
-    );
+    final colorScheme = Theme.of(context).colorScheme;
 
     return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(18),
+        side: BorderSide(color: colorScheme.surfaceContainerHighest),
+      ),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -579,29 +700,38 @@ class _AnalyticsPageState extends State<AnalyticsPage>
           children: [
             Text(
               'Activity trend',
-              style: Theme.of(context).textTheme.titleMedium,
+              style: TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.w800,
+                color: colorScheme.onSurface,
+              ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
             SizedBox(
-              height: 240,
+              height: 120,
               child: RepaintBoundary(
                 child: LineChart(
                   LineChartData(
                     minY: 0,
-                    maxY: maxY == 0 ? 1 : maxY * 1.2,
-                    gridData: FlGridData(show: false),
+                    maxY: maxY == 0 ? 1 : maxY * 1.1,
+                    gridData: const FlGridData(show: false),
                     borderData: FlBorderData(show: false),
                     lineBarsData: [
                       LineChartBarData(
                         isCurved: true,
-                        color: Theme.of(context).colorScheme.primary,
-                        barWidth: 4,
-                        dotData: FlDotData(show: false),
+                        color: colorScheme.primary,
+                        barWidth: 2.5,
+                        dotData: const FlDotData(show: false),
                         belowBarData: BarAreaData(
                           show: true,
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.primary.withValues(alpha: 0.15),
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              colorScheme.primary.withValues(alpha: 0.18),
+                              colorScheme.primary.withValues(alpha: 0.0),
+                            ],
+                          ),
                         ),
                         spots: timeline.asMap().entries.map((entry) {
                           final index = entry.key.toDouble();
@@ -610,53 +740,56 @@ class _AnalyticsPageState extends State<AnalyticsPage>
                         }).toList(),
                       ),
                     ],
-                    titlesData: FlTitlesData(
+                    titlesData: const FlTitlesData(
                       leftTitles: AxisTitles(
-                        sideTitles: SideTitles(
-                          showTitles: true,
-                          reservedSize: 40,
-                          interval: yInterval,
-                          getTitlesWidget: (value, meta) => Text(
-                            value.toStringAsFixed(0),
-                            style: Theme.of(context).textTheme.bodySmall,
-                          ),
-                        ),
-                      ),
-                      rightTitles: const AxisTitles(
                         sideTitles: SideTitles(showTitles: false),
                       ),
-                      topTitles: const AxisTitles(
+                      rightTitles: AxisTitles(
+                        sideTitles: SideTitles(showTitles: false),
+                      ),
+                      topTitles: AxisTitles(
                         sideTitles: SideTitles(showTitles: false),
                       ),
                       bottomTitles: AxisTitles(
-                        sideTitles: SideTitles(
-                          showTitles: true,
-                          reservedSize: 44,
-                          getTitlesWidget: (value, meta) {
-                            final index = value.toInt();
-                            if (index < 0 || index >= timeline.length) {
-                              return const SizedBox.shrink();
-                            }
-                            if (index % labelStep != 0 &&
-                                index != 0 &&
-                                index != timeline.length - 1) {
-                              return const SizedBox.shrink();
-                            }
-                            final date = timeline[index].date;
-                            return Padding(
-                              padding: const EdgeInsets.only(top: 6),
-                              child: Text(
-                                _timelineLabelFormatter.format(date),
-                                style: Theme.of(context).textTheme.bodySmall,
-                              ),
-                            );
-                          },
-                        ),
+                        sideTitles: SideTitles(showTitles: false),
                       ),
                     ),
                   ),
                 ),
               ),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  _timelineLabelFormatter.format(timeline.first.date),
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w600,
+                    color: colorScheme.outline,
+                  ),
+                ),
+                if (timeline.length > 2)
+                  Text(
+                    _timelineLabelFormatter.format(
+                      timeline[timeline.length ~/ 2].date,
+                    ),
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w600,
+                      color: colorScheme.outline,
+                    ),
+                  ),
+                Text(
+                  _timelineLabelFormatter.format(timeline.last.date),
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w600,
+                    color: colorScheme.outline,
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -675,7 +808,14 @@ class _AnalyticsPageState extends State<AnalyticsPage>
       );
     }
 
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(18),
+        side: BorderSide(color: colorScheme.surfaceContainerHighest),
+      ),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -683,24 +823,65 @@ class _AnalyticsPageState extends State<AnalyticsPage>
           children: [
             Text(
               'Follow-up reminders',
-              style: Theme.of(context).textTheme.titleMedium,
+              style: TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.w800,
+                color: colorScheme.onSurface,
+              ),
             ),
             const SizedBox(height: 12),
             ...gaps.map((gap) {
-              return ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: Icon(
-                  gap.hasNeverInteracted
-                      ? Icons.new_releases_outlined
-                      : Icons.hourglass_bottom,
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Row(
+                  children: [
+                    Icon(
+                      gap.hasNeverInteracted
+                          ? Icons.new_releases_outlined
+                          : Icons.hourglass_bottom_rounded,
+                      color: gap.hasNeverInteracted
+                          ? colorScheme.error
+                          : colorScheme.primary,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            gap.contactName,
+                            style: TextStyle(
+                              fontSize: 14.5,
+                              fontWeight: FontWeight.w600,
+                              color: colorScheme.onSurface,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            gap.hasNeverInteracted
+                                ? 'No interactions logged yet'
+                                : 'Last contact ${_dateLabelFormatter.format(gap.lastInteractionAt!)}',
+                            style: TextStyle(
+                              fontSize: 12.5,
+                              color: colorScheme.outline,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Text(
+                      _formatGap(gap.gap),
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: gap.hasNeverInteracted
+                            ? colorScheme.error
+                            : colorScheme.primary,
+                      ),
+                    ),
+                  ],
                 ),
-                title: Text(gap.contactName),
-                subtitle: Text(
-                  gap.hasNeverInteracted
-                      ? 'No interactions logged yet'
-                      : 'Last contact ${_dateLabelFormatter.format(gap.lastInteractionAt!)}',
-                ),
-                trailing: Text(_formatGap(gap.gap)),
               );
             }),
           ],
@@ -757,35 +938,51 @@ class _MetricTile extends StatelessWidget {
     required this.label,
     required this.value,
     required this.icon,
+    required this.backgroundColor,
+    required this.valueColor,
+    required this.labelColor,
+    required this.iconColor,
   });
 
   final String label;
   final String value;
   final IconData icon;
+  final Color backgroundColor;
+  final Color valueColor;
+  final Color labelColor;
+  final Color iconColor;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-        color: Theme.of(
-          context,
-        ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.6),
+        borderRadius: BorderRadius.circular(16),
+        color: backgroundColor,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: Theme.of(context).colorScheme.primary),
-          const SizedBox(height: 8),
+          Icon(icon, color: iconColor, size: 22),
+          const SizedBox(height: 12),
           Text(
             value,
-            style: Theme.of(
-              context,
-            ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+            style: TextStyle(
+              fontSize: 34,
+              fontWeight: FontWeight.w800,
+              color: valueColor,
+              height: 1.0,
+            ),
           ),
           const SizedBox(height: 4),
-          Text(label, style: Theme.of(context).textTheme.bodyMedium),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: labelColor,
+            ),
+          ),
         ],
       ),
     );
@@ -800,19 +997,33 @@ class _EmptyAnalyticsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(18),
+        side: BorderSide(color: colorScheme.surfaceContainerHighest),
+      ),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(title, style: Theme.of(context).textTheme.titleMedium),
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.w800,
+                color: colorScheme.onSurface,
+              ),
+            ),
             const SizedBox(height: 12),
             Text(
               message,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.outline,
-                  ),
+              style: TextStyle(
+                fontSize: 14,
+                color: colorScheme.outline,
+              ),
             ),
           ],
         ),
@@ -835,7 +1046,7 @@ class _InsightCard extends StatelessWidget {
   IconData get _icon {
     switch (insight.type) {
       case RelationshipInsightType.driftingContact:
-        return Icons.trending_down;
+        return Icons.trending_down_rounded;
       case RelationshipInsightType.silenceStreak:
         return Icons.notifications_paused_outlined;
       case RelationshipInsightType.stalePrayerRequests:
@@ -850,47 +1061,82 @@ class _InsightCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     final phrasing = insight.phrasing?.trim();
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 12, 4, 12),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(_icon, color: theme.colorScheme.primary),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
+
+    final isDrifting =
+        insight.type == RelationshipInsightType.driftingContact ||
+            insight.type == RelationshipInsightType.silenceStreak ||
+            insight.type == RelationshipInsightType.stalePrayerRequests;
+
+    final cardBg = isDrifting
+        ? const Color(0xFFFDF5F2)
+        : theme.cardTheme.color ?? colorScheme.surface;
+    final borderColor = isDrifting
+        ? const Color(0xFFF0D9D0)
+        : colorScheme.surfaceContainerHighest;
+    final iconColor =
+        isDrifting ? const Color(0xFFC25A3F) : colorScheme.primary;
+    final titleColor = colorScheme.onSurface;
+    final subtitleColor =
+        isDrifting ? const Color(0xFFA37060) : colorScheme.outline;
+    final dismissColor =
+        isDrifting ? const Color(0xFFD6B3A6) : colorScheme.outline;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: cardBg,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: borderColor),
+      ),
+      padding: const EdgeInsets.fromLTRB(14, 13, 6, 13),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(_icon, color: iconColor, size: 20),
+          const SizedBox(width: 11),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  insight.title,
+                  style: TextStyle(
+                    fontSize: 14.5,
+                    fontWeight: FontWeight.w700,
+                    color: titleColor,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  subtitle,
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    color: subtitleColor,
+                  ),
+                ),
+                if (phrasing != null && phrasing.isNotEmpty) ...[
+                  const SizedBox(height: 6),
                   Text(
-                    insight.title,
-                    style: theme.textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w600,
+                    phrasing,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontStyle: FontStyle.italic,
+                      color: colorScheme.onSurfaceVariant,
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  Text(subtitle, style: theme.textTheme.bodySmall),
-                  if (phrasing != null && phrasing.isNotEmpty) ...[
-                    const SizedBox(height: 6),
-                    Text(
-                      phrasing,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        fontStyle: FontStyle.italic,
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ],
                 ],
-              ),
+              ],
             ),
-            IconButton(
-              tooltip: 'Dismiss',
-              icon: const Icon(Icons.close, size: 18),
-              onPressed: onDismiss,
-            ),
-          ],
-        ),
+          ),
+          IconButton(
+            tooltip: 'Dismiss',
+            icon: Icon(Icons.close, size: 16, color: dismissColor),
+            onPressed: onDismiss,
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
+          ),
+        ],
       ),
     );
   }

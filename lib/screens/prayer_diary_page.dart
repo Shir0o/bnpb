@@ -12,7 +12,8 @@ const Duration _stillAskingThreshold = Duration(days: 28);
 
 /// Displays a chronological list of recorded prayers.
 class PrayerDiaryPage extends StatefulWidget {
-  const PrayerDiaryPage({super.key});
+  final String initialFilter;
+  const PrayerDiaryPage({super.key, this.initialFilter = 'All'});
 
   @override
   State<PrayerDiaryPage> createState() => _PrayerDiaryPageState();
@@ -24,13 +25,14 @@ class _PrayerDiaryPageState extends State<PrayerDiaryPage> {
   List<Contact> _contacts = [];
   List<PrayerRequest> _requests = [];
   bool _isLoading = false;
-  String _selectedFilter = 'All';
+  late String _selectedFilter;
 
   late final DateFormat _dateFormat;
 
   @override
   void initState() {
     super.initState();
+    _selectedFilter = widget.initialFilter;
     _dateFormat = DateFormat.yMMMd();
     _loadRequests();
   }
