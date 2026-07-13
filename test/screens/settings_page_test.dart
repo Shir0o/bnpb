@@ -196,7 +196,7 @@ void main() {
 
       // Yield control to let ensureDefaults / load complete
       await tester.pump(const Duration(milliseconds: 400));
-      await tester.pump();
+      await tester.pumpAndSettle();
 
       // Initialize the completer to control asynchronous timing
       final findDuplicateCompleter =
@@ -204,15 +204,14 @@ void main() {
       fakeDbHelper.findDuplicateCompleter = findDuplicateCompleter;
 
       // 3. Find and tap the "De-duplicate interactions" tile
-      final deDupTile = find
-          .byIcon(Icons.cleaning_services_outlined, skipOffstage: false)
-          .first;
-      expect(deDupTile, findsOneWidget);
+      final deDupTile =
+          find.byIcon(Icons.cleaning_services_outlined, skipOffstage: false);
       await tester.scrollUntilVisible(
         deDupTile,
         100.0,
         scrollable: find.byType(Scrollable).first,
       );
+      expect(deDupTile, findsOneWidget);
       await tester.pumpAndSettle();
       await tester.tap(find.text('De-duplicate interactions'));
 

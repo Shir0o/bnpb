@@ -4,6 +4,8 @@ import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
+import '../main.dart' show CrispColorScheme;
+
 import '../db/db_helper.dart';
 import '../models/contact.dart';
 import '../models/prayer_request.dart';
@@ -452,29 +454,29 @@ class _HomePageState extends State<HomePage>
                   child: Container(
                     padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFFBEEE9),
+                      color: Theme.of(context).colorScheme.errorContainer,
                       borderRadius: BorderRadius.circular(14),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Text(
+                        Text(
                           'NEEDS PRAYER',
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w700,
                             letterSpacing: 0.48, // 12 * 0.04em
-                            color: Color(0xFFC25A3F),
+                            color: Theme.of(context).colorScheme.error,
                           ),
                         ),
                         const SizedBox(height: 6),
                         Text(
                           pendingCount.toString(),
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 26,
                             fontWeight: FontWeight.w800,
-                            color: Color(0xFF0F1512),
+                            color: Theme.of(context).colorScheme.onSurface,
                             height: 1.0,
                           ),
                         ),
@@ -500,29 +502,29 @@ class _HomePageState extends State<HomePage>
                   child: Container(
                     padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFEAF6EF),
+                      color: Theme.of(context).colorScheme.primaryContainer,
                       borderRadius: BorderRadius.circular(14),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Text(
+                        Text(
                           'ANSWERED',
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w700,
                             letterSpacing: 0.48, // 12 * 0.04em
-                            color: Color(0xFF0D7A4F),
+                            color: Theme.of(context).colorScheme.primary,
                           ),
                         ),
                         const SizedBox(height: 6),
                         Text(
                           answeredCount.toString(),
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 26,
                             fontWeight: FontWeight.w800,
-                            color: Color(0xFF0F1512),
+                            color: Theme.of(context).colorScheme.onSurface,
                             height: 1.0,
                           ),
                         ),
@@ -1094,7 +1096,8 @@ class _HomePageState extends State<HomePage>
       appBar: _isBulkSelectMode
           ? AppBar(
               leading: IconButton(
-                icon: const Icon(Icons.close, color: Color(0xFF3D4C44)),
+                icon: Icon(Icons.close,
+                    color: Theme.of(context).colorScheme.iconColor),
                 onPressed: () {
                   setState(() {
                     _isBulkSelectMode = false;
@@ -1104,10 +1107,10 @@ class _HomePageState extends State<HomePage>
               ),
               title: Text(
                 '${_selectedContactIds.length} selected',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.w800,
-                  color: Color(0xFF0F1512),
+                  color: Theme.of(context).colorScheme.onSurface,
                 ),
               ),
               titleSpacing: 0,
@@ -1117,8 +1120,8 @@ class _HomePageState extends State<HomePage>
               toolbarHeight: 64,
               actions: [
                 IconButton(
-                  icon: const Icon(Icons.select_all_rounded,
-                      color: Color(0xFF3D4C44)),
+                  icon: Icon(Icons.select_all_rounded,
+                      color: Theme.of(context).colorScheme.iconColor),
                   tooltip: 'Select All',
                   onPressed: () {
                     setState(() {
@@ -1128,7 +1131,8 @@ class _HomePageState extends State<HomePage>
                   },
                 ),
                 IconButton(
-                  icon: const Icon(Icons.deselect, color: Color(0xFF3D4C44)),
+                  icon: Icon(Icons.deselect,
+                      color: Theme.of(context).colorScheme.iconColor),
                   tooltip: 'Deselect All',
                   onPressed: () {
                     setState(() {
@@ -1137,8 +1141,8 @@ class _HomePageState extends State<HomePage>
                   },
                 ),
                 IconButton(
-                  icon: const Icon(Icons.edit_location_alt_rounded,
-                      color: Color(0xFF0D7A4F)),
+                  icon: Icon(Icons.edit_location_alt_rounded,
+                      color: Theme.of(context).colorScheme.primary),
                   tooltip: 'Edit Location',
                   onPressed:
                       _selectedContactIds.isEmpty ? null : _bulkEditLocation,
@@ -1152,7 +1156,7 @@ class _HomePageState extends State<HomePage>
                 style: TextStyle(
                   fontSize: titleSize,
                   fontWeight: FontWeight.w800,
-                  color: const Color(0xFF0F1512),
+                  color: Theme.of(context).colorScheme.onSurface,
                   letterSpacing: -0.6,
                 ),
               ),
@@ -1168,21 +1172,6 @@ class _HomePageState extends State<HomePage>
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       _buildHeaderButton(
-                        icon: Icons.checklist_rounded,
-                        onTap: () {
-                          setState(() {
-                            _isBulkSelectMode = true;
-                            _selectedContactIds.clear();
-                          });
-                        },
-                        backgroundColor: const Color(0xFFF1F5F2),
-                        iconColor: const Color(0xFF3D4C44),
-                        tooltip: 'Bulk Select',
-                        containerSize: buttonSize,
-                        iconSize: buttonIconSize,
-                      ),
-                      SizedBox(width: buttonSpacing),
-                      _buildHeaderButton(
                         icon: Icons.people_outline_rounded,
                         onTap: () {
                           Navigator.of(context).push(
@@ -1191,8 +1180,9 @@ class _HomePageState extends State<HomePage>
                             ),
                           );
                         },
-                        backgroundColor: const Color(0xFFF1F5F2),
-                        iconColor: const Color(0xFF3D4C44),
+                        backgroundColor:
+                            Theme.of(context).colorScheme.surfaceTint,
+                        iconColor: Theme.of(context).colorScheme.iconColor,
                         tooltip: 'Prayer Lists',
                         containerSize: buttonSize,
                         iconSize: buttonIconSize,
@@ -1207,8 +1197,9 @@ class _HomePageState extends State<HomePage>
                             ),
                           );
                         },
-                        backgroundColor: const Color(0xFFF1F5F2),
-                        iconColor: const Color(0xFF3D4C44),
+                        backgroundColor:
+                            Theme.of(context).colorScheme.surfaceTint,
+                        iconColor: Theme.of(context).colorScheme.iconColor,
                         tooltip: 'Prayer Diary',
                         containerSize: buttonSize,
                         iconSize: buttonIconSize,
@@ -1217,8 +1208,9 @@ class _HomePageState extends State<HomePage>
                       _buildHeaderButton(
                         icon: Icons.history_rounded,
                         onTap: _openRestoreSheet,
-                        backgroundColor: const Color(0xFFF1F5F2),
-                        iconColor: const Color(0xFF3D4C44),
+                        backgroundColor:
+                            Theme.of(context).colorScheme.surfaceTint,
+                        iconColor: Theme.of(context).colorScheme.iconColor,
                         tooltip: 'Backup and Restore',
                         containerSize: buttonSize,
                         iconSize: buttonIconSize,
@@ -1227,8 +1219,8 @@ class _HomePageState extends State<HomePage>
                       _buildHeaderButton(
                         icon: Icons.upload_rounded,
                         onTap: _openExportSheet,
-                        backgroundColor: const Color(0xFF0D7A4F),
-                        iconColor: const Color(0xFFFFFFFF),
+                        backgroundColor: Theme.of(context).colorScheme.primary,
+                        iconColor: Theme.of(context).colorScheme.onPrimary,
                         tooltip: 'Export',
                         containerSize: buttonSize,
                         iconSize: buttonIconSize,
@@ -1255,23 +1247,24 @@ class _HomePageState extends State<HomePage>
                         child: TextField(
                           controller: _searchController,
                           focusNode: _searchFocusNode,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w500,
-                            color: Color(0xFF0F1512),
+                            color: Theme.of(context).colorScheme.onSurface,
                           ),
                           decoration: InputDecoration(
                             hintText: 'Search contacts…',
-                            hintStyle: const TextStyle(
-                              color: Color(0xFF8A988F),
+                            hintStyle: TextStyle(
+                              color: Theme.of(context).colorScheme.outline,
                               fontSize: 16,
                               fontWeight: FontWeight.w500,
                             ),
-                            prefixIcon: const Padding(
-                              padding: EdgeInsets.only(left: 15, right: 11),
+                            prefixIcon: Padding(
+                              padding:
+                                  const EdgeInsets.only(left: 15, right: 11),
                               child: Icon(
                                 Icons.search,
-                                color: Color(0xFF8A988F),
+                                color: Theme.of(context).colorScheme.outline,
                                 size: 19,
                               ),
                             ),
@@ -1282,7 +1275,8 @@ class _HomePageState extends State<HomePage>
                             suffixIcon: _searchController.text.isNotEmpty
                                 ? IconButton(
                                     icon: const Icon(Icons.clear, size: 18),
-                                    color: const Color(0xFF8A988F),
+                                    color:
+                                        Theme.of(context).colorScheme.outline,
                                     onPressed: () {
                                       _searchController.clear();
                                     },
@@ -1293,7 +1287,8 @@ class _HomePageState extends State<HomePage>
                               borderSide: BorderSide.none,
                             ),
                             filled: true,
-                            fillColor: const Color(0xFFF1F5F2),
+                            fillColor:
+                                Theme.of(context).colorScheme.surfaceTint,
                             contentPadding: const EdgeInsets.symmetric(
                               vertical: 13,
                               horizontal: 15,
@@ -1342,7 +1337,45 @@ class _HomePageState extends State<HomePage>
                                 child: SmoothExpansionTile(
                                   key: PageStorageKey<String>(location),
                                   tilePadding: EdgeInsets.zero,
-                                  title: Text(location),
+                                  title: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        location,
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w800,
+                                          fontSize: 17,
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .onSurface,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 8,
+                                          vertical: 2,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .surfaceContainerLow,
+                                          borderRadius:
+                                              BorderRadius.circular(20),
+                                        ),
+                                        child: Text(
+                                          '${contactsInLocation.length}',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600,
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .outline,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                   childrenPadding: const EdgeInsets.only(
                                     top: 8,
                                   ),

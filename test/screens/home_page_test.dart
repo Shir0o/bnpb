@@ -156,7 +156,14 @@ void main() {
 
     // Verify it renders the Answered count and label
     expect(find.text('ANSWERED'), findsOneWidget);
-    expect(find.text('1'), findsOneWidget);
+    final answeredCardFinder = find.ancestor(
+      of: find.text('ANSWERED'),
+      matching: find.byType(InkWell),
+    );
+    expect(
+      find.descendant(of: answeredCardFinder, matching: find.text('1')),
+      findsOneWidget,
+    );
 
     // Tap Answered card
     await tester.tap(find.text('ANSWERED'));

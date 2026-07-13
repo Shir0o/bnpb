@@ -15,9 +15,9 @@ void main() {
     expect(lightTheme.useMaterial3, isTrue);
     expect(darkTheme.useMaterial3, isTrue);
 
-    // We enforce light mode colors for both
+    // Assert brightness levels match
     expect(lightTheme.colorScheme.brightness, Brightness.light);
-    expect(darkTheme.colorScheme.brightness, Brightness.light);
+    expect(darkTheme.colorScheme.brightness, Brightness.dark);
 
     // Assert that scrolledUnderElevation is disabled
     expect(lightTheme.appBarTheme.scrolledUnderElevation, 0.0);
@@ -47,6 +47,24 @@ void main() {
     expect(colorScheme.outlineVariant, const Color(0xFFEEF2EF));
   });
 
+  test('dark theme uses the dark color palette for Crisp Utility', () {
+    final colorScheme = buildAppTheme(Brightness.dark, 13.0).colorScheme;
+
+    expect(colorScheme.primary, const Color(0xFF22A36D));
+    expect(colorScheme.onPrimary, const Color(0xFF151A17));
+    expect(colorScheme.primaryContainer, const Color(0xFF12301F));
+    expect(colorScheme.onPrimaryContainer, const Color(0xFF22A36D));
+    expect(colorScheme.secondary, const Color(0xFF9AA79F));
+    expect(colorScheme.error, const Color(0xFFE07A5F));
+    expect(colorScheme.errorContainer, const Color(0xFF331813));
+    expect(colorScheme.surface, const Color(0xFF151A17));
+    expect(colorScheme.onSurface, const Color(0xFFE9EFEB));
+    expect(colorScheme.surfaceContainerHighest, const Color(0xFF2B332D));
+    expect(colorScheme.surfaceContainerLow, const Color(0xFF1F2621));
+    expect(colorScheme.outline, const Color(0xFF8B988F));
+    expect(colorScheme.outlineVariant, const Color(0xFF242C26));
+  });
+
   test('fontSizeNotifier updates and persists correct value', () async {
     SharedPreferences.setMockInitialValues({});
 
@@ -57,5 +75,17 @@ void main() {
     // Verify it is saved in SharedPreferences
     final prefs = await SharedPreferences.getInstance();
     expect(prefs.getDouble('app_font_size'), 15.0);
+  });
+
+  test('themeModeNotifier updates and persists correct value', () async {
+    SharedPreferences.setMockInitialValues({});
+
+    // Update theme mode
+    await updateThemeMode(ThemeMode.dark);
+    expect(themeModeNotifier.value, ThemeMode.dark);
+
+    // Verify it is saved in SharedPreferences
+    final prefs = await SharedPreferences.getInstance();
+    expect(prefs.getInt('app_theme_mode'), ThemeMode.dark.index);
   });
 }

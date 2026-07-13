@@ -36,6 +36,15 @@ Future<void> updateFontSize(double newSize) async {
   fontSizeNotifier.value = newSize;
 }
 
+final ValueNotifier<ThemeMode> themeModeNotifier =
+    ValueNotifier<ThemeMode>(ThemeMode.light);
+
+Future<void> updateThemeMode(ThemeMode mode) async {
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setInt('app_theme_mode', mode.index);
+  themeModeNotifier.value = mode;
+}
+
 const ColorScheme _lightColorScheme = ColorScheme.light(
   primary: Color(0xFF0D7A4F),
   onPrimary: Colors.white,
@@ -52,10 +61,60 @@ const ColorScheme _lightColorScheme = ColorScheme.light(
   error: Color(0xFFC25A3F),
   errorContainer: Color(0xFFFBEEE9),
   onErrorContainer: Color(0xFFC25A3F),
+  onSurfaceVariant: Color(0xFF57635C), // secondaryText
+  tertiary: Color(0xFF3D4C44), // iconColor
+  secondaryContainer: Color(0xFFC3CCC6), // faint
+  tertiaryContainer: Color(0xFFFDF5F2), // danger-tint2
+  inverseSurface: Color(0xFFF0D9D0), // danger-border
 );
 
+const ColorScheme _darkColorScheme = ColorScheme.dark(
+  primary: Color(0xFF22A36D),
+  onPrimary: Color(0xFF151A17),
+  primaryContainer: Color(0xFF12301F),
+  onPrimaryContainer: Color(0xFF22A36D),
+  secondary: Color(0xFF9AA79F),
+  onSecondary: Color(0xFF151A17),
+  surface: Color(0xFF151A17),
+  onSurface: Color(0xFFE9EFEB),
+  surfaceContainerLow: Color(0xFF1F2621), // Surface tint
+  surfaceContainerHighest: Color(0xFF2B332D), // Card border
+  outline: Color(0xFF8B988F), // Muted
+  outlineVariant: Color(0xFF242C26), // Hairline
+  error: Color(0xFFE07A5F),
+  errorContainer: Color(0xFF331813),
+  onErrorContainer: Color(0xFFE07A5F),
+  onSurfaceVariant: Color(0xFF9AA79F), // secondaryText
+  tertiary: Color(0xFFB6C2BA), // iconColor
+  secondaryContainer: Color(0xFF4B564F), // faint
+  tertiaryContainer: Color(0xFF2A1611), // danger-tint2
+  inverseSurface: Color(0xFF4A2B21), // danger-border
+);
+
+extension CrispColorScheme on ColorScheme {
+  Color get surfaceTint => surfaceContainerLow; // --tint
+  Color get cardBorder => surfaceContainerHighest; // --border
+  Color get hairline => outlineVariant; // --hairline
+  Color get secondaryText => onSurfaceVariant; // --secondary
+  Color get iconColor => tertiary; // --icon
+  Color get faint => secondaryContainer; // --faint
+  Color get greenTint => primaryContainer; // --green-tint
+  Color get dangerTint => errorContainer; // --danger-tint
+  Color get dangerTint2 => tertiaryContainer; // --danger-tint2
+  Color get dangerBorder => inverseSurface; // --danger-border
+  Color get aiCardBg => brightness == Brightness.light
+      ? const Color(0xFF0F1512)
+      : const Color(0xFF0C1712);
+  Color get switchOff => brightness == Brightness.light
+      ? const Color(0xFFD5DBD7)
+      : const Color(0xFF37413B);
+  Color get knobColor =>
+      brightness == Brightness.light ? Colors.white : const Color(0xFFF2F5F3);
+}
+
 ThemeData buildAppTheme(Brightness brightness, double baseFontSize) {
-  final colorScheme = _lightColorScheme; // Crisp Utility is light-only
+  final colorScheme =
+      brightness == Brightness.dark ? _darkColorScheme : _lightColorScheme;
   final baseTheme = ThemeData(
     useMaterial3: true,
     colorScheme: colorScheme,
@@ -75,20 +134,20 @@ ThemeData buildAppTheme(Brightness brightness, double baseFontSize) {
     ),
     scaffoldBackgroundColor: colorScheme.surface,
     appBarTheme: AppBarTheme(
-      backgroundColor: Colors.white,
-      foregroundColor: const Color(0xFF0F1512),
+      backgroundColor: colorScheme.surface,
+      foregroundColor: colorScheme.onSurface,
       elevation: 0,
       centerTitle: true,
       scrolledUnderElevation: 0.0,
-      titleTextStyle: const TextStyle(
+      titleTextStyle: TextStyle(
         fontSize: 24,
         fontWeight: FontWeight.w800,
-        color: Color(0xFF0F1512),
+        color: colorScheme.onSurface,
         letterSpacing: -0.48,
       ),
     ),
     cardTheme: CardThemeData(
-      color: Colors.white,
+      color: colorScheme.surface,
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
@@ -96,14 +155,14 @@ ThemeData buildAppTheme(Brightness brightness, double baseFontSize) {
       ),
     ),
     dialogTheme: DialogThemeData(
-      backgroundColor: Colors.white,
+      backgroundColor: colorScheme.surface,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(20),
       ),
     ),
-    bottomSheetTheme: const BottomSheetThemeData(
-      backgroundColor: Colors.white,
-      shape: RoundedRectangleBorder(
+    bottomSheetTheme: BottomSheetThemeData(
+      backgroundColor: colorScheme.surface,
+      shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
     ),
@@ -125,6 +184,11 @@ Future<void> main() async {
     if (prefs.containsKey('app_font_size')) {
       _hasUserCustomFontSize = true;
       fontSizeNotifier.value = prefs.getDouble('app_font_size') ?? 13.0;
+    }
+    if (prefs.containsKey('app_theme_mode')) {
+      final themeIndex =
+          prefs.getInt('app_theme_mode') ?? ThemeMode.light.index;
+      themeModeNotifier.value = ThemeMode.values[themeIndex];
     }
 
     // Pre-warm Google Sign-In silent login
@@ -249,25 +313,31 @@ class MyApp extends StatelessWidget {
     return ValueListenableBuilder<double>(
       valueListenable: fontSizeNotifier,
       builder: (context, baseFontSize, child) {
-        final theme = buildAppTheme(Brightness.light, baseFontSize);
-        return MaterialApp(
-          title: 'BNPB',
-          theme: theme,
-          darkTheme: theme,
-          themeMode: ThemeMode.light,
-          builder: (context, child) {
-            return MediaQuery(
-              data: MediaQuery.of(context).copyWith(
-                textScaler: TextScaler.linear(baseFontSize / 14.0),
+        return ValueListenableBuilder<ThemeMode>(
+          valueListenable: themeModeNotifier,
+          builder: (context, themeMode, child) {
+            final lightTheme = buildAppTheme(Brightness.light, baseFontSize);
+            final darkTheme = buildAppTheme(Brightness.dark, baseFontSize);
+            return MaterialApp(
+              title: 'BNPB',
+              theme: lightTheme,
+              darkTheme: darkTheme,
+              themeMode: themeMode,
+              builder: (context, child) {
+                return MediaQuery(
+                  data: MediaQuery.of(context).copyWith(
+                    textScaler: TextScaler.linear(baseFontSize / 14.0),
+                  ),
+                  child: child!,
+                );
+              },
+              home: SecurityGate(
+                child: Platform.isMacOS
+                    ? const MacOSShell(child: MacOSActiveContactsView())
+                    : const MainPage(),
               ),
-              child: child!,
             );
           },
-          home: SecurityGate(
-            child: Platform.isMacOS
-                ? const MacOSShell(child: MacOSActiveContactsView())
-                : const MainPage(),
-          ),
         );
       },
     );
