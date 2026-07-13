@@ -114,6 +114,25 @@ void main() {
       expect(scaffold.backgroundColor, Colors.red);
     });
 
+    testWidgets('passes through drawer and bottomNavigationBar properties',
+        (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: HideOnScrollScaffold(
+            appBar: AppBar(title: const Text('Test')),
+            body: const SizedBox.expand(),
+            bottomNavigationBar: const Text('Bottom Nav Bar'),
+            drawer: const Drawer(child: Text('Drawer')),
+          ),
+        ),
+      );
+
+      expect(find.text('Bottom Nav Bar'), findsOneWidget);
+
+      final scaffoldState = tester.state<ScaffoldState>(find.byType(Scaffold));
+      expect(scaffoldState.hasDrawer, isTrue);
+    });
+
     testWidgets('works with non-scrollable body', (tester) async {
       await tester.pumpWidget(
         MaterialApp(

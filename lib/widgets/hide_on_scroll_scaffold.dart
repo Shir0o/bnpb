@@ -17,6 +17,10 @@ class HideOnScrollScaffold extends StatefulWidget {
     this.backgroundColor,
     this.bottomSheet,
     this.resizeToAvoidBottomInset,
+    this.bottomNavigationBar,
+    this.drawer,
+    this.endDrawer,
+    this.persistentFooterButtons,
   });
 
   /// The [AppBar] to display at the top. It will be hidden/shown based on
@@ -40,6 +44,18 @@ class HideOnScrollScaffold extends StatefulWidget {
 
   /// Whether the body should resize when the keyboard appears.
   final bool? resizeToAvoidBottomInset;
+
+  /// A bottom navigation bar to display at the bottom of the scaffold.
+  final Widget? bottomNavigationBar;
+
+  /// A panel displayed to the side of the body.
+  final Widget? drawer;
+
+  /// A panel displayed to the opposite side of the body.
+  final Widget? endDrawer;
+
+  /// A set of buttons displayed at the bottom of the scaffold.
+  final List<Widget>? persistentFooterButtons;
 
   @override
   State<HideOnScrollScaffold> createState() => _HideOnScrollScaffoldState();
@@ -94,6 +110,10 @@ class _HideOnScrollScaffoldState extends State<HideOnScrollScaffold>
       floatingActionButtonLocation: widget.floatingActionButtonLocation,
       bottomSheet: widget.bottomSheet,
       resizeToAvoidBottomInset: widget.resizeToAvoidBottomInset,
+      bottomNavigationBar: widget.bottomNavigationBar,
+      drawer: widget.drawer,
+      endDrawer: widget.endDrawer,
+      persistentFooterButtons: widget.persistentFooterButtons,
       body: Column(
         children: [
           // Animated AppBar: SizeTransition clips and resizes it.
