@@ -165,4 +165,19 @@ void main() {
     // Verify PrayerDiaryPage is shown (can find filter chip)
     expect(find.text('Archived'), findsOneWidget);
   });
+
+  testWidgets('HomePage renders dynamic header action buttons',
+      (WidgetTester tester) async {
+    await tester.pumpWidget(const MaterialApp(home: HomePage()));
+    await tester.pumpAndSettle();
+
+    // Verify Contacts title is present
+    expect(find.text('Contacts'), findsOneWidget);
+
+    // Verify the buttons are found by tooltips
+    expect(find.byTooltip('Prayer Lists'), findsOneWidget);
+    expect(find.byTooltip('Prayer Diary'), findsOneWidget);
+    expect(find.byTooltip('Backup and Restore'), findsOneWidget);
+    expect(find.byTooltip('Export'), findsOneWidget);
+  });
 }

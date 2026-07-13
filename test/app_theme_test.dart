@@ -2,6 +2,7 @@ import 'package:bnpb/main.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -44,5 +45,17 @@ void main() {
     expect(colorScheme.surfaceContainerLow, const Color(0xFFF1F5F2));
     expect(colorScheme.outline, const Color(0xFF8A988F));
     expect(colorScheme.outlineVariant, const Color(0xFFEEF2EF));
+  });
+
+  test('fontSizeNotifier updates and persists correct value', () async {
+    SharedPreferences.setMockInitialValues({});
+
+    // Update font size
+    await updateFontSize(15.0);
+    expect(fontSizeNotifier.value, 15.0);
+
+    // Verify it is saved in SharedPreferences
+    final prefs = await SharedPreferences.getInstance();
+    expect(prefs.getDouble('app_font_size'), 15.0);
   });
 }
