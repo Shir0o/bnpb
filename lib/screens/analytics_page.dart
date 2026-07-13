@@ -9,6 +9,7 @@ import '../repositories/analytics_repository.dart';
 import '../repositories/relationship_insights_repository.dart';
 import '../services/ai/ai_services.dart';
 import '../widgets/skeleton_loader.dart';
+import '../widgets/hide_on_scroll_scaffold.dart';
 import 'ask_page.dart';
 
 /// Predefined ranges supported by the analytics dashboard.
@@ -119,14 +120,18 @@ class _AnalyticsPageState extends State<AnalyticsPage>
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    return Scaffold(
+    final double screenWidth = MediaQuery.of(context).size.width;
+    final bool isSmallScreen = screenWidth < 390;
+    final double titleSize = isSmallScreen ? 26.0 : 34.0;
+
+    return HideOnScrollScaffold(
       appBar: AppBar(
-        title: const Text(
+        title: Text(
           'Analytics',
           style: TextStyle(
-            fontSize: 30,
+            fontSize: titleSize,
             fontWeight: FontWeight.w800,
-            color: Color(0xFF0F1512),
+            color: const Color(0xFF0F1512),
             letterSpacing: -0.6,
           ),
         ),

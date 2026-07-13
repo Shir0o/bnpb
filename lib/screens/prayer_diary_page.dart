@@ -6,6 +6,7 @@ import '../models/contact.dart';
 import '../models/prayer_request.dart';
 import '../widgets/log_prayer_request_sheet.dart';
 import 'prayer_request_details_page.dart';
+import '../widgets/hide_on_scroll_scaffold.dart';
 
 /// Pending requests older than this surface a "still asking" badge.
 const Duration _stillAskingThreshold = Duration(days: 28);
@@ -149,7 +150,7 @@ class _PrayerDiaryPageState extends State<PrayerDiaryPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return HideOnScrollScaffold(
       appBar: AppBar(title: const Text('Prayer diary')),
       floatingActionButton: FloatingActionButton(
         onPressed: _openLogPrayerRequestSheet,

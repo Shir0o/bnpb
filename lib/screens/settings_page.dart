@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:intl/intl.dart';
 
+import '../main.dart' show fontSizeNotifier, updateFontSize;
 import '../db/db_helper.dart';
 import '../models/contact.dart';
 import '../models/interaction.dart';
@@ -20,6 +21,7 @@ import '../widgets/export_options_sheet.dart';
 import '../widgets/skeleton_loader.dart';
 import 'ai_settings_page.dart';
 import 'privacy_policy_page.dart';
+import '../widgets/hide_on_scroll_scaffold.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -144,15 +146,19 @@ class _SettingsPageState extends State<SettingsPage>
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    return Scaffold(
+    final double screenWidth = MediaQuery.of(context).size.width;
+    final bool isSmallScreen = screenWidth < 390;
+    final double titleSize = isSmallScreen ? 26.0 : 34.0;
+
+    return HideOnScrollScaffold(
       appBar: AppBar(
-        title: const Text(
+        title: Text(
           'Settings',
           style: TextStyle(
-            fontSize: 30,
+            fontSize: titleSize,
             fontWeight: FontWeight.w800,
-            color: Color(0xFF0F1512),
-            letterSpacing: -0.6, // 30 * -0.02
+            color: const Color(0xFF0F1512),
+            letterSpacing: -0.6,
           ),
         ),
         titleSpacing: 22,
@@ -213,6 +219,13 @@ class _SettingsPageState extends State<SettingsPage>
             _buildCardGroup(
               children: [
                 _buildSecurityGroup(context),
+              ],
+            ),
+            const SizedBox(height: 16),
+            _buildSectionHeader('Display'),
+            _buildCardGroup(
+              children: [
+                _buildFontSizeTile(context),
               ],
             ),
             const SizedBox(height: 16),
@@ -296,6 +309,54 @@ class _SettingsPageState extends State<SettingsPage>
           color: Color(0xFF8A988F),
         ),
       ),
+    );
+  }
+
+  Widget _buildFontSizeTile(BuildContext context) {
+    return ValueListenableBuilder<double>(
+      valueListenable: fontSizeNotifier,
+      builder: (context, currentSize, child) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.format_size_outlined),
+              title: const Text('Font size'),
+              trailing: Text(
+                '${currentSize.toStringAsFixed(0)} px',
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF0D7A4F),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Row(
+                children: [
+                  const Text('A', style: TextStyle(fontSize: 12)),
+                  Expanded(
+                    child: Slider(
+                      value: currentSize,
+                      min: 11.0,
+                      max: 18.0,
+                      divisions: 7,
+                      activeColor: const Color(0xFF0D7A4F),
+                      inactiveColor: const Color(0xFFEEF2EF),
+                      onChanged: (newSize) {
+                        updateFontSize(newSize);
+                      },
+                    ),
+                  ),
+                  const Text('A',
+                      style:
+                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                ],
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 

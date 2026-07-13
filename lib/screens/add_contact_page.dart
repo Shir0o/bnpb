@@ -8,6 +8,7 @@ import '../services/backup_service.dart';
 import '../services/contact_service.dart';
 import '../services/reminder_coordinator.dart';
 import 'add_family_page.dart';
+import '../widgets/hide_on_scroll_scaffold.dart';
 
 class AddContactPage extends StatefulWidget {
   final bool popOnSave;
@@ -198,15 +199,19 @@ class _AddContactPageState extends State<AddContactPage>
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    return Scaffold(
+    final double screenWidth = MediaQuery.of(context).size.width;
+    final bool isSmallScreen = screenWidth < 390;
+    final double titleSize = isSmallScreen ? 22.0 : 30.0;
+
+    return HideOnScrollScaffold(
       appBar: AppBar(
-        title: const Text(
+        title: Text(
           'Add contact',
           style: TextStyle(
-            fontSize: 26,
+            fontSize: titleSize,
             fontWeight: FontWeight.w800,
-            color: Color(0xFF0F1512),
-            letterSpacing: -0.52, // 26 * -0.02
+            color: const Color(0xFF0F1512),
+            letterSpacing: -0.52,
           ),
         ),
         titleSpacing: 22,
