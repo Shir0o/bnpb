@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../models/contact.dart';
 import '../models/relationship.dart';
 import '../services/import_duplicate_detector.dart';
+import '../widgets/hide_on_scroll_scaffold.dart';
 
 enum _GroupDecision { merge, keepAll, skip }
 
@@ -67,7 +68,7 @@ class _ImportDuplicateReviewPageState extends State<ImportDuplicateReviewPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return HideOnScrollScaffold(
       appBar: AppBar(
         title: const Text('Review suspected duplicates'),
         leading: IconButton(

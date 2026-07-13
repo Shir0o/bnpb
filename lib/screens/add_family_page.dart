@@ -8,6 +8,7 @@ import '../models/relationship.dart';
 import '../services/backup_service.dart';
 import '../services/contact_service.dart';
 import '../services/reminder_coordinator.dart';
+import '../widgets/hide_on_scroll_scaffold.dart';
 
 const _standardRoles = <String>[
   'Parent',
@@ -250,7 +251,7 @@ class _AddFamilyPageState extends State<AddFamilyPage> {
     final bool isSmallScreen = screenWidth < 390;
     final double titleSize = isSmallScreen ? 20.0 : 26.0;
 
-    return Scaffold(
+    return HideOnScrollScaffold(
       appBar: AppBar(
         title: Text(
           'Add Family',

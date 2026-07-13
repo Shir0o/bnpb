@@ -9,6 +9,7 @@ import '../services/ai/hf_token_store.dart';
 import '../services/ai/key_validation.dart';
 import '../services/ai/model_manager.dart';
 import '../services/security_service.dart';
+import '../widgets/hide_on_scroll_scaffold.dart';
 
 class AiSettingsPage extends StatefulWidget {
   const AiSettingsPage({super.key});
@@ -515,7 +516,7 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return HideOnScrollScaffold(
       appBar: AppBar(title: const Text('AI features')),
       body: _loading
           ? const Center(child: CircularProgressIndicator())

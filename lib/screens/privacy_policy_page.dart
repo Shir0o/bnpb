@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../content/privacy_policy.dart';
+import '../widgets/hide_on_scroll_scaffold.dart';
 
 /// Displays the privacy policy and personal usage guidance inside the app.
 class PrivacyPolicyPage extends StatelessWidget {
@@ -11,7 +12,7 @@ class PrivacyPolicyPage extends StatelessWidget {
     final theme = Theme.of(context);
     final sections = kPrivacyPolicyText.trim().split('\n\n');
 
-    return Scaffold(
+    return HideOnScrollScaffold(
       appBar: AppBar(title: const Text('Privacy & usage')),
       body: ListView.separated(
         padding: const EdgeInsets.all(24),

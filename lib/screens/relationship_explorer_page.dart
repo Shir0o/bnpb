@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../db/db_helper.dart';
 import '../models/contact.dart';
 import '../models/relationship.dart';
+import '../widgets/hide_on_scroll_scaffold.dart';
 
 /// Visualizes how contacts are connected to each other.
 class RelationshipExplorerPage extends StatefulWidget {
@@ -122,7 +123,7 @@ class _RelationshipExplorerPageState extends State<RelationshipExplorerPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return HideOnScrollScaffold(
       appBar: AppBar(title: const Text('Relationship Explorer')),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())

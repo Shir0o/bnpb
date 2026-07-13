@@ -9,6 +9,7 @@ import '../repositories/analytics_repository.dart';
 import '../repositories/relationship_insights_repository.dart';
 import '../services/ai/ai_services.dart';
 import '../widgets/skeleton_loader.dart';
+import '../widgets/hide_on_scroll_scaffold.dart';
 import 'ask_page.dart';
 
 /// Predefined ranges supported by the analytics dashboard.
@@ -123,7 +124,7 @@ class _AnalyticsPageState extends State<AnalyticsPage>
     final bool isSmallScreen = screenWidth < 390;
     final double titleSize = isSmallScreen ? 26.0 : 34.0;
 
-    return Scaffold(
+    return HideOnScrollScaffold(
       appBar: AppBar(
         title: Text(
           'Analytics',
