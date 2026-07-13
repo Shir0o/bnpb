@@ -124,7 +124,7 @@ void main() {
   });
 
   testWidgets(
-      'HomePage renders answered prayers and avoids ListTile ink splash issue',
+      'HomePage renders prayer insights count cards and navigates to PrayerDiaryPage',
       (WidgetTester tester) async {
     final contactId = const Uuid().v4();
     final contact = Contact(
@@ -145,19 +145,24 @@ void main() {
     );
     fakeDbHelper.prayerRequests.add(request);
     fakeDbHelper.counts[PrayerRequestStatus.answered] = 1;
+    fakeDbHelper.counts[PrayerRequestStatus.pending] = 3;
 
     await tester.pumpWidget(const MaterialApp(home: HomePage()));
     await tester.pumpAndSettle();
 
-    // Verify it renders the answered prayer description
-    expect(find.text('Heal from sickness'), findsOneWidget);
+    // Verify it renders the Needs prayer count and label
+    expect(find.text('NEEDS PRAYER'), findsOneWidget);
+    expect(find.text('3'), findsOneWidget);
 
-    // Verify that the ListTile that displays the answered prayer is not directly wrapped in a DecoratedBox with a background color.
-    // In our modified code, it will be wrapped in a Material widget instead of Container with BoxDecoration color.
-    final listTileFinder = find.descendant(
-      of: find.byType(ListTile),
-      matching: find.text('Heal from sickness'),
-    );
-    expect(listTileFinder, findsOneWidget);
+    // Verify it renders the Answered count and label
+    expect(find.text('ANSWERED'), findsOneWidget);
+    expect(find.text('1'), findsOneWidget);
+
+    // Tap Answered card
+    await tester.tap(find.text('ANSWERED'));
+    await tester.pumpAndSettle();
+
+    // Verify PrayerDiaryPage is shown (can find filter chip)
+    expect(find.text('Archived'), findsOneWidget);
   });
 }

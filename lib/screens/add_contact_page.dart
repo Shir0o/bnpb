@@ -200,51 +200,139 @@ class _AddContactPageState extends State<AddContactPage>
     super.build(context);
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Add Contact'),
-        actions: [
-          IconButton(
-            tooltip: 'Add family',
-            icon: const Icon(Icons.group_add_outlined),
-            onPressed: _isSavingContact
-                ? null
-                : () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => const AddFamilyPage()),
-                    );
-                  },
+        title: const Text(
+          'Add contact',
+          style: TextStyle(
+            fontSize: 26,
+            fontWeight: FontWeight.w800,
+            color: Color(0xFF0F1512),
+            letterSpacing: -0.52, // 26 * -0.02
           ),
-          if (_isSavingContact)
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16.0),
-              child: Center(
-                child: SizedBox(
-                  height: 20,
-                  width: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2),
+        ),
+        titleSpacing: 22,
+        centerTitle: false,
+        elevation: 0,
+        backgroundColor: Colors.transparent,
+        toolbarHeight: 64,
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 22),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  tooltip: 'Add family',
+                  icon: const Icon(
+                    Icons.person_add_alt_1_rounded,
+                    size: 22,
+                    color: Color(0xFF3D4C44),
+                  ),
+                  onPressed: _isSavingContact
+                      ? null
+                      : () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                                builder: (_) => const AddFamilyPage()),
+                          );
+                        },
                 ),
-              ),
-            )
-          else
-            Padding(
-              padding: const EdgeInsets.only(right: 8.0),
-              child: TextButton.icon(
-                onPressed: _saveContact,
-                icon: const Icon(Icons.save_alt),
-                label: const Text('Save'),
-                style: TextButton.styleFrom(
-                  foregroundColor: Theme.of(context).colorScheme.primary,
+                const SizedBox(width: 10),
+                GestureDetector(
+                  onTap: _isSavingContact ? null : _saveContact,
+                  child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF0D7A4F),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: _isSavingContact
+                        ? const SizedBox(
+                            height: 17,
+                            width: 17,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                  Color(0xFFFFFFFF)),
+                            ),
+                          )
+                        : const Text(
+                            'Save',
+                            style: TextStyle(
+                              color: Color(0xFFFFFFFF),
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                  ),
                 ),
-              ),
+              ],
             ),
+          ),
         ],
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.fromLTRB(22, 0, 22, 40),
         child: Form(
           key: _formKey,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              Center(
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 12, bottom: 22),
+                  child: GestureDetector(
+                    onTap: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Photo upload coming soon'),
+                          duration: Duration(seconds: 1),
+                        ),
+                      );
+                    },
+                    child: Column(
+                      children: [
+                        Container(
+                          width: 84,
+                          height: 84,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF1F5F2),
+                            borderRadius: BorderRadius.circular(24),
+                            border: Border.all(
+                              color: const Color(0xFFC3CCC6),
+                              width: 2,
+                            ),
+                          ),
+                          child: const Icon(
+                            Icons.image_outlined,
+                            size: 30,
+                            color: Color(0xFF8A988F),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        const Text(
+                          'Add photo (optional)',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Color(0xFF8A988F),
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              const Text(
+                'IDENTITY',
+                style: TextStyle(
+                  fontSize: 12,
+                  letterSpacing: 1.2,
+                  color: Color(0xFF8A988F),
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 10),
               _buildCard(
                 children: [
                   _buildTextField(
@@ -283,7 +371,17 @@ class _AddContactPageState extends State<AddContactPage>
                   ),
                 ],
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 22),
+              const Text(
+                'INTERACTION DETAILS',
+                style: TextStyle(
+                  fontSize: 12,
+                  letterSpacing: 1.2,
+                  color: Color(0xFF8A988F),
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 10),
               _buildCard(
                 children: [
                   _buildTextField(
@@ -309,9 +407,13 @@ class _AddContactPageState extends State<AddContactPage>
   }
 
   Card _buildCard({required List<Widget> children}) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: colorScheme.surfaceContainerHighest),
+      ),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
