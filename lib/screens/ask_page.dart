@@ -322,7 +322,7 @@ class _AskPageState extends State<AskPage> {
           for (final q in _history)
             Card(
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(16),
               ),
               child: ListTile(
                 leading: const Icon(Icons.history, size: 20),
@@ -354,10 +354,10 @@ class _AskPageState extends State<AskPage> {
         final r = _results[i];
         return Card(
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(16),
           ),
           child: InkWell(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(16),
             onTap: () => _openContact(r.contact),
             child: Padding(
               padding: const EdgeInsets.all(12),
@@ -417,7 +417,7 @@ class _SkeletonResultCard extends StatelessWidget {
           ),
         );
     return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: Column(

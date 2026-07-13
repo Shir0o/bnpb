@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../db/db_helper.dart';
 import '../models/contact.dart';
 import '../models/prayer_request.dart';
+import '../widgets/contact_avatar.dart';
 import '../widgets/log_prayer_request_sheet.dart';
 
 /// Displays details for a single [PrayerRequest] and supports editing it.
@@ -138,14 +139,9 @@ class _PrayerRequestDetailsPageState extends State<PrayerRequestDetailsPage> {
           : (contact.nickname?.isNotEmpty == true
               ? contact.nickname!
               : 'Unnamed');
-      final initial = name.isNotEmpty ? name[0].toUpperCase() : '?';
 
       return Chip(
-        avatar: CircleAvatar(
-          backgroundColor: theme.colorScheme.primaryContainer,
-          foregroundColor: theme.colorScheme.onPrimaryContainer,
-          child: Text(initial, style: const TextStyle(fontSize: 12)),
-        ),
+        avatar: ContactAvatar(contact: contact, radius: 12),
         label: Text(name),
         labelStyle: theme.textTheme.labelMedium,
         visualDensity: VisualDensity.compact,

@@ -138,18 +138,9 @@ class _RelationshipDialogState extends State<RelationshipDialog> {
             const SizedBox(height: 8),
             Wrap(
               spacing: 8.0,
+              runSpacing: 8.0,
               children: standardRoles.map((role) {
-                return ChoiceChip(
-                  label: Text(role),
-                  selected: selectedRole == role,
-                  onSelected: (selected) {
-                    if (selected) {
-                      setState(() {
-                        selectedRole = role;
-                      });
-                    }
-                  },
-                );
+                return _buildRoleChip(role);
               }).toList(),
             ),
             if (selectedRole == 'Other') ...[
@@ -252,6 +243,39 @@ class _RelationshipDialogState extends State<RelationshipDialog> {
           child: Text(isEditing ? 'Save' : 'Add'),
         ),
       ],
+    );
+  }
+
+  Widget _buildRoleChip(String role) {
+    final isSelected = selectedRole == role;
+    return InkWell(
+      onTap: () {
+        setState(() {
+          selectedRole = role;
+        });
+      },
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? const Color(0xFFEAF6EF) : const Color(0xFFFFFFFF),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color:
+                isSelected ? const Color(0xFF0D7A4F) : const Color(0xFFE6EBE7),
+            width: 1,
+          ),
+        ),
+        child: Text(
+          role,
+          style: TextStyle(
+            color:
+                isSelected ? const Color(0xFF0D7A4F) : const Color(0xFF57635C),
+            fontWeight: FontWeight.w600,
+            fontSize: 13,
+          ),
+        ),
+      ),
     );
   }
 }

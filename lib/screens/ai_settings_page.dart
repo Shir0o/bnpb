@@ -522,107 +522,132 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
           : ListView(
               children: [
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                  padding: const EdgeInsets.fromLTRB(22, 16, 22, 8),
                   child: Text(
                     'AI suggestions',
-                    style: Theme.of(context).textTheme.titleMedium,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          color: Theme.of(context).colorScheme.primary,
+                          fontWeight: FontWeight.bold,
+                        ),
                   ),
                 ),
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                  padding: const EdgeInsets.fromLTRB(22, 0, 22, 16),
                   child: Text(
                     'BNPB can suggest follow-up actions and tags after you '
                     'log an interaction. AI is off until you turn it on, and '
                     'runs entirely on this device unless you explicitly '
                     'switch the backend to Google Gemini in the Backend '
                     'section below.',
-                    style: Theme.of(context).textTheme.bodyMedium,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: const Color(0xFF57635C),
+                        ),
                   ),
                 ),
-                SwitchListTile.adaptive(
-                  title: const Text('Enable AI features'),
-                  subtitle: Text(
-                    _enabled
-                        ? _backend == AiBackend.cloud
-                            ? _hasGeminiKey
-                                ? 'On — using Google Gemini (cloud)'
-                                : 'On — cloud selected, no API key set'
-                            : _status == ModelStatus.ready
-                                ? 'On — using on-device model'
-                                : 'On — model not downloaded'
-                        : 'Off',
-                  ),
-                  value: _enabled,
-                  onChanged: _busy ? null : _setEnabled,
-                ),
-                if (_enabled)
-                  SwitchListTile.adaptive(
-                    title: const Text('Show suggestions when saving'),
-                    subtitle: const Text(
-                      'Generate follow-up reminders automatically after logging an interaction',
+                _buildCardGroup(
+                  children: [
+                    SwitchListTile.adaptive(
+                      title: const Text('Enable AI features'),
+                      subtitle: Text(
+                        _enabled
+                            ? _backend == AiBackend.cloud
+                                ? _hasGeminiKey
+                                    ? 'On — using Google Gemini (cloud)'
+                                    : 'On — cloud selected, no API key set'
+                                : _status == ModelStatus.ready
+                                    ? 'On — using on-device model'
+                                    : 'On — model not downloaded'
+                            : 'Off',
+                      ),
+                      value: _enabled,
+                      onChanged: _busy ? null : _setEnabled,
                     ),
-                    value: _showSuggestionsOnSave,
-                    onChanged: _busy ? null : _setShowSuggestionsOnSave,
-                  ),
+                    if (_enabled) ...[
+                      const Divider(height: 1, indent: 16, endIndent: 16),
+                      SwitchListTile.adaptive(
+                        title: const Text('Show suggestions when saving'),
+                        subtitle: const Text(
+                          'Generate follow-up reminders automatically after logging an interaction',
+                        ),
+                        value: _showSuggestionsOnSave,
+                        onChanged: _busy ? null : _setShowSuggestionsOnSave,
+                      ),
+                    ],
+                  ],
+                ),
 
-                const Divider(),
+                const SizedBox(height: 16),
 
                 // ── Backend section ────────────────────────────────
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                  padding: const EdgeInsets.fromLTRB(22, 16, 22, 8),
                   child: Text(
                     'Backend',
-                    style: Theme.of(context).textTheme.titleMedium,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          color: Theme.of(context).colorScheme.primary,
+                          fontWeight: FontWeight.bold,
+                        ),
                   ),
                 ),
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                  padding: const EdgeInsets.fromLTRB(22, 0, 22, 16),
                   child: Text(
                     'On-device keeps every prompt and result on this phone. '
                     'Cloud sends note text to Google Gemini for faster and '
                     'higher-quality suggestions; you supply your own API key '
                     'and accept that the text leaves your device.',
-                    style: Theme.of(context).textTheme.bodyMedium,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: const Color(0xFF57635C),
+                        ),
                   ),
                 ),
-                SwitchListTile.adaptive(
-                  secondary: const Icon(Icons.cloud_outlined),
-                  title: const Text('Use Google Gemini (cloud)'),
-                  subtitle: Text(
-                    _backend == AiBackend.cloud
-                        ? _hasGeminiKey
-                            ? 'On — note text is sent to Google'
-                            : 'On — add an API key below'
-                        : 'Off — AI runs entirely on this device',
-                  ),
-                  value: _backend == AiBackend.cloud,
-                  onChanged: _busy ? null : _setBackend,
-                ),
-                if (_backend == AiBackend.cloud)
-                  ListTile(
-                    leading: const Icon(Icons.key_outlined),
-                    title: const Text('Gemini API key'),
-                    subtitle: Text(
-                      _hasGeminiKey
-                          ? 'Saved in this device\'s key store — tap to update or clear'
-                          : 'Required. Get a free key at aistudio.google.com/app/apikey',
+                _buildCardGroup(
+                  children: [
+                    SwitchListTile.adaptive(
+                      secondary: const Icon(Icons.cloud_outlined),
+                      title: const Text('Use Google Gemini (cloud)'),
+                      subtitle: Text(
+                        _backend == AiBackend.cloud
+                            ? _hasGeminiKey
+                                ? 'On — note text is sent to Google'
+                                : 'On — add an API key below'
+                            : 'Off — AI runs entirely on this device',
+                      ),
+                      value: _backend == AiBackend.cloud,
+                      onChanged: _busy ? null : _setBackend,
                     ),
-                    enabled: !_busy,
-                    onTap: _busy ? null : _promptForGeminiApiKey,
-                  ),
+                    if (_backend == AiBackend.cloud) ...[
+                      const Divider(height: 1, indent: 16, endIndent: 16),
+                      ListTile(
+                        leading: const Icon(Icons.key_outlined),
+                        title: const Text('Gemini API key'),
+                        subtitle: Text(
+                          _hasGeminiKey
+                              ? 'Saved in this device\'s key store — tap to update or clear'
+                              : 'Required. Get a free key at aistudio.google.com/app/apikey',
+                        ),
+                        enabled: !_busy,
+                        onTap: _busy ? null : _promptForGeminiApiKey,
+                      ),
+                    ],
+                  ],
+                ),
 
-                const Divider(),
+                const SizedBox(height: 16),
 
                 // ── On-device model section ────────────────────────
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                  padding: const EdgeInsets.fromLTRB(22, 16, 22, 8),
                   child: Text(
                     'On-device model',
-                    style: Theme.of(context).textTheme.titleMedium,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          color: Theme.of(context).colorScheme.primary,
+                          fontWeight: FontWeight.bold,
+                        ),
                   ),
                 ),
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                  padding: const EdgeInsets.fromLTRB(22, 0, 22, 16),
                   child: Text(
                     _backend == AiBackend.cloud
                         ? 'Used when the backend above is set back to '
@@ -633,126 +658,225 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
                             'Hugging Face. A read-only access token is '
                             'required because the repository is gated by '
                             'Google.',
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
-                ),
-                ListTile(
-                  leading: const Icon(Icons.vpn_key_outlined),
-                  title: const Text('Hugging Face token'),
-                  subtitle: Text(
-                    _hasToken
-                        ? 'Saved — tap to update'
-                        : 'Required to download the gated Gemma model',
-                  ),
-                  enabled: !_busy,
-                  onTap: _busy ? null : _promptForToken,
-                ),
-                ListTile(
-                  leading: const Icon(Icons.download_outlined),
-                  title: Text(
-                    _status == ModelStatus.ready
-                        ? 'Re-download model'
-                        : 'Download model',
-                  ),
-                  subtitle: Text(
-                    _hasToken
-                        ? _statusLabel()
-                        : 'Add a Hugging Face token first',
-                  ),
-                  enabled: !_busy && _hasToken,
-                  onTap: _busy || !_hasToken ? null : _download,
-                ),
-                if (_downloadProgress != null)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
-                    ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: LinearProgressIndicator(
-                            value: _downloadProgress,
-                          ),
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: const Color(0xFF57635C),
                         ),
-                        const SizedBox(width: 12),
-                        TextButton(
-                          onPressed: _cancelDownload,
-                          child: const Text('Cancel'),
-                        ),
-                      ],
-                    ),
                   ),
-                ListTile(
-                  leading: const Icon(Icons.delete_outline),
-                  title: const Text('Delete model'),
-                  subtitle: const Text('Frees device storage'),
-                  enabled: !_busy && _status != ModelStatus.absent,
-                  onTap:
-                      _busy || _status == ModelStatus.absent ? null : _delete,
+                ),
+                _buildCardGroup(
+                  children: [
+                    if (_status == ModelStatus.ready) ...[
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        color: const Color(0xFFEAF6EF),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF0D7A4F),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: const Icon(
+                                Icons.auto_awesome,
+                                color: Colors.white,
+                                size: 20,
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'On-device model ready',
+                                    style: TextStyle(
+                                      color: Color(0xFF0D7A4F),
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 15,
+                                    ),
+                                  ),
+                                  Text(
+                                    'Gemma is ready for local AI suggestions.',
+                                    style: TextStyle(
+                                      color: const Color(0xFF0D7A4F)
+                                          .withValues(alpha: 0.8),
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Divider(height: 1),
+                    ],
+                    ListTile(
+                      leading: const Icon(Icons.vpn_key_outlined),
+                      title: const Text('Hugging Face token'),
+                      subtitle: Text(
+                        _hasToken
+                            ? 'Saved — tap to update'
+                            : 'Required to download the gated Gemma model',
+                      ),
+                      enabled: !_busy,
+                      onTap: _busy ? null : _promptForToken,
+                    ),
+                    const Divider(height: 1, indent: 16, endIndent: 16),
+                    ListTile(
+                      leading: const Icon(Icons.download_outlined),
+                      title: Text(
+                        _status == ModelStatus.ready
+                            ? 'Re-download model'
+                            : 'Download model',
+                      ),
+                      subtitle: Text(
+                        _hasToken
+                            ? _statusLabel()
+                            : 'Add a Hugging Face token first',
+                      ),
+                      enabled: !_busy && _hasToken,
+                      onTap: _busy || !_hasToken ? null : _download,
+                    ),
+                    if (_downloadProgress != null) ...[
+                      const Divider(height: 1, indent: 16, endIndent: 16),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: LinearProgressIndicator(
+                                value: _downloadProgress,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            TextButton(
+                              onPressed: _cancelDownload,
+                              child: const Text('Cancel'),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                    if (_status != ModelStatus.absent) ...[
+                      const Divider(height: 1, indent: 16, endIndent: 16),
+                      ListTile(
+                        leading: const Icon(Icons.delete_outline),
+                        title: const Text('Delete model'),
+                        subtitle: const Text('Frees device storage'),
+                        enabled: !_busy && _status != ModelStatus.absent,
+                        onTap: _busy || _status == ModelStatus.absent
+                            ? null
+                            : _delete,
+                      ),
+                    ],
+                  ],
                 ),
 
-                const Divider(),
+                const SizedBox(height: 16),
+
+                // ── Ask search (semantic) ──────────────────────────
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                  padding: const EdgeInsets.fromLTRB(22, 16, 22, 8),
                   child: Text(
                     'Ask search (semantic)',
-                    style: Theme.of(context).textTheme.titleMedium,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          color: Theme.of(context).colorScheme.primary,
+                          fontWeight: FontWeight.bold,
+                        ),
                   ),
                 ),
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                  padding: const EdgeInsets.fromLTRB(22, 0, 22, 16),
                   child: Text(
                     'Enables the "Ask" toggle on the search bar so you can '
                     'ask questions like "who did I last pray for about job '
                     'hunting?". Uses a small (~110 MB) Gecko embedder that '
                     'runs entirely on this device.',
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
-                ),
-                ListTile(
-                  leading: const Icon(Icons.psychology_outlined),
-                  title: Text(
-                    _embedderStatus == EmbedderStatus.ready
-                        ? 'Re-download embedder'
-                        : 'Download embedder',
-                  ),
-                  subtitle: Text(_embedderStatusLabel()),
-                  enabled: !_busy,
-                  onTap: _busy ? null : _downloadEmbedder,
-                ),
-                if (_embedderDownloadProgress != null)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
-                    ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: LinearProgressIndicator(
-                            value: _embedderDownloadProgress,
-                          ),
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: const Color(0xFF57635C),
                         ),
-                        const SizedBox(width: 12),
-                        TextButton(
-                          onPressed: _cancelEmbedderDownload,
-                          child: const Text('Cancel'),
-                        ),
-                      ],
-                    ),
                   ),
-                ListTile(
-                  leading: const Icon(Icons.delete_outline),
-                  title: const Text('Delete embedder'),
-                  subtitle: const Text('Frees device storage'),
-                  enabled: !_busy && _embedderStatus != EmbedderStatus.absent,
-                  onTap: _busy || _embedderStatus == EmbedderStatus.absent
-                      ? null
-                      : _deleteEmbedder,
                 ),
+                _buildCardGroup(
+                  children: [
+                    ListTile(
+                      leading: const Icon(Icons.psychology_outlined),
+                      title: Text(
+                        _embedderStatus == EmbedderStatus.ready
+                            ? 'Re-download embedder'
+                            : 'Download embedder',
+                      ),
+                      subtitle: Text(_embedderStatusLabel()),
+                      enabled: !_busy,
+                      onTap: _busy ? null : _downloadEmbedder,
+                    ),
+                    if (_embedderDownloadProgress != null) ...[
+                      const Divider(height: 1, indent: 16, endIndent: 16),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: LinearProgressIndicator(
+                                value: _embedderDownloadProgress,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            TextButton(
+                              onPressed: _cancelEmbedderDownload,
+                              child: const Text('Cancel'),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                    if (_embedderStatus != EmbedderStatus.absent) ...[
+                      const Divider(height: 1, indent: 16, endIndent: 16),
+                      ListTile(
+                        leading: const Icon(Icons.delete_outline),
+                        title: const Text('Delete embedder'),
+                        subtitle: const Text('Frees device storage'),
+                        enabled:
+                            !_busy && _embedderStatus != EmbedderStatus.absent,
+                        onTap: _busy || _embedderStatus == EmbedderStatus.absent
+                            ? null
+                            : _deleteEmbedder,
+                      ),
+                    ],
+                  ],
+                ),
+                const SizedBox(height: 32),
               ],
             ),
+    );
+  }
+
+  Widget _buildCardGroup({required List<Widget> children}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 4),
+      child: Material(
+        color: const Color(0xFFFFFFFF),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+          side: const BorderSide(
+            color: Color(0xFFE6EBE7),
+            width: 1,
+          ),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: children,
+        ),
+      ),
     );
   }
 

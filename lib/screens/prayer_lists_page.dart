@@ -6,6 +6,7 @@ import '../models/contact.dart';
 import '../models/prayer_list.dart';
 import '../services/contact_service.dart';
 import '../services/reminder_coordinator.dart';
+import '../widgets/contact_avatar.dart';
 import '../widgets/contact_selection_sheet.dart';
 import '../widgets/skeleton_loader.dart';
 import 'contact_details_page.dart';
@@ -306,17 +307,7 @@ class _PrayerListPageState extends State<PrayerListPage> {
                   }
                 },
                 child: ListTile(
-                  leading: CircleAvatar(
-                    backgroundColor: Theme.of(
-                      context,
-                    ).colorScheme.primaryContainer,
-                    child: Text(
-                      contact.firstName.isNotEmpty ? contact.firstName[0] : '?',
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.onPrimaryContainer,
-                      ),
-                    ),
-                  ),
+                  leading: ContactAvatar(contact: contact, radius: 20),
                   title: Text(contact.fullName),
                   subtitle:
                       contact.location != null ? Text(contact.location!) : null,

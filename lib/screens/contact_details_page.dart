@@ -14,6 +14,7 @@ import '../widgets/ai/follow_up_suggestion_sheet.dart';
 import '../widgets/ai/tag_suggestion_sheet.dart';
 import '../widgets/contact_details_skeleton.dart';
 import '../widgets/contact_selection_sheet.dart';
+import '../widgets/contact_avatar.dart';
 import '../widgets/people_card.dart';
 import '../widgets/relationship_dialog.dart';
 
@@ -646,11 +647,16 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
         ),
     ];
 
+    final otherContact = _contactLookup[otherContactId];
     return ListTile(
       contentPadding: EdgeInsets.zero,
-      leading: CircleAvatar(
-        child: Text(otherName.isNotEmpty ? otherName[0].toUpperCase() : '?'),
-      ),
+      leading: otherContact != null
+          ? ContactAvatar(contact: otherContact, radius: 18)
+          : CircleAvatar(
+              radius: 18,
+              child:
+                  Text(otherName.isNotEmpty ? otherName[0].toUpperCase() : '?'),
+            ),
       title: Text(otherName),
       subtitle: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1292,12 +1298,16 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
       final name = displayName.isNotEmpty ? displayName : participantId;
       final initial = name.isNotEmpty ? name[0].toUpperCase() : '?';
 
+      final pContact = _contactLookup[participantId];
       return Chip(
-        avatar: CircleAvatar(
-          backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.12),
-          foregroundColor: theme.colorScheme.primary,
-          child: Text(initial),
-        ),
+        avatar: pContact != null
+            ? ContactAvatar(contact: pContact, radius: 12)
+            : CircleAvatar(
+                backgroundColor:
+                    theme.colorScheme.primary.withValues(alpha: 0.12),
+                foregroundColor: theme.colorScheme.primary,
+                child: Text(initial),
+              ),
         label: Text(name),
         visualDensity: VisualDensity.compact,
       );
@@ -1488,11 +1498,13 @@ class _InteractionDetailPageState extends State<InteractionDetailPage> {
       final initial = name.isNotEmpty ? name[0].toUpperCase() : '?';
 
       return Chip(
-        avatar: CircleAvatar(
-          backgroundColor: theme.colorScheme.primaryContainer,
-          foregroundColor: theme.colorScheme.onPrimaryContainer,
-          child: Text(initial, style: const TextStyle(fontSize: 12)),
-        ),
+        avatar: contact != null
+            ? ContactAvatar(contact: contact, radius: 12)
+            : CircleAvatar(
+                backgroundColor: theme.colorScheme.primaryContainer,
+                foregroundColor: theme.colorScheme.onPrimaryContainer,
+                child: Text(initial, style: const TextStyle(fontSize: 12)),
+              ),
         label: Text(name),
         labelStyle: theme.textTheme.labelMedium,
         visualDensity: VisualDensity.compact,
@@ -1967,20 +1979,14 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
     required bool isSelected,
     required bool isEnabled,
   }) {
-    final theme = Theme.of(context);
     final name = contact.fullName.isNotEmpty
         ? contact.fullName
         : (contact.nickname?.isNotEmpty == true
             ? contact.nickname!
             : contact.id);
-    final initial = name.isNotEmpty ? name[0].toUpperCase() : '?';
 
     return FilterChip(
-      avatar: CircleAvatar(
-        backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.12),
-        foregroundColor: theme.colorScheme.primary,
-        child: Text(initial),
-      ),
+      avatar: ContactAvatar(contact: contact, radius: 12),
       label: Text(name),
       selected: isSelected,
       onSelected: isEnabled ? (_) => _toggleParticipant(contact.id) : null,

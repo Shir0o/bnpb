@@ -24,6 +24,7 @@ class _PrayerDiaryPageState extends State<PrayerDiaryPage> {
   List<Contact> _contacts = [];
   List<PrayerRequest> _requests = [];
   bool _isLoading = false;
+  String _selectedFilter = 'All';
 
   late final DateFormat _dateFormat;
 
@@ -168,11 +169,60 @@ class _PrayerDiaryPageState extends State<PrayerDiaryPage> {
       );
     }
 
-    if (_requests.isEmpty) {
-      return _buildEmptyState();
-    }
+    return Column(
+      children: [
+        _buildFilterChips(),
+        Expanded(
+          child: _requests.isEmpty ? _buildEmptyState() : _buildPrayerList(),
+        ),
+      ],
+    );
+  }
 
-    return _buildPrayerList();
+  Widget _buildFilterChips() {
+    final filters = ['All', 'Pending', 'Answered', 'Archived'];
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      child: Row(
+        children: filters.map((f) {
+          final isSelected = _selectedFilter == f;
+          return Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: InkWell(
+              onTap: () {
+                setState(() {
+                  _selectedFilter = f;
+                });
+              },
+              borderRadius: BorderRadius.circular(20),
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                decoration: BoxDecoration(
+                  color: isSelected ? const Color(0xFF0F1512) : Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: isSelected
+                        ? const Color(0xFF0F1512)
+                        : const Color(0xFFE6EBE7),
+                    width: 1,
+                  ),
+                ),
+                child: Text(
+                  f,
+                  style: TextStyle(
+                    color: isSelected ? Colors.white : const Color(0xFF57635C),
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                  ),
+                ),
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
   }
 
   Widget _buildEmptyState() {
@@ -199,21 +249,46 @@ class _PrayerDiaryPageState extends State<PrayerDiaryPage> {
   }
 
   Widget _buildPrayerList() {
-    return ListView.separated(
+    final filtered = _requests.where((r) {
+      if (_selectedFilter == 'All') return true;
+      if (_selectedFilter == 'Pending') {
+        return r.status == PrayerRequestStatus.pending;
+      }
+      if (_selectedFilter == 'Answered') {
+        return r.status == PrayerRequestStatus.answered;
+      }
+      if (_selectedFilter == 'Archived') {
+        return r.status == PrayerRequestStatus.archived;
+      }
+      return true;
+    }).toList();
+
+    if (filtered.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Text(
+            'No $_selectedFilter prayers found.',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Theme.of(context).colorScheme.outline,
+                ),
+          ),
+        ),
+      );
+    }
+
+    return ListView.builder(
       physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.symmetric(vertical: 12),
-      itemCount: _requests.length,
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      itemCount: filtered.length,
       itemBuilder: (context, index) {
-        final request = _requests[index];
-        return _buildPrayerTile(request);
+        final request = filtered[index];
+        return _buildPrayerCard(request);
       },
-      separatorBuilder: (context, index) =>
-          const Divider(height: 0, indent: 72, endIndent: 16),
     );
   }
 
-  Widget _buildPrayerTile(PrayerRequest request) {
-    final theme = Theme.of(context);
+  Widget _buildPrayerCard(PrayerRequest request) {
     final contactNames = request.participantIds
         .map((id) => _displayNameForContact(id))
         .where((name) => name != 'Unknown contact')
@@ -229,47 +304,127 @@ class _PrayerDiaryPageState extends State<PrayerDiaryPage> {
 
     final stillAskingWeeks = _stillAskingWeeks(request);
 
-    return ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      leading: Icon(
-        _iconForStatus(request.status),
-        color: _iconColorForStatus(theme, request.status),
+    Color statusBg;
+    Color statusFg;
+    IconData statusIcon;
+
+    switch (request.status) {
+      case PrayerRequestStatus.pending:
+        statusBg = const Color(0xFFFBEEE9);
+        statusFg = const Color(0xFFC25A3F);
+        statusIcon = Icons.hourglass_top_outlined;
+        break;
+      case PrayerRequestStatus.answered:
+        statusBg = const Color(0xFFEAF6EF);
+        statusFg = const Color(0xFF0D7A4F);
+        statusIcon = Icons.celebration_outlined;
+        break;
+      case PrayerRequestStatus.archived:
+        statusBg = const Color(0xFFF1F5F2);
+        statusFg = const Color(0xFF8A988F);
+        statusIcon = Icons.archive_outlined;
+        break;
+    }
+
+    final badgeLabel = request.status == PrayerRequestStatus.pending
+        ? (stillAskingWeeks != null
+            ? '${stillAskingWeeks}w · Pending'
+            : 'Pending')
+        : request.status.label;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: const Color(0xFFE6EBE7),
+          width: 1,
+        ),
       ),
-      title: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(child: Text(request.description)),
-          if (stillAskingWeeks != null) ...[
-            const SizedBox(width: 8),
-            _StillAskingBadge(weeks: stillAskingWeeks),
-          ],
-        ],
-      ),
-      subtitle: Text(details),
-      trailing: PopupMenuButton<PrayerRequestStatus>(
-        tooltip: 'Update status',
-        onSelected: (status) => _updateRequestStatus(request, status),
-        itemBuilder: (context) {
-          return PrayerRequestStatus.values.map((status) {
-            return CheckedPopupMenuItem<PrayerRequestStatus>(
-              value: status,
-              checked: status == request.status,
-              child: Row(
-                children: [
-                  Icon(
-                    _iconForStatus(status),
-                    color: _iconColorForStatus(theme, status),
-                  ),
-                  const SizedBox(width: 12),
-                  Text(status.label),
-                ],
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: () => _openPrayerRequestDetails(request),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: statusBg,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  statusIcon,
+                  color: statusFg,
+                  size: 18,
+                ),
               ),
-            );
-          }).toList();
-        },
-        child: Chip(label: Text(request.status.label)),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      request.description,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 16,
+                        color: Color(0xFF0F1512),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      details,
+                      style: const TextStyle(
+                        fontSize: 12.5,
+                        color: Color(0xFF8A988F),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              GestureDetector(
+                onTap: () {
+                  PrayerRequestStatus nextStatus;
+                  switch (request.status) {
+                    case PrayerRequestStatus.pending:
+                      nextStatus = PrayerRequestStatus.answered;
+                      break;
+                    case PrayerRequestStatus.answered:
+                      nextStatus = PrayerRequestStatus.archived;
+                      break;
+                    case PrayerRequestStatus.archived:
+                      nextStatus = PrayerRequestStatus.pending;
+                      break;
+                  }
+                  _updateRequestStatus(request, nextStatus);
+                },
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 11, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: statusBg,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    badgeLabel,
+                    style: TextStyle(
+                      color: statusFg,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 11,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
-      onTap: () => _openPrayerRequestDetails(request),
     );
   }
 
@@ -353,28 +508,6 @@ class _PrayerDiaryPageState extends State<PrayerDiaryPage> {
     }
   }
 
-  IconData _iconForStatus(PrayerRequestStatus status) {
-    switch (status) {
-      case PrayerRequestStatus.pending:
-        return Icons.hourglass_top_outlined;
-      case PrayerRequestStatus.answered:
-        return Icons.celebration_outlined;
-      case PrayerRequestStatus.archived:
-        return Icons.archive_outlined;
-    }
-  }
-
-  Color? _iconColorForStatus(ThemeData theme, PrayerRequestStatus status) {
-    switch (status) {
-      case PrayerRequestStatus.pending:
-        return theme.colorScheme.primary;
-      case PrayerRequestStatus.answered:
-        return theme.colorScheme.secondary;
-      case PrayerRequestStatus.archived:
-        return theme.colorScheme.outline;
-    }
-  }
-
   String _displayNameForContact(String contactId) {
     final contact = _contactLookup[contactId];
     if (contact == null) {
@@ -398,33 +531,5 @@ class _PrayerDiaryPageState extends State<PrayerDiaryPage> {
     final age = DateTime.now().difference(request.requestedAt);
     if (age < _stillAskingThreshold) return null;
     return age.inDays ~/ 7;
-  }
-}
-
-class _StillAskingBadge extends StatelessWidget {
-  const _StillAskingBadge({required this.weeks});
-
-  final int weeks;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Tooltip(
-      message: 'Pending for $weeks weeks',
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-        decoration: BoxDecoration(
-          color: theme.colorScheme.tertiaryContainer,
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Text(
-          '${weeks}w',
-          style: theme.textTheme.labelSmall?.copyWith(
-            color: theme.colorScheme.onTertiaryContainer,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ),
-    );
   }
 }
