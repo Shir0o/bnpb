@@ -9,6 +9,7 @@ import 'package:sqflite_sqlcipher/sqflite.dart';
 
 import '../constants/storage.dart';
 import '../db/db_helper.dart';
+import '../widgets/crisp_toast.dart';
 import 'reminder_coordinator.dart';
 
 /// Represents a single database backup stored on disk.
@@ -146,16 +147,16 @@ class BackupService {
 
   /// Restores the selected [snapshot] over the live database.
   ///
-  /// When [messenger] is provided, any failure will surface a snackbar before
+  /// When [overlay] is provided, any failure will surface a toast before
   /// rethrowing the error to the caller.
   Future<void> restoreBackup(
     BackupSnapshot snapshot, {
-    ScaffoldMessengerState? messenger,
+    OverlayState? overlay,
   }) async {
     final backupFile = snapshot.file;
     if (!await backupFile.exists()) {
       const message = 'Backup file could not be found.';
-      messenger?.showSnackBar(const SnackBar(content: Text(message)));
+      if (overlay != null) CrispToast.showOnOverlay(overlay, message);
       throw BackupRestoreException(message);
     }
 
@@ -185,7 +186,7 @@ class BackupService {
       await DBHelper().close();
 
       final message = 'Failed to restore backup: ${error.toString()}';
-      messenger?.showSnackBar(SnackBar(content: Text(message)));
+      if (overlay != null) CrispToast.showOnOverlay(overlay, message);
       throw BackupRestoreException(message, error);
     } finally {
       if (originalCopy != null && await originalCopy.exists()) {

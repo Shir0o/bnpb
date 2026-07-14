@@ -8,6 +8,7 @@ import '../services/contact_service.dart';
 import '../services/reminder_coordinator.dart';
 import '../widgets/contact_avatar.dart';
 import '../widgets/contact_selection_sheet.dart';
+import '../widgets/crisp_toast.dart';
 import '../widgets/skeleton_loader.dart';
 import 'contact_details_page.dart';
 import '../widgets/hide_on_scroll_scaffold.dart';
@@ -160,9 +161,7 @@ class _PrayerListPageState extends State<PrayerListPage> {
       await _dbHelper.deleteContact(contactId);
       await ReminderCoordinator().cancelAllForContact(contactId);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Contact deleted successfully.')),
-        );
+        CrispToast.show(context, 'Contact deleted successfully.');
       }
       ContactService().invalidateContacts();
       if (_list != null) {
@@ -170,9 +169,7 @@ class _PrayerListPageState extends State<PrayerListPage> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Failed to delete contact: $e')));
+        CrispToast.show(context, 'Failed to delete contact: $e');
       }
     }
   }
@@ -271,7 +268,7 @@ class _PrayerListPageState extends State<PrayerListPage> {
                   alignment: AlignmentDirectional.centerEnd,
                   padding: const EdgeInsetsDirectional.only(end: 20),
                   child: Icon(
-                    Icons.delete,
+                    Icons.delete_outline,
                     color: Theme.of(context).colorScheme.onError,
                   ),
                 ),

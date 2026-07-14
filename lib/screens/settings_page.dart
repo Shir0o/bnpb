@@ -6,8 +6,14 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:intl/intl.dart';
 
 import '../main.dart'
-    show fontSizeNotifier, updateFontSize, themeModeNotifier, updateThemeMode;
+    show
+        fontSizeNotifier,
+        updateFontSize,
+        themeModeNotifier,
+        updateThemeMode,
+        CrispColorScheme;
 import '../widgets/crisp_switch.dart';
+import '../widgets/crisp_toast.dart';
 import '../db/db_helper.dart';
 import '../models/contact.dart';
 import '../models/interaction.dart';
@@ -148,6 +154,7 @@ class _SettingsPageState extends State<SettingsPage>
   @override
   Widget build(BuildContext context) {
     super.build(context);
+    final colorScheme = Theme.of(context).colorScheme;
     final double screenWidth = MediaQuery.of(context).size.width;
     final bool isSmallScreen = screenWidth < 390;
     final double titleSize = isSmallScreen ? 26.0 : 34.0;
@@ -159,7 +166,7 @@ class _SettingsPageState extends State<SettingsPage>
           style: TextStyle(
             fontSize: titleSize,
             fontWeight: FontWeight.w800,
-            color: const Color(0xFF0F1512),
+            color: colorScheme.onSurface,
             letterSpacing: -0.6,
           ),
         ),
@@ -181,18 +188,19 @@ class _SettingsPageState extends State<SettingsPage>
       return const _SettingsSkeleton(key: ValueKey('loading'));
     }
 
+    final colorScheme = Theme.of(context).colorScheme;
     return RefreshIndicator(
       key: const ValueKey('content'),
       onRefresh: _load,
       child: ListTileTheme.merge(
-        titleTextStyle: const TextStyle(
+        titleTextStyle: TextStyle(
           fontSize: 15,
           fontWeight: FontWeight.w700,
-          color: Color(0xFF0F1512),
+          color: colorScheme.onSurface,
         ),
-        subtitleTextStyle: const TextStyle(
+        subtitleTextStyle: TextStyle(
           fontSize: 12.5,
-          color: Color(0xFF8A988F),
+          color: colorScheme.outline,
         ),
         child: ListView(
           children: [
@@ -306,11 +314,11 @@ class _SettingsPageState extends State<SettingsPage>
       padding: const EdgeInsets.fromLTRB(22, 16, 22, 10),
       child: Text(
         title.toUpperCase(),
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 12,
           fontWeight: FontWeight.w700,
           letterSpacing: 1.2,
-          color: Color(0xFF8A988F),
+          color: Theme.of(context).colorScheme.outline,
         ),
       ),
     );
@@ -344,6 +352,7 @@ class _SettingsPageState extends State<SettingsPage>
     return ValueListenableBuilder<double>(
       valueListenable: fontSizeNotifier,
       builder: (context, currentSize, child) {
+        final colorScheme = Theme.of(context).colorScheme;
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -352,9 +361,9 @@ class _SettingsPageState extends State<SettingsPage>
               title: const Text('Font size'),
               trailing: Text(
                 '${currentSize.toStringAsFixed(0)} px',
-                style: const TextStyle(
+                style: TextStyle(
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF0D7A4F),
+                  color: colorScheme.primary,
                 ),
               ),
             ),
@@ -369,8 +378,8 @@ class _SettingsPageState extends State<SettingsPage>
                       min: 11.0,
                       max: 18.0,
                       divisions: 7,
-                      activeColor: const Color(0xFF0D7A4F),
-                      inactiveColor: const Color(0xFFEEF2EF),
+                      activeColor: colorScheme.primary,
+                      inactiveColor: colorScheme.hairline,
                       onChanged: (newSize) {
                         updateFontSize(newSize);
                       },
@@ -470,12 +479,12 @@ class _SettingsPageState extends State<SettingsPage>
             trailing: TextButton(
               onPressed: () async {
                 if (_googleUser == null) {
-                  final messenger = ScaffoldMessenger.of(context);
+                  final overlay = Overlay.of(context);
                   final user = await GoogleDriveService().signIn();
                   if (user == null && mounted) {
                     final error = GoogleDriveService().lastSignInError;
                     if (error != null) {
-                      messenger.showSnackBar(SnackBar(content: Text(error)));
+                      CrispToast.showOnOverlay(overlay, error);
                     }
                   }
                 } else {
@@ -531,14 +540,15 @@ class _SettingsPageState extends State<SettingsPage>
   }
 
   Widget _buildCardGroup({required List<Widget> children}) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 4),
       child: Material(
-        color: const Color(0xFFFFFFFF),
+        color: colorScheme.surface,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(14),
-          side: const BorderSide(
-            color: Color(0xFFE6EBE7),
+          side: BorderSide(
+            color: colorScheme.cardBorder,
             width: 1,
           ),
         ),
@@ -552,9 +562,10 @@ class _SettingsPageState extends State<SettingsPage>
   }
 
   Widget _buildSyncSegmentedButton() {
+    final colorScheme = Theme.of(context).colorScheme;
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFFF1F5F2), // Surface tint
+        color: colorScheme.surfaceTint,
         borderRadius: BorderRadius.circular(12),
       ),
       padding: const EdgeInsets.all(4),
@@ -576,15 +587,15 @@ class _SettingsPageState extends State<SettingsPage>
         style: ButtonStyle(
           backgroundColor: WidgetStateProperty.resolveWith<Color>((states) {
             if (states.contains(WidgetState.selected)) {
-              return const Color(0xFFFFFFFF);
+              return colorScheme.surface;
             }
             return Colors.transparent;
           }),
           foregroundColor: WidgetStateProperty.resolveWith<Color>((states) {
             if (states.contains(WidgetState.selected)) {
-              return const Color(0xFF0F1512);
+              return colorScheme.onSurface;
             }
-            return const Color(0xFF57635C);
+            return colorScheme.secondaryText;
           }),
           elevation: WidgetStateProperty.resolveWith<double>((states) {
             if (states.contains(WidgetState.selected)) {
@@ -593,7 +604,7 @@ class _SettingsPageState extends State<SettingsPage>
             return 0.0;
           }),
           shadowColor: WidgetStateProperty.all(
-              const Color(0xFF000000).withValues(alpha: 0.1)),
+              colorScheme.shadow.withValues(alpha: 0.1)),
           side: WidgetStateProperty.all(BorderSide.none),
           shape: WidgetStateProperty.all(
             RoundedRectangleBorder(borderRadius: BorderRadius.circular(9)),
@@ -633,15 +644,11 @@ class _SettingsPageState extends State<SettingsPage>
       await SyncService().performSync(force: true, rethrowErrors: true);
       await _loadSyncState();
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Sync complete')));
+        CrispToast.show(context, 'Sync complete');
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Sync failed: $e')));
+        CrispToast.show(context, 'Sync failed: $e');
       }
     } finally {
       if (mounted) setState(() => _isUpdating = false);
@@ -977,9 +984,7 @@ class _SettingsPageState extends State<SettingsPage>
       duplicates = await _dbHelper.findDuplicateInteractions();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to scan for duplicates: $e')),
-        );
+        CrispToast.show(context, 'Failed to scan for duplicates: $e');
       }
     } finally {
       if (mounted) {
@@ -1158,21 +1163,16 @@ class _SettingsPageState extends State<SettingsPage>
         ContactService().notifyContactsChanged();
         await _load();
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                mergedCount > 0
-                    ? 'Successfully merged $mergedCount duplicate interactions.'
-                    : 'No duplicate interactions found.',
-              ),
-            ),
+          CrispToast.show(
+            context,
+            mergedCount > 0
+                ? 'Successfully merged $mergedCount duplicate interactions.'
+                : 'No duplicate interactions found.',
           );
         }
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text('Failed to de-duplicate: $e')));
+          CrispToast.show(context, 'Failed to de-duplicate: $e');
         }
       } finally {
         if (mounted) {

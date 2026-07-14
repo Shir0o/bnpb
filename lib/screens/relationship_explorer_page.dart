@@ -85,9 +85,22 @@ class _RelationshipExplorerPageState extends State<RelationshipExplorerPage> {
     return nickname.isNotEmpty ? nickname : 'Unknown contact';
   }
 
+  Card _buildCard({required Widget child}) {
+    final theme = Theme.of(context);
+    return Card(
+      elevation: 0,
+      color: theme.colorScheme.surfaceContainerLow,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: theme.colorScheme.outlineVariant, width: 0.5),
+      ),
+      child: child,
+    );
+  }
+
   Widget _buildGroupCard(MapEntry<String, List<Relationship>> entry) {
     final hubName = _displayName(entry.key);
-    return Card(
+    return _buildCard(
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -148,7 +161,7 @@ class _RelationshipExplorerPageState extends State<RelationshipExplorerPage> {
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     sliver: _groupedEntries.isEmpty
                         ? SliverToBoxAdapter(
-                            child: Card(
+                            child: _buildCard(
                               child: Padding(
                                 padding: const EdgeInsets.all(16),
                                 child: Text(

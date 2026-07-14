@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 
 import '../db/db_helper.dart';
+import '../main.dart' show CrispColorScheme;
 import '../models/contact.dart';
 import '../models/interaction.dart';
 import '../models/relationship.dart';
@@ -15,6 +16,8 @@ import '../widgets/ai/tag_suggestion_sheet.dart';
 import '../widgets/contact_details_skeleton.dart';
 import '../widgets/contact_selection_sheet.dart';
 import '../widgets/contact_avatar.dart';
+import '../widgets/crisp_switch.dart';
+import '../widgets/crisp_toast.dart';
 import '../widgets/people_card.dart';
 import '../widgets/relationship_dialog.dart';
 import '../widgets/hide_on_scroll_scaffold.dart';
@@ -30,6 +33,41 @@ const Map<String, String> _mediumLabels = {
   'online': 'Online Meeting',
   'other': 'Other',
 };
+
+/// Renders one bordered, flat participant chip per id — shared between
+/// [ContactDetailsPage] and [InteractionDetailPage] so both screens show
+/// the same styling for interaction participants.
+List<Widget> _buildParticipantChips(
+  BuildContext context,
+  Iterable<String> participantIds,
+  Map<String, Contact> contactLookup,
+) {
+  final theme = Theme.of(context);
+  return participantIds.toSet().map((participantId) {
+    final contact = contactLookup[participantId];
+    final name = contact?.fullName.isNotEmpty == true
+        ? contact!.fullName
+        : (contact?.nickname?.isNotEmpty == true
+            ? contact!.nickname!
+            : participantId);
+    final initial = name.isNotEmpty ? name[0].toUpperCase() : '?';
+
+    return Chip(
+      avatar: contact != null
+          ? ContactAvatar(contact: contact, radius: 12)
+          : CircleAvatar(
+              backgroundColor: theme.colorScheme.primaryContainer,
+              foregroundColor: theme.colorScheme.onPrimaryContainer,
+              child: Text(initial, style: const TextStyle(fontSize: 12)),
+            ),
+      label: Text(name),
+      labelStyle: theme.textTheme.labelMedium,
+      visualDensity: VisualDensity.compact,
+      side: BorderSide(color: theme.colorScheme.outlineVariant),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+    );
+  }).toList();
+}
 
 const Map<String, IconData> _mediumIcons = {
   'in_person': Icons.people_outline,
@@ -250,16 +288,8 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
         _isLoadingInteractions = false;
       });
       debugPrint('Error loading interactions: $e');
-      final colorScheme = Theme.of(context).colorScheme;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Unable to load interactions. Please try again.',
-            style: TextStyle(color: colorScheme.onError),
-          ),
-          backgroundColor: colorScheme.error,
-        ),
-      );
+      CrispToast.show(
+          context, 'Unable to load interactions. Please try again.');
     }
   }
 
@@ -322,16 +352,12 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
       await BackupService().exportBackup();
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Contact updated successfully!')),
-      );
+      CrispToast.show(context, 'Contact updated successfully!');
 
       Navigator.pop(context, updatedContact);
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to update contact: $error')),
-      );
+      CrispToast.show(context, 'Failed to update contact: $error');
     }
   }
 
@@ -348,14 +374,14 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
               onPressed: () => Navigator.pop(dialogContext),
               child: const Text('Cancel'),
             ),
-            ElevatedButton(
+            FilledButton(
               onPressed: () async {
                 await widget.onDelete();
                 if (!dialogContext.mounted) return;
                 Navigator.of(dialogContext).pop();
                 Navigator.of(pageContext).pop();
               },
-              style: ElevatedButton.styleFrom(
+              style: FilledButton.styleFrom(
                 backgroundColor: Theme.of(dialogContext).colorScheme.error,
                 foregroundColor: Theme.of(dialogContext).colorScheme.onError,
               ),
@@ -383,12 +409,12 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
               onPressed: () => Navigator.pop(context),
               child: const Text('Cancel'),
             ),
-            ElevatedButton(
+            FilledButton(
               onPressed: () {
                 Navigator.pop(context);
                 _deleteInteraction(interaction);
               },
-              style: ElevatedButton.styleFrom(
+              style: FilledButton.styleFrom(
                 backgroundColor: Theme.of(context).colorScheme.error,
                 foregroundColor: Theme.of(context).colorScheme.onError,
               ),
@@ -416,9 +442,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
     await BackupService().exportBackup();
 
     if (!mounted) return;
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Interaction removed')));
+    CrispToast.show(context, 'Interaction removed');
   }
 
   void _applyInteractionListUpdate(List<Interaction> interactions) {
@@ -477,21 +501,17 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
   void _showRelationshipDialog({Relationship? relationship}) {
     final isEditing = relationship != null;
     if (isEditing && relationship.sourceContactId != widget.contact.id) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Edit this connection from the contact who created it.',
-          ),
-        ),
+      CrispToast.show(
+        context,
+        'Edit this connection from the contact who created it.',
       );
       return;
     }
 
     if (_availableContacts.isEmpty && !isEditing) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Add another contact first to create a relationship.'),
-        ),
+      CrispToast.show(
+        context,
+        'Add another contact first to create a relationship.',
       );
       return;
     }
@@ -531,14 +551,14 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
               onPressed: () => Navigator.pop(context),
               child: const Text('Cancel'),
             ),
-            ElevatedButton(
+            FilledButton(
               onPressed: () async {
                 await widget._dbHelper.deleteRelationship(relationship.id!);
                 await _refreshRelationships();
                 if (!context.mounted) return;
                 Navigator.pop(context);
               },
-              style: ElevatedButton.styleFrom(
+              style: FilledButton.styleFrom(
                 backgroundColor: Theme.of(context).colorScheme.error,
                 foregroundColor: Theme.of(context).colorScheme.onError,
               ),
@@ -704,11 +724,14 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
               onPressed: _isLoadingReferenceData ? null : _updateContact,
             ),
           IconButton(
-            icon: Icon(_isEditing ? Icons.close : Icons.edit),
+            icon: Icon(_isEditing ? Icons.close : Icons.edit_outlined),
             tooltip: _isEditing ? 'Cancel edit' : 'Edit contact',
             onPressed: _isEditing ? _cancelEditing : _startEditing,
           ),
-          IconButton(icon: const Icon(Icons.delete), onPressed: _confirmDelete),
+          IconButton(
+            icon: const Icon(Icons.delete_outline),
+            onPressed: _confirmDelete,
+          ),
         ],
       ),
       body: AnimatedSwitcher(
@@ -832,9 +855,14 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
   }
 
   Card _buildCard({required List<Widget> children}) {
+    final theme = Theme.of(context);
     return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      elevation: 0,
+      color: theme.colorScheme.surfaceContainerLow,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: theme.colorScheme.outlineVariant, width: 0.5),
+      ),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -1006,30 +1034,38 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
         );
       },
       optionsViewBuilder: (context, onSelected, options) {
+        final colorScheme = Theme.of(context).colorScheme;
         return Align(
           alignment: Alignment.topLeft,
           child: Material(
-            elevation: 4,
-            borderRadius: BorderRadius.circular(8),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxHeight: 220),
-              child: ListView.builder(
-                shrinkWrap: true,
-                padding: EdgeInsets.zero,
-                itemCount: options.length,
-                itemBuilder: (context, index) {
-                  final option = options.elementAt(index);
-                  return InkWell(
-                    onTap: () => onSelected(option),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
+            elevation: 0,
+            color: colorScheme.surface,
+            borderRadius: BorderRadius.circular(13),
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(13),
+                border: Border.all(color: colorScheme.cardBorder),
+              ),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxHeight: 220),
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  padding: EdgeInsets.zero,
+                  itemCount: options.length,
+                  itemBuilder: (context, index) {
+                    final option = options.elementAt(index);
+                    return InkWell(
+                      onTap: () => onSelected(option),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
+                        child: Text(option),
                       ),
-                      child: Text(option),
-                    ),
-                  );
-                },
+                    );
+                  },
+                ),
               ),
             ),
           ),
@@ -1039,10 +1075,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
   }
 
   InputDecoration _buildInputDecoration(String label) {
-    return InputDecoration(
-      labelText: label,
-      border: const OutlineInputBorder(),
-    );
+    return InputDecoration(labelText: label);
   }
 
   Widget _buildTimelineTile({
@@ -1292,27 +1325,11 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
     if (interaction.participantIds.isEmpty) {
       return const [];
     }
-
-    final theme = Theme.of(context);
-    return interaction.participantIds.toSet().map((participantId) {
-      final displayName = _displayNameForContactId(participantId);
-      final name = displayName.isNotEmpty ? displayName : participantId;
-      final initial = name.isNotEmpty ? name[0].toUpperCase() : '?';
-
-      final pContact = _contactLookup[participantId];
-      return Chip(
-        avatar: pContact != null
-            ? ContactAvatar(contact: pContact, radius: 12)
-            : CircleAvatar(
-                backgroundColor:
-                    theme.colorScheme.primary.withValues(alpha: 0.12),
-                foregroundColor: theme.colorScheme.primary,
-                child: Text(initial),
-              ),
-        label: Text(name),
-        visualDensity: VisualDensity.compact,
-      );
-    }).toList();
+    return _buildParticipantChips(
+      context,
+      interaction.participantIds,
+      _contactLookup,
+    );
   }
 
   void _showEditInteractionSheet(Interaction interaction) async {
@@ -1340,9 +1357,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
       return;
     }
 
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Interaction updated')));
+    CrispToast.show(context, 'Interaction updated');
   }
 
   Future<void> _openInteractionDetails(Interaction interaction) async {
@@ -1487,32 +1502,11 @@ class _InteractionDetailPageState extends State<InteractionDetailPage> {
     if (_interaction.participantIds.isEmpty) {
       return const [];
     }
-
-    final theme = Theme.of(context);
-    return _interaction.participantIds.toSet().map((participantId) {
-      final contact = _contactLookup[participantId];
-      final name = contact?.fullName.isNotEmpty == true
-          ? contact!.fullName
-          : (contact?.nickname?.isNotEmpty == true
-              ? contact!.nickname!
-              : participantId);
-      final initial = name.isNotEmpty ? name[0].toUpperCase() : '?';
-
-      return Chip(
-        avatar: contact != null
-            ? ContactAvatar(contact: contact, radius: 12)
-            : CircleAvatar(
-                backgroundColor: theme.colorScheme.primaryContainer,
-                foregroundColor: theme.colorScheme.onPrimaryContainer,
-                child: Text(initial, style: const TextStyle(fontSize: 12)),
-              ),
-        label: Text(name),
-        labelStyle: theme.textTheme.labelMedium,
-        visualDensity: VisualDensity.compact,
-        side: BorderSide(color: theme.colorScheme.outlineVariant),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      );
-    }).toList();
+    return _buildParticipantChips(
+      context,
+      _interaction.participantIds,
+      _contactLookup,
+    );
   }
 
   Widget _buildCard({required List<Widget> children, Color? color}) {
@@ -1562,10 +1556,9 @@ class _InteractionDetailPageState extends State<InteractionDetailPage> {
     final contact = _primaryContact;
     if (contact == null) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('No contacts available to edit this interaction.'),
-          ),
+        CrispToast.show(
+          context,
+          'No contacts available to edit this interaction.',
         );
       }
       return;
@@ -1591,9 +1584,7 @@ class _InteractionDetailPageState extends State<InteractionDetailPage> {
 
     await _refreshInteraction();
     if (!mounted) return;
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Interaction updated')));
+    CrispToast.show(context, 'Interaction updated');
   }
 
   Future<void> _deleteInteraction() async {
@@ -1627,12 +1618,12 @@ class _InteractionDetailPageState extends State<InteractionDetailPage> {
               onPressed: () => Navigator.pop(context),
               child: const Text('Cancel'),
             ),
-            ElevatedButton(
+            FilledButton(
               onPressed: () {
                 Navigator.pop(context);
                 _deleteInteraction();
               },
-              style: ElevatedButton.styleFrom(
+              style: FilledButton.styleFrom(
                 backgroundColor: Theme.of(context).colorScheme.error,
                 foregroundColor: Theme.of(context).colorScheme.onError,
               ),
@@ -2094,9 +2085,7 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
       _notesController.text.trim(),
     ].where((s) => s.isNotEmpty).join('\n');
     if (source.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Add a summary or note first.')),
-      );
+      CrispToast.show(context, 'Add a summary or note first.');
       return;
     }
     setState(() => _isSuggestingTags = true);
@@ -2120,9 +2109,7 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
       }
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Could not suggest tags: $error')));
+      CrispToast.show(context, 'Could not suggest tags: $error');
     } finally {
       if (mounted) setState(() => _isSuggestingTags = false);
     }
@@ -2375,12 +2362,9 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
         return;
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            isEditing ? 'Interaction updated' : 'Interaction logged',
-          ),
-        ),
+      CrispToast.show(
+        context,
+        isEditing ? 'Interaction updated' : 'Interaction logged',
       );
 
       if (!isEditing && mounted) {
@@ -2417,9 +2401,7 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
         _isSaveEnabled = _calculateSaveEnabled();
       });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to save interaction: $error')),
-      );
+      CrispToast.show(context, 'Failed to save interaction: $error');
     }
   }
 
@@ -2649,15 +2631,17 @@ class _LogInteractionSheetState extends State<_LogInteractionSheet> {
                       ),
                     ],
                   ),
-                  SwitchListTile(
+                  ListTile(
                     contentPadding: EdgeInsets.zero,
                     title: const Text('Mark for prayer'),
-                    value: _markForPrayer,
-                    onChanged: (value) {
-                      setState(() {
-                        _markForPrayer = value;
-                      });
-                    },
+                    trailing: CrispSwitch(
+                      value: _markForPrayer,
+                      onChanged: (value) {
+                        setState(() {
+                          _markForPrayer = value;
+                        });
+                      },
+                    ),
                   ),
                   ListTile(
                     contentPadding: EdgeInsets.zero,

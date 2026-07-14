@@ -7,6 +7,7 @@ import '../../db/db_helper.dart';
 import '../../services/ai/ai_services.dart';
 import '../../services/ai/follow_up_suggestion_service.dart';
 import '../../services/reminder_coordinator.dart';
+import '../crisp_toast.dart';
 
 /// Bottom sheet shown after a user logs an interaction. Generates 2-4
 /// follow-up suggestions on-device and lets the user accept one with a tap,
@@ -91,19 +92,14 @@ class _FollowUpSuggestionSheetState extends State<FollowUpSuggestionSheet> {
       widget.onInteractionUpdated(updated);
       if (!mounted) return;
       Navigator.of(context).pop();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Follow-up scheduled for ${DateFormat.MMMd().format(scheduledFor)}',
-          ),
-        ),
+      CrispToast.show(
+        context,
+        'Follow-up scheduled for ${DateFormat.MMMd().format(scheduledFor)}',
       );
     } catch (error) {
       if (!mounted) return;
       setState(() => _scheduling = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Could not schedule follow-up: $error')),
-      );
+      CrispToast.show(context, 'Could not schedule follow-up: $error');
     }
   }
 

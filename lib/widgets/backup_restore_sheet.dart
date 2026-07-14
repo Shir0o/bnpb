@@ -50,11 +50,11 @@ class _BackupRestoreSheetState extends State<BackupRestoreSheet> {
       return;
     }
 
-    final messenger = ScaffoldMessenger.of(context);
+    final overlay = Overlay.of(context);
 
     try {
       await _showLoading(
-        () => BackupService().restoreBackup(snapshot, messenger: messenger),
+        () => BackupService().restoreBackup(snapshot, overlay: overlay),
         'Restoring backup...\nThis may take a while...',
       );
       if (!mounted) {

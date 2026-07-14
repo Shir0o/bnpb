@@ -180,19 +180,10 @@ class _ContactSelectionSheetState extends State<ContactSelectionSheet> {
               child: TextField(
                 controller: _searchController,
                 focusNode: _searchFocusNode,
-                decoration: InputDecoration(
+                decoration: const InputDecoration(
                   hintText: 'Search contacts...',
-                  prefixIcon: const Icon(Icons.search),
-                  filled: true,
-                  fillColor:
-                      theme.colorScheme.surfaceContainerHighest.withValues(
-                    alpha: 0.3,
-                  ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(
+                  prefixIcon: Icon(Icons.search),
+                  contentPadding: EdgeInsets.symmetric(
                     vertical: 0,
                     horizontal: 16,
                   ),
