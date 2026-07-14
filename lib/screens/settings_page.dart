@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 
 import '../main.dart'
     show fontSizeNotifier, updateFontSize, themeModeNotifier, updateThemeMode;
+import '../widgets/crisp_switch.dart';
 import '../db/db_helper.dart';
 import '../models/contact.dart';
 import '../models/interaction.dart';
@@ -320,19 +321,20 @@ class _SettingsPageState extends State<SettingsPage>
       valueListenable: themeModeNotifier,
       builder: (context, themeMode, child) {
         final isDark = themeMode == ThemeMode.dark;
-        return SwitchListTile.adaptive(
-          secondary: const Icon(Icons.dark_mode_outlined),
+        return ListTile(
+          leading: const Icon(Icons.dark_mode_outlined),
           title: const Text('Dark mode'),
           subtitle: Text(
             isDark
                 ? 'On · easier on the eyes at night'
                 : 'Off · matches light theme',
           ),
-          value: isDark,
-          activeThumbColor: Theme.of(context).colorScheme.primary,
-          onChanged: (value) {
-            updateThemeMode(value ? ThemeMode.dark : ThemeMode.light);
-          },
+          trailing: CrispSwitch(
+            value: isDark,
+            onChanged: (value) {
+              updateThemeMode(value ? ThemeMode.dark : ThemeMode.light);
+            },
+          ),
         );
       },
     );
@@ -400,7 +402,7 @@ class _SettingsPageState extends State<SettingsPage>
         return ListTile(
           title: Text(channel.label),
           subtitle: Text(_formatLeadTime(channel, leadTime)),
-          trailing: Switch.adaptive(
+          trailing: CrispSwitch(
             value: enabled,
             onChanged: (v) => _setGlobalPreference(channel, v, leadTime),
           ),
@@ -411,12 +413,14 @@ class _SettingsPageState extends State<SettingsPage>
   }
 
   Widget _buildExactAlarmTile(BuildContext context) {
-    return SwitchListTile.adaptive(
-      secondary: const Icon(Icons.timer_outlined),
+    return ListTile(
+      leading: const Icon(Icons.timer_outlined),
       title: const Text('Precise scheduling'),
       subtitle: const Text('Ensure reminders fire at the exact minute'),
-      value: _exactAlarmOptIn,
-      onChanged: (v) => _toggleExactAlarmOptIn(context, v),
+      trailing: CrispSwitch(
+        value: _exactAlarmOptIn,
+        onChanged: (v) => _toggleExactAlarmOptIn(context, v),
+      ),
     );
   }
 
@@ -513,11 +517,13 @@ class _SettingsPageState extends State<SettingsPage>
         ),
         if (_hasPasscode) ...[
           const Divider(height: 1, indent: 16, endIndent: 16),
-          SwitchListTile.adaptive(
-            secondary: const Icon(Icons.fingerprint),
+          ListTile(
+            leading: const Icon(Icons.fingerprint),
             title: const Text('Biometric unlock'),
-            value: _biometricEnabled,
-            onChanged: _biometricAvailable ? _toggleBiometrics : null,
+            trailing: CrispSwitch(
+              value: _biometricEnabled,
+              onChanged: _biometricAvailable ? _toggleBiometrics : null,
+            ),
           ),
         ],
       ],

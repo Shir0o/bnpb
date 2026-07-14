@@ -4,7 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:bnpb/main.dart' show fontSizeNotifier;
+import 'package:bnpb/main.dart' show fontSizeNotifier, themeModeNotifier;
+import 'package:bnpb/widgets/crisp_switch.dart';
 import 'package:bnpb/db/db_helper.dart';
 import 'package:bnpb/screens/settings_page.dart';
 import 'package:bnpb/models/interaction.dart';
@@ -271,6 +272,50 @@ void main() {
 
       // Verify that the notifier gets updated to a value within [11.0, 18.0]
       expect(fontSizeNotifier.value, isNotNull);
+    },
+  );
+
+  testWidgets(
+    'SettingsPage displays CrispSwitch for Dark Mode and toggles ThemeMode',
+    (WidgetTester tester) async {
+      // Set initial value to light
+      themeModeNotifier.value = ThemeMode.light;
+
+      await tester.pumpWidget(const MaterialApp(home: SettingsPage()));
+
+      // Yield control to let ensureDefaults / load complete
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.pumpAndSettle();
+
+      // Find Dark Mode tile specifically (may be offstage initially)
+      final darkModeTile = find.text('Dark mode', skipOffstage: false);
+      expect(darkModeTile, findsOneWidget);
+
+      final tileFinder =
+          find.ancestor(of: darkModeTile, matching: find.byType(ListTile));
+      await tester.scrollUntilVisible(
+        tileFinder,
+        100.0,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
+
+      // Find CrispSwitch by type
+      final switchFinder = find.descendant(
+        of: tileFinder,
+        matching: find.byType(CrispSwitch),
+      );
+      expect(switchFinder, findsOneWidget);
+
+      final darkSwitch = tester.widget<CrispSwitch>(switchFinder);
+      expect(darkSwitch.value, isFalse);
+
+      // Tap the switch
+      await tester.tap(switchFinder);
+      await tester.pumpAndSettle();
+
+      // Verify themeModeNotifier changed to dark
+      expect(themeModeNotifier.value, ThemeMode.dark);
     },
   );
 }
