@@ -3,11 +3,13 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../db/db_helper.dart';
+import '../main.dart' show CrispColorScheme;
 import '../models/contact.dart';
 import '../services/backup_service.dart';
 import '../services/contact_service.dart';
 import '../services/reminder_coordinator.dart';
 import 'add_family_page.dart';
+import '../widgets/crisp_toast.dart';
 import '../widgets/hide_on_scroll_scaffold.dart';
 
 class AddContactPage extends StatefulWidget {
@@ -126,17 +128,7 @@ class _AddContactPageState extends State<AddContactPage>
         return;
       }
 
-      final messenger = ScaffoldMessenger.of(context);
-      final colorScheme = Theme.of(context).colorScheme;
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text(
-            'Contact saved: ${newContact.fullName}',
-            style: TextStyle(color: colorScheme.onPrimaryContainer),
-          ),
-          backgroundColor: colorScheme.primaryContainer,
-        ),
-      );
+      CrispToast.show(context, 'Contact saved: ${newContact.fullName}');
 
       unawaited(BackupService().exportBackup());
 
@@ -155,19 +147,7 @@ class _AddContactPageState extends State<AddContactPage>
         return;
       }
 
-      final messenger = ScaffoldMessenger.of(context);
-      final colorScheme = Theme.of(context).colorScheme;
-      messenger
-        ..hideCurrentSnackBar()
-        ..showSnackBar(
-          SnackBar(
-            content: Text(
-              'Failed to save contact: $error',
-              style: TextStyle(color: colorScheme.onError),
-            ),
-            backgroundColor: colorScheme.error,
-          ),
-        );
+      CrispToast.show(context, 'Failed to save contact: $error');
 
       debugPrint('Failed to save contact: $error');
       debugPrintStack(stackTrace: stackTrace);
@@ -199,6 +179,7 @@ class _AddContactPageState extends State<AddContactPage>
   @override
   Widget build(BuildContext context) {
     super.build(context);
+    final colorScheme = Theme.of(context).colorScheme;
     final double screenWidth = MediaQuery.of(context).size.width;
     final bool isSmallScreen = screenWidth < 390;
     final double titleSize = isSmallScreen ? 22.0 : 30.0;
@@ -210,7 +191,7 @@ class _AddContactPageState extends State<AddContactPage>
           style: TextStyle(
             fontSize: titleSize,
             fontWeight: FontWeight.w800,
-            color: const Color(0xFF0F1512),
+            color: colorScheme.onSurface,
             letterSpacing: -0.52,
           ),
         ),
@@ -227,10 +208,10 @@ class _AddContactPageState extends State<AddContactPage>
               children: [
                 IconButton(
                   tooltip: 'Add family',
-                  icon: const Icon(
+                  icon: Icon(
                     Icons.person_add_alt_1_rounded,
                     size: 22,
-                    color: Color(0xFF3D4C44),
+                    color: colorScheme.iconColor,
                   ),
                   onPressed: _isSavingContact
                       ? null
@@ -248,7 +229,7 @@ class _AddContactPageState extends State<AddContactPage>
                     padding:
                         const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF0D7A4F),
+                      color: colorScheme.primary,
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: _isSavingContact
@@ -288,12 +269,7 @@ class _AddContactPageState extends State<AddContactPage>
                   padding: const EdgeInsets.only(top: 12, bottom: 22),
                   child: GestureDetector(
                     onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Photo upload coming soon'),
-                          duration: Duration(seconds: 1),
-                        ),
-                      );
+                      CrispToast.show(context, 'Photo upload coming soon');
                     },
                     child: Column(
                       children: [
@@ -301,25 +277,25 @@ class _AddContactPageState extends State<AddContactPage>
                           width: 84,
                           height: 84,
                           decoration: BoxDecoration(
-                            color: const Color(0xFFF1F5F2),
+                            color: colorScheme.surfaceTint,
                             borderRadius: BorderRadius.circular(24),
                             border: Border.all(
-                              color: const Color(0xFFC3CCC6),
+                              color: colorScheme.faint,
                               width: 2,
                             ),
                           ),
-                          child: const Icon(
+                          child: Icon(
                             Icons.image_outlined,
                             size: 30,
-                            color: Color(0xFF8A988F),
+                            color: colorScheme.outline,
                           ),
                         ),
                         const SizedBox(height: 8),
-                        const Text(
+                        Text(
                           'Add photo (optional)',
                           style: TextStyle(
                             fontSize: 13,
-                            color: Color(0xFF8A988F),
+                            color: colorScheme.outline,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -328,12 +304,12 @@ class _AddContactPageState extends State<AddContactPage>
                   ),
                 ),
               ),
-              const Text(
+              Text(
                 'IDENTITY',
                 style: TextStyle(
                   fontSize: 12,
                   letterSpacing: 1.2,
-                  color: Color(0xFF8A988F),
+                  color: colorScheme.outline,
                   fontWeight: FontWeight.w700,
                 ),
               ),
@@ -377,12 +353,12 @@ class _AddContactPageState extends State<AddContactPage>
                 ],
               ),
               const SizedBox(height: 22),
-              const Text(
+              Text(
                 'INTERACTION DETAILS',
                 style: TextStyle(
                   fontSize: 12,
                   letterSpacing: 1.2,
-                  color: Color(0xFF8A988F),
+                  color: colorScheme.outline,
                   fontWeight: FontWeight.w700,
                 ),
               ),

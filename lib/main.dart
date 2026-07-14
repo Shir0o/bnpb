@@ -23,6 +23,7 @@ import 'services/ai/background_downloader.dart';
 import 'services/onboarding_service.dart';
 import 'services/reminder_coordinator.dart';
 import 'services/reminder_service.dart';
+import 'widgets/crisp_toast.dart';
 import 'widgets/security_gate.dart';
 import 'widgets/onboarding_wizard.dart';
 
@@ -110,6 +111,12 @@ extension CrispColorScheme on ColorScheme {
       : const Color(0xFF37413B);
   Color get knobColor =>
       brightness == Brightness.light ? Colors.white : const Color(0xFFF2F5F3);
+  Color get placeholder => brightness == Brightness.light
+      ? const Color(0xFFA9B3AD)
+      : const Color(0xFF5D6A62);
+  Color get navBg => brightness == Brightness.light
+      ? const Color(0xF0FFFFFF)
+      : const Color(0xF0151A17);
 }
 
 ThemeData buildAppTheme(Brightness brightness, double baseFontSize) {
@@ -163,7 +170,64 @@ ThemeData buildAppTheme(Brightness brightness, double baseFontSize) {
     bottomSheetTheme: BottomSheetThemeData(
       backgroundColor: colorScheme.surface,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
+      ),
+    ),
+    inputDecorationTheme: InputDecorationTheme(
+      filled: true,
+      fillColor: colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+      hintStyle: TextStyle(color: colorScheme.placeholder),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 13),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(13),
+        borderSide: BorderSide.none,
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(13),
+        borderSide: BorderSide.none,
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(13),
+        borderSide: BorderSide(color: colorScheme.primary, width: 1.5),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(13),
+        borderSide: BorderSide(color: colorScheme.error),
+      ),
+    ),
+    floatingActionButtonTheme: FloatingActionButtonThemeData(
+      backgroundColor: colorScheme.primary,
+      foregroundColor: colorScheme.onPrimary,
+      elevation: 0,
+      focusElevation: 0,
+      hoverElevation: 0,
+      highlightElevation: 0,
+    ),
+    navigationBarTheme: NavigationBarThemeData(
+      backgroundColor: colorScheme.navBg,
+      elevation: 0,
+      surfaceTintColor: Colors.transparent,
+      indicatorColor: colorScheme.greenTint,
+      indicatorShape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(15),
+      ),
+      iconTheme: WidgetStateProperty.resolveWith(
+        (states) => IconThemeData(
+          color: states.contains(WidgetState.selected)
+              ? colorScheme.primary
+              : colorScheme.outline,
+        ),
+      ),
+      labelTextStyle: WidgetStateProperty.resolveWith(
+        (states) => TextStyle(
+          fontSize: 11.5,
+          fontWeight: states.contains(WidgetState.selected)
+              ? FontWeight.w700
+              : FontWeight.w600,
+          color: states.contains(WidgetState.selected)
+              ? colorScheme.primary
+              : colorScheme.outline,
+        ),
       ),
     ),
   );
@@ -457,50 +521,52 @@ class _MainPageState extends State<MainPage> with WidgetsBindingObserver {
       if (!mounted) {
         return;
       }
-      final messenger = ScaffoldMessenger.of(context);
-      messenger.clearSnackBars();
-      messenger.showSnackBar(SnackBar(content: Text(message)));
+      CrispToast.show(context, message);
     });
   }
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Scaffold(
       body: PageView(
         controller: _pageController,
         physics: const NeverScrollableScrollPhysics(),
         children: _pages,
       ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _currentIndex,
-        onDestinationSelected: (index) {
-          setState(() {
-            _currentIndex = index;
-          });
-          _pageController.jumpToPage(index);
-        },
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.home_outlined),
-            selectedIcon: Icon(Icons.home),
-            label: 'Home',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.insights_outlined),
-            selectedIcon: Icon(Icons.insights),
-            label: 'Analytics',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.person_add_outlined),
-            selectedIcon: Icon(Icons.person_add),
-            label: 'Add Contact',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.settings_outlined),
-            selectedIcon: Icon(Icons.settings),
-            label: 'Settings',
-          ),
-        ],
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          border: Border(top: BorderSide(color: colorScheme.hairline)),
+        ),
+        child: NavigationBar(
+          selectedIndex: _currentIndex,
+          onDestinationSelected: (index) {
+            setState(() {
+              _currentIndex = index;
+            });
+            _pageController.jumpToPage(index);
+          },
+          // Icons stay line-style in both states per the design — only the
+          // color and the active pill communicate selection.
+          destinations: const [
+            NavigationDestination(
+              icon: Icon(Icons.home_outlined),
+              label: 'Home',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.insights_outlined),
+              label: 'Analytics',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.person_add_outlined),
+              label: 'Add',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.settings_outlined),
+              label: 'Settings',
+            ),
+          ],
+        ),
       ),
     );
   }

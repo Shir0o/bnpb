@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../main.dart' show CrispColorScheme;
 import '../repositories/analytics_repository.dart';
 import '../repositories/relationship_insights_repository.dart';
 import '../services/ai/ai_services.dart';
@@ -120,6 +121,7 @@ class _AnalyticsPageState extends State<AnalyticsPage>
   @override
   Widget build(BuildContext context) {
     super.build(context);
+    final colorScheme = Theme.of(context).colorScheme;
     final double screenWidth = MediaQuery.of(context).size.width;
     final bool isSmallScreen = screenWidth < 390;
     final double titleSize = isSmallScreen ? 26.0 : 34.0;
@@ -131,7 +133,7 @@ class _AnalyticsPageState extends State<AnalyticsPage>
           style: TextStyle(
             fontSize: titleSize,
             fontWeight: FontWeight.w800,
-            color: const Color(0xFF0F1512),
+            color: colorScheme.onSurface,
             letterSpacing: -0.6,
           ),
         ),
@@ -145,20 +147,20 @@ class _AnalyticsPageState extends State<AnalyticsPage>
             child: Container(
               height: 36,
               decoration: BoxDecoration(
-                color: const Color(0xFFF1F5F2),
+                color: colorScheme.surfaceTint,
                 borderRadius: BorderRadius.circular(20),
               ),
               padding: const EdgeInsets.symmetric(horizontal: 12),
               child: DropdownButtonHideUnderline(
                 child: DropdownButton<AnalyticsRange>(
                   value: _selectedRange,
-                  icon: const Icon(
+                  icon: Icon(
                     Icons.keyboard_arrow_down_rounded,
-                    color: Color(0xFF0F1512),
+                    color: colorScheme.onSurface,
                     size: 18,
                   ),
-                  style: const TextStyle(
-                    color: Color(0xFF0F1512),
+                  style: TextStyle(
+                    color: colorScheme.onSurface,
                     fontWeight: FontWeight.bold,
                     fontSize: 13.5,
                   ),
@@ -336,7 +338,7 @@ class _AnalyticsPageState extends State<AnalyticsPage>
               Icon(
                 Icons.arrow_forward_ios_rounded,
                 size: 16,
-                color: const Color(0xFFC3CCC6),
+                color: colorScheme.faint,
               ),
             ],
           ),
@@ -369,8 +371,10 @@ class _AnalyticsPageState extends State<AnalyticsPage>
                 label: 'Interactions',
                 value: summary.totalInteractions.toString(),
                 icon: Icons.chat_bubble_outline_rounded,
-                backgroundColor: colorScheme.onSurface,
-                valueColor: colorScheme.onPrimary,
+                // Fixed near-black tile (matches --ai-card) with fixed
+                // white/accent contents in both themes, per the design.
+                backgroundColor: colorScheme.aiCardBg,
+                valueColor: Colors.white,
                 labelColor: const Color(0xFF94A49B),
                 iconColor: const Color(0xFF5FE0A0),
               ),
@@ -382,7 +386,7 @@ class _AnalyticsPageState extends State<AnalyticsPage>
                 value: summary.totalMinutes.toString(),
                 icon: Icons.timer_outlined,
                 backgroundColor: colorScheme.primary,
-                valueColor: colorScheme.onPrimary,
+                valueColor: Colors.white,
                 labelColor: const Color(0xFFBFE6D1),
                 iconColor: const Color(0xFFC7F0DA),
               ),
@@ -410,12 +414,15 @@ class _AnalyticsPageState extends State<AnalyticsPage>
     final maxY = values.reduce(math.max);
 
     final colorScheme = Theme.of(context).colorScheme;
-    final List<Color> barColors = const [
-      Color(0xFF0D7A4F),
-      Color(0xFF2AA06E),
-      Color(0xFF7FC7A6),
-      Color(0xFFA9DCC4),
-      Color(0xFFCDEADD),
+    // First bar mirrors the design's `var(--green)` (theme-reactive); the
+    // rest are the design's own fixed decorative gradient, unrelated to a
+    // CSS token.
+    final List<Color> barColors = [
+      colorScheme.primary,
+      const Color(0xFF2AA06E),
+      const Color(0xFF7FC7A6),
+      const Color(0xFFA9DCC4),
+      const Color(0xFFCDEADD),
     ];
 
     return Card(
@@ -554,13 +561,15 @@ class _AnalyticsPageState extends State<AnalyticsPage>
     );
 
     final colorScheme = Theme.of(context).colorScheme;
-    final List<Color> sectionColors = const [
-      Color(0xFF0D7A4F),
-      Color(0xFF2AA06E),
-      Color(0xFF7FC7A6),
-      Color(0xFFA9DCC4),
-      Color(0xFFCDEADD),
-      Color(0xFF127A6B),
+    // First section mirrors the design's `var(--green)` (theme-reactive);
+    // the rest are the design's own fixed decorative gradient.
+    final List<Color> sectionColors = [
+      colorScheme.primary,
+      const Color(0xFF2AA06E),
+      const Color(0xFF7FC7A6),
+      const Color(0xFFA9DCC4),
+      const Color(0xFFCDEADD),
+      const Color(0xFF127A6B),
     ];
 
     return Card(
@@ -1075,13 +1084,12 @@ class _InsightCard extends StatelessWidget {
             insight.type == RelationshipInsightType.stalePrayerRequests;
 
     final cardBg = isDrifting
-        ? const Color(0xFFFDF5F2)
+        ? colorScheme.dangerTint2
         : theme.cardTheme.color ?? colorScheme.surface;
     final borderColor = isDrifting
-        ? const Color(0xFFF0D9D0)
+        ? colorScheme.dangerBorder
         : colorScheme.surfaceContainerHighest;
-    final iconColor =
-        isDrifting ? const Color(0xFFC25A3F) : colorScheme.primary;
+    final iconColor = isDrifting ? colorScheme.error : colorScheme.primary;
     final titleColor = colorScheme.onSurface;
     final subtitleColor =
         isDrifting ? const Color(0xFFA37060) : colorScheme.outline;

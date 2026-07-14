@@ -3,11 +3,13 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../db/db_helper.dart';
+import '../main.dart' show CrispColorScheme;
 import '../models/contact.dart';
 import '../models/relationship.dart';
 import '../services/backup_service.dart';
 import '../services/contact_service.dart';
 import '../services/reminder_coordinator.dart';
+import '../widgets/crisp_toast.dart';
 import '../widgets/hide_on_scroll_scaffold.dart';
 
 const _standardRoles = <String>[
@@ -222,9 +224,7 @@ class _AddFamilyPageState extends State<AddFamilyPage> {
 
       if (!mounted) return;
       final total = 1 + memberContacts.length;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Saved $total contacts')));
+      CrispToast.show(context, 'Saved $total contacts');
 
       unawaited(BackupService().exportBackup());
       unawaited(ReminderCoordinator().syncSignificantDates(anchor));
@@ -235,9 +235,7 @@ class _AddFamilyPageState extends State<AddFamilyPage> {
       Navigator.of(context).pop();
     } catch (error, stackTrace) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Failed to save family: $error')));
+      CrispToast.show(context, 'Failed to save family: $error');
       debugPrint('Failed to save family: $error');
       debugPrintStack(stackTrace: stackTrace);
     } finally {
@@ -247,6 +245,7 @@ class _AddFamilyPageState extends State<AddFamilyPage> {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     final double screenWidth = MediaQuery.of(context).size.width;
     final bool isSmallScreen = screenWidth < 390;
     final double titleSize = isSmallScreen ? 20.0 : 26.0;
@@ -258,7 +257,7 @@ class _AddFamilyPageState extends State<AddFamilyPage> {
           style: TextStyle(
             fontSize: titleSize,
             fontWeight: FontWeight.w800,
-            color: const Color(0xFF0F1512),
+            color: colorScheme.onSurface,
           ),
         ),
         titleSpacing: 14,
@@ -275,15 +274,15 @@ class _AddFamilyPageState extends State<AddFamilyPage> {
               width: 40,
               height: 40,
               child: Material(
-                color: const Color(0xFFF1F5F2),
+                color: colorScheme.surfaceTint,
                 borderRadius: BorderRadius.circular(10),
                 child: InkWell(
                   borderRadius: BorderRadius.circular(10),
                   onTap: () => Navigator.of(context).pop(),
-                  child: const Icon(
+                  child: Icon(
                     Icons.arrow_back_rounded,
                     size: 20,
-                    color: Color(0xFF0F1512),
+                    color: colorScheme.onSurface,
                   ),
                 ),
               ),
@@ -301,10 +300,10 @@ class _AddFamilyPageState extends State<AddFamilyPage> {
                   )
                 : GestureDetector(
                     onTap: _saveAll,
-                    child: const Text(
+                    child: Text(
                       'Save all',
                       style: TextStyle(
-                        color: Color(0xFF0D7A4F),
+                        color: colorScheme.primary,
                         fontSize: 14,
                         fontWeight: FontWeight.w700,
                       ),
@@ -356,11 +355,6 @@ class _AddFamilyPageState extends State<AddFamilyPage> {
 
   Widget _anchorCard() {
     return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: const BorderSide(color: Color(0xFFE6EBE7)),
-      ),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -372,7 +366,6 @@ class _AddFamilyPageState extends State<AddFamilyPage> {
               decoration: const InputDecoration(
                 labelText: 'First Name',
                 prefixIcon: Icon(Icons.person_outline),
-                border: OutlineInputBorder(),
               ),
               validator: (v) =>
                   v == null || v.trim().isEmpty ? 'Enter first name' : null,
@@ -384,7 +377,6 @@ class _AddFamilyPageState extends State<AddFamilyPage> {
               decoration: const InputDecoration(
                 labelText: 'Middle Name (Optional)',
                 prefixIcon: Icon(Icons.person_outline),
-                border: OutlineInputBorder(),
               ),
             ),
             const SizedBox(height: 12),
@@ -395,7 +387,6 @@ class _AddFamilyPageState extends State<AddFamilyPage> {
                 labelText: 'Last Name (Optional)',
                 prefixIcon: Icon(Icons.person_outline),
                 helperText: 'Used as default for family members',
-                border: OutlineInputBorder(),
               ),
             ),
             const SizedBox(height: 12),
@@ -405,7 +396,6 @@ class _AddFamilyPageState extends State<AddFamilyPage> {
               decoration: const InputDecoration(
                 labelText: 'Nickname (Optional)',
                 prefixIcon: Icon(Icons.badge_outlined),
-                border: OutlineInputBorder(),
               ),
             ),
             const SizedBox(height: 12),
@@ -415,7 +405,6 @@ class _AddFamilyPageState extends State<AddFamilyPage> {
               decoration: const InputDecoration(
                 labelText: 'Location (Optional)',
                 prefixIcon: Icon(Icons.place_outlined),
-                border: OutlineInputBorder(),
               ),
             ),
           ],
@@ -428,11 +417,6 @@ class _AddFamilyPageState extends State<AddFamilyPage> {
     final m = _members[index];
 
     return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: const BorderSide(color: Color(0xFFE6EBE7)),
-      ),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -446,7 +430,6 @@ class _AddFamilyPageState extends State<AddFamilyPage> {
                     textCapitalization: TextCapitalization.sentences,
                     decoration: const InputDecoration(
                       labelText: 'First name',
-                      border: OutlineInputBorder(),
                       isDense: true,
                     ),
                     validator: (v) =>
@@ -460,7 +443,6 @@ class _AddFamilyPageState extends State<AddFamilyPage> {
                     textCapitalization: TextCapitalization.sentences,
                     decoration: const InputDecoration(
                       labelText: 'Last name',
-                      border: OutlineInputBorder(),
                       isDense: true,
                     ),
                   ),
@@ -487,7 +469,6 @@ class _AddFamilyPageState extends State<AddFamilyPage> {
                 controller: m.customRole,
                 decoration: const InputDecoration(
                   labelText: 'Custom relationship',
-                  border: OutlineInputBorder(),
                   isDense: true,
                 ),
                 validator: (v) {
@@ -529,6 +510,7 @@ class _AddFamilyPageState extends State<AddFamilyPage> {
 
   Widget _buildRoleChip(_MemberDraft m, String role) {
     final isSelected = m.role == role;
+    final colorScheme = Theme.of(context).colorScheme;
     return InkWell(
       onTap: () {
         setState(() => m.role = role);
@@ -537,19 +519,17 @@ class _AddFamilyPageState extends State<AddFamilyPage> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFFEAF6EF) : const Color(0xFFFFFFFF),
+          color: isSelected ? colorScheme.greenTint : colorScheme.surface,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color:
-                isSelected ? const Color(0xFF0D7A4F) : const Color(0xFFE6EBE7),
+            color: isSelected ? colorScheme.primary : colorScheme.cardBorder,
             width: 1,
           ),
         ),
         child: Text(
           role,
           style: TextStyle(
-            color:
-                isSelected ? const Color(0xFF0D7A4F) : const Color(0xFF57635C),
+            color: isSelected ? colorScheme.primary : colorScheme.secondaryText,
             fontWeight: FontWeight.w600,
             fontSize: 13,
           ),

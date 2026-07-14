@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import '../main.dart'; // To access CrispColorScheme extension on ColorScheme
 import '../models/contact.dart';
 import '../models/relationship.dart';
+import 'crisp_toast.dart';
 
 class RelationshipDialog extends StatefulWidget {
   final Contact currentContact;
@@ -107,7 +109,6 @@ class _RelationshipDialogState extends State<RelationshipDialog> {
               initialValue: selectedContactId,
               decoration: const InputDecoration(
                 labelText: 'Connected contact',
-                border: OutlineInputBorder(),
               ),
               items: dropdownContacts
                   .map(
@@ -149,7 +150,6 @@ class _RelationshipDialogState extends State<RelationshipDialog> {
                 controller: otherTypeController,
                 decoration: const InputDecoration(
                   labelText: 'Custom relationship type',
-                  border: OutlineInputBorder(),
                 ),
                 onChanged: (_) => setState(() {}),
               ),
@@ -190,7 +190,6 @@ class _RelationshipDialogState extends State<RelationshipDialog> {
               maxLines: 2,
               decoration: const InputDecoration(
                 labelText: 'Notes (optional)',
-                border: OutlineInputBorder(),
               ),
             ),
           ],
@@ -203,7 +202,7 @@ class _RelationshipDialogState extends State<RelationshipDialog> {
           },
           child: const Text('Cancel'),
         ),
-        ElevatedButton(
+        FilledButton(
           onPressed: () {
             final targetId = selectedContactId;
             String finalType = selectedRole;
@@ -213,11 +212,7 @@ class _RelationshipDialogState extends State<RelationshipDialog> {
             }
 
             if (finalType.isEmpty || targetId == null) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Please select a contact and role.'),
-                ),
-              );
+              CrispToast.show(context, 'Please select a contact and role.');
               return;
             }
 
@@ -248,6 +243,7 @@ class _RelationshipDialogState extends State<RelationshipDialog> {
 
   Widget _buildRoleChip(String role) {
     final isSelected = selectedRole == role;
+    final colorScheme = Theme.of(context).colorScheme;
     return InkWell(
       onTap: () {
         setState(() {
@@ -258,19 +254,17 @@ class _RelationshipDialogState extends State<RelationshipDialog> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFFEAF6EF) : const Color(0xFFFFFFFF),
+          color: isSelected ? colorScheme.greenTint : colorScheme.surface,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color:
-                isSelected ? const Color(0xFF0D7A4F) : const Color(0xFFE6EBE7),
+            color: isSelected ? colorScheme.primary : colorScheme.cardBorder,
             width: 1,
           ),
         ),
         child: Text(
           role,
           style: TextStyle(
-            color:
-                isSelected ? const Color(0xFF0D7A4F) : const Color(0xFF57635C),
+            color: isSelected ? colorScheme.primary : colorScheme.secondaryText,
             fontWeight: FontWeight.w600,
             fontSize: 13,
           ),

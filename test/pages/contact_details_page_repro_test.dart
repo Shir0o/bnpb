@@ -136,7 +136,7 @@ void main() {
       expect(find.textContaining('Johnny'), findsOneWidget);
 
       // Verify that we are NOT in edit mode (edit icon should be present)
-      expect(find.byIcon(Icons.edit), findsOneWidget);
+      expect(find.byIcon(Icons.edit_outlined), findsOneWidget);
     } catch (e, stack) {
       debugPrint('ERROR: Test Failed with exception: $e');
       debugPrint('STACK: $stack');

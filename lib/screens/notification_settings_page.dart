@@ -5,6 +5,8 @@ import '../models/contact.dart';
 import '../models/notification_preference.dart';
 import '../repositories/notification_preferences_repository.dart';
 import '../services/reminder_coordinator.dart';
+import '../widgets/crisp_switch.dart';
+import '../widgets/crisp_toast.dart';
 import '../widgets/hide_on_scroll_scaffold.dart';
 
 class NotificationSettingsPage extends StatefulWidget {
@@ -120,11 +122,25 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
     );
   }
 
+  Card _buildCard({required Widget child}) {
+    final theme = Theme.of(context);
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      elevation: 0,
+      color: theme.colorScheme.surfaceContainerLow,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: theme.colorScheme.outlineVariant, width: 0.5),
+      ),
+      child: child,
+    );
+  }
+
   Widget _buildContactSection(BuildContext context) {
     if (_contacts.isEmpty) {
       return Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16),
-        child: Card(
+        child: _buildCard(
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: Text(
@@ -138,8 +154,7 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Card(
-        clipBehavior: Clip.antiAlias,
+      child: _buildCard(
         child: ExpansionTile(
           title: const Text('Contact overrides'),
           subtitle: const Text('Override reminders for a specific person.'),
@@ -210,7 +225,7 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
     if (_categoryChannels.isEmpty) {
       return Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16),
-        child: Card(
+        child: _buildCard(
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: Text(
@@ -228,8 +243,7 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Card(
-        clipBehavior: Clip.antiAlias,
+      child: _buildCard(
         child: ExpansionTile(
           title: const Text('Category overrides'),
           subtitle: const Text('Tune reminders by interaction or prayer type.'),
@@ -346,9 +360,7 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
       await _triggerResync(scopeType, scopeId);
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to update preference: $error')),
-      );
+      CrispToast.show(context, 'Failed to update preference: $error');
     } finally {
       if (mounted) {
         setState(() {
@@ -391,9 +403,7 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
       await _triggerResync(scopeType, scopeId);
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to reset preference: $error')),
-      );
+      CrispToast.show(context, 'Failed to reset preference: $error');
     } finally {
       if (mounted) {
         setState(() {
@@ -539,7 +549,7 @@ class _PreferenceControl extends StatelessWidget {
                   ],
                 ),
               ),
-              Switch.adaptive(value: enabled, onChanged: onToggle),
+              CrispSwitch(value: enabled, onChanged: onToggle),
             ],
           ),
           const SizedBox(height: 8),

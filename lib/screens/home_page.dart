@@ -15,6 +15,7 @@ import '../services/reminder_coordinator.dart';
 import '../services/sync_service.dart';
 import '../widgets/backup_restore_sheet.dart';
 import '../widgets/contact_avatar.dart';
+import '../widgets/crisp_toast.dart';
 import '../widgets/export_options_sheet.dart';
 import '../widgets/home_page_skeleton.dart';
 import '../widgets/people_card.dart';
@@ -424,12 +425,12 @@ class _HomePageState extends State<HomePage>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'Prayer insights',
           style: TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.w800,
-            color: Color(0xFF0F1512),
+            color: Theme.of(context).colorScheme.onSurface,
             letterSpacing: -0.2,
           ),
         ),
@@ -547,7 +548,10 @@ class _HomePageState extends State<HomePage>
     final topRecommendations = _recommendations.take(5).toList();
 
     return Material(
-      color: const Color(0xFF0F1512),
+      // This card is always a near-black surface in both themes (matching
+      // the design's fixed `--ai-card` token), so its contents intentionally
+      // use fixed light-on-dark colors rather than theme-reactive ones.
+      color: theme.colorScheme.aiCardBg,
       borderRadius: BorderRadius.circular(20),
       clipBehavior: Clip.antiAlias,
       child: Theme(
@@ -563,7 +567,7 @@ class _HomePageState extends State<HomePage>
               fontWeight: FontWeight.w600,
             ),
             subtitleTextStyle: theme.textTheme.bodySmall?.copyWith(
-              color: const Color(0xFF8A988F),
+              color: theme.colorScheme.outline,
             ),
             iconColor: const Color(0xFFEEF2EF),
           ),
@@ -699,9 +703,7 @@ class _HomePageState extends State<HomePage>
 
   Future<void> _openExportSheet() async {
     if (_contacts.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Add contacts before exporting.')),
-      );
+      CrispToast.show(context, 'Add contacts before exporting.');
       return;
     }
 
@@ -728,9 +730,7 @@ class _HomePageState extends State<HomePage>
       return;
     }
 
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+    CrispToast.show(context, message);
   }
 
   Future<void> _openRestoreSheet() async {
@@ -749,9 +749,7 @@ class _HomePageState extends State<HomePage>
       case BackupRestoreSheetResult.restored:
         await _fetchContacts();
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Backup restored successfully.')),
-        );
+        CrispToast.show(context, 'Backup restored successfully.');
         break;
       case BackupRestoreSheetResult.legacyImport:
         await _importLegacyJson();
@@ -768,18 +766,14 @@ class _HomePageState extends State<HomePage>
 
       if (result == null || result.files.isEmpty) {
         if (!mounted) return;
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('No file selected.')));
+        CrispToast.show(context, 'No file selected.');
         return;
       }
 
       final filePath = result.files.single.path;
       if (filePath == null) {
         if (!mounted) return;
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Invalid file.')));
+        CrispToast.show(context, 'Invalid file.');
         return;
       }
 
@@ -820,19 +814,13 @@ class _HomePageState extends State<HomePage>
 
       if (!mounted) return;
       if (count < 0) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Import cancelled.')));
+        CrispToast.show(context, 'Import cancelled.');
         return;
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('$count contacts restored successfully!')),
-      );
+      CrispToast.show(context, '$count contacts restored successfully!');
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Failed to restore contacts: $e')));
+      CrispToast.show(context, 'Failed to restore contacts: $e');
     }
   }
 
@@ -903,18 +891,14 @@ class _HomePageState extends State<HomePage>
       await _dbHelper.deleteContact(id);
       await ReminderCoordinator().cancelAllForContact(id);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Contact deleted successfully.')),
-        );
+        CrispToast.show(context, 'Contact deleted successfully.');
       }
       ContactService().invalidateContacts();
       unawaited(_fetchContacts(forceRefresh: true));
     } catch (error) {
       _applyContactsSnapshot(previousContacts);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to delete contact: $error')),
-      );
+      CrispToast.show(context, 'Failed to delete contact: $error');
     }
   }
 
@@ -1455,8 +1439,9 @@ class _HomePageState extends State<HomePage>
                                                     }
                                                   });
                                                 },
-                                                activeColor:
-                                                    const Color(0xFF0D7A4F),
+                                                activeColor: Theme.of(context)
+                                                    .colorScheme
+                                                    .primary,
                                               )
                                             : null,
                                         highlightLabel: match?.matchDescription,

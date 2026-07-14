@@ -266,7 +266,7 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
         await _showLoading(
           () => _backupService.restoreBackup(
             snapshot,
-            messenger: ScaffoldMessenger.of(context),
+            overlay: Overlay.of(context),
           ),
           'Restoring backup...\nThis may take a while...',
         );
