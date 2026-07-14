@@ -481,14 +481,26 @@ class InteractionDao extends BaseDao {
 
         // Soft delete the duplicates
         final nowStr = now.toIso8601String();
-        for (final dup in duplicates) {
-          await txn.update(
-            'interactions',
-            {'deletedAt': nowStr, 'updatedAt': nowStr},
-            where: 'id = ?',
-            whereArgs: [dup.id],
-          );
-          mergedCount++;
+        if (duplicates.isNotEmpty) {
+          final dupIds = duplicates.map((d) => d.id).toList();
+
+          // SQLite has a limit on variables, so chunk the updates if there are many duplicates.
+          // BaseDao provides chunkedQuery, but we need to do updates, so we can use batch or chunking directly.
+          const batchSize = 900;
+          for (var i = 0; i < dupIds.length; i += batchSize) {
+            final end =
+                (i + batchSize < dupIds.length) ? i + batchSize : dupIds.length;
+            final chunk = dupIds.sublist(i, end);
+            final placeholders = List.filled(chunk.length, '?').join(',');
+
+            await txn.update(
+              'interactions',
+              {'deletedAt': nowStr, 'updatedAt': nowStr},
+              where: 'id IN ($placeholders)',
+              whereArgs: chunk,
+            );
+          }
+          mergedCount += duplicates.length;
         }
       }
     });
