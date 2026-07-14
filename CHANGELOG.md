@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Removed `AGENTS.md` from upstream tracking and git-index while retaining it locally.
 - Added `AGENTS.md` and `CLAUDE.md` to `.gitignore` to prevent future tracking.
 - Initialized `CHANGELOG.md` using the repository's git commit history.
+- Re-wired the orphaned per-contact/per-category reminder override editor (previously unreachable since it was dropped from navigation) into Settings under Reminders as "Contact & category overrides", trimmed to remove sections now duplicated by the main Settings page.
 
 ## [1.2.0] - 2026-07-14
 

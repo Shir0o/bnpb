@@ -22,6 +22,7 @@ import '../services/sync_service.dart';
 import '../widgets/export_options_sheet.dart';
 import '../widgets/skeleton_loader.dart';
 import 'ai_settings_page.dart';
+import 'notification_settings_page.dart';
 import 'privacy_policy_page.dart';
 import '../widgets/hide_on_scroll_scaffold.dart';
 
@@ -207,6 +208,19 @@ class _SettingsPageState extends State<SettingsPage>
                   const Divider(height: 1, indent: 16, endIndent: 16),
                   _buildExactAlarmTile(context),
                 ],
+                const Divider(height: 1, indent: 16, endIndent: 16),
+                ListTile(
+                  leading: const Icon(Icons.person_pin_circle_outlined),
+                  title: const Text('Contact & category overrides'),
+                  subtitle: const Text(
+                    'Customize reminders for a specific person or category',
+                  ),
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const NotificationSettingsPage(),
+                    ),
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 16),
