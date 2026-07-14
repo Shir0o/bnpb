@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../db/db_helper.dart';
+import '../main.dart'; // To access CrispColorScheme extension on ColorScheme
 import '../models/contact.dart';
 import '../models/prayer_request.dart';
+import '../widgets/crisp_toast.dart';
 import '../widgets/log_prayer_request_sheet.dart';
 import 'prayer_request_details_page.dart';
 import '../widgets/hide_on_scroll_scaffold.dart';
@@ -85,11 +87,8 @@ class _PrayerDiaryPageState extends State<PrayerDiaryPage> {
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Add a contact before logging a prayer request.'),
-        ),
-      );
+      CrispToast.show(
+          context, 'Add a contact before logging a prayer request.');
       return;
     }
 
@@ -121,9 +120,7 @@ class _PrayerDiaryPageState extends State<PrayerDiaryPage> {
     final message = result == 'updated'
         ? 'Prayer request updated.'
         : 'Prayer request added.';
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+    CrispToast.show(context, message);
   }
 
   Future<void> _openPrayerRequestDetails(PrayerRequest request) async {
@@ -152,10 +149,8 @@ class _PrayerDiaryPageState extends State<PrayerDiaryPage> {
   Widget build(BuildContext context) {
     return HideOnScrollScaffold(
       appBar: AppBar(title: const Text('Prayer diary')),
-      floatingActionButton: FloatingActionButton(
+      floatingActionButton: _PrayerDiaryFab(
         onPressed: _openLogPrayerRequestSheet,
-        tooltip: 'Log prayer request',
-        child: const Icon(Icons.add),
       ),
       body: RefreshIndicator(onRefresh: _loadRequests, child: _buildBody()),
     );
@@ -183,6 +178,7 @@ class _PrayerDiaryPageState extends State<PrayerDiaryPage> {
   }
 
   Widget _buildFilterChips() {
+    final colorScheme = Theme.of(context).colorScheme;
     final filters = ['All', 'Pending', 'Answered', 'Archived'];
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
@@ -203,19 +199,22 @@ class _PrayerDiaryPageState extends State<PrayerDiaryPage> {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 decoration: BoxDecoration(
-                  color: isSelected ? const Color(0xFF0F1512) : Colors.white,
+                  color:
+                      isSelected ? colorScheme.onSurface : colorScheme.surface,
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(
                     color: isSelected
-                        ? const Color(0xFF0F1512)
-                        : const Color(0xFFE6EBE7),
+                        ? colorScheme.onSurface
+                        : colorScheme.cardBorder,
                     width: 1,
                   ),
                 ),
                 child: Text(
                   f,
                   style: TextStyle(
-                    color: isSelected ? Colors.white : const Color(0xFF57635C),
+                    color: isSelected
+                        ? colorScheme.surface
+                        : colorScheme.secondaryText,
                     fontWeight: FontWeight.w700,
                     fontSize: 13,
                   ),
@@ -292,6 +291,7 @@ class _PrayerDiaryPageState extends State<PrayerDiaryPage> {
   }
 
   Widget _buildPrayerCard(PrayerRequest request) {
+    final colorScheme = Theme.of(context).colorScheme;
     final contactNames = request.participantIds
         .map((id) => _displayNameForContact(id))
         .where((name) => name != 'Unknown contact')
@@ -313,18 +313,18 @@ class _PrayerDiaryPageState extends State<PrayerDiaryPage> {
 
     switch (request.status) {
       case PrayerRequestStatus.pending:
-        statusBg = const Color(0xFFFBEEE9);
-        statusFg = const Color(0xFFC25A3F);
+        statusBg = colorScheme.dangerTint;
+        statusFg = colorScheme.error;
         statusIcon = Icons.hourglass_top_outlined;
         break;
       case PrayerRequestStatus.answered:
-        statusBg = const Color(0xFFEAF6EF);
-        statusFg = const Color(0xFF0D7A4F);
+        statusBg = colorScheme.greenTint;
+        statusFg = colorScheme.primary;
         statusIcon = Icons.celebration_outlined;
         break;
       case PrayerRequestStatus.archived:
-        statusBg = const Color(0xFFF1F5F2);
-        statusFg = const Color(0xFF8A988F);
+        statusBg = colorScheme.surfaceTint;
+        statusFg = colorScheme.outline;
         statusIcon = Icons.archive_outlined;
         break;
     }
@@ -338,10 +338,10 @@ class _PrayerDiaryPageState extends State<PrayerDiaryPage> {
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: const Color(0xFFE6EBE7),
+          color: colorScheme.cardBorder,
           width: 1,
         ),
       ),
@@ -373,18 +373,18 @@ class _PrayerDiaryPageState extends State<PrayerDiaryPage> {
                   children: [
                     Text(
                       request.description,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontWeight: FontWeight.w700,
                         fontSize: 16,
-                        color: Color(0xFF0F1512),
+                        color: colorScheme.onSurface,
                       ),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       details,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12.5,
-                        color: Color(0xFF8A988F),
+                        color: colorScheme.outline,
                       ),
                     ),
                   ],
@@ -467,9 +467,7 @@ class _PrayerDiaryPageState extends State<PrayerDiaryPage> {
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(_statusChangeMessage(status))));
+      CrispToast.show(context, _statusChangeMessage(status));
     } catch (error) {
       if (!mounted) {
         return;
@@ -477,9 +475,7 @@ class _PrayerDiaryPageState extends State<PrayerDiaryPage> {
       setState(() {
         _requests = previousRequests;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to update status: $error')),
-      );
+      CrispToast.show(context, 'Failed to update status: $error');
     }
   }
 
@@ -534,5 +530,46 @@ class _PrayerDiaryPageState extends State<PrayerDiaryPage> {
     final age = DateTime.now().difference(request.requestedAt);
     if (age < _stillAskingThreshold) return null;
     return age.inDays ~/ 7;
+  }
+}
+
+/// 56x56 rounded-square FAB (18px radius, soft green-tinted shadow) matching
+/// the design's prayer-diary "add" button — the one FAB with an explicit
+/// design spec, so it's implemented locally rather than themed globally.
+class _PrayerDiaryFab extends StatelessWidget {
+  const _PrayerDiaryFab({required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Container(
+      width: 56,
+      height: 56,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: [
+          BoxShadow(
+            color: colorScheme.primary.withValues(alpha: 0.6),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+            spreadRadius: -6,
+          ),
+        ],
+      ),
+      child: Material(
+        color: colorScheme.primary,
+        borderRadius: BorderRadius.circular(18),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(18),
+          onTap: onPressed,
+          child: Tooltip(
+            message: 'Log prayer request',
+            child: Icon(Icons.add, color: colorScheme.onPrimary),
+          ),
+        ),
+      ),
+    );
   }
 }

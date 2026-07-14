@@ -11,6 +11,7 @@ import '../services/ai/semantic_search_service.dart';
 import '../services/contact_service.dart';
 import '../services/reminder_coordinator.dart';
 import 'contact_details_page.dart';
+import '../widgets/crisp_toast.dart';
 import '../widgets/hide_on_scroll_scaffold.dart';
 
 /// Natural-language semantic search across all interactions and prayer
@@ -175,14 +176,10 @@ class _AskPageState extends State<AskPage> {
         _contactsById = Map.of(_contactsById)..remove(id);
         _results = _results.where((r) => r.contact.id != id).toList();
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Contact deleted successfully.')),
-      );
+      CrispToast.show(context, 'Contact deleted successfully.');
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to delete contact: $error')),
-      );
+      CrispToast.show(context, 'Failed to delete contact: $error');
     }
   }
 
@@ -276,6 +273,19 @@ class _AskPageState extends State<AskPage> {
     );
   }
 
+  Card _buildCard({required Widget child}) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Card(
+      elevation: 0,
+      color: colorScheme.surfaceContainerLow,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: colorScheme.outlineVariant, width: 0.5),
+      ),
+      child: child,
+    );
+  }
+
   Widget _buildResultsList(ThemeData theme) {
     if (_busy) {
       return ListView.separated(
@@ -321,10 +331,7 @@ class _AskPageState extends State<AskPage> {
             ),
           ),
           for (final q in _history)
-            Card(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
+            _buildCard(
               child: ListTile(
                 leading: const Icon(Icons.history, size: 20),
                 title: Text(q),
@@ -353,10 +360,7 @@ class _AskPageState extends State<AskPage> {
       separatorBuilder: (_, __) => const SizedBox(height: 8),
       itemBuilder: (context, i) {
         final r = _results[i];
-        return Card(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
+        return _buildCard(
           child: InkWell(
             borderRadius: BorderRadius.circular(16),
             onTap: () => _openContact(r.contact),
@@ -406,9 +410,8 @@ class _AskPageState extends State<AskPage> {
 class _SkeletonResultCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    final color = Theme.of(
-      context,
-    ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.6);
+    final colorScheme = Theme.of(context).colorScheme;
+    final color = colorScheme.surfaceContainerHighest.withValues(alpha: 0.6);
     Widget bar({required double width, required double height}) => Container(
           width: width,
           height: height,
@@ -418,7 +421,12 @@ class _SkeletonResultCard extends StatelessWidget {
           ),
         );
     return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      elevation: 0,
+      color: colorScheme.surfaceContainerLow,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: colorScheme.outlineVariant, width: 0.5),
+      ),
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: Column(

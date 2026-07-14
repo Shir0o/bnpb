@@ -45,6 +45,8 @@ void main() {
     expect(colorScheme.surfaceContainerLow, const Color(0xFFF1F5F2));
     expect(colorScheme.outline, const Color(0xFF8A988F));
     expect(colorScheme.outlineVariant, const Color(0xFFEEF2EF));
+    expect(colorScheme.placeholder, const Color(0xFFA9B3AD));
+    expect(colorScheme.navBg, const Color(0xF0FFFFFF));
   });
 
   test('dark theme uses the dark color palette for Crisp Utility', () {
@@ -63,6 +65,8 @@ void main() {
     expect(colorScheme.surfaceContainerLow, const Color(0xFF1F2621));
     expect(colorScheme.outline, const Color(0xFF8B988F));
     expect(colorScheme.outlineVariant, const Color(0xFF242C26));
+    expect(colorScheme.placeholder, const Color(0xFF5D6A62));
+    expect(colorScheme.navBg, const Color(0xF0151A17));
   });
 
   test('fontSizeNotifier updates and persists correct value', () async {

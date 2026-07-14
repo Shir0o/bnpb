@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../main.dart' show CrispColorScheme;
 import '../services/ai/ai_feature_gate.dart';
 import '../services/ai/ai_services.dart';
 import '../services/ai/embedder_manager.dart';
@@ -9,6 +10,7 @@ import '../services/ai/hf_token_store.dart';
 import '../services/ai/key_validation.dart';
 import '../services/ai/model_manager.dart';
 import '../services/security_service.dart';
+import '../widgets/crisp_toast.dart';
 import '../widgets/hide_on_scroll_scaffold.dart';
 
 class AiSettingsPage extends StatefulWidget {
@@ -103,7 +105,7 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
         : result.validated
             ? 'Hugging Face token saved and validated'
             : 'Hugging Face token saved without validation';
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+    CrispToast.show(context, msg);
     await _refresh();
   }
 
@@ -119,9 +121,7 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
           await AiServices().llm.load(path);
         } catch (error) {
           if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Could not load model: $error')),
-            );
+            CrispToast.show(context, 'Could not load model: $error');
           }
         }
       }
@@ -178,9 +178,7 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
             _downloadProgress = null;
             _busy = false;
           });
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text('Download failed: $error')));
+          CrispToast.show(context, 'Download failed: $error');
         },
         cancelOnError: true,
       );
@@ -190,9 +188,7 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
         _downloadProgress = null;
         _busy = false;
       });
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Download failed: $error')));
+      CrispToast.show(context, 'Download failed: $error');
     }
   }
 
@@ -273,9 +269,7 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
             _embedderDownloadProgress = null;
             _busy = false;
           });
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Embedder download failed: $error')),
-          );
+          CrispToast.show(context, 'Embedder download failed: $error');
         },
         cancelOnError: true,
       );
@@ -285,9 +279,7 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
         _embedderDownloadProgress = null;
         _busy = false;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Embedder download failed: $error')),
-      );
+      CrispToast.show(context, 'Embedder download failed: $error');
     }
   }
 
@@ -451,7 +443,7 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
         : result.validated
             ? 'Gemini API key saved and validated'
             : 'Gemini API key saved without validation';
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+    CrispToast.show(context, msg);
     await _refresh();
   }
 
@@ -541,7 +533,7 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
                     'switch the backend to Google Gemini in the Backend '
                     'section below.',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: const Color(0xFF57635C),
+                          color: Theme.of(context).colorScheme.secondaryText,
                         ),
                   ),
                 ),
@@ -598,7 +590,7 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
                     'higher-quality suggestions; you supply your own API key '
                     'and accept that the text leaves your device.',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: const Color(0xFF57635C),
+                          color: Theme.of(context).colorScheme.secondaryText,
                         ),
                   ),
                 ),
@@ -660,7 +652,7 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
                             'required because the repository is gated by '
                             'Google.',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: const Color(0xFF57635C),
+                          color: Theme.of(context).colorScheme.secondaryText,
                         ),
                   ),
                 ),
@@ -669,13 +661,13 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
                     if (_status == ModelStatus.ready) ...[
                       Container(
                         padding: const EdgeInsets.all(16),
-                        color: const Color(0xFFEAF6EF),
+                        color: Theme.of(context).colorScheme.greenTint,
                         child: Row(
                           children: [
                             Container(
                               padding: const EdgeInsets.all(8),
                               decoration: BoxDecoration(
-                                color: const Color(0xFF0D7A4F),
+                                color: Theme.of(context).colorScheme.primary,
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: const Icon(
@@ -689,10 +681,11 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  const Text(
+                                  Text(
                                     'On-device model ready',
                                     style: TextStyle(
-                                      color: Color(0xFF0D7A4F),
+                                      color:
+                                          Theme.of(context).colorScheme.primary,
                                       fontWeight: FontWeight.bold,
                                       fontSize: 15,
                                     ),
@@ -700,7 +693,9 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
                                   Text(
                                     'Gemma is ready for local AI suggestions.',
                                     style: TextStyle(
-                                      color: const Color(0xFF0D7A4F)
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .primary
                                           .withValues(alpha: 0.8),
                                       fontSize: 13,
                                     ),
@@ -799,7 +794,7 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
                     'hunting?". Uses a small (~110 MB) Gecko embedder that '
                     'runs entirely on this device.',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: const Color(0xFF57635C),
+                          color: Theme.of(context).colorScheme.secondaryText,
                         ),
                   ),
                 ),
@@ -861,14 +856,15 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
   }
 
   Widget _buildCardGroup({required List<Widget> children}) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 4),
       child: Material(
-        color: const Color(0xFFFFFFFF),
+        color: colorScheme.surface,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(14),
-          side: const BorderSide(
-            color: Color(0xFFE6EBE7),
+          side: BorderSide(
+            color: colorScheme.cardBorder,
             width: 1,
           ),
         ),

@@ -5,6 +5,7 @@ import '../db/db_helper.dart';
 import '../models/contact.dart';
 import '../models/prayer_request.dart';
 import '../widgets/contact_avatar.dart';
+import '../widgets/crisp_toast.dart';
 import '../widgets/log_prayer_request_sheet.dart';
 import '../widgets/hide_on_scroll_scaffold.dart';
 
@@ -118,9 +119,7 @@ class _PrayerRequestDetailsPageState extends State<PrayerRequestDetailsPage> {
       final message = result == 'updated'
           ? 'Prayer request updated.'
           : 'Prayer request saved.';
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(message)));
+      CrispToast.show(context, message);
     }
   }
 

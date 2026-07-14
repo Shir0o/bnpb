@@ -6,6 +6,7 @@ import '../models/contact.dart';
 import '../models/prayer_request.dart';
 import '../services/reminder_coordinator.dart';
 import 'contact_selection_sheet.dart';
+import 'crisp_toast.dart';
 
 /// Shared bottom sheet for creating or editing a [PrayerRequest].
 class LogPrayerRequestSheet extends StatefulWidget {
@@ -152,19 +153,14 @@ class _LogPrayerRequestSheetState extends State<LogPrayerRequestSheet> {
     }
     final description = _descriptionController.text.trim();
     if (description.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Write a short prayer description first.'),
-        ),
-      );
+      CrispToast.show(context, 'Write a short prayer description first.');
       return;
     }
 
     if (_selectedParticipantIds.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Select at least one contact for this prayer request.'),
-        ),
+      CrispToast.show(
+        context,
+        'Select at least one contact for this prayer request.',
       );
       return;
     }
@@ -217,9 +213,7 @@ class _LogPrayerRequestSheetState extends State<LogPrayerRequestSheet> {
       ).pop(widget.initialRequest == null ? 'created' : 'updated');
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to save prayer request: $error')),
-      );
+      CrispToast.show(context, 'Failed to save prayer request: $error');
     } finally {
       if (mounted) {
         setState(() {
@@ -342,7 +336,6 @@ class _LogPrayerRequestSheetState extends State<LogPrayerRequestSheet> {
               controller: _descriptionController,
               decoration: const InputDecoration(
                 labelText: 'Request',
-                border: OutlineInputBorder(),
                 alignLabelWithHint: true,
               ),
               minLines: 2,
@@ -409,7 +402,6 @@ class _LogPrayerRequestSheetState extends State<LogPrayerRequestSheet> {
               controller: _categoryController,
               decoration: const InputDecoration(
                 labelText: 'Category (optional)',
-                border: OutlineInputBorder(),
               ),
               textCapitalization: TextCapitalization.words,
             ),
@@ -418,7 +410,6 @@ class _LogPrayerRequestSheetState extends State<LogPrayerRequestSheet> {
               controller: _reflectionController,
               decoration: const InputDecoration(
                 labelText: 'Notes',
-                border: OutlineInputBorder(),
               ),
               minLines: 2,
               maxLines: 4,
