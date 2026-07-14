@@ -46,3 +46,9 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 .env
+
+# Agent instructions
+AGENTS.md
+CLAUDE.md
+
+
