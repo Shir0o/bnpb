@@ -204,10 +204,10 @@ class _SettingsPageState extends State<SettingsPage>
           color: colorScheme.outline,
         ),
         child: ListView(
+          padding: EdgeInsets.zero,
           children: [
             if (_isUpdating || _isPurging)
               const LinearProgressIndicator(minHeight: 2),
-            const SizedBox(height: 8),
             _buildSectionHeader('Reminders'),
             _buildCardGroup(
               children: [
