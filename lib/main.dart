@@ -55,6 +55,7 @@ const ColorScheme _lightColorScheme = ColorScheme.light(
   onSecondary: Colors.white,
   surface: Colors.white,
   onSurface: Color(0xFF0F1512),
+  surfaceTint: Color(0xFFF1F5F2),
   surfaceContainerLow: Color(0xFFF1F5F2), // Surface tint
   surfaceContainerHighest: Color(0xFFE6EBE7), // Card border
   outline: Color(0xFF8A988F), // Muted
@@ -78,6 +79,7 @@ const ColorScheme _darkColorScheme = ColorScheme.dark(
   onSecondary: Color(0xFF151A17),
   surface: Color(0xFF151A17),
   onSurface: Color(0xFFE9EFEB),
+  surfaceTint: Color(0xFF1F2621),
   surfaceContainerLow: Color(0xFF1F2621), // Surface tint
   surfaceContainerHighest: Color(0xFF2B332D), // Card border
   outline: Color(0xFF8B988F), // Muted

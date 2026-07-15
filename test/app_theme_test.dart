@@ -41,6 +41,7 @@ void main() {
     expect(colorScheme.errorContainer, const Color(0xFFFBEEE9));
     expect(colorScheme.surface, const Color(0xFFFFFFFF));
     expect(colorScheme.onSurface, const Color(0xFF0F1512));
+    expect(colorScheme.surfaceTint, const Color(0xFFF1F5F2));
     expect(colorScheme.surfaceContainerHighest, const Color(0xFFE6EBE7));
     expect(colorScheme.surfaceContainerLow, const Color(0xFFF1F5F2));
     expect(colorScheme.outline, const Color(0xFF8A988F));
@@ -61,6 +62,7 @@ void main() {
     expect(colorScheme.errorContainer, const Color(0xFF331813));
     expect(colorScheme.surface, const Color(0xFF151A17));
     expect(colorScheme.onSurface, const Color(0xFFE9EFEB));
+    expect(colorScheme.surfaceTint, const Color(0xFF1F2621));
     expect(colorScheme.surfaceContainerHighest, const Color(0xFF2B332D));
     expect(colorScheme.surfaceContainerLow, const Color(0xFF1F2621));
     expect(colorScheme.outline, const Color(0xFF8B988F));
