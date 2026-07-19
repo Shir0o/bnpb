@@ -1068,24 +1068,51 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
       final extension = p.extension(path).toLowerCase();
       if (extension == '.json') {
         if (!mounted) return;
-        final confirmed = await showDialog<bool>(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('Overwrite existing data?'),
-            content: const Text(
-              'Importing this backup will delete all your current contacts, '
-              'interactions, and prayer requests. This cannot be undone.',
+        final confirmed = await showMacModal<bool>(
+          context,
+          width: 420,
+          builder: (context) => Padding(
+            padding: const EdgeInsets.all(22),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Overwrite existing data?',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 18,
+                    color: Theme.of(context).colorScheme.error,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  'Importing this backup will delete all your current contacts, '
+                  'interactions, and prayer requests. This cannot be undone.',
+                  style: TextStyle(
+                      fontSize: 13.5,
+                      color: Theme.of(context).colorScheme.secondaryText),
+                ),
+                const SizedBox(height: 18),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, false),
+                      child: const Text('Cancel'),
+                    ),
+                    const SizedBox(width: 8),
+                    FilledButton(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: Theme.of(context).colorScheme.error,
+                      ),
+                      onPressed: () => Navigator.pop(context, true),
+                      child: const Text('Overwrite and Import'),
+                    ),
+                  ],
+                ),
+              ],
             ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: const Text('Cancel'),
-              ),
-              FilledButton(
-                onPressed: () => Navigator.pop(context, true),
-                child: const Text('Overwrite and Import'),
-              ),
-            ],
           ),
         );
         if (confirmed != true) return;
@@ -1115,23 +1142,50 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
       );
       if (!mounted) return;
 
-      final confirmed = await showDialog<bool>(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Restore backup?'),
-          content: Text(
-            'This will overwrite your current data with the selected backup:\n\n${p.basename(path)}',
+      final confirmed = await showMacModal<bool>(
+        context,
+        width: 420,
+        builder: (context) => Padding(
+          padding: const EdgeInsets.all(22),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Restore backup?',
+                style: TextStyle(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 18,
+                  color: Theme.of(context).colorScheme.error,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                'This will overwrite your current data with the selected backup:\n\n${p.basename(path)}',
+                style: TextStyle(
+                    fontSize: 13.5,
+                    color: Theme.of(context).colorScheme.secondaryText),
+              ),
+              const SizedBox(height: 18),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context, false),
+                    child: const Text('Cancel'),
+                  ),
+                  const SizedBox(width: 8),
+                  FilledButton(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: Theme.of(context).colorScheme.error,
+                    ),
+                    onPressed: () => Navigator.pop(context, true),
+                    child: const Text('Restore'),
+                  ),
+                ],
+              ),
+            ],
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('Restore'),
-            ),
-          ],
         ),
       );
 
@@ -1163,11 +1217,14 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
       ),
     );
     if (!mounted) return resolved;
-    showDialog(
-      context: context,
+    showMacModal<void>(
+      context,
+      width: 340,
       barrierDismissible: false,
-      builder: (context) => const AlertDialog(
-        content: Row(
+      builder: (context) => const Padding(
+        padding: EdgeInsets.all(22),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
             CircularProgressIndicator(),
             SizedBox(width: 24),
@@ -1180,11 +1237,14 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
   }
 
   Future<T> _showLoading<T>(Future<T> Function() action, String message) async {
-    showDialog(
-      context: context,
+    showMacModal<void>(
+      context,
+      width: 340,
       barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        content: Row(
+      builder: (context) => Padding(
+        padding: const EdgeInsets.all(22),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
             const CircularProgressIndicator(),
             const SizedBox(width: 24),
