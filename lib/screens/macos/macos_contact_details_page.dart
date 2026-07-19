@@ -11,6 +11,7 @@ import '../../models/relationship.dart';
 import '../../services/backup_service.dart';
 import '../../services/reminder_coordinator.dart';
 import 'contact_view_helpers.dart';
+import '../../widgets/crisp_toast.dart';
 import '../../widgets/relationship_dialog.dart';
 
 class MacOSContactDetailsPage extends StatefulWidget {
@@ -160,9 +161,7 @@ class _MacOSContactDetailsPageState extends State<MacOSContactDetailsPage> {
     } catch (e) {
       debugPrint('Error saving contact: $e');
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Failed to save: $e')));
+        CrispToast.show(context, 'Failed to save: $e');
       }
     } finally {
       if (mounted) setState(() => _isSaving = false);
@@ -227,9 +226,7 @@ class _MacOSContactDetailsPageState extends State<MacOSContactDetailsPage> {
       } catch (e) {
         debugPrint('Error deleting contact: $e');
         if (mounted) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text('Failed to delete: $e')));
+          CrispToast.show(context, 'Failed to delete: $e');
         }
       } finally {
         if (mounted) setState(() => _isSaving = false);
@@ -244,9 +241,7 @@ class _MacOSContactDetailsPageState extends State<MacOSContactDetailsPage> {
     // We generated ID upfront in _saveContact logic, but here we might need it.
 
     if (widget.contact == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please save the contact first.')),
-      );
+      CrispToast.show(context, 'Please save the contact first.');
       return;
     }
 

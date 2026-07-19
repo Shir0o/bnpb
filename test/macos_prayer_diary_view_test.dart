@@ -27,9 +27,11 @@ void main() {
     // Since we didn't mock DB, it might hang or fail if DB init tries to open file.
     // Use runAsync to allow async DB calls to complete (or fail).
 
-    // Check for Header
-    expect(find.text('Prayer Diary'), findsOneWidget);
-    expect(find.byType(TextField), findsOneWidget); // Search bar
-    expect(find.byIcon(Icons.add), findsOneWidget); // Add button
+    // Check for Header (diary column) and the "My prayer list" column.
+    expect(find.text('Prayer diary'), findsOneWidget);
+    expect(find.text('My prayer list'), findsOneWidget);
+    expect(find.byType(TextField), findsOneWidget); // Diary search bar
+    // "Log request" (diary) and "add to list" (my prayer list) buttons.
+    expect(find.byIcon(Icons.add), findsNWidgets(2));
   });
 }

@@ -12,7 +12,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'screens/add_contact_page.dart';
 import 'screens/analytics_page.dart';
 import 'screens/home_page.dart';
-import 'screens/macos/macos_active_contacts_view.dart';
 import 'screens/macos/macos_shell.dart';
 import 'screens/settings_page.dart';
 import 'services/sync_service.dart';
@@ -398,9 +397,7 @@ class MyApp extends StatelessWidget {
                 );
               },
               home: SecurityGate(
-                child: Platform.isMacOS
-                    ? const MacOSShell(child: MacOSActiveContactsView())
-                    : const MainPage(),
+                child: Platform.isMacOS ? const MacOSShell() : const MainPage(),
               ),
             );
           },
