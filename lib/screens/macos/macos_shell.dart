@@ -1,43 +1,92 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter/services.dart';
 
+import '../../db/db_helper.dart';
+import '../../main.dart';
+import '../../models/prayer_request.dart';
+import '../../services/follow_up_recommendation_service.dart';
+import '../../services/sync_service.dart';
+import '../../widgets/contact_avatar.dart';
+import '../../widgets/crisp_switch.dart';
+import '../../widgets/crisp_toast.dart';
+import 'macos_add_view.dart';
+import 'macos_analytics_view.dart';
+import 'macos_ask_view.dart';
+import 'macos_contacts_view.dart';
 import 'macos_prayer_diary_view.dart';
 import 'macos_settings_view.dart';
-import 'macos_active_contacts_view.dart';
-import 'macos_contacts_view.dart';
-import '../../services/sync_service.dart';
 
+/// Root shell for the macOS build: a custom title bar (real traffic lights,
+/// transparent native chrome — see MainFlutterWindow.swift), a 242px
+/// sidebar, and a content area holding the app's 6 top-level sections.
 class MacOSShell extends StatefulWidget {
-  final Widget child;
-
-  const MacOSShell({super.key, required this.child});
+  const MacOSShell({super.key});
 
   @override
   State<MacOSShell> createState() => _MacOSShellState();
 }
 
 class _MacOSShellState extends State<MacOSShell> {
+  static const int _sectionCount = 6;
+
   int _selectedIndex = 0;
   late final PageController _pageController;
+  final DBHelper _dbHelper = DBHelper();
+  final List<GlobalKey<NavigatorState>> _navigatorKeys = List.generate(
+    _sectionCount,
+    (_) => GlobalKey<NavigatorState>(),
+  );
 
-  final List<GlobalKey<NavigatorState>> _navigatorKeys = [
-    GlobalKey<NavigatorState>(),
-    GlobalKey<NavigatorState>(),
-    GlobalKey<NavigatorState>(),
-    GlobalKey<NavigatorState>(),
-  ];
+  int _needsPrayerCount = 0;
+  List<FollowUpRecommendation> _followUps = [];
+  StreamSubscription<void>? _syncSubscription;
 
   @override
   void initState() {
     super.initState();
     _pageController = PageController(initialPage: _selectedIndex);
+    _loadSidebarData();
+    _syncSubscription = SyncService().onSyncComplete.listen((_) {
+      if (mounted) _loadSidebarData();
+    });
   }
 
   @override
   void dispose() {
+    _syncSubscription?.cancel();
     _pageController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadSidebarData() async {
+    try {
+      final counts = await _dbHelper.getPrayerRequestCounts();
+      final recommendations =
+          await FollowUpRecommendationService().getRecommendations();
+      if (!mounted) return;
+      setState(() {
+        _needsPrayerCount = counts[PrayerRequestStatus.pending] ?? 0;
+        _followUps = recommendations.take(3).toList();
+      });
+    } catch (e) {
+      debugPrint('Error loading macOS sidebar data: $e');
+    }
+  }
+
+  void _selectSection(int index) {
+    if (_selectedIndex == index) return;
+    setState(() => _selectedIndex = index);
+    _pageController.jumpToPage(index);
+  }
+
+  Future<void> _handleSyncShortcut() async {
+    CrispToast.show(context, 'Syncing…');
+    await SyncService().performSync();
+    if (!mounted) return;
+    CrispToast.show(context, 'Sync complete');
+    _loadSidebarData();
   }
 
   @override
@@ -46,117 +95,61 @@ class _MacOSShellState extends State<MacOSShell> {
 
     return CallbackShortcuts(
       bindings: {
-        const SingleActivator(LogicalKeyboardKey.keyR, meta: true): () {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(const SnackBar(content: Text('Syncing...')));
-          SyncService().performSync();
-        },
+        const SingleActivator(LogicalKeyboardKey.keyR, meta: true):
+            _handleSyncShortcut,
       },
       child: Scaffold(
-        body: Row(
+        body: Column(
           children: [
-            // Sidebar
-            Container(
-              width: 260,
-              decoration: BoxDecoration(
-                color: colorScheme.surfaceContainerLow.withValues(alpha: 0.85),
-                border: Border(
-                  right: BorderSide(color: colorScheme.outlineVariant),
-                ),
-              ),
-              child: Column(
-                children: [
-                  // Traffic Lights Area
-                  Container(
-                    height: 52,
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    alignment: Alignment.centerLeft,
-                    child: Row(
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.only(right: 8),
-                          child: _buildTrafficLight(
-                            const Color(0xFFFF5F57),
-                            const Color(0xFFE0443E),
-                          ),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.only(right: 8),
-                          child: _buildTrafficLight(
-                            const Color(0xFFFEBC2E),
-                            const Color(0xFFD89E24),
-                          ),
-                        ),
-                        _buildTrafficLight(
-                          const Color(0xFF28C840),
-                          const Color(0xFF1AAB29),
-                        ),
-                      ],
-                    ),
-                  ),
-                  // Navigation
-                  Expanded(
-                    child: ListView(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
-                      ),
-                      children: [
-                        _buildSectionHeader('Library'),
-                        _buildNavItem(
-                          0,
-                          Icons.format_list_bulleted,
-                          'Prayer List',
-                          _selectedIndex == 0,
-                        ),
-                        _buildNavItem(
-                          1,
-                          Icons.book,
-                          'Prayer Diary',
-                          _selectedIndex == 1,
-                        ),
-                        _buildNavItem(
-                          2,
-                          Icons.group,
-                          'Contacts',
-                          _selectedIndex == 2,
-                        ),
-                        const SizedBox(height: 24),
-                        _buildSectionHeader('System'),
-                        _buildNavItem(
-                          3,
-                          Icons.settings,
-                          'Sync & Settings',
-                          _selectedIndex == 3,
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            // Main Content Area
+            _buildTitleBar(colorScheme),
             Expanded(
-              // Optimization: Replaced IndexedStack with a lazy-loading PageView.
-              // IndexedStack instantiates and builds all children immediately, causing a spike
-              // in memory and initialization overhead on startup. PageView with AutomaticKeepAliveClientMixin
-              // on its children preserves state while only building pages as they are navigated to.
-              child: PageView(
-                controller: _pageController,
-                physics: const NeverScrollableScrollPhysics(),
+              child: Row(
                 children: [
-                  _KeepAlivePage(
-                    child: _buildNavigator(0, const MacOSActiveContactsView()),
-                  ),
-                  _KeepAlivePage(
-                    child: _buildNavigator(1, const MacOSPrayerDiaryView()),
-                  ),
-                  _KeepAlivePage(
-                    child: _buildNavigator(2, const MacOSContactsView()),
-                  ),
-                  _KeepAlivePage(
-                    child: _buildNavigator(3, const MacOSSettingsView()),
+                  _buildSidebar(colorScheme),
+                  Expanded(
+                    child: PageView(
+                      controller: _pageController,
+                      physics: const NeverScrollableScrollPhysics(),
+                      children: [
+                        _KeepAlivePage(
+                          child: _buildNavigator(
+                            0,
+                            MacOSContactsView(
+                              onAddContact: () => _selectSection(4),
+                            ),
+                          ),
+                        ),
+                        _KeepAlivePage(
+                          child: _buildNavigator(
+                            1,
+                            const MacOSAnalyticsView(),
+                          ),
+                        ),
+                        _KeepAlivePage(
+                          child: _buildNavigator(
+                            2,
+                            const MacOSPrayerDiaryView(),
+                          ),
+                        ),
+                        _KeepAlivePage(
+                          child: _buildNavigator(3, const MacOSAskView()),
+                        ),
+                        _KeepAlivePage(
+                          child: _buildNavigator(
+                            4,
+                            MacOSAddView(
+                              onSaved: () => _selectSection(0),
+                            ),
+                          ),
+                        ),
+                        _KeepAlivePage(
+                          child: _buildNavigator(
+                            5,
+                            const MacOSSettingsView(),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
@@ -167,103 +160,330 @@ class _MacOSShellState extends State<MacOSShell> {
     );
   }
 
-  Widget _buildNavigator(int index, Widget child) {
-    return Navigator(
-      key: _navigatorKeys[index],
-      onGenerateRoute: (settings) {
-        return MaterialPageRoute(
-          settings: settings,
-          builder: (context) => child,
-        );
-      },
-    );
-  }
-
-  Widget _buildTrafficLight(Color color, Color borderColor) {
+  Widget _buildTitleBar(ColorScheme colorScheme) {
+    // 46px strip matching the Crisp Utility desktop design. The real,
+    // functional traffic-light buttons are drawn natively above this (see
+    // MainFlutterWindow.swift's transparent/full-size-content-view titlebar)
+    // so no space needs to be reserved for them here.
     return Container(
-      width: 12,
-      height: 12,
+      height: 46,
       decoration: BoxDecoration(
-        color: color,
-        shape: BoxShape.circle,
-        border: Border.all(color: borderColor),
+        color: colorScheme.surfaceTint,
+        border: Border(bottom: BorderSide(color: colorScheme.hairline)),
       ),
-    );
-  }
-
-  Widget _buildSectionHeader(String title) {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return Padding(
-      padding: const EdgeInsets.only(left: 8, bottom: 8),
+      alignment: Alignment.center,
       child: Text(
-        title.toUpperCase(),
-        style: GoogleFonts.googleSans(
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
-          color: colorScheme.onSurfaceVariant,
+        'BNPB · Ministry CRM',
+        style: TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w700,
+          color: colorScheme.secondaryText,
+          letterSpacing: -0.1,
         ),
       ),
     );
   }
 
-  Widget _buildNavItem(int index, IconData icon, String label, bool isActive) {
-    final colorScheme = Theme.of(context).colorScheme;
-    // We override isActive with our internal state for now, or we could remove the parameter.
-    // For now, let's just use the parameter as it is passed correctly in build().
-    final isSelected = isActive;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 2),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: () {
-            setState(() {
-              _selectedIndex = index;
-            });
-            _pageController.jumpToPage(index);
-          },
-          borderRadius: BorderRadius.circular(6),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-            decoration: BoxDecoration(
-              color: isSelected ? colorScheme.primary : Colors.transparent,
-              borderRadius: BorderRadius.circular(6),
-              boxShadow: isSelected
-                  ? [
-                      BoxShadow(
-                        color: colorScheme.shadow.withValues(alpha: 0.05),
-                        offset: Offset(0, 1),
-                        blurRadius: 2,
-                      ),
-                    ]
-                  : null,
-            ),
+  Widget _buildSidebar(ColorScheme colorScheme) {
+    return Container(
+      width: 242,
+      decoration: BoxDecoration(
+        color: colorScheme.surface,
+        border: Border(right: BorderSide(color: colorScheme.cardBorder)),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(8, 4, 8, 16),
             child: Row(
               children: [
-                Icon(
-                  icon,
-                  size: 20,
-                  color: isSelected
-                      ? colorScheme.onPrimary
-                      : colorScheme.onSurfaceVariant,
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: colorScheme.primary,
+                    borderRadius: BorderRadius.circular(11),
+                  ),
+                  alignment: Alignment.center,
+                  child: Icon(
+                    Icons.favorite_border,
+                    color: colorScheme.onPrimary,
+                    size: 20,
+                  ),
                 ),
-                const SizedBox(width: 12),
-                Text(
-                  label,
-                  style: GoogleFonts.googleSans(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                    color: isSelected
-                        ? colorScheme.onPrimary
-                        : colorScheme.onSurfaceVariant,
+                const SizedBox(width: 11),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'BNPB',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 18,
+                          color: colorScheme.onSurface,
+                          letterSpacing: -0.2,
+                        ),
+                      ),
+                      Text(
+                        'Local-first CRM',
+                        style: TextStyle(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w600,
+                          color: colorScheme.secondaryText,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
             ),
           ),
+          _navItem(colorScheme, 0, Icons.people_outline, 'Contacts'),
+          _navItem(colorScheme, 1, Icons.insights_outlined, 'Analytics'),
+          _navItem(
+            colorScheme,
+            2,
+            Icons.volunteer_activism_outlined,
+            'Prayer',
+            badge: _needsPrayerCount > 0 ? '$_needsPrayerCount' : null,
+          ),
+          _navItem(
+            colorScheme,
+            3,
+            Icons.search_outlined,
+            'Ask',
+            trailingPill: 'on-device',
+          ),
+          _navItem(
+            colorScheme,
+            4,
+            Icons.person_add_alt_outlined,
+            'Add contact',
+          ),
+          _navItem(colorScheme, 5, Icons.settings_outlined, 'Settings'),
+          const Spacer(),
+          if (_followUps.isNotEmpty) _buildFollowUpCard(colorScheme),
+          _buildThemeToggle(colorScheme),
+        ],
+      ),
+    );
+  }
+
+  Widget _navItem(
+    ColorScheme colorScheme,
+    int index,
+    IconData icon,
+    String label, {
+    String? badge,
+    String? trailingPill,
+  }) {
+    final isSelected = _selectedIndex == index;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 3),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(11),
+          onTap: () => _selectSection(index),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: isSelected ? colorScheme.greenTint : Colors.transparent,
+              borderRadius: BorderRadius.circular(11),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  icon,
+                  size: 19,
+                  color:
+                      isSelected ? colorScheme.primary : colorScheme.iconColor,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: 14.5,
+                      fontWeight:
+                          isSelected ? FontWeight.w700 : FontWeight.w600,
+                      color: isSelected
+                          ? colorScheme.primary
+                          : colorScheme.onSurface,
+                    ),
+                  ),
+                ),
+                if (badge != null)
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: colorScheme.dangerTint,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      badge,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: colorScheme.error,
+                      ),
+                    ),
+                  ),
+                if (trailingPill != null)
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: colorScheme.surfaceTint,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      trailingPill,
+                      style: TextStyle(
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w700,
+                        color: colorScheme.secondaryText,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
         ),
       ),
+    );
+  }
+
+  Widget _buildFollowUpCard(ColorScheme colorScheme) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+      decoration: BoxDecoration(
+        color: colorScheme.aiCardBg,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.auto_awesome,
+                  size: 15, color: Color(0xFF5FE0A0)),
+              const SizedBox(width: 7),
+              const Text(
+                'Follow-ups',
+                style: TextStyle(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 13.5,
+                  color: Colors.white,
+                ),
+              ),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF3A1F1F),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  '${_followUps.length}',
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFFFF8C7A),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          ..._followUps.map(
+            (f) => InkWell(
+              onTap: () => _selectSection(0),
+              borderRadius: BorderRadius.circular(8),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 5),
+                child: Row(
+                  children: [
+                    ContactAvatar(contact: f.contact, radius: 14),
+                    const SizedBox(width: 9),
+                    Expanded(
+                      child: Text(
+                        f.contact.displayName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFFE8EDE9),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildThemeToggle(ColorScheme colorScheme) {
+    return ValueListenableBuilder<ThemeMode>(
+      valueListenable: themeModeNotifier,
+      builder: (context, mode, _) {
+        final isDark = mode == ThemeMode.dark;
+        return InkWell(
+          borderRadius: BorderRadius.circular(11),
+          onTap: () =>
+              updateThemeMode(isDark ? ThemeMode.light : ThemeMode.dark),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(11),
+              border: Border.all(color: colorScheme.cardBorder),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.dark_mode_outlined,
+                  size: 17,
+                  color: colorScheme.iconColor,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Dark mode',
+                    style: TextStyle(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w600,
+                      color: colorScheme.onSurface,
+                    ),
+                  ),
+                ),
+                CrispSwitch(
+                  value: isDark,
+                  onChanged: (v) =>
+                      updateThemeMode(v ? ThemeMode.dark : ThemeMode.light),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildNavigator(int index, Widget child) {
+    return Navigator(
+      key: _navigatorKeys[index],
+      onGenerateRoute: (settings) {
+        return MaterialPageRoute(settings: settings, builder: (_) => child);
+      },
     );
   }
 }
