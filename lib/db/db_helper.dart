@@ -23,7 +23,7 @@ import '../models/prayer_list.dart';
 import '../models/relationship.dart';
 
 class DBHelper {
-  static const _dbVersion = 19;
+  static const _dbVersion = 20;
 
   static final DBHelper _instance = DBHelper._();
   static DBHelper? _testOverride;
@@ -155,6 +155,7 @@ class DBHelper {
         targetContactId TEXT NOT NULL,
         type TEXT NOT NULL,
         notes TEXT,
+        updatedAt TEXT NOT NULL DEFAULT (datetime('now')),
         FOREIGN KEY(sourceContactId) REFERENCES contacts(id) ON DELETE CASCADE,
         FOREIGN KEY(targetContactId) REFERENCES contacts(id) ON DELETE CASCADE
       )
@@ -557,6 +558,11 @@ class DBHelper {
         }
       }
     }
+    if (oldVersion < 20) {
+      await db.execute('''
+        ALTER TABLE relationships ADD COLUMN updatedAt TEXT NOT NULL DEFAULT (datetime('now'))
+      ''');
+    }
   }
 
   Future<Map<String, dynamic>> getGlobalMetadata() async {
@@ -831,6 +837,8 @@ class DBHelper {
       relationshipDao.getRelationshipsForContact(contactId);
   Future<List<Relationship>> getAllRelationships() =>
       relationshipDao.getAllRelationships();
+  Future<List<Relationship>> getRelationshipsModifiedSince(DateTime? since) =>
+      relationshipDao.getRelationshipsModifiedSince(since);
 
   Future<List<PrayerList>> getPrayerLists() => prayerListDao.getPrayerLists();
   Future<List<PrayerList>> getPrayerListsModifiedSince(DateTime? since) =>

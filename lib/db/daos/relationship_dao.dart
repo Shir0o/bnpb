@@ -67,6 +67,28 @@ class RelationshipDao extends BaseDao {
         .toList();
   }
 
+  Future<List<Relationship>> getRelationshipsModifiedSince(
+    DateTime? since,
+  ) async {
+    final db = await database;
+    String? where;
+    List<Object>? whereArgs;
+
+    if (since != null) {
+      where = 'updatedAt > ?';
+      whereArgs = [since.toIso8601String()];
+    }
+
+    final rows = await db.query(
+      'relationships',
+      where: where,
+      whereArgs: whereArgs,
+    );
+    return rows
+        .map((row) => Relationship.fromMap(Map<String, dynamic>.from(row)))
+        .toList();
+  }
+
   Future<Map<String, List<Relationship>>> getRelationshipsForContacts(
     List<String> contactIds,
     Set<String> retrievedContactIdsSet, {

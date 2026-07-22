@@ -1,5 +1,9 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:googleapis/drive/v3.dart' as drive;
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:bnpb/services/google_drive_service.dart';
@@ -165,6 +169,101 @@ void main() {
 
       await service.initialize();
       expect(await service.currentUser, isNull);
+    });
+  });
+
+  group('GoogleDriveService listSyncFiles pagination', () {
+    Future<void> signIn() async {
+      SharedPreferences.setMockInitialValues({'google_has_signed_in': true});
+      service = GoogleDriveService.testHarness(googleSignIn: mockGoogleSignIn);
+      when(
+        () => mockGoogleSignIn.attemptLightweightAuthentication(),
+      ).thenAnswer((_) async => mockAccount as GoogleSignInAccount?);
+      // Trigger and await the silent sign-in so currentUser resolves
+      // synchronously (from cache) for the rest of the test.
+      await service.currentUser;
+    }
+
+    http.Response jsonResponse(Map<String, dynamic> body) => http.Response(
+          jsonEncode(body),
+          200,
+          headers: {'content-type': 'application/json; charset=utf-8'},
+        );
+
+    test('aggregates files across multiple pages', () async {
+      await signIn();
+
+      var listCallCount = 0;
+      final mockClient = MockClient((request) async {
+        final query = request.url.queryParameters['q'] ?? '';
+        if (query.contains('mimeType')) {
+          // Folder lookup: pretend BNPB-Sync already exists.
+          return jsonResponse({
+            'files': [
+              {'id': 'folder1', 'name': 'BNPB-Sync'},
+            ],
+          });
+        }
+
+        listCallCount++;
+        if (listCallCount == 1) {
+          expect(request.url.queryParameters['pageToken'], isNull);
+          return jsonResponse({
+            'nextPageToken': 'page2',
+            'files': [
+              {'id': '1', 'name': 'device_a_1000_data.json'},
+            ],
+          });
+        }
+
+        expect(request.url.queryParameters['pageToken'], 'page2');
+        return jsonResponse({
+          'files': [
+            {'id': '2', 'name': 'device_b_2000_data.json'},
+          ],
+        });
+      });
+
+      service.setDriveApiForTest(drive.DriveApi(mockClient));
+
+      final files = await service.listSyncFiles();
+
+      expect(listCallCount, 2);
+      expect(files, hasLength(2));
+      expect(
+        files.map((f) => f.name),
+        containsAll(['device_a_1000_data.json', 'device_b_2000_data.json']),
+      );
+    });
+
+    test('returns all files on a single page without extra requests', () async {
+      await signIn();
+
+      var listCallCount = 0;
+      final mockClient = MockClient((request) async {
+        final query = request.url.queryParameters['q'] ?? '';
+        if (query.contains('mimeType')) {
+          return jsonResponse({
+            'files': [
+              {'id': 'folder1', 'name': 'BNPB-Sync'},
+            ],
+          });
+        }
+
+        listCallCount++;
+        return jsonResponse({
+          'files': [
+            {'id': '1', 'name': 'device_a_1000_data.json'},
+          ],
+        });
+      });
+
+      service.setDriveApiForTest(drive.DriveApi(mockClient));
+
+      final files = await service.listSyncFiles();
+
+      expect(listCallCount, 1);
+      expect(files, hasLength(1));
     });
   });
 }

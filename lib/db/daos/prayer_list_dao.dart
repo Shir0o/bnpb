@@ -200,8 +200,14 @@ class PrayerListDao extends BaseDao {
     );
 
     if (list.deletedAt == null) {
+      // contactId is a foreign key; skip members that reference a contact
+      // that hasn't been imported locally yet instead of letting the whole
+      // insert fail (ConflictAlgorithm.ignore does not suppress FK errors).
+      final existingContactIds = await _existingContactIds(db, list.contactIds);
+
       final batch = (db as dynamic).batch() as Batch;
       for (final cid in list.contactIds) {
+        if (!existingContactIds.contains(cid)) continue;
         batch.insert(
             'prayer_list_members',
             {
@@ -212,5 +218,30 @@ class PrayerListDao extends BaseDao {
       }
       await batch.commit(noResult: true);
     }
+  }
+
+  Future<Set<String>> _existingContactIds(
+    DatabaseExecutor db,
+    Iterable<String> ids,
+  ) async {
+    final unique = ids.where((id) => id.isNotEmpty).toSet();
+    if (unique.isEmpty) return {};
+
+    final existing = <String>{};
+    const chunkSize = 900;
+    final list = unique.toList();
+    for (var i = 0; i < list.length; i += chunkSize) {
+      final end = (i + chunkSize < list.length) ? i + chunkSize : list.length;
+      final chunk = list.sublist(i, end);
+      final placeholders = List.filled(chunk.length, '?').join(',');
+      final rows = await db.query(
+        'contacts',
+        columns: ['id'],
+        where: 'id IN ($placeholders)',
+        whereArgs: chunk,
+      );
+      existing.addAll(rows.map((r) => r['id'] as String));
+    }
+    return existing;
   }
 }

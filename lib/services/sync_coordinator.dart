@@ -67,7 +67,7 @@ class SyncCoordinator {
     final interactions = await _db.getInteractionsModifiedSince(lastExport);
     final prayers = await _db.getPrayerRequestsModifiedSince(lastExport);
     final prayerLists = await _db.getPrayerListsModifiedSince(lastExport);
-    final relationships = await _db.getAllRelationships();
+    final relationships = await _db.getRelationshipsModifiedSince(lastExport);
 
     if (contacts.isEmpty &&
         interactions.isEmpty &&
@@ -277,6 +277,33 @@ class SyncCoordinator {
     }
   }
 
+  /// Returns the subset of [ids] that exist in the local `contacts` table.
+  /// Used to defensively drop references to contacts that haven't been
+  /// imported yet (e.g. because their creation file hasn't synced down),
+  /// instead of letting a foreign-key violation abort an entire import.
+  Future<Set<String>> _existingContactIds(Iterable<String> ids) async {
+    final unique = ids.where((id) => id.isNotEmpty).toSet();
+    if (unique.isEmpty) return {};
+
+    final db = await _db.database;
+    final existing = <String>{};
+    const chunkSize = 900;
+    final list = unique.toList();
+    for (var i = 0; i < list.length; i += chunkSize) {
+      final end = (i + chunkSize < list.length) ? i + chunkSize : list.length;
+      final chunk = list.sublist(i, end);
+      final placeholders = List.filled(chunk.length, '?').join(',');
+      final rows = await db.query(
+        'contacts',
+        columns: ['id'],
+        where: 'id IN ($placeholders)',
+        whereArgs: chunk,
+      );
+      existing.addAll(rows.map((r) => r['id'] as String));
+    }
+    return existing;
+  }
+
   Future<void> _mergeInteraction(Interaction remote) async {
     final db = await _db.database;
     final rows = await db.query(
@@ -284,6 +311,21 @@ class SyncCoordinator {
       where: 'syncId = ?',
       whereArgs: [remote.syncId],
     );
+
+    final existingContactIds = await _existingContactIds(
+      remote.participantIds,
+    );
+    final missingContactIds = remote.participantIds.toSet().difference(
+          existingContactIds,
+        );
+    if (missingContactIds.isNotEmpty) {
+      debugPrint(
+        'Skipping unknown contact(s) $missingContactIds for interaction '
+        '${remote.syncId}',
+      );
+    }
+    final validParticipantIds =
+        remote.participantIds.where(existingContactIds.contains).toList();
 
     if (rows.isEmpty) {
       if (remote.deletedAt != null) return;
@@ -295,7 +337,7 @@ class SyncCoordinator {
       map['syncId'] = remote.syncId;
 
       final id = await db.insert('interactions', map);
-      await _db.replaceInteractionParticipants(db, id, remote.participantIds);
+      await _db.replaceInteractionParticipants(db, id, validParticipantIds);
     } else {
       final localRow = rows.first;
       final localUpdated = DateTime.parse(localRow['updatedAt'] as String);
@@ -315,7 +357,7 @@ class SyncCoordinator {
         await _db.replaceInteractionParticipants(
           db,
           localId,
-          remote.participantIds,
+          validParticipantIds,
         );
       }
     }
@@ -369,10 +411,26 @@ class SyncCoordinator {
       }
     }
 
+    // A prayer request's contactId is a NOT NULL foreign key, and its
+    // participants are foreign keys too; skip references to contacts that
+    // haven't been imported locally yet instead of letting the whole batch
+    // (and every other prayer request in this file) roll back.
+    final existingContactIds = await _existingContactIds({
+      for (final p in remotePrayers) p.contactId,
+      for (final p in remotePrayers) ...p.participantIds,
+    });
+
     await db.transaction((txn) async {
       final batch = txn.batch();
 
       for (final remote in remotePrayers) {
+        if (!existingContactIds.contains(remote.contactId)) {
+          debugPrint(
+            'Skipping prayer request ${remote.syncId}: unknown contact '
+            '${remote.contactId}',
+          );
+          continue;
+        }
         final interactionSyncId = remoteInteractionSyncIds[remote.syncId];
         int? localInteractionId;
         if (interactionSyncId != null) {
@@ -428,7 +486,11 @@ class SyncCoordinator {
 
       int index = 0;
       for (final remote in remotePrayers) {
+        if (!existingContactIds.contains(remote.contactId)) continue;
+
         final localRow = localPrayerRequests[remote.syncId];
+        final validParticipantIds =
+            remote.participantIds.where(existingContactIds.contains);
 
         if (localRow == null) {
           if (remote.deletedAt != null) continue;
@@ -442,7 +504,7 @@ class SyncCoordinator {
             whereArgs: [localId],
           );
 
-          for (final participantId in remote.participantIds) {
+          for (final participantId in validParticipantIds) {
             participantBatch.insert('prayer_request_participants', {
               'prayerRequestId': localId,
               'contactId': participantId,
@@ -460,7 +522,7 @@ class SyncCoordinator {
               whereArgs: [localId],
             );
 
-            for (final participantId in remote.participantIds) {
+            for (final participantId in validParticipantIds) {
               participantBatch.insert('prayer_request_participants', {
                 'prayerRequestId': localId,
                 'contactId': participantId,
@@ -517,6 +579,20 @@ class SyncCoordinator {
   Future<void> _mergeRelationships(List<dynamic> remoteRels) async {
     for (final item in remoteRels) {
       final remote = Relationship.fromMap(Map<String, dynamic>.from(item));
+
+      final existingContactIds = await _existingContactIds([
+        remote.sourceContactId,
+        remote.targetContactId,
+      ]);
+      if (!existingContactIds.contains(remote.sourceContactId) ||
+          !existingContactIds.contains(remote.targetContactId)) {
+        debugPrint(
+          'Skipping relationship ${remote.sourceContactId} -> '
+          '${remote.targetContactId}: unknown contact(s)',
+        );
+        continue;
+      }
+
       final existing = await _db.relationshipDao.getRelationshipsForContact(
         remote.sourceContactId,
       );
@@ -533,6 +609,7 @@ class SyncCoordinator {
             targetContactId: remote.targetContactId,
             type: remote.type,
             notes: remote.notes,
+            updatedAt: remote.updatedAt,
           ),
         );
       }

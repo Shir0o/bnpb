@@ -1,12 +1,13 @@
 /// Describes a directed connection between two contacts.
 class Relationship {
-  const Relationship({
+  Relationship({
     this.id,
     required this.sourceContactId,
     required this.targetContactId,
     required this.type,
     this.notes,
-  });
+    DateTime? updatedAt,
+  }) : updatedAt = updatedAt ?? DateTime.now();
 
   /// Primary key of the persisted relationship row.
   final int? id;
@@ -23,12 +24,16 @@ class Relationship {
   /// Optional notes that provide more context about the connection.
   final String? notes;
 
+  /// When this relationship was last created or edited locally.
+  final DateTime updatedAt;
+
   Relationship copyWith({
     int? id,
     String? sourceContactId,
     String? targetContactId,
     String? type,
     String? notes,
+    DateTime? updatedAt,
   }) {
     return Relationship(
       id: id ?? this.id,
@@ -36,6 +41,7 @@ class Relationship {
       targetContactId: targetContactId ?? this.targetContactId,
       type: type ?? this.type,
       notes: notes ?? this.notes,
+      updatedAt: updatedAt ?? this.updatedAt,
     );
   }
 
@@ -45,6 +51,7 @@ class Relationship {
       'targetContactId': targetContactId,
       'type': type,
       'notes': notes,
+      'updatedAt': updatedAt.toIso8601String(),
     };
     if (includeId && id != null) {
       map['id'] = id;
@@ -59,6 +66,9 @@ class Relationship {
       targetContactId: map['targetContactId'] as String,
       type: map['type'] as String,
       notes: map['notes'] as String?,
+      updatedAt: map['updatedAt'] != null
+          ? DateTime.parse(map['updatedAt'] as String)
+          : DateTime.now(),
     );
   }
 }
