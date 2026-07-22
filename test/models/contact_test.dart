@@ -107,7 +107,7 @@ void main() {
         final original = Contact(
           id: '1',
           firstName: 'John',
-          relationships: const [
+          relationships: [
             Relationship(
               id: 301,
               sourceContactId: '1',

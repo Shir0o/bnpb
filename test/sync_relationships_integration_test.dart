@@ -41,7 +41,7 @@ void main() {
       await dbHelper.insertContact(Contact(id: 'c1', firstName: 'Alice'));
       await dbHelper.insertContact(Contact(id: 'c2', firstName: 'Bob'));
       await dbHelper.upsertRelationship(
-        const Relationship(
+        Relationship(
           sourceContactId: 'c1',
           targetContactId: 'c2',
           type: 'Mentor',
@@ -167,5 +167,77 @@ void main() {
       expect(relationships.first.sourceContactId, 'c1');
       expect(relationships.first.targetContactId, 'c2');
     });
+
+    test(
+      'second export only includes relationships changed since the last export',
+      () async {
+        await dbHelper.insertContact(Contact(id: 'c1', firstName: 'Alice'));
+        await dbHelper.insertContact(Contact(id: 'c2', firstName: 'Bob'));
+        await dbHelper.upsertRelationship(
+          Relationship(
+            sourceContactId: 'c1',
+            targetContactId: 'c2',
+            type: 'Mentor',
+          ),
+        );
+
+        final coordinator = SyncCoordinator(dbHelper);
+        final firstExport = await coordinator.exportChanges(syncDir);
+        expect(firstExport.exportedCount, greaterThanOrEqualTo(3));
+
+        // Clear the first export file so the second export is easy to isolate.
+        final firstFiles = await syncDir
+            .list()
+            .where((e) => e is File)
+            .cast<File>()
+            .where((f) => p.basename(f.path).endsWith('_data.json'))
+            .toList();
+        for (final f in firstFiles) {
+          await f.delete();
+        }
+
+        // Nothing changed: the relationship shouldn't be resent.
+        final secondExport = await coordinator.exportChanges(syncDir);
+        expect(secondExport.exportedCount, 0);
+        final filesAfterNoop = await syncDir
+            .list()
+            .where((e) => e is File)
+            .cast<File>()
+            .where((f) => p.basename(f.path).endsWith('_data.json'))
+            .toList();
+        expect(filesAfterNoop, isEmpty);
+      },
+    );
+
+    test(
+      'skips a relationship referencing a contact that has not been '
+      'imported yet, without throwing',
+      () async {
+        await dbHelper.insertContact(Contact(id: 'c1', firstName: 'Alice'));
+
+        final payload = {
+          'version': 2,
+          'deviceId': 'remote-device',
+          'timestamp': DateTime(2024, 1, 1).toUtc().toIso8601String(),
+          'integrityCheck': 'valid',
+          'contacts': [],
+          'interactions': [],
+          'prayerRequests': [],
+          'prayerLists': [],
+          'relationships': const [
+            {
+              'sourceContactId': 'c1',
+              'targetContactId': 'unknown-contact',
+              'type': 'Friend',
+            },
+          ],
+        };
+
+        await SyncCoordinator(dbHelper).importSyncData(payload);
+
+        final relationships = await dbHelper.getAllRelationships();
+        expect(relationships, isEmpty);
+      },
+    );
   });
 }

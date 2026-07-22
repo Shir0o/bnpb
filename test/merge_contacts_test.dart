@@ -89,7 +89,7 @@ void main() {
         id: 'A',
         firstName: 'Robert',
         lastName: 'Smith',
-        relationships: const [
+        relationships: [
           Relationship(
             sourceContactId: 'A',
             targetContactId: 'B', // would become A->A after merge
@@ -101,7 +101,7 @@ void main() {
         id: 'B',
         firstName: 'Bob',
         lastName: 'Smith',
-        relationships: const [
+        relationships: [
           Relationship(
             sourceContactId: 'B',
             targetContactId: 'X', // should rewrite source to A

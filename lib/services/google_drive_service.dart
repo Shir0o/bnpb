@@ -77,6 +77,11 @@ class GoogleDriveService {
   drive.DriveApi? _driveApi;
   String? _lastSignInError;
 
+  @visibleForTesting
+  void setDriveApiForTest(drive.DriveApi api) {
+    _driveApi = api;
+  }
+
   /// Returns the latest error message from a sign-in attempt.
   String? get lastSignInError => _lastSignInError;
 
@@ -408,20 +413,31 @@ class GoogleDriveService {
 
     return await _executeWithRetry(() async {
       final query = "'$folderId' in parents and trashed = false";
-      final fileList = await _driveApi!.files
-          .list(q: query, $fields: 'files(id, name, modifiedTime, size)')
-          .timeout(const Duration(seconds: 15));
+      final allFiles = <drive.File>[];
+      String? pageToken;
+
+      do {
+        final fileList = await _driveApi!.files
+            .list(
+              q: query,
+              $fields: 'nextPageToken, files(id, name, modifiedTime, size)',
+              pageSize: 1000,
+              pageToken: pageToken,
+            )
+            .timeout(const Duration(seconds: 15));
+
+        allFiles.addAll(fileList.files ?? []);
+        pageToken = fileList.nextPageToken;
+      } while (pageToken != null);
 
       if (kDebugMode) {
-        debugPrint(
-          'listSyncFiles: Found ${fileList.files?.length ?? 0} files in Drive',
-        );
-        for (final f in fileList.files ?? []) {
+        debugPrint('listSyncFiles: Found ${allFiles.length} files in Drive');
+        for (final f in allFiles) {
           debugPrint('  - ${f.name}');
         }
       }
 
-      return fileList.files ?? [];
+      return allFiles;
     });
   }
 

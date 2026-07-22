@@ -5,6 +5,7 @@ import 'package:bnpb/models/contact.dart';
 import 'package:bnpb/models/interaction.dart';
 import 'package:bnpb/models/prayer_list.dart';
 import 'package:bnpb/models/prayer_request.dart';
+import 'package:bnpb/models/relationship.dart';
 import 'package:bnpb/services/sync_coordinator.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -17,6 +18,7 @@ class FakeDBHelper extends MockDBHelper {
   final List<Interaction> interactions = [];
   final List<PrayerRequest> prayerRequests = [];
   final List<PrayerList> prayerLists = [];
+  final List<Relationship> relationships = [];
 
   @override
   Future<List<PrayerList>> getPrayerLists() async {
@@ -49,6 +51,14 @@ class FakeDBHelper extends MockDBHelper {
   ) async {
     if (since == null) return List.from(prayerRequests);
     return prayerRequests.where((p) => p.updatedAt.isAfter(since)).toList();
+  }
+
+  @override
+  Future<List<Relationship>> getRelationshipsModifiedSince(
+    DateTime? since,
+  ) async {
+    if (since == null) return List.from(relationships);
+    return relationships.where((r) => r.updatedAt.isAfter(since)).toList();
   }
 }
 

@@ -114,6 +114,10 @@ class MockDBHelper implements DBHelper {
   Future<List<Relationship>> getAllRelationships() async => [];
 
   @override
+  Future<List<Relationship>> getRelationshipsModifiedSince(DateTime? since) =>
+      throw UnimplementedError();
+
+  @override
   Future<List<String>> getDistinctLocations() async => [];
 
   @override
