@@ -17,6 +17,7 @@ import '../widgets/backup_restore_sheet.dart';
 import '../widgets/contact_avatar.dart';
 import '../widgets/crisp_toast.dart';
 import '../widgets/export_options_sheet.dart';
+import '../widgets/log_interaction_sheet.dart';
 import '../widgets/home_page_skeleton.dart';
 import '../widgets/people_card.dart';
 import '../widgets/recommendations_skeleton.dart';
@@ -635,43 +636,168 @@ class _HomePageState extends State<HomePage>
                   else
                     Column(
                       children: topRecommendations.map((rec) {
-                        Color iconColor;
-                        IconData icon;
+                        Color tagBg;
+                        Color tagBorder;
+                        Color tagText;
+                        String priorityLabel;
+
                         switch (rec.priority) {
                           case RecommendationPriority.critical:
-                            iconColor = const Color(0xFFFF8C7A);
-                            icon = Icons.priority_high;
+                            tagBg = const Color(0x33FF8C7A);
+                            tagBorder = const Color(0xFFFF8C7A);
+                            tagText = const Color(0xFFFF8C7A);
+                            priorityLabel = 'CRITICAL';
                             break;
                           case RecommendationPriority.high:
-                            iconColor = const Color(0xFF5FE0A0);
-                            icon = Icons.star_outline;
+                            tagBg = const Color(0x335FE0A0);
+                            tagBorder = const Color(0xFF5FE0A0);
+                            tagText = const Color(0xFF5FE0A0);
+                            priorityLabel = 'HIGH';
                             break;
                           case RecommendationPriority.medium:
-                            iconColor = const Color(0xFFEEF2EF);
-                            icon = Icons.chat_bubble_outline;
+                            tagBg = const Color(0x22EEF2EF);
+                            tagBorder = const Color(0x55EEF2EF);
+                            tagText = const Color(0xFFEEF2EF);
+                            priorityLabel = 'MEDIUM';
                             break;
                           case RecommendationPriority.low:
-                            iconColor = const Color(0xFF8A988F);
-                            icon = Icons.person_outline;
+                            tagBg = const Color(0x229EABA3);
+                            tagBorder = const Color(0x449EABA3);
+                            tagText = const Color(0xFF9EABA3);
+                            priorityLabel = 'LOW';
                             break;
                         }
 
-                        return ListTile(
-                          contentPadding: EdgeInsets.zero,
-                          leading: ContactAvatar(
-                            contact: rec.contact,
-                            radius: 18,
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 8),
+                          decoration: BoxDecoration(
+                            color: const Color(0x0EFFFFFF),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: const Color(0x1AFFFFFF),
+                            ),
                           ),
-                          title: Text(
-                            rec.contact.displayName,
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(12),
+                            onTap: () => _navigateToContactDetails(rec.contact),
+                            child: Padding(
+                              padding: const EdgeInsets.all(12),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: [
+                                  ContactAvatar(
+                                    contact: rec.contact,
+                                    radius: 20,
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Row(
+                                          children: [
+                                            Flexible(
+                                              child: Text(
+                                                rec.contact.displayName,
+                                                style: const TextStyle(
+                                                  color: Color(0xFFFFFFFF),
+                                                  fontWeight: FontWeight.w600,
+                                                  fontSize: 14,
+                                                ),
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ),
+                                            const SizedBox(width: 6),
+                                            Container(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                horizontal: 6,
+                                                vertical: 2,
+                                              ),
+                                              decoration: BoxDecoration(
+                                                color: tagBg,
+                                                borderRadius:
+                                                    BorderRadius.circular(4),
+                                                border: Border.all(
+                                                  color: tagBorder,
+                                                  width: 0.8,
+                                                ),
+                                              ),
+                                              child: Text(
+                                                priorityLabel,
+                                                style: TextStyle(
+                                                  fontSize: 9,
+                                                  fontWeight: FontWeight.w700,
+                                                  color: tagText,
+                                                  letterSpacing: 0.5,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          rec.reason,
+                                          style: const TextStyle(
+                                            color: Color(0xFFB0BEC5),
+                                            fontSize: 12,
+                                            height: 1.3,
+                                          ),
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Material(
+                                    color: Colors.transparent,
+                                    child: InkWell(
+                                      borderRadius: BorderRadius.circular(16),
+                                      onTap: () =>
+                                          _openLogInteractionForContact(
+                                              rec.contact),
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 10,
+                                          vertical: 6,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0x245FE0A0),
+                                          borderRadius:
+                                              BorderRadius.circular(16),
+                                          border: Border.all(
+                                            color: const Color(0x805FE0A0),
+                                            width: 1,
+                                          ),
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: const [
+                                            Icon(
+                                              Icons.add,
+                                              size: 14,
+                                              color: Color(0xFF5FE0A0),
+                                            ),
+                                            SizedBox(width: 2),
+                                            Text(
+                                              'Log',
+                                              style: TextStyle(
+                                                color: Color(0xFF5FE0A0),
+                                                fontWeight: FontWeight.w700,
+                                                fontSize: 12,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
                           ),
-                          subtitle: Text(
-                            rec.reason,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          trailing: Icon(icon, color: iconColor, size: 20),
-                          onTap: () => _navigateToContactDetails(rec.contact),
                         );
                       }).toList(),
                     ),
@@ -976,6 +1102,38 @@ class _HomePageState extends State<HomePage>
           _selectedContactIds.clear();
         });
       }, 'Updating locations...');
+    }
+  }
+
+  Future<void> _openLogInteractionForContact(Contact contact) async {
+    AnimationController? controller;
+    if (mounted) {
+      controller = AnimationController(
+        vsync: this,
+        duration: const Duration(milliseconds: 400),
+        reverseDuration: const Duration(milliseconds: 300),
+      );
+    }
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      transitionAnimationController: controller,
+      builder: (context) => LogInteractionSheet(
+        contact: contact,
+        existingInteractions: contact.interactions,
+        availableContacts: _contacts,
+        onInteractionsUpdated: (_) {
+          _fetchContacts(forceRefresh: true);
+          _loadRecommendations(forceRefresh: true);
+        },
+      ),
+    );
+
+    if (mounted) {
+      _fetchContacts(forceRefresh: true);
+      _loadRecommendations(forceRefresh: true);
     }
   }
 
