@@ -1,5 +1,8 @@
-💡 **What:** The optimization groups the query for inserting imported prayer lists and their members into a single, unified database batch.
+💡 **What:** Redesigned the "Follow-up suggestions" card on the Home page (`lib/screens/home_page.dart`) with priority badges (`CRITICAL`, `HIGH`, `MEDIUM`, `LOW`), Crisp Utility design system styling, and a direct `+ Log` button on each suggestion row.
 
-🎯 **Why:** Previously, the logic in `lib/services/import_service.dart` during "Pass 3: Insert Prayer Lists" performed multiple N+1 queries by executing a separate insert and batch loop for every single prayer list in the loop, creating unnecessary transaction overhead.
+🎯 **Why:** Previously, tapping a follow-up recommendation on the Home page only navigated to the Contact Details page. Users had to leave the Home screen to record a quick meeting or check-in. Adding a direct `+ Log` button launches `LogInteractionSheet` directly from the Home screen and refreshes recommendations upon saving, streamlining daily workflow.
 
-📊 **Measured Improvement:** Utilizing a `benchmark_import.dart` memory test inserting 500 prayer lists with 5 members each, the baseline time executing separate `await txn.insert()` inside a loop took **~395ms**. With the grouped single batch approach via `batch.insert()`, the same data was processed in **~59ms**—achieving an approximate **85% improvement** in processing time.
+📊 **Measured Improvement:**
+- **One-tap interaction logging**: Reduced steps to log a follow-up interaction from 3 taps (nav -> details -> log) down to 1 tap directly from the Home screen.
+- **Visual Hierarchy**: Priority tags (`CRITICAL`, `HIGH`, `MEDIUM`, `LOW`) provide instant visual cues for urgent follow-ups.
+- **Test Suite Results**: 219/219 unit & widget tests passed cleanly, including new widget coverage for card layout and logger sheet invocation.

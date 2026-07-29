@@ -12,6 +12,7 @@ import 'package:bnpb/models/interaction.dart';
 import 'package:bnpb/services/google_drive_service.dart';
 import 'package:bnpb/services/reminder_service.dart';
 import 'package:bnpb/services/security_service.dart';
+import 'package:bnpb/widgets/log_interaction_sheet.dart';
 import 'package:uuid/uuid.dart';
 import '../repositories/mock_db_helper.dart';
 
@@ -186,5 +187,43 @@ void main() {
     expect(find.byTooltip('Prayer Diary'), findsOneWidget);
     expect(find.byTooltip('Backup and Restore'), findsOneWidget);
     expect(find.byTooltip('Export'), findsOneWidget);
+  });
+
+  testWidgets(
+      'HomePage renders follow-up suggestion cards with priority badges and log button',
+      (WidgetTester tester) async {
+    final contactId = const Uuid().v4();
+    final contact = Contact(
+      id: contactId,
+      firstName: 'Jane',
+      lastName: 'Smith',
+      updatedAt: DateTime.now(),
+      interactions: [
+        Interaction(
+          id: 1,
+          participantIds: [contactId],
+          occurredAt: DateTime.now().subtract(const Duration(days: 65)),
+          summary: 'Met for coffee',
+          medium: 'In Person',
+        ),
+      ],
+    );
+    fakeDbHelper.contacts.add(contact);
+
+    await tester.pumpWidget(const MaterialApp(home: HomePage()));
+    await tester.pumpAndSettle();
+
+    // Verify Follow-up suggestions header & recommendation items
+    expect(find.text('Follow-up suggestions'), findsOneWidget);
+    expect(find.text('Jane Smith'), findsOneWidget);
+    expect(find.text('CRITICAL'), findsOneWidget);
+    expect(find.text('Log'), findsOneWidget);
+
+    // Tap Log button
+    await tester.tap(find.text('Log'));
+    await tester.pumpAndSettle();
+
+    // Verify LogInteractionSheet opens
+    expect(find.byType(LogInteractionSheet), findsOneWidget);
   });
 }

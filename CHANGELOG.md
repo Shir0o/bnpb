@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Created a Git `post-checkout` hook to automatically copy `AGENTS.md` and `CLAUDE.md` to newly created worktrees.
 
 ### Changed
+- **Home Page Suggestion Card Interaction**: Redesigned the "Follow-up suggestions" recommendation card on the Home page with priority tags (`CRITICAL`, `HIGH`, `MEDIUM`, `LOW`), updated card styling matching Crisp Utility standards, and added direct `+ Log` interaction buttons for one-tap interaction logging.
 - Removed `AGENTS.md` from upstream tracking and git-index while retaining it locally.
 - Added `AGENTS.md` and `CLAUDE.md` to `.gitignore` to prevent future tracking.
 - Initialized `CHANGELOG.md` using the repository's git commit history.
