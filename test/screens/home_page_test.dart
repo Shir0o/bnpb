@@ -12,6 +12,7 @@ import 'package:bnpb/models/interaction.dart';
 import 'package:bnpb/services/google_drive_service.dart';
 import 'package:bnpb/services/reminder_service.dart';
 import 'package:bnpb/services/security_service.dart';
+import 'package:bnpb/services/contact_service.dart';
 import 'package:bnpb/widgets/log_interaction_sheet.dart';
 import 'package:uuid/uuid.dart';
 import '../repositories/mock_db_helper.dart';
@@ -115,9 +116,11 @@ void main() {
     ReminderService.overrideForTest(mockReminderService);
     SecurityService.overrideForTest(mockSecurityService);
     DBHelper.overrideForTest(fakeDbHelper);
+    ContactService().clearCache();
   });
 
   tearDown(() {
+    ContactService().clearCache();
     GoogleDriveService.resetTestOverride();
     ReminderService.resetTestOverride();
     SecurityService.resetTestOverride();
@@ -221,6 +224,45 @@ void main() {
 
     // Tap Log button
     await tester.tap(find.text('Log'));
+    await tester.pumpAndSettle();
+
+    // Verify LogInteractionSheet opens
+    expect(find.byType(LogInteractionSheet), findsOneWidget);
+  });
+
+  testWidgets(
+      'HomePage renders Ready to log interaction suggestion card with sequence pills',
+      (WidgetTester tester) async {
+    final contactId = const Uuid().v4();
+    final contact = Contact(
+      id: contactId,
+      firstName: 'Timothy',
+      lastName: 'Alvarez',
+      updatedAt: DateTime.now(),
+      interactions: [
+        Interaction(
+          id: 10,
+          participantIds: [contactId],
+          occurredAt: DateTime.now().subtract(const Duration(days: 2)),
+          summary: 'Bible reading',
+          medium: 'Coffee',
+          durationMinutes: 45,
+          notes: 'PSA 115–116',
+        ),
+      ],
+    );
+    fakeDbHelper.contacts.add(contact);
+
+    await tester.pumpWidget(const MaterialApp(home: HomePage()));
+    await tester.pumpAndSettle();
+
+    // Verify Ready to log card is rendered
+    expect(find.text('Ready to log'), findsOneWidget);
+    expect(find.text('Timothy Alvarez · 45 min'), findsOneWidget);
+    expect(find.text('Psa. 117–118'), findsOneWidget);
+
+    // Tap the Ready to log tile
+    await tester.tap(find.text('Psa. 117–118'));
     await tester.pumpAndSettle();
 
     // Verify LogInteractionSheet opens

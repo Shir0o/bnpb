@@ -211,7 +211,7 @@ class _HomePageState extends State<HomePage>
     await Future.wait([
       (() async {
         final contacts = await ContactService().getContacts(
-          forceRefresh: forceRefresh,
+          forceRefresh: true,
         );
         _applyContactsSnapshot(contacts);
         await Future.wait([
@@ -415,6 +415,249 @@ class _HomePageState extends State<HomePage>
               onTap: () => _navigateToContactDetails(matches[index].contact),
             ),
           ],
+        ],
+      ),
+    );
+  }
+
+  String _nextRef(String? notes) {
+    if (notes == null || notes.isEmpty) return 'Repeat';
+
+    final psaReg = RegExp(
+      r'(?:PSA|Psa\.?|Psalms?)[^0-9]*(\d+)\s*[–-]\s*(\d+)',
+      caseSensitive: false,
+    );
+    final m = psaReg.firstMatch(notes);
+    if (m != null) {
+      final a = int.tryParse(m.group(1)!) ?? 0;
+      final b = int.tryParse(m.group(2)!) ?? 0;
+      final n = (b - a + 1) > 0 ? (b - a + 1) : 1;
+      final nextA = b + 1;
+      final nextB = b + n;
+      return 'Psa. $nextA–$nextB';
+    }
+
+    final chReg = RegExp(r'(?:Ch\.?|Chapter)\s*(\d+)', caseSensitive: false);
+    final c = chReg.firstMatch(notes);
+    if (c != null) {
+      final chNum = int.tryParse(c.group(1)!) ?? 0;
+      return 'Ch. ${chNum + 1}';
+    }
+
+    return 'Repeat';
+  }
+
+  List<_ReadyToLogItem> _readyToLogItems() {
+    final items = <_ReadyToLogItem>[];
+
+    final candidates =
+        _contacts.where((c) => c.interactions.isNotEmpty).map((c) {
+      final series = c.interactions.firstWhere(
+        (i) => _nextRef(i.notes) != 'Repeat' || _nextRef(i.summary) != 'Repeat',
+        orElse: () => c.interactions.first,
+      );
+      final isSeries = _nextRef(series.notes) != 'Repeat' ||
+          _nextRef(series.summary) != 'Repeat';
+      return (contact: c, last: series, isSeries: isSeries);
+    }).toList();
+
+    candidates.sort((a, b) {
+      if (a.isSeries != b.isSeries) {
+        return a.isSeries ? -1 : 1;
+      }
+      final dateA = a.last.occurredAt;
+      final dateB = b.last.occurredAt;
+      return dateB.compareTo(dateA);
+    });
+
+    for (final item in candidates.take(3)) {
+      final c = item.contact;
+      final last = item.last;
+      final notesRef = _nextRef(last.notes);
+      final ref = notesRef != 'Repeat' ? notesRef : _nextRef(last.summary);
+
+      final rawType = last.medium.isNotEmpty
+          ? last.medium
+          : last.summary.isNotEmpty
+              ? last.summary
+              : 'Interaction';
+      final typeTitle = rawType.split(' · ').first;
+      final duration = last.durationMinutes ?? 0;
+      final subText = '${c.displayName} · $duration min';
+      final prefillNotes = ref == 'Repeat' ? last.notes : ref;
+
+      final prefill = Interaction(
+        summary: last.summary,
+        medium: last.medium,
+        durationMinutes: last.durationMinutes,
+        location: last.location,
+        notes: prefillNotes,
+        occurredAt: DateTime.now(),
+        participantIds: last.participantIds.contains(c.id)
+            ? last.participantIds
+            : [c.id, ...last.participantIds],
+      );
+
+      items.add(_ReadyToLogItem(
+        contact: c,
+        lastInteraction: last,
+        title: typeTitle,
+        sub: subText,
+        pill: ref,
+        prefillInteraction: prefill,
+      ));
+    }
+
+    return items;
+  }
+
+  Widget _buildReadyToLogCard() {
+    final items = _readyToLogItems();
+    if (items.isEmpty) return const SizedBox.shrink();
+
+    final theme = Theme.of(context);
+    final primaryColor = theme.colorScheme.primary;
+    final greenTint = primaryColor.withValues(alpha: 0.12);
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: primaryColor,
+          width: 1.5,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 15, 16, 11),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.history_toggle_off_rounded,
+                  size: 18,
+                  color: primaryColor,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Ready to log',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 16.5,
+                      letterSpacing: -0.16,
+                      color: theme.colorScheme.onSurface,
+                    ),
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 9,
+                    vertical: 3,
+                  ),
+                  decoration: BoxDecoration(
+                    color: greenTint,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    '${items.length}',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: primaryColor,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+            child: Column(
+              children: [
+                for (int i = 0; i < items.length; i++) ...[
+                  if (i > 0)
+                    Divider(
+                      height: 1,
+                      thickness: 1,
+                      color: theme.colorScheme.outlineVariant
+                          .withValues(alpha: 0.5),
+                    ),
+                  InkWell(
+                    borderRadius: BorderRadius.circular(12),
+                    onTap: () => _openLogInteractionForContact(
+                      items[i].contact,
+                      customPrefill: items[i].prefillInteraction,
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 11,
+                      ),
+                      child: Row(
+                        children: [
+                          ContactAvatar(
+                            contact: items[i].contact,
+                            radius: 20,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  items[i].title,
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 15.5,
+                                    color: theme.colorScheme.onSurface,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  items[i].sub,
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: theme.colorScheme.outline,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: greenTint,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              items[i].pill,
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: primaryColor,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -1471,6 +1714,8 @@ class _HomePageState extends State<HomePage>
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
+                              _buildReadyToLogCard(),
+                              const SizedBox(height: 16),
                               _buildRecommendationsCard(),
                               const SizedBox(height: 16),
                               _buildPrayerInsightsCard(),
@@ -1673,4 +1918,22 @@ class _HomePageState extends State<HomePage>
       ),
     );
   }
+}
+
+class _ReadyToLogItem {
+  final Contact contact;
+  final Interaction lastInteraction;
+  final String title;
+  final String sub;
+  final String pill;
+  final Interaction prefillInteraction;
+
+  _ReadyToLogItem({
+    required this.contact,
+    required this.lastInteraction,
+    required this.title,
+    required this.sub,
+    required this.pill,
+    required this.prefillInteraction,
+  });
 }
