@@ -9,7 +9,7 @@ class ContactService {
   factory ContactService() => _instance;
   ContactService._internal();
 
-  final DBHelper _dbHelper = DBHelper();
+  DBHelper get _dbHelper => DBHelper();
 
   List<Contact>? _cachedContacts;
   final Map<String, List<Interaction>> _cachedInteractions = {};
@@ -23,8 +23,7 @@ class ContactService {
 
   /// Invalidates the contact cache and notifies listeners.
   void notifyContactsChanged() {
-    _cachedContacts = null;
-    _cachedInteractions.clear();
+    clearCache();
     _contactsChangedController.add(null);
   }
 
