@@ -8,6 +8,7 @@ import '../../main.dart' show CrispColorScheme;
 import '../../models/contact.dart';
 import '../../models/prayer_list.dart';
 import '../../models/prayer_request.dart';
+import '../../services/backup_service.dart';
 import '../../services/sync_service.dart';
 import '../../widgets/contact_avatar.dart';
 import '../../widgets/contact_selection_sheet.dart';
@@ -158,6 +159,7 @@ class _MacOSPrayerDiaryViewState extends State<MacOSPrayerDiaryView> {
         await _dbHelper.addContactToPrayerList(list.id, id);
       }
       await _loadData();
+      unawaited(BackupService().exportBackup());
     }
   }
 

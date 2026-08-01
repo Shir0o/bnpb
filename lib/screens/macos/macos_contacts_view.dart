@@ -8,6 +8,7 @@ import '../../main.dart' show CrispColorScheme;
 import '../../models/contact.dart';
 import '../../models/interaction.dart';
 import '../../models/prayer_list.dart';
+import '../../services/backup_service.dart';
 import '../../services/sync_service.dart';
 import '../../widgets/contact_avatar.dart';
 import '../../widgets/log_interaction_sheet.dart';
@@ -156,6 +157,7 @@ class _MacOSContactsViewState extends State<MacOSContactsView> {
       await _dbHelper.addContactToPrayerList(list.id, contact.id);
     }
     await _load();
+    unawaited(BackupService().exportBackup());
   }
 
   Future<void> _openLogInteraction(Contact contact) async {

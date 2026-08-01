@@ -224,6 +224,14 @@ class ExportService {
     List<String> fieldIds, {
     List<PrayerList>? prayerLists,
   }) async {
+    List<PrayerList> effectivePrayerLists = prayerLists ?? [];
+    if (prayerLists == null) {
+      try {
+        effectivePrayerLists = await DBHelper().getPrayerLists();
+      } catch (_) {
+        effectivePrayerLists = [];
+      }
+    }
     final contactList = <Map<String, dynamic>>[];
 
     // Flatten interactions and prayer requests with de-duplication
@@ -286,7 +294,7 @@ class ExportService {
       'interactions': flatInteractions,
       'prayerRequests': flatPrayerRequests,
       'relationships': flatRelationships,
-      'prayerLists': (prayerLists ?? []).map((list) {
+      'prayerLists': effectivePrayerLists.map((list) {
         final map = list.toMap();
         map['contactIds'] = list.contactIds;
         return map;

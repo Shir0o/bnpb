@@ -255,6 +255,17 @@ class _LogInteractionSheetState extends State<LogInteractionSheet> {
     );
   }
 
+  String _normalizeMedium(String? raw) {
+    if (raw == null || raw.isEmpty) return 'in_person';
+    final key = raw.toLowerCase().replaceAll(' ', '_').replaceAll('-', '_');
+    if (mediumIcons.containsKey(key)) return key;
+    if (key == 'inperson') return 'in_person';
+    if (key.contains('call') || key.contains('phone')) return 'call';
+    if (key.contains('message') || key.contains('text')) return 'message';
+    if (key.contains('online') || key.contains('video')) return 'online';
+    return 'other';
+  }
+
   @override
   void initState() {
     super.initState();
@@ -274,7 +285,7 @@ class _LogInteractionSheetState extends State<LogInteractionSheet> {
       text: DateFormat.jm().format(_occurredAt),
     );
     _followUpAt = initial?.followUpAt;
-    _medium = initial?.medium ?? 'in_person';
+    _medium = _normalizeMedium(initial?.medium);
     _markForPrayer = initial?.markForPrayer ?? false;
     _selectedParticipantIds = {
       widget.contact.id,
@@ -966,7 +977,7 @@ class _LogInteractionSheetState extends State<LogInteractionSheet> {
   void _fillFromInteraction(Interaction base) {
     setState(() {
       _summaryController.text = base.summary;
-      _medium = base.medium;
+      _medium = _normalizeMedium(base.medium);
       if (base.location != null) {
         _locationController.text = base.location!;
       }

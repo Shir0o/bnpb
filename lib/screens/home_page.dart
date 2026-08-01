@@ -8,6 +8,7 @@ import '../main.dart' show CrispColorScheme;
 
 import '../db/db_helper.dart';
 import '../models/contact.dart';
+import '../models/interaction.dart';
 import '../models/prayer_request.dart';
 import '../services/contact_search_service.dart';
 import '../services/contact_service.dart';
@@ -1105,13 +1106,31 @@ class _HomePageState extends State<HomePage>
     }
   }
 
-  Future<void> _openLogInteractionForContact(Contact contact) async {
+  Future<void> _openLogInteractionForContact(
+    Contact contact, {
+    Interaction? customPrefill,
+  }) async {
     AnimationController? controller;
     if (mounted) {
       controller = AnimationController(
         vsync: this,
         duration: const Duration(milliseconds: 400),
         reverseDuration: const Duration(milliseconds: 300),
+      );
+    }
+
+    Interaction? initial = customPrefill;
+    if (initial == null && contact.interactions.isNotEmpty) {
+      final last = contact.interactions.first;
+      initial = Interaction(
+        summary: last.summary,
+        medium: last.medium,
+        durationMinutes: last.durationMinutes,
+        location: last.location,
+        occurredAt: DateTime.now(),
+        participantIds: last.participantIds.contains(contact.id)
+            ? last.participantIds
+            : [contact.id, ...last.participantIds],
       );
     }
 
@@ -1124,6 +1143,7 @@ class _HomePageState extends State<HomePage>
         contact: contact,
         existingInteractions: contact.interactions,
         availableContacts: _contacts,
+        initialInteraction: initial,
         onInteractionsUpdated: (_) {
           _fetchContacts(forceRefresh: true);
           _loadRecommendations(forceRefresh: true);

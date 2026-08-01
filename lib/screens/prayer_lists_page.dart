@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../db/db_helper.dart';
 import '../models/contact.dart';
 import '../models/prayer_list.dart';
+import '../services/backup_service.dart';
 import '../services/contact_service.dart';
 import '../services/reminder_coordinator.dart';
 import '../widgets/contact_avatar.dart';
@@ -11,7 +12,6 @@ import '../widgets/contact_selection_sheet.dart';
 import '../widgets/crisp_toast.dart';
 import '../widgets/skeleton_loader.dart';
 import 'contact_details_page.dart';
-import '../widgets/hide_on_scroll_scaffold.dart';
 
 class PrayerListPage extends StatefulWidget {
   final DBHelper? dbHelper;
@@ -69,6 +69,7 @@ class _PrayerListPageState extends State<PrayerListPage> {
         description: 'People I am praying for',
       );
       await _dbHelper.insertPrayerList(targetList);
+      unawaited(BackupService().exportBackup());
     } else {
       // Use the first available list
       targetList = lists.first;
@@ -147,6 +148,7 @@ class _PrayerListPageState extends State<PrayerListPage> {
         await _dbHelper.addContactToPrayerList(_list!.id, id);
       }
       await _loadListContacts(_list!);
+      unawaited(BackupService().exportBackup());
     }
   }
 
@@ -154,6 +156,7 @@ class _PrayerListPageState extends State<PrayerListPage> {
     if (_list == null) return;
     await _dbHelper.removeContactFromPrayerList(_list!.id, contactId);
     await _loadListContacts(_list!);
+    unawaited(BackupService().exportBackup());
   }
 
   Future<void> _deleteContact(String contactId) async {
@@ -199,7 +202,7 @@ class _PrayerListPageState extends State<PrayerListPage> {
 
   @override
   Widget build(BuildContext context) {
-    return HideOnScrollScaffold(
+    return Scaffold(
       appBar: AppBar(title: Text(_list?.name ?? 'Prayer List')),
       floatingActionButton: _list == null
           ? null
@@ -298,6 +301,7 @@ class _PrayerListPageState extends State<PrayerListPage> {
                               contactId,
                             );
                             await _loadListContacts(_list!);
+                            unawaited(BackupService().exportBackup());
                           },
                         ),
                       ),

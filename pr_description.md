@@ -1,8 +1,14 @@
-💡 **What:** Redesigned the "Follow-up suggestions" card on the Home page (`lib/screens/home_page.dart`) with priority badges (`CRITICAL`, `HIGH`, `MEDIUM`, `LOW`), Crisp Utility design system styling, and a direct `+ Log` button on each suggestion row.
+💡 **What:** 
+- Replaced `HideOnScrollScaffold` with standard `Scaffold` on Prayer List Page (`lib/screens/prayer_lists_page.dart`) and Prayer Diary Page (`lib/screens/prayer_diary_page.dart`) so top app bar headers remain fixed and visible during scrolling per design specifications.
+- Added `BackupService().exportBackup()` triggers on all Prayer List mutations (list creation, adding contacts, removing contacts, UNDO actions, and macOS desktop toggles) and updated `buildFullExportPayload` in `ExportService` to automatically include prayer lists in JSON and encrypted archive exports.
+- Updated `_openLogInteractionForContact` in `HomePage` (`lib/screens/home_page.dart`) to prefill `LogInteractionSheet` with the contact's most recent interaction details for quick repeat interaction logging, and added `_normalizeMedium` handling in `LogInteractionSheet`.
 
-🎯 **Why:** Previously, tapping a follow-up recommendation on the Home page only navigated to the Contact Details page. Users had to leave the Home screen to record a quick meeting or check-in. Adding a direct `+ Log` button launches `LogInteractionSheet` directly from the Home screen and refreshes recommendations upon saving, streamlining daily workflow.
+🎯 **Why:** 
+- The Crisp Utility design reference specifies fixed, non-disappearing top headers for prayer screens reached from Home.
+- Prayer list modifications were previously missing auto-backup triggers, causing backup snapshots to miss updated prayer list memberships.
+- Quick logging from Home page suggestions requires prefilling previous interaction context (summary, medium, duration, location, participants) for one-tap logging.
 
 📊 **Measured Improvement:**
-- **One-tap interaction logging**: Reduced steps to log a follow-up interaction from 3 taps (nav -> details -> log) down to 1 tap directly from the Home screen.
-- **Visual Hierarchy**: Priority tags (`CRITICAL`, `HIGH`, `MEDIUM`, `LOW`) provide instant visual cues for urgent follow-ups.
-- **Test Suite Results**: 219/219 unit & widget tests passed cleanly, including new widget coverage for card layout and logger sheet invocation.
+- **Design Conformance**: Fixed header scrolling on prayer screens to match design spec.
+- **Data Protection**: Prayer list memberships are now automatically backed up and restored across database snapshots and exports.
+- **Test Suite Results**: 221/221 unit & widget tests passed cleanly (`flutter test`), including new coverage for prayer list export payloads.
