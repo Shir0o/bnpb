@@ -4,10 +4,12 @@ import 'package:intl/intl.dart';
 import '../db/db_helper.dart';
 import '../main.dart' show CrispColorScheme;
 import '../models/contact.dart';
+import '../models/contact_stage.dart';
 import '../models/interaction.dart';
 import '../models/relationship.dart';
 import '../services/backup_service.dart';
 import '../services/contact_service.dart';
+import '../services/contact_stage_service.dart';
 import '../services/reminder_coordinator.dart';
 import '../widgets/contact_details_skeleton.dart';
 import '../widgets/contact_avatar.dart';
@@ -105,6 +107,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
   bool _isEditing = false;
   Contact? _editingSnapshot;
   bool _isInitialLoad = true;
+  ContactStage? _stageOverride;
 
   List<Contact> _availableContacts = [];
   Map<String, Contact> _contactLookup = {};
@@ -883,6 +886,7 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
       sections.add(widget);
     }
 
+    addSection(_buildStageSelectorCard(contact));
     addSection(_buildViewMeetingNotesCard(contact));
     addSection(_buildViewNotesCard(contact));
     return sections;
@@ -928,6 +932,127 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
         ),
       ],
     );
+  }
+
+  Widget _buildStageSelectorCard(Contact contact) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final current = _stageOverride ?? contact.resolvedStage;
+    final currentIndex = current.index;
+
+    return Card(
+      elevation: 0,
+      color: colorScheme.surfaceContainerLow,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: colorScheme.outlineVariant, width: 0.5),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Text(
+                  'STAGE',
+                  style: TextStyle(
+                    fontSize: 12,
+                    letterSpacing: 1.2,
+                    fontWeight: FontWeight.w700,
+                    color: colorScheme.outline,
+                  ),
+                ),
+                const Spacer(),
+                Text(
+                  current.label,
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w700,
+                    color: colorScheme.primary,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                for (var i = 0; i < ContactStage.values.length; i++) ...[
+                  if (i > 0) const SizedBox(width: 4),
+                  Expanded(
+                    child: _buildStageChip(
+                      index: i,
+                      currentIndex: currentIndex,
+                      onTap: () => _setStage(ContactStage.values[i]),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStageChip({
+    required int index,
+    required int currentIndex,
+    required VoidCallback onTap,
+  }) {
+    final stage = ContactStage.values[index];
+    final colorScheme = Theme.of(context).colorScheme;
+    final isActive = index == currentIndex;
+    final isDone = index < currentIndex;
+
+    final bg = isActive
+        ? colorScheme.primary
+        : isDone
+            ? colorScheme.greenTint
+            : colorScheme.surface;
+    final border = isActive
+        ? colorScheme.primary
+        : isDone
+            ? colorScheme.greenTint
+            : colorScheme.cardBorder;
+    final fg = isActive
+        ? colorScheme.onPrimary
+        : isDone
+            ? colorScheme.primary
+            : colorScheme.outline;
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(9),
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 2),
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: BorderRadius.circular(9),
+          border: Border.all(color: border),
+        ),
+        child: Text(
+          stage.shortLabel,
+          style: TextStyle(
+            fontSize: 10.5,
+            fontWeight: FontWeight.w700,
+            color: fg,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _setStage(ContactStage stage) async {
+    final current = _stageOverride ?? widget.contact.resolvedStage;
+    if (stage.index == current.index) return;
+    setState(() => _stageOverride = stage);
+    await ContactStageService().setStage(widget.contact, stage);
+    if (mounted) {
+      CrispToast.show(
+          context, '${widget.contact.displayName} → ${stage.label}');
+    }
   }
 
   Widget? _buildViewMeetingNotesCard(Contact contact) {

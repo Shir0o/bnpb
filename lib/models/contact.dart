@@ -1,5 +1,6 @@
 import 'package:uuid/uuid.dart';
 
+import 'contact_stage.dart';
 import 'interaction.dart';
 import 'prayer_request.dart';
 import 'relationship.dart';
@@ -18,6 +19,11 @@ class Contact {
 
   /// Recorded interactions for the contact (e.g., meetings, calls).
   final List<Interaction> interactions;
+
+  /// Persisted relationship stage label (e.g. "Regular contact"). Null until
+  /// the user confirms or sets one; [resolvedStage] falls back to a default
+  /// derived from interaction history.
+  final String? stage;
 
   /// Prayer requests tracked for this contact.
   final List<PrayerRequest> prayerRequests;
@@ -40,6 +46,7 @@ class Contact {
     this.firstMeetingNotes,
     this.notes,
     List<Interaction>? interactions,
+    this.stage,
     List<PrayerRequest>? prayerRequests,
     List<Relationship>? relationships,
     DateTime? updatedAt,
@@ -60,6 +67,7 @@ class Contact {
     String? firstMeetingNotes,
     String? notes,
     List<Interaction>? interactions,
+    String? stage,
     List<PrayerRequest>? prayerRequests,
     List<Relationship>? relationships,
     DateTime? updatedAt,
@@ -77,6 +85,7 @@ class Contact {
       firstMeetingNotes: firstMeetingNotes ?? this.firstMeetingNotes,
       notes: notes ?? this.notes,
       interactions: interactions ?? this.interactions,
+      stage: stage ?? this.stage,
       prayerRequests: prayerRequests ?? this.prayerRequests,
       relationships: relationships ?? this.relationships,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -99,6 +108,7 @@ class Contact {
       'firstMeetingNotes': firstMeetingNotes,
       'notes': notes,
       'interactions': interactions.map((entry) => entry.toMap()).toList(),
+      'stage': stage,
       'prayerRequests': prayerRequests.map((entry) => entry.toMap()).toList(),
       'relationships': relationships.map((entry) => entry.toMap()).toList(),
       'updatedAt': updatedAt.toIso8601String(),
@@ -120,6 +130,7 @@ class Contact {
       'firstMeetingNotes': firstMeetingNotes,
       'notes': notes,
       'interactions': interactions.map((entry) => entry.toJson()).toList(),
+      'stage': stage,
       'prayerRequests': prayerRequests.map((entry) => entry.toMap()).toList(),
       'relationships': relationships.map((entry) => entry.toMap()).toList(),
       'updatedAt': updatedAt.toIso8601String(),
@@ -144,6 +155,7 @@ class Contact {
       firstMeetingNotes: map['firstMeetingNotes'] as String?,
       notes: map['notes'] as String?,
       interactions: _parseInteractions(map['interactions']),
+      stage: map['stage'] as String?,
       prayerRequests: _parsePrayerRequests(map['prayerRequests']),
       relationships: _parseRelationships(map['relationships']),
       updatedAt: map['updatedAt'] != null
@@ -192,6 +204,13 @@ class Contact {
 
   String get displayName =>
       fullName.isNotEmpty ? fullName : (nickname ?? 'Unknown');
+
+  /// The contact's confirmed stage, or a default derived from their
+  /// interaction count when none has been set yet.
+  ContactStage get resolvedStage =>
+      ContactStage.tryParse(stage) ?? defaultStageFor(interactions.length);
+
+  String get resolvedStageLabel => resolvedStage.label;
 
   String get initials {
     if (firstName.isNotEmpty && lastName != null && lastName!.isNotEmpty) {

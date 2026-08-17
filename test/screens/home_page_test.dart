@@ -268,4 +268,41 @@ void main() {
     // Verify LogInteractionSheet opens
     expect(find.byType(LogInteractionSheet), findsOneWidget);
   });
+
+  testWidgets(
+      'HomePage shows the "is not adding up" review alert and opens the Review screen',
+      (WidgetTester tester) async {
+    final contactId = const Uuid().v4();
+    final now = DateTime.now();
+    final inMonth = now.day > 1 ? now.day - 1 : 1;
+    final contact = Contact(
+      id: contactId,
+      firstName: 'Mara',
+      lastName: 'Lopez',
+      updatedAt: now,
+      interactions: [
+        Interaction(
+          id: 1,
+          participantIds: [contactId],
+          occurredAt: DateTime(now.year, now.month, inMonth),
+          summary: 'Coffee',
+          medium: 'In Person',
+        ),
+      ],
+    );
+    fakeDbHelper.contacts.add(contact);
+
+    await tester.pumpWidget(const MaterialApp(home: HomePage()));
+    await tester.pumpAndSettle();
+
+    // No one reached regular contact this month → attention alert shows.
+    expect(find.textContaining('is not adding up'), findsOneWidget);
+    expect(find.textContaining('needing attention'), findsOneWidget);
+
+    // Tapping the alert opens the Review screen.
+    await tester.tap(find.textContaining('is not adding up'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Review'), findsOneWidget);
+  });
 }

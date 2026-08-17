@@ -9,8 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Created a Git `post-checkout` hook to automatically copy `AGENTS.md` and `CLAUDE.md` to newly created worktrees.
+- **Stage Confirm System**: Contacts now carry a persisted relationship stage (First contact → Second contact → Regular contact → Group meeting → Church meeting → Laboring). The Review screen gained a "Confirm stage changes" section that suggests one-step advances when logged activity outpaces a contact's confirmed stage, with Confirm / "Not yet" actions. Confirming records a stage move in a new `stage_moves` table — movement in the review only counts confirmed changes, matching the design's "nothing counts until you confirm it". Added a stage selector to Contact Details (green-active / tint-done chips) for manually setting deeper stages.
+- **Period Review**: Added a new Review screen (Month/Semester/Year) mirroring the BNPB Prototype — verdict, movement funnel with stage transitions, marks, intention, care tiles, effort vs. the previous period, and "what didn't happen".
+- **Home Review Alert**: Added the "is not adding up" danger banner on Home, shown when the current month's review has attention items; tapping it opens the Review screen.
+- **Analytics Review Entry**: Added the "Period review" card on Analytics linking to the Review screen.
+- **Review & Stage Tests**: Added `PeriodReviewService`, `ContactStageService`, and `ReviewPage` tests plus a Home alert navigation test.
 
 ### Changed
+- **Ready to Log Polish**: Brought the Home "Ready to log" card in line with the design — history-style header icon, w700 row titles, 12.5px subtitle, tabular sequence pills (11.5px/radius 7) with a trailing chevron, hairline dividers, and the 42px colored-initial avatar.
 - **Home Page Suggestion Card Interaction**: Redesigned the "Follow-up suggestions" recommendation card on the Home page with priority tags (`CRITICAL`, `HIGH`, `MEDIUM`, `LOW`), updated card styling matching Crisp Utility standards, and added direct `+ Log` interaction buttons for one-tap interaction logging.
 - Removed `AGENTS.md` from upstream tracking and git-index while retaining it locally.
 - Added `AGENTS.md` and `CLAUDE.md` to `.gitignore` to prevent future tracking.
