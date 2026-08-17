@@ -21,9 +21,10 @@ import '../models/notification_preference.dart';
 import '../models/prayer_request.dart';
 import '../models/prayer_list.dart';
 import '../models/relationship.dart';
+import '../models/stage_move.dart';
 
 class DBHelper {
-  static const _dbVersion = 20;
+  static const _dbVersion = 21;
 
   static final DBHelper _instance = DBHelper._();
   static DBHelper? _testOverride;
@@ -107,6 +108,7 @@ class DBHelper {
         email TEXT,
         phone TEXT,
         notes TEXT,
+        stage TEXT,
         updatedAt TEXT NOT NULL DEFAULT (datetime('now')),
         deletedAt TEXT
       )
@@ -158,6 +160,20 @@ class DBHelper {
         updatedAt TEXT NOT NULL DEFAULT (datetime('now')),
         FOREIGN KEY(sourceContactId) REFERENCES contacts(id) ON DELETE CASCADE,
         FOREIGN KEY(targetContactId) REFERENCES contacts(id) ON DELETE CASCADE
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE stage_moves (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        syncId TEXT NOT NULL UNIQUE,
+        contactId TEXT NOT NULL,
+        fromStage TEXT,
+        toStage TEXT NOT NULL,
+        movedAt TEXT NOT NULL,
+        updatedAt TEXT NOT NULL DEFAULT (datetime('now')),
+        deletedAt TEXT,
+        FOREIGN KEY(contactId) REFERENCES contacts(id) ON DELETE CASCADE
       )
     ''');
 
@@ -563,6 +579,26 @@ class DBHelper {
         ALTER TABLE relationships ADD COLUMN updatedAt TEXT NOT NULL DEFAULT (datetime('now'))
       ''');
     }
+    if (oldVersion < 21) {
+      final columns = await db.rawQuery('PRAGMA table_info(contacts)');
+      final names = columns.map((c) => c['name'] as String).toSet();
+      if (!names.contains('stage')) {
+        await db.execute('ALTER TABLE contacts ADD COLUMN stage TEXT');
+      }
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS stage_moves (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          syncId TEXT NOT NULL UNIQUE,
+          contactId TEXT NOT NULL,
+          fromStage TEXT,
+          toStage TEXT NOT NULL,
+          movedAt TEXT NOT NULL,
+          updatedAt TEXT NOT NULL DEFAULT (datetime('now')),
+          deletedAt TEXT,
+          FOREIGN KEY(contactId) REFERENCES contacts(id) ON DELETE CASCADE
+        )
+      ''');
+    }
   }
 
   Future<Map<String, dynamic>> getGlobalMetadata() async {
@@ -614,6 +650,7 @@ class DBHelper {
       await txn.delete('interaction_participants');
       await txn.delete('interactions');
       await txn.delete('relationships');
+      await txn.delete('stage_moves');
       await txn.delete('prayer_request_participants');
       await txn.delete('prayer_requests');
       await txn.delete('prayer_list_members');
@@ -621,6 +658,57 @@ class DBHelper {
       await txn.delete('notification_preferences');
       await txn.delete('contacts');
     });
+  }
+
+  /// Records a confirmed stage change on a contact. Updates the contact's
+  /// `stage` column and appends a [StageMove] to the history in one
+  /// transaction so the review's movement story stays consistent.
+  Future<void> setContactStage({
+    required String contactId,
+    required String toStage,
+    String? fromStage,
+    DateTime? movedAt,
+  }) async {
+    final db = await database;
+    await db.transaction((txn) async {
+      await txn.update(
+        'contacts',
+        {'stage': toStage},
+        where: 'id = ?',
+        whereArgs: [contactId],
+      );
+      await txn.insert(
+        'stage_moves',
+        StageMove(
+          contactId: contactId,
+          fromStage: fromStage,
+          toStage: toStage,
+          movedAt: movedAt ?? DateTime.now(),
+        ).toMap(includeId: false),
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+    });
+  }
+
+  /// Stage moves within [start, end), newest first. With no bounds, all
+  /// active moves are returned.
+  Future<List<StageMove>> getStageMoves(
+      {DateTime? start, DateTime? end}) async {
+    final db = await database;
+    final rows = await db.query(
+      'stage_moves',
+      where: 'deletedAt IS NULL'
+          '${start != null ? ' AND movedAt >= ?' : ''}'
+          '${end != null ? ' AND movedAt < ?' : ''}',
+      whereArgs: [
+        if (start != null) start.toIso8601String(),
+        if (end != null) end.toIso8601String(),
+      ],
+      orderBy: 'movedAt DESC',
+    );
+    return rows
+        .map((row) => StageMove.fromMap(Map<String, dynamic>.from(row)))
+        .toList();
   }
 
   // --- Notification Preference Methods (Kept in DBHelper for now as they are simple) ---

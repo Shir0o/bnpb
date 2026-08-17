@@ -38,6 +38,7 @@ class ContactDao extends BaseDao {
       'email': contact.email,
       'phone': contact.phone,
       'notes': contact.notes,
+      'stage': contact.stage,
       'updatedAt': forceNowTimestamps
           ? DateTime.now().toUtc().toIso8601String()
           : contact.updatedAt.toIso8601String(),

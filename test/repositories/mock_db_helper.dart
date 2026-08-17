@@ -7,6 +7,7 @@ import 'package:bnpb/models/interaction.dart';
 import 'package:bnpb/models/prayer_request.dart';
 import 'package:bnpb/models/relationship.dart';
 import 'package:bnpb/models/prayer_list.dart';
+import 'package:bnpb/models/stage_move.dart';
 
 import 'package:bnpb/db/daos/contact_dao.dart';
 import 'package:bnpb/db/daos/interaction_dao.dart';
@@ -271,4 +272,17 @@ class MockDBHelper implements DBHelper {
 
   @override
   Future<void> clearAllData() async {}
+
+  @override
+  Future<void> setContactStage({
+    required String contactId,
+    required String toStage,
+    String? fromStage,
+    DateTime? movedAt,
+  }) async {}
+
+  @override
+  Future<List<StageMove>> getStageMoves(
+          {DateTime? start, DateTime? end}) async =>
+      [];
 }

@@ -12,6 +12,7 @@ import '../models/interaction.dart';
 import '../models/prayer_request.dart';
 import '../services/contact_search_service.dart';
 import '../services/contact_service.dart';
+import '../services/period_review_service.dart';
 import '../services/reminder_coordinator.dart';
 import '../services/sync_service.dart';
 import '../widgets/backup_restore_sheet.dart';
@@ -33,6 +34,7 @@ import 'contact_details_page.dart';
 import 'import_duplicate_review_page.dart';
 import 'prayer_diary_page.dart';
 import 'prayer_lists_page.dart';
+import 'review_page.dart';
 import '../widgets/smooth_expansion_tile.dart';
 import '../widgets/hide_on_scroll_scaffold.dart';
 
@@ -133,6 +135,7 @@ class _HomePageState extends State<HomePage>
   bool _isRefreshingRecommendations = false;
   Map<String, ContactMatch> _activeMatches = {};
   String _aiLabel = 'on-device';
+  PeriodReviewData? _reviewData;
 
   final Set<String> _expandedLocations = <String>{};
 
@@ -218,6 +221,7 @@ class _HomePageState extends State<HomePage>
           _loadPrayerInsights(),
           _loadRecommendations(),
           _checkAiStatus(),
+          _loadReviewData(),
         ]);
       })(),
       if (useSkeleton) Future.delayed(minDelay),
@@ -266,6 +270,20 @@ class _HomePageState extends State<HomePage>
       setState(() {
         _aiLabel = backend == AiBackend.cloud ? 'cloud' : 'on-device';
       });
+    }
+  }
+
+  Future<void> _loadReviewData() async {
+    try {
+      final data = await PeriodReviewService().build(
+        period: ReviewPeriod.month,
+      );
+      if (!mounted) return;
+      setState(() {
+        _reviewData = data;
+      });
+    } catch (e) {
+      debugPrint('Failed to load period review data: $e');
     }
   }
 
@@ -511,6 +529,84 @@ class _HomePageState extends State<HomePage>
     return items;
   }
 
+  Widget _buildReviewAlertCard() {
+    final data = _reviewData;
+    if (data == null || !data.showAlert) return const SizedBox.shrink();
+
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: colorScheme.dangerTint2,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: colorScheme.dangerBorder),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: _openReview,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 13),
+          child: Row(
+            children: [
+              Container(
+                width: 9,
+                height: 9,
+                decoration: BoxDecoration(
+                  color: colorScheme.error,
+                  shape: BoxShape.circle,
+                ),
+              ),
+              const SizedBox(width: 11),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      data.alertTitle,
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14.5,
+                        color: colorScheme.onSurface,
+                      ),
+                    ),
+                    const SizedBox(height: 1),
+                    Text(
+                      data.alertSub,
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w500,
+                        color: colorScheme.secondaryText,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                Icons.chevron_right_rounded,
+                size: 18,
+                color: colorScheme.error,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _openReview() {
+    Navigator.of(context)
+        .push(
+      MaterialPageRoute<void>(builder: (_) => const ReviewPage()),
+    )
+        .then((_) {
+      if (mounted) {
+        _fetchContacts(forceRefresh: true);
+      }
+    });
+  }
+
   Widget _buildReadyToLogCard() {
     final items = _readyToLogItems();
     if (items.isEmpty) return const SizedBox.shrink();
@@ -537,7 +633,7 @@ class _HomePageState extends State<HomePage>
             child: Row(
               children: [
                 Icon(
-                  Icons.history_toggle_off_rounded,
+                  Icons.history_rounded,
                   size: 18,
                   color: primaryColor,
                 ),
@@ -583,8 +679,7 @@ class _HomePageState extends State<HomePage>
                     Divider(
                       height: 1,
                       thickness: 1,
-                      color: theme.colorScheme.outlineVariant
-                          .withValues(alpha: 0.5),
+                      color: theme.colorScheme.hairline,
                     ),
                   InkWell(
                     borderRadius: BorderRadius.circular(12),
@@ -601,7 +696,7 @@ class _HomePageState extends State<HomePage>
                         children: [
                           ContactAvatar(
                             contact: items[i].contact,
-                            radius: 20,
+                            radius: 21,
                           ),
                           const SizedBox(width: 12),
                           Expanded(
@@ -611,7 +706,7 @@ class _HomePageState extends State<HomePage>
                                 Text(
                                   items[i].title,
                                   style: TextStyle(
-                                    fontWeight: FontWeight.w600,
+                                    fontWeight: FontWeight.w700,
                                     fontSize: 15.5,
                                     color: theme.colorScheme.onSurface,
                                   ),
@@ -622,7 +717,8 @@ class _HomePageState extends State<HomePage>
                                 Text(
                                   items[i].sub,
                                   style: TextStyle(
-                                    fontSize: 13,
+                                    fontSize: 12.5,
+                                    fontWeight: FontWeight.w500,
                                     color: theme.colorScheme.outline,
                                   ),
                                   maxLines: 1,
@@ -634,21 +730,26 @@ class _HomePageState extends State<HomePage>
                           const SizedBox(width: 8),
                           Container(
                             padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
+                              horizontal: 8,
                               vertical: 4,
                             ),
                             decoration: BoxDecoration(
                               color: greenTint,
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(7),
                             ),
                             child: Text(
                               items[i].pill,
                               style: TextStyle(
-                                fontSize: 12,
+                                fontSize: 11.5,
                                 fontWeight: FontWeight.w700,
                                 color: primaryColor,
                               ),
                             ),
+                          ),
+                          Icon(
+                            Icons.chevron_right_rounded,
+                            size: 18,
+                            color: theme.colorScheme.faint,
                           ),
                         ],
                       ),
@@ -1714,6 +1815,7 @@ class _HomePageState extends State<HomePage>
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
+                              _buildReviewAlertCard(),
                               _buildReadyToLogCard(),
                               const SizedBox(height: 16),
                               _buildRecommendationsCard(),

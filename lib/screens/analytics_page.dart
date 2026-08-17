@@ -12,6 +12,7 @@ import '../services/ai/ai_services.dart';
 import '../widgets/skeleton_loader.dart';
 import '../widgets/hide_on_scroll_scaffold.dart';
 import 'ask_page.dart';
+import 'review_page.dart';
 
 /// Predefined ranges supported by the analytics dashboard.
 enum AnalyticsRange { last30Days, last90Days, last365Days, allTime }
@@ -218,6 +219,8 @@ class _AnalyticsPageState extends State<AnalyticsPage>
             _buildAskCard(),
             const SizedBox(height: 16),
           ],
+          _buildReviewCard(),
+          const SizedBox(height: 16),
           ..._buildInsightCards(),
           _buildTopContactsCard(summary),
           const SizedBox(height: 16),
@@ -227,6 +230,75 @@ class _AnalyticsPageState extends State<AnalyticsPage>
           const SizedBox(height: 16),
           _buildGapCard(summary),
         ],
+      ),
+    );
+  }
+
+  Widget _buildReviewCard() {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: colorScheme.surfaceContainerHighest),
+      ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: () {
+          Navigator.of(
+            context,
+          ).push(MaterialPageRoute<void>(builder: (_) => const ReviewPage()));
+        },
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          child: Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: colorScheme.primaryContainer,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  Icons.bar_chart_rounded,
+                  color: colorScheme.primary,
+                  size: 19,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Period review',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                        color: colorScheme.onSurface,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Month, semester, year — who actually moved',
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        color: colorScheme.outline,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                Icons.arrow_forward_ios_rounded,
+                size: 16,
+                color: colorScheme.faint,
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
