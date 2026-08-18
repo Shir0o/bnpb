@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Review & Stage Tests**: Added `PeriodReviewService`, `ContactStageService`, and `ReviewPage` tests plus a Home alert navigation test.
 
 ### Changed
+- **Android toolchain upgrade**: Bumped Gradle to 9.1.0, Android Gradle Plugin to 9.0.1, and Kotlin to 2.3.20 to satisfy Flutter's minimum-version warnings.
 - **Ready to Log Polish**: Brought the Home "Ready to log" card in line with the design — history-style header icon, w700 row titles, 12.5px subtitle, tabular sequence pills (11.5px/radius 7) with a trailing chevron, hairline dividers, and the 42px colored-initial avatar.
 - **Home Page Suggestion Card Interaction**: Redesigned the "Follow-up suggestions" recommendation card on the Home page with priority tags (`CRITICAL`, `HIGH`, `MEDIUM`, `LOW`), updated card styling matching Crisp Utility standards, and added direct `+ Log` interaction buttons for one-tap interaction logging.
 - Removed `AGENTS.md` from upstream tracking and git-index while retaining it locally.
