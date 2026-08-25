@@ -225,9 +225,7 @@ class SyncCoordinator {
   Future<void> importSyncData(Map<String, dynamic> data) async {
     // Merge Contacts
     if (data['contacts'] != null) {
-      for (final item in (data['contacts'] as List)) {
-        await _mergeContact(Contact.fromMap(Map<String, dynamic>.from(item)));
-      }
+      await _mergeContacts(data['contacts'] as List);
     }
 
     // Merge Interactions
@@ -255,25 +253,44 @@ class SyncCoordinator {
     }
   }
 
-  Future<void> _mergeContact(Contact remote) async {
-    final localContacts = await _db.getContacts(
-      contactId: remote.id,
-      includeDeleted: true,
-    );
-    final local = localContacts.isNotEmpty ? localContacts.first : null;
+  Future<void> _mergeContacts(List<dynamic> remoteList) async {
+    final remoteContacts = remoteList
+        .map((item) => Contact.fromMap(Map<String, dynamic>.from(item)))
+        .toList();
 
-    if (local == null) {
-      await _db.upsertContactFromSync(
-        await _db.database,
-        remote,
-        isUpdate: false,
-      );
-    } else if (remote.updatedAt.isAfter(local.updatedAt)) {
-      await _db.upsertContactFromSync(
-        await _db.database,
-        remote,
-        isUpdate: true,
-      );
+    final remoteIds = remoteContacts.map((c) => c.id).toList();
+
+    // Batch fetch existing local contacts
+    final existingRows = await _db.contactDao.chunkedQuery(
+      table: 'contacts',
+      inColumn: 'id',
+      values: remoteIds,
+    );
+
+    final localContacts = <String, DateTime>{};
+    for (final row in existingRows) {
+      final id = row['id'] as String;
+      final updatedAtStr = row['updatedAt'] as String;
+      localContacts[id] = DateTime.parse(updatedAtStr);
+    }
+
+    final db = await _db.database;
+    for (final remote in remoteContacts) {
+      final localUpdatedAt = localContacts[remote.id];
+
+      if (localUpdatedAt == null) {
+        await _db.upsertContactFromSync(
+          db,
+          remote,
+          isUpdate: false,
+        );
+      } else if (remote.updatedAt.isAfter(localUpdatedAt)) {
+        await _db.upsertContactFromSync(
+          db,
+          remote,
+          isUpdate: true,
+        );
+      }
     }
   }
 
