@@ -230,11 +230,7 @@ class SyncCoordinator {
 
     // Merge Interactions
     if (data['interactions'] != null) {
-      for (final item in (data['interactions'] as List)) {
-        await _mergeInteraction(
-          Interaction.fromMap(Map<String, dynamic>.from(item)),
-        );
-      }
+      await _mergeInteractions(data['interactions'] as List);
     }
 
     // Merge Prayer Requests
@@ -321,63 +317,133 @@ class SyncCoordinator {
     return existing;
   }
 
-  Future<void> _mergeInteraction(Interaction remote) async {
+  Future<void> _mergeInteractions(List<dynamic> remoteList) async {
+    if (remoteList.isEmpty) return;
+
     final db = await _db.database;
-    final rows = await db.query(
-      'interactions',
-      where: 'syncId = ?',
-      whereArgs: [remote.syncId],
-    );
+    final remoteInteractions = remoteList
+        .map((item) => Interaction.fromMap(Map<String, dynamic>.from(item)))
+        .toList();
 
-    final existingContactIds = await _existingContactIds(
-      remote.participantIds,
-    );
-    final missingContactIds = remote.participantIds.toSet().difference(
-          existingContactIds,
-        );
-    if (missingContactIds.isNotEmpty) {
-      debugPrint(
-        'Skipping unknown contact(s) $missingContactIds for interaction '
-        '${remote.syncId}',
+    final syncIds = remoteInteractions.map((i) => i.syncId).toList();
+
+    // Batch fetch existing local interactions by syncId
+    final localInteractions = <String, Map<String, dynamic>>{};
+    if (syncIds.isNotEmpty) {
+      final rows = await _db.interactionDao.chunkedQuery(
+        table: 'interactions',
+        inColumn: 'syncId',
+        values: syncIds,
       );
-    }
-    final validParticipantIds =
-        remote.participantIds.where(existingContactIds.contains).toList();
-
-    if (rows.isEmpty) {
-      if (remote.deletedAt != null) return;
-
-      final map = remote.toMap(includeId: false, encodeAttachments: true);
-      map.remove('participantIds');
-      map['updatedAt'] = remote.updatedAt.toIso8601String();
-      map['deletedAt'] = remote.deletedAt?.toIso8601String();
-      map['syncId'] = remote.syncId;
-
-      final id = await db.insert('interactions', map);
-      await _db.replaceInteractionParticipants(db, id, validParticipantIds);
-    } else {
-      final localRow = rows.first;
-      final localUpdated = DateTime.parse(localRow['updatedAt'] as String);
-      if (remote.updatedAt.isAfter(localUpdated)) {
-        final localId = localRow['id'] as int;
-        final map = remote.toMap(includeId: false, encodeAttachments: true);
-        map.remove('participantIds');
-        map['updatedAt'] = remote.updatedAt.toIso8601String();
-        map['deletedAt'] = remote.deletedAt?.toIso8601String();
-
-        await db.update(
-          'interactions',
-          map,
-          where: 'id = ?',
-          whereArgs: [localId],
-        );
-        await _db.replaceInteractionParticipants(
-          db,
-          localId,
-          validParticipantIds,
-        );
+      for (final row in rows) {
+        localInteractions[row['syncId'] as String] = row;
       }
     }
+
+    // Batch fetch existing contact IDs for all participant IDs
+    final allParticipantIds = {
+      for (final i in remoteInteractions) ...i.participantIds,
+    };
+    final existingContactIds = await _existingContactIds(allParticipantIds);
+
+    await db.transaction((txn) async {
+      final batch = txn.batch();
+
+      for (final remote in remoteInteractions) {
+        final missingContactIds = remote.participantIds.toSet().difference(
+              existingContactIds,
+            );
+        if (missingContactIds.isNotEmpty) {
+          debugPrint(
+            'Skipping unknown contact(s) $missingContactIds for interaction '
+            '${remote.syncId}',
+          );
+        }
+
+        final localRow = localInteractions[remote.syncId];
+
+        if (localRow == null) {
+          if (remote.deletedAt != null) continue;
+
+          final map = remote.toMap(includeId: false, encodeAttachments: true);
+          map.remove('participantIds');
+          map['updatedAt'] = remote.updatedAt.toIso8601String();
+          map['deletedAt'] = remote.deletedAt?.toIso8601String();
+          map['syncId'] = remote.syncId;
+
+          batch.insert('interactions', map);
+        } else {
+          final localUpdated = DateTime.parse(localRow['updatedAt'] as String);
+          if (remote.updatedAt.isAfter(localUpdated)) {
+            final localId = localRow['id'] as int;
+            final map = remote.toMap(includeId: false, encodeAttachments: true);
+            map.remove('participantIds');
+            map['updatedAt'] = remote.updatedAt.toIso8601String();
+            map['deletedAt'] = remote.deletedAt?.toIso8601String();
+
+            batch.update(
+              'interactions',
+              map,
+              where: 'id = ?',
+              whereArgs: [localId],
+            );
+          }
+        }
+      }
+
+      final results = await batch.commit();
+
+      final participantBatch = txn.batch();
+      int index = 0;
+
+      for (final remote in remoteInteractions) {
+        final validParticipantIds =
+            remote.participantIds.where(existingContactIds.contains).toList();
+
+        final localRow = localInteractions[remote.syncId];
+
+        if (localRow == null) {
+          if (remote.deletedAt != null) continue;
+
+          final localId = results[index] as int;
+          index++;
+
+          participantBatch.delete(
+            'interaction_participants',
+            where: 'interactionId = ?',
+            whereArgs: [localId],
+          );
+
+          for (final participantId in validParticipantIds) {
+            participantBatch.insert('interaction_participants', {
+              'interactionId': localId,
+              'contactId': participantId,
+            });
+          }
+        } else {
+          final localUpdated = DateTime.parse(localRow['updatedAt'] as String);
+          if (remote.updatedAt.isAfter(localUpdated)) {
+            final localId = localRow['id'] as int;
+            index++;
+
+            participantBatch.delete(
+              'interaction_participants',
+              where: 'interactionId = ?',
+              whereArgs: [localId],
+            );
+
+            for (final participantId in validParticipantIds) {
+              participantBatch.insert('interaction_participants', {
+                'interactionId': localId,
+                'contactId': participantId,
+              });
+            }
+          }
+        }
+      }
+
+      await participantBatch.commit(noResult: true);
+    });
   }
 
   Future<void> _mergePrayerRequests(List<dynamic> remoteList) async {
