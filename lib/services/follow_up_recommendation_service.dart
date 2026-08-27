@@ -27,6 +27,11 @@ class FollowUpRecommendation {
 class FollowUpRecommendationService {
   final DBHelper _dbHelper;
 
+  static final RegExp _keywordRegExp = RegExp(
+    r'follow[- ]up|check[- ]in|next time|remind me',
+    caseSensitive: false,
+  );
+
   FollowUpRecommendationService({DBHelper? dbHelper})
       : _dbHelper = dbHelper ?? DBHelper();
 
@@ -37,12 +42,15 @@ class FollowUpRecommendationService {
     final now = DateTime.now();
     final recommendations = <FollowUpRecommendation>[];
 
-    for (final contact in contacts) {
+    for (int c = 0; c < contacts.length; c++) {
+      final contact = contacts[c];
+      final interactions = contact.interactions;
+
       // Skip if there's a planned future follow-up
-      if (_hasFutureFollowUp(contact, now)) continue;
+      if (_hasFutureFollowUp(interactions, now)) continue;
 
       // 1. Check for answered prayer requests in the last 7 days (High priority)
-      final recentAnsweredPrayer = _getRecentAnsweredPrayer(contact, now);
+      final recentAnsweredPrayer = _getRecentAnsweredPrayer(contact.prayerRequests, now);
       if (recentAnsweredPrayer != null) {
         recommendations.add(
           FollowUpRecommendation(
@@ -58,7 +66,7 @@ class FollowUpRecommendationService {
 
       // 2. Check for keywords in recent interactions (High priority)
       final followUpKeywordInteraction = _getInteractionWithFollowUpKeywords(
-        contact,
+        interactions,
       );
       if (followUpKeywordInteraction != null) {
         recommendations.add(
@@ -74,7 +82,7 @@ class FollowUpRecommendationService {
       }
 
       // 3. Check for pending prayer requests older than 14 days (Medium priority)
-      final stalePrayerRequest = _getStalePrayerRequest(contact, now);
+      final stalePrayerRequest = _getStalePrayerRequest(contact.prayerRequests, now);
       if (stalePrayerRequest != null) {
         recommendations.add(
           FollowUpRecommendation(
@@ -89,8 +97,7 @@ class FollowUpRecommendationService {
       }
 
       // 4. Check for interaction gaps (Critical to Low)
-      final latestInteraction = _getLatestInteraction(contact);
-      if (latestInteraction == null) {
+      if (interactions.isEmpty) {
         // Never interacted - Low priority check-in
         recommendations.add(
           FollowUpRecommendation(
@@ -100,6 +107,7 @@ class FollowUpRecommendationService {
           ),
         );
       } else {
+        final latestInteraction = interactions.first;
         final gapDays = now.difference(latestInteraction.occurredAt).inDays;
         if (gapDays >= 60) {
           recommendations.add(
@@ -124,31 +132,34 @@ class FollowUpRecommendationService {
     }
 
     // Sort by priority (critical first) and then by date
-    recommendations.sort((a, b) {
-      final priorityCompare = a.priority.index.compareTo(b.priority.index);
-      if (priorityCompare != 0) return priorityCompare;
+    if (recommendations.length > 1) {
+      recommendations.sort((a, b) {
+        final priorityCompare = a.priority.index.compareTo(b.priority.index);
+        if (priorityCompare != 0) return priorityCompare;
 
-      if (a.relativeDate == null && b.relativeDate == null) return 0;
-      if (a.relativeDate == null) return 1;
-      if (b.relativeDate == null) return -1;
-      return b.relativeDate!.compareTo(a.relativeDate!);
-    });
+        if (a.relativeDate == null && b.relativeDate == null) return 0;
+        if (a.relativeDate == null) return 1;
+        if (b.relativeDate == null) return -1;
+        return b.relativeDate!.compareTo(a.relativeDate!);
+      });
+    }
 
     return recommendations;
   }
 
-  bool _hasFutureFollowUp(Contact contact, DateTime now) {
-    for (final interaction in contact.interactions) {
-      if (interaction.followUpAt != null &&
-          interaction.followUpAt!.isAfter(now)) {
+  bool _hasFutureFollowUp(List<Interaction> interactions, DateTime now) {
+    for (int i = 0; i < interactions.length; i++) {
+      final followUpAt = interactions[i].followUpAt;
+      if (followUpAt != null && followUpAt.isAfter(now)) {
         return true;
       }
     }
     return false;
   }
 
-  PrayerRequest? _getRecentAnsweredPrayer(Contact contact, DateTime now) {
-    for (final prayer in contact.prayerRequests) {
+  PrayerRequest? _getRecentAnsweredPrayer(List<PrayerRequest> prayerRequests, DateTime now) {
+    for (int i = 0; i < prayerRequests.length; i++) {
+      final prayer = prayerRequests[i];
       if (prayer.status == PrayerRequestStatus.answered &&
           prayer.answeredAt != null) {
         final diff = now.difference(prayer.answeredAt!).inDays;
@@ -160,31 +171,23 @@ class FollowUpRecommendationService {
     return null;
   }
 
-  Interaction? _getInteractionWithFollowUpKeywords(Contact contact) {
-    if (contact.interactions.isEmpty) return null;
+  Interaction? _getInteractionWithFollowUpKeywords(List<Interaction> interactions) {
+    if (interactions.isEmpty) return null;
 
-    // Check only the most recent interaction
-    final latest = contact.interactions.first;
-    final text = '${latest.summary} ${latest.notes ?? ''}'.toLowerCase();
-
-    final keywords = [
-      'follow up',
-      'follow-up',
-      'check in',
-      'check-in',
-      'next time',
-      'remind me',
-    ];
-    for (final kw in keywords) {
-      if (text.contains(kw)) {
-        return latest;
-      }
+    final latest = interactions.first;
+    if (_keywordRegExp.hasMatch(latest.summary)) {
+      return latest;
+    }
+    final notes = latest.notes;
+    if (notes != null && _keywordRegExp.hasMatch(notes)) {
+      return latest;
     }
     return null;
   }
 
-  PrayerRequest? _getStalePrayerRequest(Contact contact, DateTime now) {
-    for (final prayer in contact.prayerRequests) {
+  PrayerRequest? _getStalePrayerRequest(List<PrayerRequest> prayerRequests, DateTime now) {
+    for (int i = 0; i < prayerRequests.length; i++) {
+      final prayer = prayerRequests[i];
       if (prayer.status == PrayerRequestStatus.pending) {
         final diff = now.difference(prayer.requestedAt).inDays;
         if (diff >= 14) {
@@ -193,11 +196,6 @@ class FollowUpRecommendationService {
       }
     }
     return null;
-  }
-
-  Interaction? _getLatestInteraction(Contact contact) {
-    if (contact.interactions.isEmpty) return null;
-    return contact.interactions.first; // Assumes sorted by date desc
   }
 
   int stalenessInDays(DateTime date, DateTime now) {
