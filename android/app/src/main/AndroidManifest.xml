@@ -37,6 +37,10 @@
             android:name="flutterEmbedding"
             android:value="2" />
 
+        <!-- Required for scheduled-reminder delivery: without this receiver the
+             AlarmManager broadcast is dropped silently and the notification only
+             ever appears via the immediate-fire fallback when the app is opened. -->
+        <receiver android:exported="false" android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver" />
         <receiver android:exported="false" android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED"/>
