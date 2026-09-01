@@ -26,6 +26,7 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
   final HfTokenStore _tokenStore = HfTokenStore();
   bool _enabled = false;
   bool _showSuggestionsOnSave = false;
+  bool _scriptureRefAdvancement = false;
   ModelStatus _status = ModelStatus.absent;
   EmbedderStatus _embedderStatus = EmbedderStatus.absent;
   bool _hasToken = false;
@@ -57,6 +58,8 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
     final enabled = await AiServices().gate.isEnabled();
     final showSuggestionsOnSave =
         await AiServices().gate.isShowSuggestionsOnSaveEnabled();
+    final scriptureRefAdvancement =
+        await AiServices().gate.isScriptureRefAdvancementEnabled();
     final status = await _modelManager.status();
     final embedderStatus = await _embedderManager.status();
     final token = await _tokenStore.read();
@@ -66,6 +69,7 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
     setState(() {
       _enabled = enabled;
       _showSuggestionsOnSave = showSuggestionsOnSave;
+      _scriptureRefAdvancement = scriptureRefAdvancement;
       _status = status;
       _embedderStatus = embedderStatus;
       _hasToken = token != null && token.isNotEmpty;
@@ -145,7 +149,17 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
     });
   }
 
-  Future<void> _download() async {
+  Future<void> _setScriptureRefAdvancement(bool value) async {
+    setState(() => _busy = true);
+    await AiServices().gate.setScriptureRefAdvancementEnabled(value);
+    if (!mounted) return;
+    setState(() {
+      _scriptureRefAdvancement = value;
+      _busy = false;
+    });
+  }
+
+   Future<void> _download() async {
     setState(() {
       _busy = true;
       _downloadProgress = 0;
@@ -565,8 +579,22 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
                         value: _showSuggestionsOnSave,
                         onChanged: _busy ? null : _setShowSuggestionsOnSave,
                       ),
+                      const Divider(height: 1, indent: 16, endIndent: 16),
+                      SwitchListTile.adaptive(
+                        title: const Text(
+                          'Use AI for Ready-to-log suggestions',
+                        ),
+                        subtitle: const Text(
+                          'When a scripture reference is written in free form '
+                          '(e.g. "Psalm one-seventeen"), ask the on-device model '
+                          'to suggest the next passage',
+                        ),
+                        value: _scriptureRefAdvancement,
+                        onChanged:
+                            _busy ? null : _setScriptureRefAdvancement,
+                      ),
+                     ],
                     ],
-                  ],
                 ),
 
                 const SizedBox(height: 16),
