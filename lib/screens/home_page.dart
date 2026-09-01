@@ -26,10 +26,13 @@ import '../widgets/recommendations_skeleton.dart';
 import '../widgets/skeleton_loader.dart';
 import '../services/ai/ai_services.dart';
 import '../services/ai/ai_feature_gate.dart';
-import '../services/follow_up_recommendation_service.dart';
+import '../services/ai/scripture_ref.dart';
+import '../services/ai/scripture_ref_advancement_service.dart';
+import '../services/ai/scripture_ref_pipeline.dart';
 import '../services/import_duplicate_detector.dart';
 import '../services/import_service.dart';
 import '../services/backup_service.dart';
+import '../services/follow_up_recommendation_service.dart';
 import 'contact_details_page.dart';
 import 'import_duplicate_review_page.dart';
 import 'prayer_diary_page.dart';
@@ -132,11 +135,12 @@ class _HomePageState extends State<HomePage>
     for (final status in PrayerRequestStatus.values) status: 0,
   };
   List<FollowUpRecommendation> _recommendations = [];
+  List<_ReadyToLogItem> _readyToLogItemsCache = [];
+  ScriptureRefAdvancementPipeline? _readyToLogPipeline;
   bool _isRefreshingRecommendations = false;
   Map<String, ContactMatch> _activeMatches = {};
   String _aiLabel = 'on-device';
   PeriodReviewData? _reviewData;
-
   final Set<String> _expandedLocations = <String>{};
 
   bool _isInitialLoad = true;
@@ -325,6 +329,9 @@ class _HomePageState extends State<HomePage>
       _filteredContacts = filtered;
       _groupedFilteredContacts = grouped;
     });
+
+    // Fire-and-forget: sync pass + optional async AI enrichment.
+    unawaited(_rebuildReadyToLogItems());
   }
 
   Future<void> _loadPrayerInsights() async {
@@ -438,61 +445,30 @@ class _HomePageState extends State<HomePage>
     );
   }
 
-  String _nextRef(String? notes) {
-    if (notes == null || notes.isEmpty) return 'Repeat';
+  String? _nextRef(String? notes) =>
+      ScriptureRef.tryAdvance(notes)?.display;
 
-    final psaReg = RegExp(
-      r'(?:PSA|Psa\.?|Psalms?)[^0-9]*(\d+)\s*[–-]\s*(\d+)',
-      caseSensitive: false,
-    );
-    final m = psaReg.firstMatch(notes);
-    if (m != null) {
-      final a = int.tryParse(m.group(1)!) ?? 0;
-      final b = int.tryParse(m.group(2)!) ?? 0;
-      final n = (b - a + 1) > 0 ? (b - a + 1) : 1;
-      final nextA = b + 1;
-      final nextB = b + n;
-      return 'Psa. $nextA–$nextB';
-    }
-
-    final chReg = RegExp(r'(?:Ch\.?|Chapter)\s*(\d+)', caseSensitive: false);
-    final c = chReg.firstMatch(notes);
-    if (c != null) {
-      final chNum = int.tryParse(c.group(1)!) ?? 0;
-      return 'Ch. ${chNum + 1}';
-    }
-
-    return 'Repeat';
-  }
-
-  List<_ReadyToLogItem> _readyToLogItems() {
+  /// Synchronous fast path: build the ready-to-log list using regex only.
+  /// Returns items whose `pill` is null when regex missed (so the card can
+  /// hold a slot for an async AI enrichment, see [_rebuildReadyToLogItems]).
+  List<_ReadyToLogItem> _readyToLogItemsSync() {
     final items = <_ReadyToLogItem>[];
 
     final candidates =
         _contacts.where((c) => c.interactions.isNotEmpty).map((c) {
-      final series = c.interactions.firstWhere(
-        (i) => _nextRef(i.notes) != 'Repeat' || _nextRef(i.summary) != 'Repeat',
-        orElse: () => c.interactions.first,
-      );
-      final isSeries = _nextRef(series.notes) != 'Repeat' ||
-          _nextRef(series.summary) != 'Repeat';
-      return (contact: c, last: series, isSeries: isSeries);
+      // Anchor each tile on the most recent interaction; the AI enrichment
+      // decides whether it has a series ref to advance.
+      final last = c.interactions.first;
+      return (contact: c, last: last);
     }).toList();
 
-    candidates.sort((a, b) {
-      if (a.isSeries != b.isSeries) {
-        return a.isSeries ? -1 : 1;
-      }
-      final dateA = a.last.occurredAt;
-      final dateB = b.last.occurredAt;
-      return dateB.compareTo(dateA);
-    });
+    candidates.sort((a, b) =>
+        b.last.occurredAt.compareTo(a.last.occurredAt));
 
     for (final item in candidates.take(3)) {
       final c = item.contact;
       final last = item.last;
-      final notesRef = _nextRef(last.notes);
-      final ref = notesRef != 'Repeat' ? notesRef : _nextRef(last.summary);
+      final regexRef = _nextRef(last.notes) ?? _nextRef(last.summary);
 
       final rawType = last.medium.isNotEmpty
           ? last.medium
@@ -502,32 +478,63 @@ class _HomePageState extends State<HomePage>
       final typeTitle = rawType.split(' · ').first;
       final duration = last.durationMinutes ?? 0;
       final subText = '${c.displayName} · $duration min';
-      final prefillNotes = ref == 'Repeat' ? last.notes : ref;
-
-      final prefill = Interaction(
-        summary: last.summary,
-        medium: last.medium,
-        durationMinutes: last.durationMinutes,
-        location: last.location,
-        notes: prefillNotes,
-        occurredAt: DateTime.now(),
-        participantIds: last.participantIds.contains(c.id)
-            ? last.participantIds
-            : [c.id, ...last.participantIds],
-      );
 
       items.add(_ReadyToLogItem(
         contact: c,
         lastInteraction: last,
         title: typeTitle,
         sub: subText,
-        pill: ref,
-        prefillInteraction: prefill,
+        pill: regexRef,
+        prefillNotes: regexRef ?? last.notes,
       ));
     }
 
     return items;
   }
+
+  /// Rebuilds the ready-to-log cache. Sets the sync (regex-only) items
+  /// immediately, then fires an async enrichment pass that consults the
+  /// on-device LLM for items where the regex missed.
+  ///
+  /// Safe to call from [_applyContactsSnapshot] and on user actions like
+  /// adding a new interaction.
+  Future<void> _rebuildReadyToLogItems() async {
+    if (_contacts.isEmpty) {
+      setState(() => _readyToLogItemsCache = const []);
+      return;
+    }
+
+    final syncItems = _readyToLogItemsSync();
+    setState(() => _readyToLogItemsCache = syncItems);
+
+    final useAi = await AiFeatureGate().isScriptureRefAdvancementEnabled();
+    if (!useAi) return;
+    if (!AiServices().llm.isReady) return;
+
+    final pipeline = _readyToLogPipeline ??= ScriptureRefAdvancementPipeline(
+      ScriptureRefAdvancementService(AiServices().llm),
+    );
+
+    var changed = false;
+    for (var i = 0; i < _readyToLogItemsCache.length; i++) {
+      final cached = _readyToLogItemsCache[i];
+      if (cached.pill != null) continue;
+      final ref = await pipeline.advance(
+        cached.lastInteraction.notes ?? cached.lastInteraction.summary,
+        useAi: true,
+      );
+      if (ref == null) continue;
+      _readyToLogItemsCache[i] = cached.copyWith(
+        pill: ref.display,
+        prefillNotes: ref.display,
+      );
+      changed = true;
+      if (mounted) setState(() {});
+    }
+    if (changed && mounted) setState(() {});
+  }
+
+
 
   Widget _buildReviewAlertCard() {
     final data = _reviewData;
@@ -608,7 +615,8 @@ class _HomePageState extends State<HomePage>
   }
 
   Widget _buildReadyToLogCard() {
-    final items = _readyToLogItems();
+    final items =
+        _readyToLogItemsCache.where((i) => i.pill != null).toList();
     if (items.isEmpty) return const SizedBox.shrink();
 
     final theme = Theme.of(context);
@@ -683,10 +691,7 @@ class _HomePageState extends State<HomePage>
                     ),
                   InkWell(
                     borderRadius: BorderRadius.circular(12),
-                    onTap: () => _openLogInteractionForContact(
-                      items[i].contact,
-                      customPrefill: items[i].prefillInteraction,
-                    ),
+                    onTap: () => _openLogInteractionForItem(items[i]),
                     child: Padding(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 8,
@@ -738,7 +743,7 @@ class _HomePageState extends State<HomePage>
                               borderRadius: BorderRadius.circular(7),
                             ),
                             child: Text(
-                              items[i].pill,
+                              items[i].pill!,
                               style: TextStyle(
                                 fontSize: 11.5,
                                 fontWeight: FontWeight.w700,
@@ -1450,6 +1455,25 @@ class _HomePageState extends State<HomePage>
     }
   }
 
+  Future<void> _openLogInteractionForItem(_ReadyToLogItem item) async {
+    final last = item.lastInteraction;
+    final prefill = Interaction(
+      summary: last.summary,
+      medium: last.medium,
+      durationMinutes: last.durationMinutes,
+      location: last.location,
+      notes: item.prefillNotes,
+      occurredAt: DateTime.now(),
+      participantIds: last.participantIds.contains(item.contact.id)
+          ? last.participantIds
+          : [item.contact.id, ...last.participantIds],
+    );
+    await _openLogInteractionForContact(
+      item.contact,
+      customPrefill: prefill,
+    );
+  }
+
   Future<void> _openLogInteractionForContact(
     Contact contact, {
     Interaction? customPrefill,
@@ -2027,8 +2051,15 @@ class _ReadyToLogItem {
   final Interaction lastInteraction;
   final String title;
   final String sub;
-  final String pill;
-  final Interaction prefillInteraction;
+
+  /// Suggested next reference (e.g. "Psa. 118"). Null until either the
+  /// regex path resolves it or the async AI path enriches it. A tile is
+  /// only rendered when this is non-null.
+  final String? pill;
+
+  /// Notes to prefill the LogInteractionSheet with. Falls back to the
+  /// last interaction's notes when no advance ref is available.
+  final String? prefillNotes;
 
   _ReadyToLogItem({
     required this.contact,
@@ -2036,6 +2067,16 @@ class _ReadyToLogItem {
     required this.title,
     required this.sub,
     required this.pill,
-    required this.prefillInteraction,
+    required this.prefillNotes,
   });
+
+  _ReadyToLogItem copyWith({String? pill, String? prefillNotes}) =>
+      _ReadyToLogItem(
+        contact: contact,
+        lastInteraction: lastInteraction,
+        title: title,
+        sub: sub,
+        pill: pill ?? this.pill,
+        prefillNotes: prefillNotes ?? this.prefillNotes,
+      );
 }

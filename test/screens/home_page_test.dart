@@ -13,9 +13,11 @@ import 'package:bnpb/services/google_drive_service.dart';
 import 'package:bnpb/services/reminder_service.dart';
 import 'package:bnpb/services/security_service.dart';
 import 'package:bnpb/services/contact_service.dart';
+import 'package:bnpb/services/ai/ai_services.dart';
 import 'package:bnpb/widgets/log_interaction_sheet.dart';
 import 'package:uuid/uuid.dart';
 import '../repositories/mock_db_helper.dart';
+import '../services/ai/_fake_pipeline_llm.dart';
 
 class MockGoogleDriveService extends Mock implements GoogleDriveService {}
 
@@ -56,18 +58,12 @@ class FakeDBHelper extends MockDBHelper {
     DateTime? updatedSince,
     bool includeDeleted = false,
   }) async {
-    Iterable<PrayerRequest> filtered = prayerRequests;
-    if (!includeDeleted) {
-      filtered = filtered.where((pr) => pr.deletedAt == null);
-    }
-    if (status != null) {
-      filtered = filtered.where((pr) => pr.status == status);
-    }
-    List<PrayerRequest> list = filtered.toList();
-    if (limit != null) {
-      list = list.take(limit).toList();
-    }
-    return list;
+    final List<PrayerRequest> filtered = prayerRequests
+        .where((pr) => includeDeleted ? true : pr.deletedAt == null)
+        .where((pr) => status == null ? true : pr.status == status)
+        .toList();
+    if (limit == null) return filtered;
+    return filtered.take(limit).toList();
   }
 
   @override
@@ -121,6 +117,7 @@ void main() {
 
   tearDown(() {
     ContactService().clearCache();
+    AiServices().debugOverride();
     GoogleDriveService.resetTestOverride();
     ReminderService.resetTestOverride();
     SecurityService.resetTestOverride();
@@ -154,11 +151,8 @@ void main() {
     await tester.pumpWidget(const MaterialApp(home: HomePage()));
     await tester.pumpAndSettle();
 
-    // Verify it renders the Needs prayer count and label
     expect(find.text('NEEDS PRAYER'), findsOneWidget);
     expect(find.text('3'), findsOneWidget);
-
-    // Verify it renders the Answered count and label
     expect(find.text('ANSWERED'), findsOneWidget);
     final answeredCardFinder = find.ancestor(
       of: find.text('ANSWERED'),
@@ -169,11 +163,8 @@ void main() {
       findsOneWidget,
     );
 
-    // Tap Answered card
     await tester.tap(find.text('ANSWERED'));
     await tester.pumpAndSettle();
-
-    // Verify PrayerDiaryPage is shown (can find filter chip)
     expect(find.text('Archived'), findsOneWidget);
   });
 
@@ -182,10 +173,7 @@ void main() {
     await tester.pumpWidget(const MaterialApp(home: HomePage()));
     await tester.pumpAndSettle();
 
-    // Verify Contacts title is present
     expect(find.text('Contacts'), findsOneWidget);
-
-    // Verify the buttons are found by tooltips
     expect(find.byTooltip('Prayer Lists'), findsOneWidget);
     expect(find.byTooltip('Prayer Diary'), findsOneWidget);
     expect(find.byTooltip('Backup and Restore'), findsOneWidget);
@@ -216,17 +204,14 @@ void main() {
     await tester.pumpWidget(const MaterialApp(home: HomePage()));
     await tester.pumpAndSettle();
 
-    // Verify Follow-up suggestions header & recommendation items
     expect(find.text('Follow-up suggestions'), findsOneWidget);
     expect(find.text('Jane Smith'), findsOneWidget);
     expect(find.text('CRITICAL'), findsOneWidget);
     expect(find.text('Log'), findsOneWidget);
 
-    // Tap Log button
     await tester.tap(find.text('Log'));
     await tester.pumpAndSettle();
 
-    // Verify LogInteractionSheet opens
     expect(find.byType(LogInteractionSheet), findsOneWidget);
   });
 
@@ -256,16 +241,13 @@ void main() {
     await tester.pumpWidget(const MaterialApp(home: HomePage()));
     await tester.pumpAndSettle();
 
-    // Verify Ready to log card is rendered
     expect(find.text('Ready to log'), findsOneWidget);
     expect(find.text('Timothy Alvarez · 45 min'), findsOneWidget);
     expect(find.text('Psa. 117–118'), findsOneWidget);
 
-    // Tap the Ready to log tile
     await tester.tap(find.text('Psa. 117–118'));
     await tester.pumpAndSettle();
 
-    // Verify LogInteractionSheet opens
     expect(find.byType(LogInteractionSheet), findsOneWidget);
   });
 
@@ -295,14 +277,79 @@ void main() {
     await tester.pumpWidget(const MaterialApp(home: HomePage()));
     await tester.pumpAndSettle();
 
-    // No one reached regular contact this month → attention alert shows.
     expect(find.textContaining('is not adding up'), findsOneWidget);
     expect(find.textContaining('needing attention'), findsOneWidget);
 
-    // Tapping the alert opens the Review screen.
     await tester.tap(find.textContaining('is not adding up'));
     await tester.pumpAndSettle();
 
     expect(find.text('Review'), findsOneWidget);
+  });
+
+  testWidgets(
+      'HomePage falls back to AI service for free-form notes when AI is enabled',
+      (WidgetTester tester) async {
+    SharedPreferences.setMockInitialValues({
+      'ai.features.scripture_ref_advancement': true,
+    });
+
+    AiServices().debugOverride(
+      llm: FakePipelineLlm('{"book":"Psa","start":117,"end":117}'),
+    );
+
+    final contactId = const Uuid().v4();
+    final contact = Contact(
+      id: contactId,
+      firstName: 'Joanna',
+      lastName: 'Park',
+      updatedAt: DateTime.now(),
+      interactions: [
+        Interaction(
+          id: 20,
+          participantIds: [contactId],
+          occurredAt: DateTime.now().subtract(const Duration(days: 2)),
+          summary: 'Bible reading',
+          medium: 'In person',
+          durationMinutes: 30,
+          notes: 'Read psalm one-seventeen together',
+        ),
+      ],
+    );
+    fakeDbHelper.contacts.add(contact);
+
+    await tester.pumpWidget(const MaterialApp(home: HomePage()));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Ready to log'), findsOneWidget);
+    expect(find.text('Psa. 118'), findsOneWidget);
+  });
+
+  testWidgets(
+      'HomePage does not surface free-form notes when AI feature is disabled',
+      (WidgetTester tester) async {
+    final contactId = const Uuid().v4();
+    final contact = Contact(
+      id: contactId,
+      firstName: 'Mark',
+      lastName: 'Reyes',
+      updatedAt: DateTime.now(),
+      interactions: [
+        Interaction(
+          id: 30,
+          participantIds: [contactId],
+          occurredAt: DateTime.now().subtract(const Duration(days: 2)),
+          summary: 'Bible reading',
+          medium: 'In person',
+          durationMinutes: 30,
+          notes: 'Read psalm one-seventeen together',
+        ),
+      ],
+    );
+    fakeDbHelper.contacts.add(contact);
+
+    await tester.pumpWidget(const MaterialApp(home: HomePage()));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Ready to log'), findsNothing);
   });
 }
