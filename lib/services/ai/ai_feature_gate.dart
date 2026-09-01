@@ -31,6 +31,8 @@ class AiFeatureGate {
   static const String _showSuggestionsOnSaveKey =
       'ai.features.show_suggestions_on_save';
 
+  static const String _scriptureRefAdvancementKey =
+      'ai.features.scripture_ref_advancement';
   Future<void> setEnabled(bool value) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_enabledKey, value);
@@ -59,5 +61,19 @@ class AiFeatureGate {
   Future<void> setShowSuggestionsOnSaveEnabled(bool value) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_showSuggestionsOnSaveKey, value);
+  }
+
+  /// Whether the Ready-to-log card should consult the on-device LLM for
+  /// scripture refs that the regex path can't parse. Defaults to false
+  /// (off) — AI is opt-in per feature, mirroring
+  /// [isShowSuggestionsOnSaveEnabled].
+  Future<bool> isScriptureRefAdvancementEnabled() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_scriptureRefAdvancementKey) ?? false;
+  }
+
+  Future<void> setScriptureRefAdvancementEnabled(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_scriptureRefAdvancementKey, value);
   }
 }
