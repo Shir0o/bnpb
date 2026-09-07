@@ -50,7 +50,8 @@ class FollowUpRecommendationService {
       if (_hasFutureFollowUp(interactions, now)) continue;
 
       // 1. Check for answered prayer requests in the last 7 days (High priority)
-      final recentAnsweredPrayer = _getRecentAnsweredPrayer(contact.prayerRequests, now);
+      final recentAnsweredPrayer =
+          _getRecentAnsweredPrayer(contact.prayerRequests, now);
       if (recentAnsweredPrayer != null) {
         recommendations.add(
           FollowUpRecommendation(
@@ -82,7 +83,8 @@ class FollowUpRecommendationService {
       }
 
       // 3. Check for pending prayer requests older than 14 days (Medium priority)
-      final stalePrayerRequest = _getStalePrayerRequest(contact.prayerRequests, now);
+      final stalePrayerRequest =
+          _getStalePrayerRequest(contact.prayerRequests, now);
       if (stalePrayerRequest != null) {
         recommendations.add(
           FollowUpRecommendation(
@@ -157,7 +159,8 @@ class FollowUpRecommendationService {
     return false;
   }
 
-  PrayerRequest? _getRecentAnsweredPrayer(List<PrayerRequest> prayerRequests, DateTime now) {
+  PrayerRequest? _getRecentAnsweredPrayer(
+      List<PrayerRequest> prayerRequests, DateTime now) {
     for (int i = 0; i < prayerRequests.length; i++) {
       final prayer = prayerRequests[i];
       if (prayer.status == PrayerRequestStatus.answered &&
@@ -171,7 +174,8 @@ class FollowUpRecommendationService {
     return null;
   }
 
-  Interaction? _getInteractionWithFollowUpKeywords(List<Interaction> interactions) {
+  Interaction? _getInteractionWithFollowUpKeywords(
+      List<Interaction> interactions) {
     if (interactions.isEmpty) return null;
 
     final latest = interactions.first;
@@ -185,7 +189,8 @@ class FollowUpRecommendationService {
     return null;
   }
 
-  PrayerRequest? _getStalePrayerRequest(List<PrayerRequest> prayerRequests, DateTime now) {
+  PrayerRequest? _getStalePrayerRequest(
+      List<PrayerRequest> prayerRequests, DateTime now) {
     for (int i = 0; i < prayerRequests.length; i++) {
       final prayer = prayerRequests[i];
       if (prayer.status == PrayerRequestStatus.pending) {

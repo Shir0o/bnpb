@@ -1,13 +1,9 @@
 name: bnpb
-description: "A Flutter project for managing contacts and visualizing data."
-
-publish_to: 'none'
-
-version: 1.1.0+2
-
+description: A Flutter project for managing contacts and visualizing data.
+publish_to: none
+version: 1.2.0
 environment:
   sdk: '>=3.0.0 <4.0.0'
-
 dependencies:
   flutter:
     sdk: flutter
@@ -46,14 +42,11 @@ dependencies:
   google_generative_ai: ^0.4.7
   disk_space_plus: ^0.2.3
   flutter_downloader: ^1.12.0
-
-
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
   mocktail: ^1.0.0
-
   path_provider_platform_interface: any
   plugin_platform_interface: any
   flutter_launcher_icons: ^0.14.4
@@ -61,20 +54,19 @@ flutter:
   uses-material-design: true
   assets:
     - assets/fonts/
-
 flutter_launcher_icons:
   android: true
   ios: true
   remove_alpha_ios: true
-  image_path: "assets/images/app_icon.png"
-  adaptive_icon_background: "#ffffff"
-  adaptive_icon_foreground: "assets/images/app_icon.png"
+  image_path: assets/images/app_icon.png
+  adaptive_icon_background: '#ffffff'
+  adaptive_icon_foreground: assets/images/app_icon.png
   macos:
     generate: true
-    image_path: "assets/images/app_icon.png"
+    image_path: assets/images/app_icon.png
   windows:
     generate: true
-    image_path: "assets/images/app_icon.png"
+    image_path: assets/images/app_icon.png
   web:
     generate: true
-    image_path: "assets/images/app_icon.png"
+    image_path: assets/images/app_icon.png

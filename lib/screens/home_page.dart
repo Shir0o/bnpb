@@ -445,8 +445,7 @@ class _HomePageState extends State<HomePage>
     );
   }
 
-  String? _nextRef(String? notes) =>
-      ScriptureRef.tryAdvance(notes)?.display;
+  String? _nextRef(String? notes) => ScriptureRef.tryAdvance(notes)?.display;
 
   /// Synchronous fast path: build the ready-to-log list using regex only.
   /// Returns items whose `pill` is null when regex missed (so the card can
@@ -462,8 +461,7 @@ class _HomePageState extends State<HomePage>
       return (contact: c, last: last);
     }).toList();
 
-    candidates.sort((a, b) =>
-        b.last.occurredAt.compareTo(a.last.occurredAt));
+    candidates.sort((a, b) => b.last.occurredAt.compareTo(a.last.occurredAt));
 
     for (final item in candidates.take(3)) {
       final c = item.contact;
@@ -533,8 +531,6 @@ class _HomePageState extends State<HomePage>
     }
     if (changed && mounted) setState(() {});
   }
-
-
 
   Widget _buildReviewAlertCard() {
     final data = _reviewData;
@@ -615,8 +611,7 @@ class _HomePageState extends State<HomePage>
   }
 
   Widget _buildReadyToLogCard() {
-    final items =
-        _readyToLogItemsCache.where((i) => i.pill != null).toList();
+    final items = _readyToLogItemsCache.where((i) => i.pill != null).toList();
     if (items.isEmpty) return const SizedBox.shrink();
 
     final theme = Theme.of(context);

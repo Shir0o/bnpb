@@ -17,7 +17,9 @@ void main() {
     service = FollowUpRecommendationService(dbHelper: mockDbHelper);
   });
 
-  test('getRecommendations returns correct recommendations and priority ordering', () async {
+  test(
+      'getRecommendations returns correct recommendations and priority ordering',
+      () async {
     final now = DateTime.now();
 
     final c1 = Contact(
@@ -120,7 +122,8 @@ void main() {
       ],
     );
 
-    when(() => mockDbHelper.getContacts()).thenAnswer((_) async => [c1, c2, c3, c4, c5, c6, c7]);
+    when(() => mockDbHelper.getContacts())
+        .thenAnswer((_) async => [c1, c2, c3, c4, c5, c6, c7]);
 
     final recommendations = await service.getRecommendations();
 

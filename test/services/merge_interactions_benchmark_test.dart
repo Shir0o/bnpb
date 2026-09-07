@@ -57,7 +57,8 @@ void main() {
         'deviceId': 'remote-device',
         'timestamp': DateTime.now().toUtc().toIso8601String(),
         'integrityCheck': 'valid',
-        'interactions': remoteInteractions.map((i) => i.toMap(includeId: false)).toList(),
+        'interactions':
+            remoteInteractions.map((i) => i.toMap(includeId: false)).toList(),
       };
 
       final coordinator = SyncCoordinator(dbHelper);
@@ -66,7 +67,8 @@ void main() {
       await coordinator.importSyncData(payload);
       stopwatch.stop();
 
-      debugPrint('Merge 200 interactions execution time: ${stopwatch.elapsedMilliseconds}ms');
+      debugPrint(
+          'Merge 200 interactions execution time: ${stopwatch.elapsedMilliseconds}ms');
 
       final imported = await dbHelper.getInteractions(includeDeleted: true);
       expect(imported, hasLength(200));
@@ -75,7 +77,10 @@ void main() {
       final updatedInteractions = remoteInteractions.map((i) {
         final map = i.toMap(includeId: false);
         map['summary'] = '${i.summary} updated';
-        map['updatedAt'] = DateTime.now().toUtc().add(const Duration(minutes: 5)).toIso8601String();
+        map['updatedAt'] = DateTime.now()
+            .toUtc()
+            .add(const Duration(minutes: 5))
+            .toIso8601String();
         return map;
       }).toList();
 
@@ -91,9 +96,11 @@ void main() {
       await coordinator.importSyncData(updatePayload);
       updateStopwatch.stop();
 
-      debugPrint('Merge update 200 interactions execution time: ${updateStopwatch.elapsedMilliseconds}ms');
+      debugPrint(
+          'Merge update 200 interactions execution time: ${updateStopwatch.elapsedMilliseconds}ms');
 
-      final updatedImported = await dbHelper.getInteractions(includeDeleted: true);
+      final updatedImported =
+          await dbHelper.getInteractions(includeDeleted: true);
       expect(updatedImported, hasLength(200));
       expect(updatedImported.first.summary, contains('updated'));
     });
