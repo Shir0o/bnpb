@@ -45,7 +45,7 @@ class _LogPrayerRequestSheetState extends State<LogPrayerRequestSheet> {
   DateTime? _answeredAt;
   late PrayerRequestStatus _status;
   final Set<String> _selectedParticipantIds = {};
-  late final Map<String, Contact> _contactLookup;
+  Map<String, Contact> _contactLookup = {};
   bool _isSaving = false;
 
   @override
@@ -137,7 +137,12 @@ class _LogPrayerRequestSheetState extends State<LogPrayerRequestSheet> {
     );
 
     if (result != null && mounted) {
+      final updatedContacts = await DBHelper().getContacts();
+      if (!mounted) return;
       setState(() {
+        _contactLookup = {
+          for (final contact in updatedContacts) contact.id: contact,
+        };
         _selectedParticipantIds.clear();
         if (widget.initialContact != null) {
           _selectedParticipantIds.add(widget.initialContact!.id);
