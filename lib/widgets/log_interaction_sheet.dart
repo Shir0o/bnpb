@@ -174,7 +174,13 @@ class _LogInteractionSheetState extends State<LogInteractionSheet> {
     );
 
     if (result != null && mounted) {
+      final updatedContacts = await DBHelper().getContacts();
+      if (!mounted) return;
       setState(() {
+        _availableContacts = updatedContacts;
+        _contactLookup = {
+          for (final contact in _availableContacts) contact.id: contact,
+        };
         _selectedParticipantIds = {widget.contact.id, ...result};
       });
     }
