@@ -49,7 +49,9 @@ BNPB provides options to keep your data safe across devices:
 
 ## AI features (optional)
 BNPB includes optional AI-assisted features (such as suggested follow-up
-actions after logging an interaction, and tag suggestions for notes). AI
+actions after logging an interaction, tag suggestions for notes, and
+suggesting the next entry in a recurring scripture-reading series on the
+"Ready to log" card). AI
 is off by default; when enabled, it runs on this device by default and
 only sends note text off-device if you explicitly turn on the cloud
 backend.
