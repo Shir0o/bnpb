@@ -159,7 +159,7 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
     });
   }
 
-   Future<void> _download() async {
+  Future<void> _download() async {
     setState(() {
       _busy = true;
       _downloadProgress = 0;
@@ -590,11 +590,10 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
                           'to suggest the next passage',
                         ),
                         value: _scriptureRefAdvancement,
-                        onChanged:
-                            _busy ? null : _setScriptureRefAdvancement,
+                        onChanged: _busy ? null : _setScriptureRefAdvancement,
                       ),
-                     ],
                     ],
+                  ],
                 ),
 
                 const SizedBox(height: 16),

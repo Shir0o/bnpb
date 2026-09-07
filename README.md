@@ -25,10 +25,13 @@ while offering analytics and export tooling.
 
 - [Contributing Guidelines](CONTRIBUTING.md)
 - [Architecture & Technical Design](docs/ARCHITECTURE.md)
-- [Changelog](CHANGELOG.md)
+- [Release Process & Pipeline](RELEASING.md)
+- [Release Notes](RELEASE.md)
+- [Domain Glossary & Context](CONTEXT.md)
 - [Privacy Policy & Personal Usage Guidelines](docs/privacy_policy.md)
 - [Optional facial recognition pipeline research](docs/facial_recognition_pipeline.md)
 - [ADR 0001 – Platform Selection](docs/adr/0001-platform.md)
+- [ADR 0002 – Release Automation Pipeline](docs/adr/0002-release-automation.md)
 - [MVP Scope & Milestones](docs/mvp.md)
 
 ## Development
