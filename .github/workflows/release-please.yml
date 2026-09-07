@@ -31,7 +31,7 @@ jobs:
           fi
 
       - name: Run release-please
-        uses: googleapis/release-please-action@v4
+        uses: googleapis/release-please-action@v5
         with:
           # RELEASE_PLEASE_TOKEN is a PAT with repo / contents:write + pull-requests:write.
           # A personal PAT is required so that tags created on release PR merge trigger
