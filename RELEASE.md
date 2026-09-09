@@ -2,6 +2,13 @@
 
 All notable changes to the BNPB project are documented here.
 
+## [1.2.1](https://github.com/Shir0o/bnpb/compare/v1.2.0...v1.2.1) (2026-09-09)
+
+
+### Bug Fixes
+
+* reconcile prayer list sync across devices and fix json export import ([#264](https://github.com/Shir0o/bnpb/issues/264)) ([5c01af6](https://github.com/Shir0o/bnpb/commit/5c01af6a77d40707cfd43861bbb08b1088764dcc))
+
 ## [1.2.0](https://github.com/Shir0o/bnpb/compare/v1.1.0...v1.2.0) (2026-09-07)
 
 
