@@ -148,9 +148,15 @@ class _MacOSContactsViewState extends State<MacOSContactsView> {
   bool _isOnPrayerList(String contactId) =>
       _prayerList?.contactIds.contains(contactId) ?? false;
 
+  Future<PrayerList> _ensurePrayerList() async {
+    if (_prayerList != null) return _prayerList!;
+    final list = await _dbHelper.ensureDefaultPrayerList();
+    _prayerList = list;
+    return list;
+  }
+
   Future<void> _togglePrayerList(Contact contact) async {
-    final list = _prayerList;
-    if (list == null) return;
+    final list = await _ensurePrayerList();
     if (_isOnPrayerList(contact.id)) {
       await _dbHelper.removeContactFromPrayerList(list.id, contact.id);
     } else {

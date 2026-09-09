@@ -143,9 +143,16 @@ class _MacOSPrayerDiaryViewState extends State<MacOSPrayerDiaryView> {
     }
   }
 
+  Future<PrayerList> _ensurePrayerList() async {
+    if (_prayerList != null) return _prayerList!;
+    final list = await _dbHelper.ensureDefaultPrayerList();
+    _prayerList = list;
+    return list;
+  }
+
   Future<void> _openContactPicker() async {
-    final list = _prayerList;
-    if (list == null) return;
+    final list = await _ensurePrayerList();
+    if (!mounted) return;
     final currentIds = list.contactIds.toSet();
     final selectedIds = await showMacModal<List<String>>(
       context,

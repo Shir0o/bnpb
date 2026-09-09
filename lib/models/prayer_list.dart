@@ -24,6 +24,7 @@ class PrayerList {
   final DateTime? deletedAt;
 
   PrayerList copyWith({
+    String? id,
     String? name,
     String? description,
     String? color,
@@ -33,7 +34,7 @@ class PrayerList {
     DateTime? deletedAt,
   }) {
     return PrayerList(
-      id: id,
+      id: id ?? this.id,
       name: name ?? this.name,
       description: description ?? this.description,
       color: color ?? this.color,
@@ -84,13 +85,20 @@ class PrayerList {
     );
   }
 
+  static const String defaultListId = 'default_prayer_list';
+  static const String defaultListName = 'My Prayer List';
+
   static PrayerList create({
     required String name,
     String? description,
     String? color,
   }) {
+    final effectiveId =
+        name.trim().toLowerCase() == defaultListName.toLowerCase()
+            ? defaultListId
+            : const Uuid().v4();
     return PrayerList(
-      id: const Uuid().v4(),
+      id: effectiveId,
       name: name,
       description: description,
       color: color,

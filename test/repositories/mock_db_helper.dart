@@ -214,6 +214,12 @@ class MockDBHelper implements DBHelper {
       throw UnimplementedError();
 
   @override
+  Future<PrayerList> ensureDefaultPrayerList() async => PrayerList(
+        id: PrayerList.defaultListId,
+        name: PrayerList.defaultListName,
+      );
+
+  @override
   Future<PrayerList?> getPrayerList(String id) => throw UnimplementedError();
 
   @override
