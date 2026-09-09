@@ -67,6 +67,13 @@ class SyncService {
 
   Stream<void> get onSyncComplete => _syncCompleteController.stream;
 
+  /// Broadcasts a sync-complete signal to active views (e.g. after database restore).
+  void notifySyncComplete() {
+    if (!_syncCompleteController.isClosed) {
+      _syncCompleteController.add(null);
+    }
+  }
+
   Future<void> setSyncDirectory() async {
     final result = await FilePicker.platform.getDirectoryPath(
       dialogTitle: 'Select Sync Folder',

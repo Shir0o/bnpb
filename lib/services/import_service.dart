@@ -9,6 +9,8 @@ import 'ai/ai_services.dart';
 import 'import_duplicate_detector.dart';
 import 'reminder_coordinator.dart';
 import 'sync_coordinator.dart';
+import 'contact_service.dart';
+import 'sync_service.dart';
 
 /// Resolves a list of suspected duplicate groups in an incoming import.
 /// Returning a new list replaces [incoming]; returning `null` aborts the
@@ -58,6 +60,8 @@ class ImportService {
       final coordinator = SyncCoordinator(_dbHelper);
       await coordinator.importSyncData(jsonData);
       await _reminderCoordinator.refreshAllContacts();
+      ContactService().invalidateContacts();
+      SyncService().notifySyncComplete();
       final contacts = (jsonData['contacts'] as List?) ?? [];
       return contacts.length;
     }
@@ -122,6 +126,7 @@ class ImportService {
         baseMap.remove('prayerRequests');
         baseMap.remove('relationships');
         baseMap.remove('tags');
+        baseMap.remove('firstMeetingNotes');
         baseMap['updatedAt'] = nowStr;
         batch.insert(
           'contacts',
@@ -195,6 +200,8 @@ class ImportService {
 
     // Pass 4: Refresh reminders
     await _reminderCoordinator.refreshAllContacts();
+    ContactService().invalidateContacts();
+    SyncService().notifySyncComplete();
 
     return restoredContacts.length;
   }

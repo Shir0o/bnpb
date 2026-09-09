@@ -620,42 +620,104 @@ class SyncCoordinator {
   }
 
   Future<void> _mergePrayerLists(List<dynamic> remoteLists) async {
+    if (remoteLists.isEmpty) return;
+
     final db = await _db.database;
 
     final remotePrayerLists = remoteLists
         .map((item) => PrayerList.fromMap(Map<String, dynamic>.from(item)))
         .toList();
-    final remoteIds = remotePrayerLists.map((list) => list.id).toList();
 
-    // Fetch existing local lists in chunks
-    final existingRows = await _db.prayerListDao.chunkedQuery(
-      table: 'prayer_lists',
-      inColumn: 'id',
-      values: remoteIds,
-    );
+    // Fetch existing local lists (this also deduplicates local lists)
+    final localLists = (await _db.prayerListDao.getPrayerLists()).toList();
 
-    // Create lookup map for existing lists
-    final localLists = {
-      for (final row in existingRows)
-        row['id'] as String: PrayerList.fromMap(row)
-    };
+    for (var remoteList in remotePrayerLists) {
+      final isDefault = remoteList.name.trim().toLowerCase() ==
+          PrayerList.defaultListName.toLowerCase();
 
-    for (final remoteList in remotePrayerLists) {
-      bool shouldUpdate = false;
-      final localList = localLists[remoteList.id];
+      // Look up local list by id first, then fallback to case-insensitive name
+      PrayerList? localList =
+          localLists.where((l) => l.id == remoteList.id).firstOrNull;
+      localList ??= localLists
+          .where(
+            (l) =>
+                l.name.trim().toLowerCase() ==
+                remoteList.name.trim().toLowerCase(),
+          )
+          .firstOrNull;
+
       if (localList == null) {
         if (remoteList.deletedAt == null) {
-          shouldUpdate = true;
+          if (isDefault && remoteList.id != PrayerList.defaultListId) {
+            remoteList = remoteList.copyWith(id: PrayerList.defaultListId);
+          }
+          await _db.upsertPrayerListFromSync(db, remoteList);
+          localLists.add(remoteList);
         }
-      } else {
-        if (remoteList.updatedAt.isAfter(localList.updatedAt)) {
-          shouldUpdate = true;
-        }
+        continue;
       }
 
-      if (shouldUpdate) {
-        await _db.upsertPrayerListFromSync(db, remoteList);
+      final String canonicalId;
+      if (isDefault ||
+          localList.id == PrayerList.defaultListId ||
+          remoteList.id == PrayerList.defaultListId) {
+        canonicalId = PrayerList.defaultListId;
+      } else {
+        canonicalId = localList.id;
       }
+
+      if (remoteList.deletedAt != null) {
+        if (remoteList.updatedAt.isAfter(localList.updatedAt)) {
+          final deletedList = remoteList.copyWith(id: canonicalId);
+          await _db.upsertPrayerListFromSync(db, deletedList);
+          if (localList.id != canonicalId) {
+            await db.delete('prayer_list_members',
+                where: 'listId = ?', whereArgs: [localList.id]);
+            await db.delete('prayer_lists',
+                where: 'id = ?', whereArgs: [localList.id]);
+          }
+          localLists.removeWhere((l) =>
+              l.id == canonicalId ||
+              l.id == localList!.id ||
+              l.id == remoteList.id);
+        }
+        continue;
+      }
+
+      // Merge / union contact IDs so neither device loses contacts
+      final mergedContactIds = {
+        ...localList.contactIds,
+        ...remoteList.contactIds,
+      }.toList();
+
+      final remoteIsNewer = remoteList.updatedAt.isAfter(localList.updatedAt);
+      final metadataSource = remoteIsNewer ? remoteList : localList;
+
+      final mergedList = metadataSource.copyWith(
+        id: canonicalId,
+        contactIds: mergedContactIds,
+      );
+
+      // Clean up old non-canonical IDs if they differed
+      if (localList.id != canonicalId) {
+        await db.delete('prayer_list_members',
+            where: 'listId = ?', whereArgs: [localList.id]);
+        await db
+            .delete('prayer_lists', where: 'id = ?', whereArgs: [localList.id]);
+      }
+      if (remoteList.id != canonicalId) {
+        await db.delete('prayer_list_members',
+            where: 'listId = ?', whereArgs: [remoteList.id]);
+        await db.delete('prayer_lists',
+            where: 'id = ?', whereArgs: [remoteList.id]);
+      }
+
+      await _db.upsertPrayerListFromSync(db, mergedList);
+      localLists.removeWhere((l) =>
+          l.id == canonicalId ||
+          l.id == localList!.id ||
+          l.id == remoteList.id);
+      localLists.add(mergedList);
     }
   }
 

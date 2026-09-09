@@ -65,7 +65,7 @@ class _PrayerListPageState extends State<PrayerListPage> {
     if (lists.isEmpty) {
       // Create default list if none exists
       targetList = PrayerList.create(
-        name: 'My Prayer List',
+        name: PrayerList.defaultListName,
         description: 'People I am praying for',
       );
       await _dbHelper.insertPrayerList(targetList);

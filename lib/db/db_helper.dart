@@ -931,6 +931,8 @@ class DBHelper {
   Future<List<PrayerList>> getPrayerLists() => prayerListDao.getPrayerLists();
   Future<List<PrayerList>> getPrayerListsModifiedSince(DateTime? since) =>
       prayerListDao.getPrayerListsModifiedSince(since);
+  Future<PrayerList> ensureDefaultPrayerList() =>
+      prayerListDao.ensureDefaultPrayerList();
   Future<PrayerList?> getPrayerList(String id) =>
       prayerListDao.getPrayerList(id);
   Future<void> insertPrayerList(PrayerList list) =>
