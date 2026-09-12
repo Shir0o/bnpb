@@ -1,3 +1,5 @@
+import 'scripture_canon.dart';
+
 /// Structured reference to a scripture passage. Carries enough information
 /// for the Ready-to-log card to render the current ref and to advance to
 /// the next ref (see [advance]).
@@ -25,6 +27,9 @@ class ScriptureRef {
   });
 
   bool get _hasVerses => verseStart != null && verseEnd != null;
+
+  /// Number of chapters covered by this reference.
+  int get chaptersRead => end - start + 1;
 
   /// "Psa. 117–118", "Ch. 6", "Gen. 1:2".
   String get display {
@@ -63,18 +68,38 @@ class ScriptureRef {
     );
   }
 
-  static String _canonicalBook(String raw) {
-    final b = raw.replaceAll('.', '').replaceAll(' ', '');
-    const map = {
-      'Psa': 'Psa',
-      'Psalm': 'Psa',
-      'Psalms': 'Psa',
-      'Gen': 'Gen',
-      'Matt': 'Matt',
-      '1Cor': '1 Cor',
-    };
-    return map[b] ?? raw;
+  ScripturePassage? nextPassage({required int chapters}) {
+    if (chapters <= 0 || _hasVerses) return null;
+    final currentBook = lookupBibleBook(book);
+    if (currentBook == null) return null;
+    var bookIndex = bibleBooks.indexOf(currentBook);
+    var chapterStart = end + 1;
+    var remaining = chapters;
+    final refs = <ScriptureRef>[];
+
+    while (remaining > 0 && bookIndex < bibleBooks.length) {
+      final bookInfo = bibleBooks[bookIndex];
+      if (chapterStart > bookInfo.chapters) {
+        bookIndex++;
+        chapterStart = 1;
+        continue;
+      }
+      final available = bookInfo.chapters - chapterStart + 1;
+      final take = remaining < available ? remaining : available;
+      refs.add(ScriptureRef(
+        book: bookInfo.code,
+        start: chapterStart,
+        end: chapterStart + take - 1,
+      ));
+      remaining -= take;
+      bookIndex++;
+      chapterStart = 1;
+    }
+    if (remaining > 0 || refs.isEmpty) return null;
+    return ScripturePassage(refs);
   }
+
+  static String _canonicalBook(String raw) => canonicalBookCode(raw);
 
   /// Tries to extract and advance a scripture reference from [text] using
   /// only regex (no AI). Returns null if [text] is empty or no recognized
@@ -86,85 +111,112 @@ class ScriptureRef {
   ///   - Book abbreviations (Gen, Matt, 1 Cor, 1 Cor.) + "5"
   ///   - "Gen 1:1" style (book + chapter + verse) — advances verse only
   ///   - Ch / Chapter + number
-  static ScriptureRef? tryAdvance(String? text) {
-    if (text == null || text.isEmpty) return null;
-
-    final patterns = <RegExp, ScriptureRef? Function(RegExpMatch)>{
-      // PSA / Psa / Psalms + range "115-116" (en-dash or hyphen).
-      _psaRange: (m) {
-        final a = int.tryParse(m.group(1)!) ?? 0;
-        final b = int.tryParse(m.group(2)!) ?? 0;
-        if (a <= 0 || b < a) return null;
-        return ScriptureRef(book: 'Psa', start: a, end: b).advance();
-      },
-      // PSA / Psa / Psalms + single chapter.
-      _psaSingle: (m) {
-        final n = int.tryParse(m.group(1)!) ?? 0;
-        if (n <= 0) return null;
-        return ScriptureRef(book: 'Psa', start: n, end: n).advance();
-      },
-      // Book + chapter:verse (e.g. "Gen 1:1").
-      _bookChapterVerse: (m) {
-        final book = m.group(1)!;
-        final ch = int.tryParse(m.group(2)!) ?? 0;
-        final v1 = int.tryParse(m.group(3)!) ?? 0;
-        final v2 = m.group(4) != null ? (int.tryParse(m.group(4)!) ?? v1) : v1;
-        if (ch <= 0 || v1 <= 0 || v2 < v1) return null;
-        return ScriptureRef(
-          book: book,
-          start: ch,
-          end: ch,
-          verseStart: v1,
-          verseEnd: v2,
-        ).advance();
-      },
-      // Book + chapter only (e.g. "Matt 5", "Gen 3", "1 Cor 13").
-      _bookChapter: (m) {
-        final book = m.group(1)!;
-        final ch = int.tryParse(m.group(2)!) ?? 0;
-        if (ch <= 0) return null;
-        return ScriptureRef(book: book, start: ch, end: ch).advance();
-      },
-      // Ch. / Chapter + number.
-      _ch: (m) {
-        final n = int.tryParse(m.group(1)!) ?? 0;
-        if (n <= 0) return null;
-        return ScriptureRef(book: 'Ch', start: n, end: n).advance();
-      },
-    };
-
-    for (final entry in patterns.entries) {
-      final m = entry.key.firstMatch(text);
-      if (m != null) {
-        final ref = entry.value(m);
-        if (ref != null) return ref;
-      }
-    }
-    return null;
+  /// Parses the first recognizable scripture reference in [text].
+  static ScriptureRef? tryParse(String? text) {
+    final refs = tryParseAll(text);
+    return refs.isEmpty ? null : refs.first;
   }
 
-  static final RegExp _psaRange = RegExp(
-    r'(?:PSA|Psa\.?|Psalms?)[^0-9]*(\d+)\s*[–-]\s*(\d+)',
+  /// Parses the last reference in canonical reading order from [text].
+  static ScriptureRef? tryParseLast(String? text) {
+    final refs = tryParseAll(text);
+    if (refs.isEmpty) return null;
+    refs.sort(_compareCanonical);
+    return refs.last;
+  }
+
+  static ScriptureRef? tryAdvance(String? text) {
+    return tryParseLast(text)?.advance();
+  }
+
+  static List<ScriptureRef> tryParseAll(String? text) {
+    if (text == null || text.isEmpty) return const [];
+    final safeText = text.replaceAll('\u2013', '-');
+    final refs = <ScriptureRef>[];
+    for (final match in _referencePattern.allMatches(safeText)) {
+      final book = match.group(1);
+      final chapterRaw = match.group(2);
+      if (book == null || chapterRaw == null) continue;
+      final bookInfo = lookupBibleBook(book);
+      if (bookInfo == null) continue;
+      final chapter = int.tryParse(chapterRaw);
+      if (chapter == null || chapter <= 0) continue;
+      final verseStartRaw = match.group(3);
+      final verseEndRaw = match.group(4);
+      final chapterEndRaw = match.group(5);
+      if (verseStartRaw != null) {
+        final verseStart = int.tryParse(verseStartRaw);
+        final verseEnd =
+            verseEndRaw == null ? verseStart : int.tryParse(verseEndRaw);
+        if (verseStart == null || verseEnd == null || verseStart <= 0) {
+          continue;
+        }
+        if (verseEnd < verseStart) continue;
+        refs.add(ScriptureRef(
+          book: bookInfo.code,
+          start: chapter,
+          end: chapter,
+          verseStart: verseStart,
+          verseEnd: verseEnd,
+        ));
+        continue;
+      }
+      final chapterEnd =
+          chapterEndRaw == null ? chapter : int.tryParse(chapterEndRaw);
+      if (chapterEnd == null || chapterEnd < chapter) continue;
+      refs.add(ScriptureRef(
+        book: bookInfo.code,
+        start: chapter,
+        end: chapterEnd,
+      ));
+    }
+
+    if (refs.isEmpty) {
+      final chapterMatch = _chapterOnlyPattern.firstMatch(safeText);
+      if (chapterMatch != null) {
+        final chapter = int.tryParse(chapterMatch.group(1) ?? '');
+        if (chapter != null && chapter > 0) {
+          refs.add(ScriptureRef(book: 'Ch', start: chapter, end: chapter));
+        }
+      }
+    }
+    return refs;
+  }
+
+  static int _compareCanonical(ScriptureRef a, ScriptureRef b) {
+    final aIndex = bibleBookIndex(a.book) ?? 9999;
+    final bIndex = bibleBookIndex(b.book) ?? 9999;
+    if (aIndex != bIndex) return aIndex.compareTo(bIndex);
+    if (a.start != b.start) return a.start.compareTo(b.start);
+    return a.end.compareTo(b.end);
+  }
+
+  static final RegExp _referencePattern = RegExp(
+    r'((?:[1-3]\s*)?[A-Za-z]{2,}\.?)\s+(\d+)'
+    r'(?:\s*:\s*(\d+)(?:\s*-\s*(\d+))?)?'
+    r'(?:\s*-\s*(\d+))?',
     caseSensitive: false,
   );
 
-  static final RegExp _psaSingle = RegExp(
-    r'(?:PSA|Psa\.?|Psalms?)[^0-9]*(\d+)(?!\s*[–\-:])',
-    caseSensitive: false,
-  );
-
-  static final RegExp _bookChapterVerse = RegExp(
-    r'\b(Gen|Matt|1\s*Cor\.?|Mark|Luke|John|Acts|Rom)\s+(\d+):(\d+)(?:[–\-](\d+))?',
-    caseSensitive: false,
-  );
-
-  static final RegExp _bookChapter = RegExp(
-    r'\b(Gen|Matt|1\s*Cor\.?|Mark|Luke|John|Acts|Rom)\s+(\d+)(?!\s*[–\-:])',
-    caseSensitive: false,
-  );
-
-  static final RegExp _ch = RegExp(
+  static final RegExp _chapterOnlyPattern = RegExp(
     r'(?:Ch\.?|Chapter)\s*(\d+)',
     caseSensitive: false,
   );
+}
+
+/// A sequence of one or more [ScriptureRef]s that together form one reading
+/// session. A cross-book session is rendered as `Psa. 150; Prov. 1`.
+class ScripturePassage {
+  const ScripturePassage(this.refs);
+
+  final List<ScriptureRef> refs;
+
+  bool get isEmpty => refs.isEmpty;
+
+  String get display => refs.map((ref) => ref.display).join('; ');
+
+  ScripturePassage? advanceByChapters({required int chapters}) {
+    if (refs.isEmpty || chapters <= 0) return null;
+    return refs.last.nextPassage(chapters: chapters);
+  }
 }

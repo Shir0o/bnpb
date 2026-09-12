@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
@@ -215,25 +216,39 @@ void main() {
     expect(find.byType(LogInteractionSheet), findsOneWidget);
   });
 
-  testWidgets(
-      'HomePage renders Ready to log interaction suggestion card with sequence pills',
+  testWidgets('HomePage renders a confirmed routine with a sequence pill',
       (WidgetTester tester) async {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
     final contactId = const Uuid().v4();
+    final key = '$contactId@@bible reading@@coffee';
+    SharedPreferences.setMockInitialValues({
+      'recurring_log.preferences': jsonEncode({
+        key: {'confirmed': true},
+      }),
+    });
+
+    Interaction reading(DateTime date, String notes) {
+      return Interaction(
+        id: date.day,
+        participantIds: [contactId],
+        occurredAt: date,
+        summary: 'Bible reading',
+        medium: 'Coffee',
+        durationMinutes: 45,
+        notes: notes,
+      );
+    }
+
     final contact = Contact(
       id: contactId,
       firstName: 'Timothy',
       lastName: 'Alvarez',
-      updatedAt: DateTime.now(),
+      updatedAt: now,
       interactions: [
-        Interaction(
-          id: 10,
-          participantIds: [contactId],
-          occurredAt: DateTime.now().subtract(const Duration(days: 2)),
-          summary: 'Bible reading',
-          medium: 'Coffee',
-          durationMinutes: 45,
-          notes: 'PSA 115–116',
-        ),
+        reading(today.subtract(const Duration(days: 21)), 'Psa. 115-116'),
+        reading(today.subtract(const Duration(days: 14)), 'Psa. 117-118'),
+        reading(today.subtract(const Duration(days: 7)), 'Psa. 119-120'),
       ],
     );
     fakeDbHelper.contacts.add(contact);
@@ -242,34 +257,42 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Ready to log'), findsOneWidget);
-    expect(find.text('Timothy Alvarez · 45 min'), findsOneWidget);
-    expect(find.text('Psa. 117–118'), findsOneWidget);
+    expect(find.text('Psa. 121\u2013122'), findsOneWidget);
 
-    await tester.tap(find.text('Psa. 117–118'));
+    await tester.tap(find.text('Psa. 121\u2013122'));
     await tester.pumpAndSettle();
 
     expect(find.byType(LogInteractionSheet), findsOneWidget);
   });
 
   testWidgets(
-      'HomePage shows the "is not adding up" review alert and opens the Review screen',
+      'HomePage asks to confirm a detected routine before suggesting it',
       (WidgetTester tester) async {
-    final contactId = const Uuid().v4();
     final now = DateTime.now();
-    final inMonth = now.day > 1 ? now.day - 1 : 1;
+    final today = DateTime(now.year, now.month, now.day);
+    final contactId = const Uuid().v4();
+
+    Interaction reading(DateTime date, String notes) {
+      return Interaction(
+        id: date.day,
+        participantIds: [contactId],
+        occurredAt: date,
+        summary: 'Bible reading',
+        medium: 'Coffee',
+        durationMinutes: 45,
+        notes: notes,
+      );
+    }
+
     final contact = Contact(
       id: contactId,
-      firstName: 'Mara',
-      lastName: 'Lopez',
+      firstName: 'Timothy',
+      lastName: 'Alvarez',
       updatedAt: now,
       interactions: [
-        Interaction(
-          id: 1,
-          participantIds: [contactId],
-          occurredAt: DateTime(now.year, now.month, inMonth),
-          summary: 'Coffee',
-          medium: 'In Person',
-        ),
+        reading(today.subtract(const Duration(days: 21)), 'Psa. 115-116'),
+        reading(today.subtract(const Duration(days: 14)), 'Psa. 117-118'),
+        reading(today.subtract(const Duration(days: 7)), 'Psa. 119-120'),
       ],
     );
     fakeDbHelper.contacts.add(contact);
@@ -277,42 +300,55 @@ void main() {
     await tester.pumpWidget(const MaterialApp(home: HomePage()));
     await tester.pumpAndSettle();
 
-    expect(find.textContaining('is not adding up'), findsOneWidget);
-    expect(find.textContaining('needing attention'), findsOneWidget);
+    expect(find.text('Routine detected'), findsOneWidget);
+    expect(find.text('Psa. 121\u2013122'), findsNothing);
 
-    await tester.tap(find.textContaining('is not adding up'));
+    await tester.tap(find.text('Confirm'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Review'), findsOneWidget);
+    expect(find.text('Psa. 121\u2013122'), findsOneWidget);
   });
 
   testWidgets(
-      'HomePage falls back to AI service for free-form notes when AI is enabled',
+      'HomePage falls back to AI for free-form scripture notes when AI is enabled',
       (WidgetTester tester) async {
-    SharedPreferences.setMockInitialValues({
-      'ai.features.scripture_ref_advancement': true,
-    });
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final contactId = const Uuid().v4();
+    final key = '$contactId@@bible reading@@in person';
 
+    SharedPreferences.setMockInitialValues({
+      'ai.features.enabled': true,
+      'ai.features.scripture_ref_advancement': true,
+      'recurring_log.preferences': jsonEncode({
+        key: {'confirmed': true},
+      }),
+    });
     AiServices().debugOverride(
       llm: FakePipelineLlm('{"book":"Psa","start":117,"end":117}'),
     );
 
-    final contactId = const Uuid().v4();
+    Interaction reading(DateTime date) {
+      return Interaction(
+        id: date.day,
+        participantIds: [contactId],
+        occurredAt: date,
+        summary: 'Bible reading',
+        medium: 'In person',
+        durationMinutes: 30,
+        notes: 'Read psalm one-seventeen together',
+      );
+    }
+
     final contact = Contact(
       id: contactId,
       firstName: 'Joanna',
       lastName: 'Park',
-      updatedAt: DateTime.now(),
+      updatedAt: now,
       interactions: [
-        Interaction(
-          id: 20,
-          participantIds: [contactId],
-          occurredAt: DateTime.now().subtract(const Duration(days: 2)),
-          summary: 'Bible reading',
-          medium: 'In person',
-          durationMinutes: 30,
-          notes: 'Read psalm one-seventeen together',
-        ),
+        reading(today.subtract(const Duration(days: 21))),
+        reading(today.subtract(const Duration(days: 14))),
+        reading(today.subtract(const Duration(days: 7))),
       ],
     );
     fakeDbHelper.contacts.add(contact);
@@ -325,24 +361,40 @@ void main() {
   });
 
   testWidgets(
-      'HomePage does not surface free-form notes when AI feature is disabled',
+      'HomePage does not surface unresolved scripture notes when AI is disabled',
       (WidgetTester tester) async {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
     final contactId = const Uuid().v4();
+    final key = '$contactId@@bible reading@@in person';
+
+    SharedPreferences.setMockInitialValues({
+      'recurring_log.preferences': jsonEncode({
+        key: {'confirmed': true},
+      }),
+    });
+
+    Interaction reading(DateTime date) {
+      return Interaction(
+        id: date.day,
+        participantIds: [contactId],
+        occurredAt: date,
+        summary: 'Bible reading',
+        medium: 'In person',
+        durationMinutes: 30,
+        notes: 'Read psalm one-seventeen together',
+      );
+    }
+
     final contact = Contact(
       id: contactId,
       firstName: 'Mark',
       lastName: 'Reyes',
-      updatedAt: DateTime.now(),
+      updatedAt: now,
       interactions: [
-        Interaction(
-          id: 30,
-          participantIds: [contactId],
-          occurredAt: DateTime.now().subtract(const Duration(days: 2)),
-          summary: 'Bible reading',
-          medium: 'In person',
-          durationMinutes: 30,
-          notes: 'Read psalm one-seventeen together',
-        ),
+        reading(today.subtract(const Duration(days: 21))),
+        reading(today.subtract(const Duration(days: 14))),
+        reading(today.subtract(const Duration(days: 7))),
       ],
     );
     fakeDbHelper.contacts.add(contact);
@@ -351,5 +403,50 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Ready to log'), findsNothing);
+  });
+
+  testWidgets('HomePage shows non-scripture routines without a sequence pill',
+      (WidgetTester tester) async {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final contactId = const Uuid().v4();
+    final key = '$contactId@@workout@@in person';
+
+    SharedPreferences.setMockInitialValues({
+      'recurring_log.preferences': jsonEncode({
+        key: {'confirmed': true},
+      }),
+    });
+
+    Interaction workout(DateTime date) {
+      return Interaction(
+        id: date.day,
+        participantIds: [contactId],
+        occurredAt: date,
+        summary: 'Workout',
+        medium: 'In person',
+        durationMinutes: 30,
+      );
+    }
+
+    final contact = Contact(
+      id: contactId,
+      firstName: 'Jordan',
+      lastName: 'Lee',
+      updatedAt: now,
+      interactions: [
+        workout(today.subtract(const Duration(days: 21))),
+        workout(today.subtract(const Duration(days: 14))),
+        workout(today.subtract(const Duration(days: 7))),
+      ],
+    );
+    fakeDbHelper.contacts.add(contact);
+
+    await tester.pumpWidget(const MaterialApp(home: HomePage()));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Ready to log'), findsOneWidget);
+    expect(find.text('Workout'), findsOneWidget);
+    expect(find.text('Due'), findsOneWidget);
   });
 }

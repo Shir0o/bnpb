@@ -32,6 +32,7 @@ while offering analytics and export tooling.
 - [Optional facial recognition pipeline research](docs/facial_recognition_pipeline.md)
 - [ADR 0001 – Platform Selection](docs/adr/0001-platform.md)
 - [ADR 0002 – Release Automation Pipeline](docs/adr/0002-release-automation.md)
+- [ADR 0003 – Deterministic On-Device Pattern Detection](docs/adr/0003-deterministic-on-device-pattern-detection.md)
 - [MVP Scope & Milestones](docs/mvp.md)
 
 ## Development
