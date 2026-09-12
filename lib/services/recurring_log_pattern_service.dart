@@ -116,9 +116,10 @@ class RecurringLogPatternService {
     suggestions.sort((a, b) {
       final overdue = b.overdueDays.compareTo(a.overdueDays);
       if (overdue != 0) return overdue;
-      final payload = _payloadRank(b).compareTo(_payloadRank(a));
-      if (payload != 0) return payload;
-      return b.pattern.occurrenceCount.compareTo(a.pattern.occurrenceCount);
+      final confidence =
+          b.pattern.occurrenceCount.compareTo(a.pattern.occurrenceCount);
+      if (confidence != 0) return confidence;
+      return _payloadRank(b).compareTo(_payloadRank(a));
     });
     pending.sort((a, b) => b.overdueDays.compareTo(a.overdueDays));
 
