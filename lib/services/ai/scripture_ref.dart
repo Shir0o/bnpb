@@ -28,6 +28,9 @@ class ScriptureRef {
 
   bool get _hasVerses => verseStart != null && verseEnd != null;
 
+  /// Whether this reference names a book in the canonical Bible table.
+  bool get hasKnownBook => lookupBibleBook(book) != null;
+
   /// Number of chapters covered by this reference.
   int get chaptersRead => end - start + 1;
 

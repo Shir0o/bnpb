@@ -172,7 +172,12 @@ class RecurringLogPatternService {
     }
 
     if (cadence == null) return null;
+    if (_hasRepeatedInterval(intervals) == false) return null;
     return cadence;
+  }
+
+  bool _hasRepeatedInterval(List<int> intervals) {
+    return intervals.toSet().length < intervals.length;
   }
 
   Set<int> _dominantWeekdays(Map<int, int> counts) {
@@ -270,6 +275,9 @@ class RecurringLogPatternService {
     final passage = current.nextPassage(chapters: span);
     if (passage != null) {
       return _Payload(pill: passage.display, prefillNotes: passage.display);
+    }
+    if (current.hasKnownBook) {
+      return _Payload(pill: null, prefillNotes: latest.notes);
     }
 
     final fallback = current.advance().display;

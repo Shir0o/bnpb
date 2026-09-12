@@ -132,6 +132,26 @@ void main() {
     expect(result.suggestions.first.pill, 'Prov. 1\u20132');
   });
 
+  test('does not invent a reference past the end of Revelation', () {
+    final service = RecurringLogPatternService();
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final interactions = [
+      reading(today.subtract(const Duration(days: 21)), 'Rev 22'),
+      reading(today.subtract(const Duration(days: 14)), 'Rev 22'),
+      reading(today.subtract(const Duration(days: 7)), 'Rev 22'),
+    ];
+
+    final result = service.buildDueSuggestions(
+      contacts: contactsWith(interactions),
+      now: now,
+      preferences: confirmedPreferences(),
+    );
+
+    expect(result.suggestions, hasLength(1));
+    expect(result.suggestions.first.pill, isNull);
+  });
+
   test('marks a missed cadence day as overdue', () {
     final service = RecurringLogPatternService();
     final interactions = [
