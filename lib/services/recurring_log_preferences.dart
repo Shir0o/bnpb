@@ -23,7 +23,6 @@ class RecurringLogPreference {
     bool? confirmed,
     bool? suppressed,
     DateTime? snoozedUntil,
-    bool clearSnooze = false,
     int? spanOverride,
     bool clearSpan = false,
     PatternCadence? cadenceOverride,
@@ -32,7 +31,7 @@ class RecurringLogPreference {
     return RecurringLogPreference(
       confirmed: confirmed ?? this.confirmed,
       suppressed: suppressed ?? this.suppressed,
-      snoozedUntil: clearSnooze ? null : (snoozedUntil ?? this.snoozedUntil),
+      snoozedUntil: snoozedUntil ?? this.snoozedUntil,
       spanOverride: clearSpan ? null : (spanOverride ?? this.spanOverride),
       cadenceOverride:
           clearCadence ? null : (cadenceOverride ?? this.cadenceOverride),
@@ -76,12 +75,6 @@ class RecurringLogPreferences {
 
   RecurringLogPreference preferenceFor(String key) =>
       _entries[key] ?? const RecurringLogPreference();
-
-  RecurringLogPreferences without(String key) {
-    final next = Map<String, RecurringLogPreference>.from(_entries);
-    next.remove(key);
-    return RecurringLogPreferences(next);
-  }
 
   RecurringLogPreferences withPreference(
     String key,

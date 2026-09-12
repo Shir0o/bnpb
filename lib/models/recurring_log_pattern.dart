@@ -52,13 +52,13 @@ class PatternCadence {
     final interval = intervalDays;
     final anchor = anchorDate;
     if (interval == null || anchor == null) return false;
-    final diff = _dateOnly(date).difference(_dateOnly(anchor)).inDays;
+    final diff = dateOnly(date).difference(dateOnly(anchor)).inDays;
     return diff >= interval;
   }
 
   /// Most recent expected day strictly before [date].
   DateTime? previousExpectedDate(DateTime date) {
-    final today = _dateOnly(date);
+    final today = dateOnly(date);
     final days = weekdays;
     if (days != null) {
       for (var offset = 1; offset <= 7; offset++) {
@@ -70,7 +70,7 @@ class PatternCadence {
     final interval = intervalDays;
     final anchor = anchorDate;
     if (interval == null || anchor == null) return null;
-    final expected = _dateOnly(anchor).add(Duration(days: interval));
+    final expected = dateOnly(anchor).add(Duration(days: interval));
     return expected.isBefore(today) ? expected : null;
   }
 
@@ -216,7 +216,4 @@ class RecurringLogResult {
 }
 
 DateTime dateOnly(DateTime value) =>
-    DateTime(value.year, value.month, value.day);
-
-DateTime _dateOnly(DateTime value) =>
     DateTime(value.year, value.month, value.day);

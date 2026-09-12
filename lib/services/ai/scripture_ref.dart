@@ -217,9 +217,4 @@ class ScripturePassage {
   bool get isEmpty => refs.isEmpty;
 
   String get display => refs.map((ref) => ref.display).join('; ');
-
-  ScripturePassage? advanceByChapters({required int chapters}) {
-    if (refs.isEmpty || chapters <= 0) return null;
-    return refs.last.nextPassage(chapters: chapters);
-  }
 }
