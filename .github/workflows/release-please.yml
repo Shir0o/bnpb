@@ -15,7 +15,7 @@ jobs:
     timeout-minutes: 10
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       # release-please reads PR titles (squashed merge commits onto main
       # carry the PR title) as the conventional-commits signal. It then
