@@ -1,14 +1,45 @@
-💡 **What:** 
-- Added the **"Ready to log"** interaction suggestion card to the Home Screen (`lib/screens/home_page.dart`), adhering strictly to the design and interactive specification in `BNPB Prototype.dc.html`.
-- Implemented `_nextRef()` and `_readyToLogItems()` in `HomePage` to detect interaction routines, auto-advance passage/chapter sequences (e.g. `PSA 115-116` -> `Psa. 117–118`, `Ch. 1` -> `Ch. 2`), and display routine tiles with green sequence pills.
-- Tapping a "Ready to log" tile opens `LogInteractionSheet` pre-filled with the contact, interaction type, duration, and sequence notes for 1-tap logging.
-- Updated `ContactService` (`lib/services/contact_service.dart`) to dynamically resolve `DBHelper` via a getter, ensuring test overrides (`DBHelper.overrideForTest`) are cleanly respected.
-- Added comprehensive unit and widget test coverage in `test/screens/home_page_test.dart` for the "Ready to log" card rendering, sequence pill logic, and prefilled modal invocation.
+## Summary
 
-🎯 **Why:** 
-- Align the Flutter app directly with the 1c Crisp Utility design specification in `BNPB Prototype.dc.html` (Option 1a "Ready to log").
-- Allow users to quickly log routine/recurring interactions (e.g. weekly workouts, scripture readings, coffee check-ins) with a single tap from the Home Screen.
+Adds a deterministic, on-device recurring-log pattern engine and wires it into the
+Ready-to-log card.
 
-📊 **Measured Improvement:**
-- **Design Conformance**: Fully implemented the "Ready to log" card section on Home with sequence pills and pre-filled quick logging.
-- **Test Suite Results**: 222/222 unit & widget tests passed cleanly (`flutter test`), including new widget coverage for interaction suggestion routine tiles.
+### What changed
+
+- Detects per-Contact routines from Interaction history using normalized
+  `summary` plus `medium`.
+- Infers weekday-mask and fixed-interval cadences with a 90-day lookback and a
+  45-day retirement rule.
+- Add a day-level due/overdue model and a confirm-before-suggest flow.
+- Infer a session span from recent matching logs, with explicit user overrides.
+- Add canonical Bible metadata for all 66 books, sequential chapter advancement,
+  and cross-book sessions such as `Psa. 150; Prov. 1`.
+- Keep the LLM limited to parsing free-form scripture references from the
+  latest note.
+- Show non-scripture routines without requiring a scripture pill.
+- Add Settings > Routines for confirming, editing cadence and span, snoozing,
+  and stopping routines.
+- Persist confirmations and overrides locally in `SharedPreferences`.
+- Surface non-scripture and scripture routines through the existing
+  Ready-to-log card with overdue/confidence/payload ranking.
+
+### Privacy
+
+Recurring patterns are inferred locally from Interaction history. That history
+is not sent to the AI model. The LLM is only given the latest note or
+Interaction when it must parse a free-form scripture reference. AI remains
+opt-in and off by default.
+
+### Verification
+
+- `flutter analyze` is clean.
+- Full `flutter test` suite passes: 312/312.
+- Added tests for detection, cadence, span inference, cross-book progression,
+  canon boundaries, preferences, Home confirmation flow, non-scripture
+  routines, and the Settings routines page.
+
+### Docs
+
+- Updated `CONTEXT.md`.
+- Added ADR 0003 for deterministic on-device pattern detection.
+- Linked the ADR from `README.md`.
+- Clarified the AI/privacy policy.

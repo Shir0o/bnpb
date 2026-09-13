@@ -15,19 +15,21 @@ class ScriptureRefAdvancementService {
 
   final LocalLlmService _llm;
 
-  /// Tries to extract and advance a scripture ref from [text]. Returns
-  /// null if the text is empty, the LLM is not ready, the model produces
-  /// no parseable JSON, or the parsed ref is invalid (non-positive numbers,
-  /// start > end, missing book).
+  /// Tries to extract and advance a scripture ref from [text].
   Future<ScriptureRef?> advance(String? text) async {
+    final current = await extract(text);
+    return current?.advance();
+  }
+
+  /// Extracts the CURRENT scripture ref from [text] without advancing it.
+  Future<ScriptureRef?> extract(String? text) async {
     if (text == null || text.isEmpty) return null;
-    if (!_llm.isReady) {
+    if (_llm.isReady == false) {
       throw StateError('LLM is not ready');
     }
-
     final prompt = _buildPrompt(text);
     final raw = await _llm.generate(prompt, maxTokens: 96, temperature: 0.0);
-    return _parse(raw);
+    return _parseCurrent(raw);
   }
 
   String _buildPrompt(String note) {
@@ -52,7 +54,7 @@ Note: $escaped
 Output:''';
   }
 
-  ScriptureRef? _parse(String raw) {
+  ScriptureRef? _parseCurrent(String raw) {
     final start = raw.indexOf('{');
     final end = raw.lastIndexOf('}');
     if (start < 0 || end <= start) return null;
@@ -83,7 +85,7 @@ Output:''';
       end: endVal,
       verseStart: verseStart,
       verseEnd: verseEnd,
-    ).advance();
+    );
   }
 
   int? _parseInt(dynamic v) {

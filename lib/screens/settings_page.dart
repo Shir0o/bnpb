@@ -30,6 +30,7 @@ import '../widgets/skeleton_loader.dart';
 import 'ai_settings_page.dart';
 import 'notification_settings_page.dart';
 import 'privacy_policy_page.dart';
+import 'recurring_routines_page.dart';
 import '../widgets/hide_on_scroll_scaffold.dart';
 
 class SettingsPage extends StatefulWidget {
@@ -280,6 +281,24 @@ class _SettingsPageState extends State<SettingsPage>
                   textColor: Theme.of(context).colorScheme.error,
                   iconColor: Theme.of(context).colorScheme.error,
                   onTap: _isPurging ? null : _confirmSecurePurge,
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            _buildSectionHeader('Routines'),
+            _buildCardGroup(
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.repeat_outlined),
+                  title: const Text('Recurring logs'),
+                  subtitle: const Text(
+                    'Review and edit detected routines',
+                  ),
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const RecurringRoutinesPage(),
+                    ),
+                  ),
                 ),
               ],
             ),

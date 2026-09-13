@@ -48,3 +48,45 @@ _Avoid_: Event, activity, transaction
 **Prayer Request**:
 A confidential prayer item associated with a Contact or maintained in the personal prayer list.
 _Avoid_: Task, ticket
+
+### Recurring Logs & Suggestions
+
+**Ready-to-log suggestion**:
+A prompt to log a recurring Interaction for a Contact, pre-filled from an inferred pattern so the user can confirm it in one step.
+_Avoid_: Reminder, quick log, routine
+
+**Recurring log pattern**:
+A routine inferred from a Contact's Interaction history, combining an activity identity, a cadence, and an optional payload rule.
+_Avoid_: Habit, series, schedule
+
+**Pattern cadence**:
+The timing rule of a recurring log pattern, such as daily except Sunday or every seven days.
+_Avoid_: Frequency, recurrence
+
+**Payload rule**:
+The part of a recurring log pattern that computes the next value to pre-fill, such as the next scripture reference.
+_Avoid_: Suggestion content, template
+
+**Scripture advancement**:
+A payload rule that reads a Bible reference from the latest Interaction note and computes the next reference in the same reading sequence.
+_Avoid_: Verse increment, Bible suggestion
+
+**Pattern identity**:
+The stable criteria that bind Interaction logs to the same Recurring log pattern: the Contact, the normalized activity summary, and the medium.
+_Avoid_: Activity tag, category
+
+**Pattern span**:
+The size of one occurrence of a Recurring log pattern, such as two Bible chapters.
+_Avoid_: Increment, step
+
+**Due**:
+A state of a Recurring log pattern on one of its Pattern cadence days when no matching Interaction has been logged for that day.
+_Avoid_: Active, pending
+
+**Overdue**:
+A Recurring log pattern is overdue when a cadence day passed without a matching Interaction; it is surfaced on the next cadence day rather than immediately.
+_Avoid_: Missed, late
+
+**Cross-book session**:
+A single occurrence of a scripture-reading Recurring log pattern whose Payload rule spans more than one Bible book, such as Psalm 150 followed by Proverbs 1.
+_Avoid_: Multi-book, boundary case

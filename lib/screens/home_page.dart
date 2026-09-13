@@ -26,9 +26,10 @@ import '../widgets/recommendations_skeleton.dart';
 import '../widgets/skeleton_loader.dart';
 import '../services/ai/ai_services.dart';
 import '../services/ai/ai_feature_gate.dart';
-import '../services/ai/scripture_ref.dart';
 import '../services/ai/scripture_ref_advancement_service.dart';
-import '../services/ai/scripture_ref_pipeline.dart';
+import '../models/recurring_log_pattern.dart';
+import '../services/recurring_log_pattern_service.dart';
+import '../services/recurring_log_preferences.dart';
 import '../services/import_duplicate_detector.dart';
 import '../services/import_service.dart';
 import '../services/backup_service.dart';
@@ -135,8 +136,12 @@ class _HomePageState extends State<HomePage>
     for (final status in PrayerRequestStatus.values) status: 0,
   };
   List<FollowUpRecommendation> _recommendations = [];
-  List<_ReadyToLogItem> _readyToLogItemsCache = [];
-  ScriptureRefAdvancementPipeline? _readyToLogPipeline;
+  List<ReadyToLogSuggestion> _readyToLogItemsCache = [];
+  PendingRoutine? _pendingRoutine;
+  final RecurringLogPatternService _recurringLogService =
+      const RecurringLogPatternService();
+  final RecurringLogPreferenceStore _recurringLogStore =
+      RecurringLogPreferenceStore();
   bool _isRefreshingRecommendations = false;
   Map<String, ContactMatch> _activeMatches = {};
   String _aiLabel = 'on-device';
@@ -445,91 +450,106 @@ class _HomePageState extends State<HomePage>
     );
   }
 
-  String? _nextRef(String? notes) => ScriptureRef.tryAdvance(notes)?.display;
-
-  /// Synchronous fast path: build the ready-to-log list using regex only.
-  /// Returns items whose `pill` is null when regex missed (so the card can
-  /// hold a slot for an async AI enrichment, see [_rebuildReadyToLogItems]).
-  List<_ReadyToLogItem> _readyToLogItemsSync() {
-    final items = <_ReadyToLogItem>[];
-
-    final candidates =
-        _contacts.where((c) => c.interactions.isNotEmpty).map((c) {
-      // Anchor each tile on the most recent interaction; the AI enrichment
-      // decides whether it has a series ref to advance.
-      final last = c.interactions.first;
-      return (contact: c, last: last);
-    }).toList();
-
-    candidates.sort((a, b) => b.last.occurredAt.compareTo(a.last.occurredAt));
-
-    for (final item in candidates.take(3)) {
-      final c = item.contact;
-      final last = item.last;
-      final regexRef = _nextRef(last.notes) ?? _nextRef(last.summary);
-
-      final rawType = last.medium.isNotEmpty
-          ? last.medium
-          : last.summary.isNotEmpty
-              ? last.summary
-              : 'Interaction';
-      final typeTitle = rawType.split(' · ').first;
-      final duration = last.durationMinutes ?? 0;
-      final subText = '${c.displayName} · $duration min';
-
-      items.add(_ReadyToLogItem(
-        contact: c,
-        lastInteraction: last,
-        title: typeTitle,
-        sub: subText,
-        pill: regexRef,
-        prefillNotes: regexRef ?? last.notes,
-      ));
-    }
-
-    return items;
-  }
-
-  /// Rebuilds the ready-to-log cache. Sets the sync (regex-only) items
-  /// immediately, then fires an async enrichment pass that consults the
-  /// on-device LLM for items where the regex missed.
-  ///
-  /// Safe to call from [_applyContactsSnapshot] and on user actions like
-  /// adding a new interaction.
   Future<void> _rebuildReadyToLogItems() async {
     if (_contacts.isEmpty) {
-      setState(() => _readyToLogItemsCache = const []);
+      if (mounted) {
+        setState(() {
+          _readyToLogItemsCache = const [];
+          _pendingRoutine = null;
+        });
+      }
       return;
     }
 
-    final syncItems = _readyToLogItemsSync();
-    setState(() => _readyToLogItemsCache = syncItems);
-
-    final useAi = await AiFeatureGate().isScriptureRefAdvancementEnabled();
-    if (!useAi) return;
-    if (!AiServices().llm.isReady) return;
-
-    final pipeline = _readyToLogPipeline ??= ScriptureRefAdvancementPipeline(
-      ScriptureRefAdvancementService(AiServices().llm),
+    final preferences = await _recurringLogStore.load();
+    final result = _recurringLogService.buildDueSuggestions(
+      contacts: _contacts,
+      now: DateTime.now(),
+      preferences: preferences,
     );
+    if (mounted == false) return;
 
+    setState(() {
+      _readyToLogItemsCache = result.suggestions;
+      _pendingRoutine = result.pendingConfirmations.isEmpty
+          ? null
+          : result.pendingConfirmations.first;
+    });
+
+    await _enrichScriptureSuggestions(preferences);
+  }
+
+  Future<void> _enrichScriptureSuggestions(
+    RecurringLogPreferences preferences,
+  ) async {
+    final enabled = await AiFeatureGate().isScriptureRefAdvancementEnabled();
+    if (enabled == false) return;
+    final ready = await AiServices().isReady();
+    if (ready == false) return;
+
+    final service = ScriptureRefAdvancementService(AiServices().llm);
     var changed = false;
+
     for (var i = 0; i < _readyToLogItemsCache.length; i++) {
       final cached = _readyToLogItemsCache[i];
       if (cached.pill != null) continue;
-      final ref = await pipeline.advance(
-        cached.lastInteraction.notes ?? cached.lastInteraction.summary,
-        useAi: true,
-      );
-      if (ref == null) continue;
-      _readyToLogItemsCache[i] = cached.copyWith(
-        pill: ref.display,
-        prefillNotes: ref.display,
-      );
-      changed = true;
-      if (mounted) setState(() {});
+      if (cached.pattern.usesScripturePayload == false) continue;
+
+      final text =
+          cached.latestInteraction.notes ?? cached.latestInteraction.summary;
+      if (text.trim().isEmpty) continue;
+
+      try {
+        final current =
+            await service.extract(text).timeout(const Duration(seconds: 3));
+        if (current == null) continue;
+        final preference = preferences.preferenceFor(cached.pattern.key);
+        final span = preference.spanOverride ?? cached.pattern.inferredSpan;
+        final passage = current.nextPassage(chapters: span);
+        if (passage == null) continue;
+        _readyToLogItemsCache[i] = cached.copyWith(
+          pill: passage.display,
+          prefillNotes: passage.display,
+        );
+        changed = true;
+        if (mounted) setState(() {});
+      } catch (_) {
+        // Best-effort enrichment; the tile remains hidden.
+      }
     }
+
     if (changed && mounted) setState(() {});
+  }
+
+  Future<void> _confirmRoutine(PendingRoutine pending) async {
+    final preferences = await _recurringLogStore.load();
+    final updated = preferences.withPreference(
+      pending.pattern.key,
+      preferences.preferenceFor(pending.pattern.key).copyWith(confirmed: true),
+    );
+    await _recurringLogStore.save(updated);
+    await _rebuildReadyToLogItems();
+  }
+
+  Future<void> _snoozePattern(String key) async {
+    final preferences = await _recurringLogStore.load();
+    final until = dateOnly(DateTime.now()).add(const Duration(days: 1));
+    final updated = preferences.withPreference(
+      key,
+      preferences.preferenceFor(key).copyWith(snoozedUntil: until),
+    );
+    await _recurringLogStore.save(updated);
+    await _rebuildReadyToLogItems();
+  }
+
+  Future<void> _stopPattern(String key) async {
+    final preferences = await _recurringLogStore.load();
+    final updated = preferences.withPreference(
+      key,
+      preferences.preferenceFor(key).copyWith(suppressed: true),
+    );
+    await _recurringLogStore.save(updated);
+    await _rebuildReadyToLogItems();
   }
 
   Widget _buildReviewAlertCard() {
@@ -611,8 +631,12 @@ class _HomePageState extends State<HomePage>
   }
 
   Widget _buildReadyToLogCard() {
-    final items = _readyToLogItemsCache.where((i) => i.pill != null).toList();
-    if (items.isEmpty) return const SizedBox.shrink();
+    final items = _readyToLogItemsCache
+        .where((item) =>
+            item.pill != null || item.pattern.usesScripturePayload == false)
+        .toList();
+    final pending = _pendingRoutine;
+    if (items.isEmpty && pending == null) return const SizedBox.shrink();
 
     final theme = Theme.of(context);
     final primaryColor = theme.colorScheme.primary;
@@ -623,10 +647,7 @@ class _HomePageState extends State<HomePage>
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: primaryColor,
-          width: 1.5,
-        ),
+        border: Border.all(color: primaryColor, width: 1.5),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -635,11 +656,7 @@ class _HomePageState extends State<HomePage>
             padding: const EdgeInsets.fromLTRB(16, 15, 16, 11),
             child: Row(
               children: [
-                Icon(
-                  Icons.history_rounded,
-                  size: 18,
-                  color: primaryColor,
-                ),
+                Icon(Icons.history_rounded, size: 18, color: primaryColor),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
@@ -652,27 +669,78 @@ class _HomePageState extends State<HomePage>
                     ),
                   ),
                 ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 9,
-                    vertical: 3,
-                  ),
-                  decoration: BoxDecoration(
-                    color: greenTint,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    '${items.length}',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: primaryColor,
+                if (items.isNotEmpty)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 9,
+                      vertical: 3,
+                    ),
+                    decoration: BoxDecoration(
+                      color: greenTint,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      '${items.length}',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: primaryColor,
+                      ),
                     ),
                   ),
-                ),
               ],
             ),
           ),
+          if (pending != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Routine detected',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        color: theme.colorScheme.onSurface,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${pending.pattern.displayActivity} · '
+                      '${pending.pattern.cadence.description}',
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        color: theme.colorScheme.secondaryText,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        TextButton(
+                          onPressed: () => _snoozePattern(pending.pattern.key),
+                          child: const Text('Not now'),
+                        ),
+                        TextButton(
+                          onPressed: () => _stopPattern(pending.pattern.key),
+                          child: const Text('Stop'),
+                        ),
+                        const Spacer(),
+                        FilledButton(
+                          onPressed: () => _confirmRoutine(pending),
+                          child: const Text('Confirm'),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
           Padding(
             padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
             child: Column(
@@ -694,17 +762,14 @@ class _HomePageState extends State<HomePage>
                       ),
                       child: Row(
                         children: [
-                          ContactAvatar(
-                            contact: items[i].contact,
-                            radius: 21,
-                          ),
+                          ContactAvatar(contact: items[i].contact, radius: 21),
                           const SizedBox(width: 12),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  items[i].title,
+                                  items[i].pattern.displayActivity,
                                   style: TextStyle(
                                     fontWeight: FontWeight.w700,
                                     fontSize: 15.5,
@@ -715,7 +780,8 @@ class _HomePageState extends State<HomePage>
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
-                                  items[i].sub,
+                                  '${items[i].contact.displayName} · '
+                                  '${items[i].latestInteraction.durationMinutes ?? 0} min',
                                   style: TextStyle(
                                     fontSize: 12.5,
                                     fontWeight: FontWeight.w500,
@@ -738,7 +804,8 @@ class _HomePageState extends State<HomePage>
                               borderRadius: BorderRadius.circular(7),
                             ),
                             child: Text(
-                              items[i].pill!,
+                              items[i].pill ??
+                                  (items[i].isOverdue ? 'Overdue' : 'Due'),
                               style: TextStyle(
                                 fontSize: 11.5,
                                 fontWeight: FontWeight.w700,
@@ -746,10 +813,25 @@ class _HomePageState extends State<HomePage>
                               ),
                             ),
                           ),
-                          Icon(
-                            Icons.chevron_right_rounded,
-                            size: 18,
-                            color: theme.colorScheme.faint,
+                          PopupMenuButton<String>(
+                            tooltip: 'Routine options',
+                            onSelected: (value) {
+                              if (value == 'snooze') {
+                                _snoozePattern(items[i].pattern.key);
+                              } else if (value == 'stop') {
+                                _stopPattern(items[i].pattern.key);
+                              }
+                            },
+                            itemBuilder: (context) => const [
+                              PopupMenuItem(
+                                value: 'snooze',
+                                child: Text('Not today'),
+                              ),
+                              PopupMenuItem(
+                                value: 'stop',
+                                child: Text('Stop suggesting'),
+                              ),
+                            ],
                           ),
                         ],
                       ),
@@ -1450,8 +1532,8 @@ class _HomePageState extends State<HomePage>
     }
   }
 
-  Future<void> _openLogInteractionForItem(_ReadyToLogItem item) async {
-    final last = item.lastInteraction;
+  Future<void> _openLogInteractionForItem(ReadyToLogSuggestion item) async {
+    final last = item.latestInteraction;
     final prefill = Interaction(
       summary: last.summary,
       medium: last.medium,
@@ -2039,39 +2121,4 @@ class _HomePageState extends State<HomePage>
       ),
     );
   }
-}
-
-class _ReadyToLogItem {
-  final Contact contact;
-  final Interaction lastInteraction;
-  final String title;
-  final String sub;
-
-  /// Suggested next reference (e.g. "Psa. 118"). Null until either the
-  /// regex path resolves it or the async AI path enriches it. A tile is
-  /// only rendered when this is non-null.
-  final String? pill;
-
-  /// Notes to prefill the LogInteractionSheet with. Falls back to the
-  /// last interaction's notes when no advance ref is available.
-  final String? prefillNotes;
-
-  _ReadyToLogItem({
-    required this.contact,
-    required this.lastInteraction,
-    required this.title,
-    required this.sub,
-    required this.pill,
-    required this.prefillNotes,
-  });
-
-  _ReadyToLogItem copyWith({String? pill, String? prefillNotes}) =>
-      _ReadyToLogItem(
-        contact: contact,
-        lastInteraction: lastInteraction,
-        title: title,
-        sub: sub,
-        pill: pill ?? this.pill,
-        prefillNotes: prefillNotes ?? this.prefillNotes,
-      );
 }
