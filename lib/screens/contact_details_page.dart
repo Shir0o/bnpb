@@ -300,6 +300,11 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
       firstMeetingNotes:
           firstMeetingNotesText.isEmpty ? null : firstMeetingNotesText,
       notes: notesText.isEmpty ? null : notesText,
+      // Carry the persisted stage through. Without this the read-only stage
+      // card falls back to the interaction-derived default, and saving an
+      // edit writes NULL over the stored stage (see test/pages/
+      // contact_stage_persistence_repro_test.dart).
+      stage: _stageOverride?.label ?? widget.contact.stage,
       interactions: List<Interaction>.from(
         interactionsOverride ?? _interactions,
       ),
