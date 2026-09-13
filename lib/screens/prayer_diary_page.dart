@@ -390,22 +390,37 @@ class _PrayerDiaryPageState extends State<PrayerDiaryPage> {
                 ),
               ),
               const SizedBox(width: 12),
-              GestureDetector(
-                onTap: () {
-                  PrayerRequestStatus nextStatus;
-                  switch (request.status) {
-                    case PrayerRequestStatus.pending:
-                      nextStatus = PrayerRequestStatus.answered;
-                      break;
-                    case PrayerRequestStatus.answered:
-                      nextStatus = PrayerRequestStatus.archived;
-                      break;
-                    case PrayerRequestStatus.archived:
-                      nextStatus = PrayerRequestStatus.pending;
-                      break;
-                  }
-                  _updateRequestStatus(request, nextStatus);
-                },
+              PopupMenuButton<PrayerRequestStatus>(
+                tooltip: 'Change status',
+                padding: EdgeInsets.zero,
+                onSelected: (status) => _updateRequestStatus(request, status),
+                itemBuilder: (context) => [
+                  for (final status in PrayerRequestStatus.values)
+                    PopupMenuItem<PrayerRequestStatus>(
+                      value: status,
+                      child: Row(
+                        children: [
+                          Icon(
+                            _statusIconFor(status),
+                            size: 18,
+                            color: status == request.status
+                                ? colorScheme.primary
+                                : colorScheme.onSurfaceVariant,
+                          ),
+                          const SizedBox(width: 12),
+                          Text(status.label),
+                          if (status == request.status) ...[
+                            const SizedBox(width: 12),
+                            Icon(
+                              Icons.check,
+                              size: 16,
+                              color: colorScheme.primary,
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                ],
                 child: Container(
                   padding:
                       const EdgeInsets.symmetric(horizontal: 11, vertical: 5),
@@ -413,13 +428,20 @@ class _PrayerDiaryPageState extends State<PrayerDiaryPage> {
                     color: statusBg,
                     borderRadius: BorderRadius.circular(20),
                   ),
-                  child: Text(
-                    badgeLabel,
-                    style: TextStyle(
-                      color: statusFg,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 11,
-                    ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        badgeLabel,
+                        style: TextStyle(
+                          color: statusFg,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 11,
+                        ),
+                      ),
+                      const SizedBox(width: 2),
+                      Icon(Icons.arrow_drop_down, size: 14, color: statusFg),
+                    ],
                   ),
                 ),
               ),
@@ -451,7 +473,13 @@ class _PrayerDiaryPageState extends State<PrayerDiaryPage> {
         break;
     }
 
-    final updated = request.copyWith(status: status, answeredAt: answeredAt);
+    final updated = request.copyWith(
+      status: status,
+      answeredAt: answeredAt,
+      // copyWith cannot distinguish "leave it" from "clear it", so ask
+      // explicitly when the request leaves the answered state.
+      clearAnsweredAt: status == PrayerRequestStatus.pending,
+    );
 
     final previousRequests = List<PrayerRequest>.from(_requests);
     setState(() {
@@ -493,6 +521,18 @@ class _PrayerDiaryPageState extends State<PrayerDiaryPage> {
       final bDate = b.answeredAt ?? b.requestedAt;
       return bDate.compareTo(aDate);
     });
+  }
+
+  /// Icon for each lifecycle state, shared by the status menu on the list.
+  IconData _statusIconFor(PrayerRequestStatus status) {
+    switch (status) {
+      case PrayerRequestStatus.pending:
+        return Icons.hourglass_top_outlined;
+      case PrayerRequestStatus.answered:
+        return Icons.celebration_outlined;
+      case PrayerRequestStatus.archived:
+        return Icons.archive_outlined;
+    }
   }
 
   String _statusChangeMessage(PrayerRequestStatus status) {
