@@ -2,6 +2,18 @@
 
 All notable changes to the BNPB project are documented here.
 
+## [1.3.0](https://github.com/Shir0o/bnpb/compare/v1.2.1...v1.3.0) (2026-09-14)
+
+
+### Features
+
+* infer recurring log patterns and suggest next entries ([#267](https://github.com/Shir0o/bnpb/issues/267)) ([6bd6904](https://github.com/Shir0o/bnpb/commit/6bd6904ad4bf3c95d144204960bbdc3e98b86cb3))
+
+
+### Bug Fixes
+
+* persist contact stage and add explicit prayer diary status actions ([#269](https://github.com/Shir0o/bnpb/issues/269)) ([e8eb7c1](https://github.com/Shir0o/bnpb/commit/e8eb7c13c374edcd19584aff32e674c4e505c035))
+
 ## [1.2.1](https://github.com/Shir0o/bnpb/compare/v1.2.0...v1.2.1) (2026-09-09)
 
 
