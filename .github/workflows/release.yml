@@ -18,10 +18,12 @@ jobs:
     name: Build, attach, and upload release
     runs-on: ubuntu-latest
     timeout-minutes: 60
-    environment: production  # no reviewers configured = auto-approve; see RELEASING.md
+    environment: production
+    env:
+      TAG: ${{ github.ref_name }}
     steps:
       - name: Checkout repository at tag
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           fetch-depth: 0
 
@@ -49,19 +51,19 @@ jobs:
           echo "All release secrets present."
 
       - name: Setup Java
-        uses: actions/setup-java@v6
+        uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6
         with:
           distribution: 'temurin'
           java-version: '17'
 
       - name: Setup Flutter
-        uses: subosito/flutter-action@v2
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
         with:
           channel: stable
           cache: true
 
       - name: Setup Ruby + Bundler for fastlane
-        uses: ruby/setup-ruby@v1
+        uses: ruby/setup-ruby@95ef2b042f9d7a56d8268cba8559e2842e2ad01b # v1
         with:
           ruby-version: '3.2'
           bundler-cache: false
@@ -96,9 +98,13 @@ jobs:
         id: vc
         run: |
           set -euo pipefail
-          tag="${{ github.ref_name }}"
+          tag="$TAG"
           ver="${tag#v}"
           ver="${ver%%-*}"
+          if [[ ! "$ver" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Tag '$tag' is not a plain semantic version (expected vMAJOR.MINOR.PATCH)."
+            exit 1
+          fi
           IFS='.' read -r major minor patch <<< "$ver"
           if [ -z "$major" ] || [ -z "$minor" ] || [ -z "$patch" ]; then
             echo "::error::Could not parse semver from tag '$tag' (parsed major='$major' minor='$minor' patch='$patch')."
@@ -139,13 +145,13 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          existing_aab=$(gh release view "${{ github.ref_name }}" \
-            --repo "${{ github.repository }}" \
+          existing_aab=$(gh release view "$TAG" \
+            --repo "$GITHUB_REPOSITORY" \
             --json assets \
             --jq '.assets[] | select(.name | endswith(".aab")) | .name' \
             2>/dev/null || echo "")
-          existing_apk=$(gh release view "${{ github.ref_name }}" \
-            --repo "${{ github.repository }}" \
+          existing_apk=$(gh release view "$TAG" \
+            --repo "$GITHUB_REPOSITORY" \
             --json assets \
             --jq '.assets[] | select(.name | endswith(".apk")) | .name' \
             2>/dev/null || echo "")
@@ -159,7 +165,7 @@ jobs:
 
       - name: Attach AAB and APK to GitHub Release
         if: steps.check-existing.outputs.skip_attach != 'true'
-        uses: softprops/action-gh-release@v3
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3
         with:
           tag_name: ${{ github.ref_name }}
           generate_release_notes: false
@@ -171,7 +177,7 @@ jobs:
       - name: Determine if this is a pre-release tag
         id: prerelease
         run: |
-          tag="${{ github.ref_name }}"
+          tag="$TAG"
           if [[ "$tag" == *-rc* || "$tag" == *-beta* ]]; then
             echo "is_prerelease=true" >> "$GITHUB_OUTPUT"
           else
@@ -245,5 +251,14 @@ jobs:
       - name: Skip Play Console upload for pre-release tag
         if: steps.prerelease.outputs.is_prerelease == 'true'
         run: |
-          tag="${{ github.ref_name }}"
+          tag="$TAG"
           echo "Tag $tag matches a pre-release pattern (rc/beta); skipping Play Console upload."
+
+      - name: Remove mounted credentials
+        if: always()
+        continue-on-error: true
+        run: |
+          rm -f fastlane/play-supply-credentials.json
+          rm -f android/key.properties
+          rm -f android/app/google-services.json
+          rm -rf "$HOME/.keystores"
