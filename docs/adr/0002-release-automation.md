@@ -30,6 +30,23 @@ We adopt the standardized release pipeline consisting of four core components:
 - **No Google Services dependency**: Unlike Firebase-backed apps, BNPB does not require a `GOOGLE_SERVICES_JSON` secret because it does not use Google Services Gradle plugin for local-first encrypted storage.
 - **PR Title Linting**: Enforced via `pr-title-lint.yml` to ensure squash-merged pull requests provide a valid conventional commit signal.
 
+## Hardening
+
+The pipeline treats every GitHub expression as data and pins its supply chain:
+
+- Release tags arrive through the `TAG` environment variable and are validated
+  by the pure `deriveVersionCode` function (`lib/services/version_code.dart`);
+  no expression is interpolated into a shell body.
+- The `production` environment requires a reviewer, so Play Console credentials
+  are mounted only after human approval.
+- Every `uses:` is pinned to a full commit SHA with a human-readable version
+  comment, kept current by Dependabot's `github-actions` ecosystem.
+- `release.yml` uses the short-lived `GITHUB_TOKEN`; `release-please.yml` keeps
+  a fine-grained PAT scoped to `contents:write` and `pull-requests:write` on
+  this repository.
+- Credential files are removed under `if: always()`, and no workflow uploads the
+  working tree as an artifact.
+
 ## Consequences
 
 ### Positive
