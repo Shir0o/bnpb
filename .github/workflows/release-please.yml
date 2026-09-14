@@ -15,7 +15,7 @@ jobs:
     timeout-minutes: 10
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       # release-please reads PR titles (squashed merge commits onto main
       # carry the PR title) as the conventional-commits signal. It then
@@ -31,7 +31,7 @@ jobs:
           fi
 
       - name: Run release-please
-        uses: googleapis/release-please-action@v5
+        uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5
         with:
           # RELEASE_PLEASE_TOKEN is a PAT with repo / contents:write + pull-requests:write.
           # A personal PAT is required so that tags created on release PR merge trigger
