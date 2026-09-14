@@ -33,9 +33,10 @@ jobs:
       - name: Run release-please
         uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5
         with:
-          # RELEASE_PLEASE_TOKEN is a PAT with repo / contents:write + pull-requests:write.
-          # A personal PAT is required so that tags created on release PR merge trigger
-          # downstream GitHub Actions (e.g. release.yml).
+          # RELEASE_PLEASE_TOKEN is a fine-grained PAT scoped to this repository
+          # with only contents:write and pull-requests:write. It is required
+          # because tags created with the default GITHUB_TOKEN do not trigger
+          # downstream workflows (e.g. release.yml).
           token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
