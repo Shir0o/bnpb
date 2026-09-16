@@ -90,3 +90,22 @@ _Avoid_: Missed, late
 **Cross-book session**:
 A single occurrence of a scripture-reading Recurring log pattern whose Payload rule spans more than one Bible book, such as Psalm 150 followed by Proverbs 1.
 _Avoid_: Multi-book, boundary case
+
+### Time Tracker Sync & Staging
+
+**Time Tracker Record**:
+An individual row exported by Simple Time Tracker with an activity name, start/end timestamps, duration, comment, and tags (specifically tagged with `Contact`).
+_Avoid_: STT event, time log item
+
+**Candidate Interaction**:
+An in-memory parsed representation of a Time Tracker Record mapped to potential BNPB Contact(s) and Interaction fields, staged for user review.
+_Avoid_: Draft interaction, pending import
+
+**Import Staging Queue**:
+A reviewable, dismissible queue presented on app launch (and accessible from the interaction dashboard) where candidate interactions can be inspected, edited, assigned to contacts, selected, and committed to the database.
+_Avoid_: Import popup, review dialog
+
+**Interaction Fingerprint**:
+A deterministic hash of the time tracker record's start timestamp, duration, activity name, and raw comment used for idempotent deduplication.
+_Avoid_: Sync hash, record ID
+

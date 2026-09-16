@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:extension_google_sign_in_as_googleapis_auth/extension_google_sign_in_as_googleapis_auth.dart';
@@ -13,7 +14,10 @@ class GoogleDriveService {
   factory GoogleDriveService() => _testOverride ?? _instance;
 
   static const String _prefKeyHasSignedIn = 'google_has_signed_in';
-  static const List<String> _scopes = [drive.DriveApi.driveFileScope];
+  static const List<String> _scopes = [
+    drive.DriveApi.driveFileScope,
+    drive.DriveApi.driveReadonlyScope,
+  ];
 
   final GoogleSignIn _googleSignIn;
 
@@ -453,6 +457,59 @@ class GoogleDriveService {
       } finally {
         await sink.close();
       }
+    });
+  }
+
+  /// Finds the latest modified file matching [namePrefix] within [folderName].
+  Future<drive.File?> findLatestFileInFolder({
+    required String folderName,
+    String? namePrefix,
+  }) async {
+    return await _executeWithRetry(() async {
+      final folderQuery =
+          "name = '$folderName' and mimeType = 'application/vnd.google-apps.folder' and trashed = false";
+      final folderList = await _driveApi!.files
+          .list(q: folderQuery)
+          .timeout(const Duration(seconds: 10));
+
+      if (folderList.files == null || folderList.files!.isEmpty) {
+        return null;
+      }
+
+      final folderId = folderList.files!.first.id;
+      var fileQuery = "'$folderId' in parents and trashed = false";
+      if (namePrefix != null && namePrefix.isNotEmpty) {
+        fileQuery += " and name contains '$namePrefix'";
+      }
+
+      final fileList = await _driveApi!.files
+          .list(
+            q: fileQuery,
+            orderBy: 'modifiedTime desc',
+            pageSize: 10,
+            $fields: 'files(id, name, modifiedTime, size)',
+          )
+          .timeout(const Duration(seconds: 15));
+
+      if (fileList.files != null && fileList.files!.isNotEmpty) {
+        return fileList.files!.first;
+      }
+      return null;
+    });
+  }
+
+  /// Downloads and returns the text content of a file from Drive.
+  Future<String> downloadFileAsString(String fileId) async {
+    return await _executeWithRetry(() async {
+      final mediaResponse = await _driveApi!.files
+          .get(fileId, downloadOptions: drive.DownloadOptions.fullMedia)
+          .timeout(const Duration(seconds: 30)) as drive.Media;
+
+      final bytes = <int>[];
+      await for (final chunk in mediaResponse.stream) {
+        bytes.addAll(chunk);
+      }
+      return utf8.decode(bytes, allowMalformed: true);
     });
   }
 }

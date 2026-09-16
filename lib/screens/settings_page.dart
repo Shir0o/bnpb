@@ -25,6 +25,8 @@ import '../services/reminder_coordinator.dart';
 import '../services/reminder_service.dart';
 import '../services/security_service.dart';
 import '../services/sync_service.dart';
+import '../services/time_tracker_sync_service.dart';
+import '../widgets/time_tracker_staging_sheet.dart';
 import '../widgets/export_options_sheet.dart';
 import '../widgets/skeleton_loader.dart';
 import 'ai_settings_page.dart';
@@ -545,7 +547,73 @@ class _SettingsPageState extends State<SettingsPage>
                   onPressed: _performSync,
                 ),
         ),
+        const Divider(height: 1, indent: 16, endIndent: 16),
+        ListTile(
+          leading: const Icon(Icons.timer_outlined),
+          title: const Text('Simple Time Tracker'),
+          subtitle: const Text('Sync "Time Track" CSV logs from Google Drive'),
+          trailing: IconButton(
+            icon: const Icon(Icons.file_download_outlined),
+            tooltip: 'Sync Time Tracker records',
+            onPressed: _syncTimeTracker,
+          ),
+          onTap: _openTimeTrackerQueue,
+        ),
       ],
+    );
+  }
+
+  Future<void> _syncTimeTracker() async {
+    final contacts = await ContactService().getContacts();
+    final timeTrackerService = TimeTrackerSyncService();
+    if (!mounted) return;
+    final overlay = Overlay.of(context);
+
+    CrispToast.showOnOverlay(
+        overlay, 'Checking Google Drive for Time Track CSVs...');
+    final candidates =
+        await timeTrackerService.syncFromDrive(contacts: contacts);
+
+    if (!mounted) return;
+
+    if (candidates.isEmpty) {
+      CrispToast.showOnOverlay(
+          overlay, 'No new Contact interactions found in Time Track');
+    } else {
+      _openTimeTrackerQueue();
+    }
+  }
+
+  Future<void> _openTimeTrackerQueue() async {
+    final contacts = await ContactService().getContacts();
+    final timeTrackerService = TimeTrackerSyncService();
+
+    if (!mounted) return;
+    if (timeTrackerService.stagingQueue.isEmpty) {
+      final overlay = Overlay.of(context);
+      CrispToast.showOnOverlay(
+          overlay, 'No pending Time Tracker candidates to review');
+      return;
+    }
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (ctx) => TimeTrackerStagingSheet(
+        candidates: timeTrackerService.stagingQueue,
+        contacts: contacts,
+        onConfirm: (confirmed) async {
+          await timeTrackerService.commitCandidates(
+            confirmed,
+            saveInteraction: (Interaction interaction) =>
+                DBHelper().insertInteraction(interaction),
+          );
+          if (mounted) {
+            CrispToast.show(
+                context, 'Imported ${confirmed.length} interactions');
+          }
+        },
+      ),
     );
   }
 
