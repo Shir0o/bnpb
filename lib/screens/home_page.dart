@@ -15,6 +15,9 @@ import '../services/contact_service.dart';
 import '../services/period_review_service.dart';
 import '../services/reminder_coordinator.dart';
 import '../services/sync_service.dart';
+import '../services/google_drive_service.dart';
+import '../services/time_tracker_sync_service.dart';
+import '../widgets/time_tracker_staging_sheet.dart';
 import '../widgets/backup_restore_sheet.dart';
 import '../widgets/contact_avatar.dart';
 import '../widgets/crisp_toast.dart';
@@ -142,6 +145,8 @@ class _HomePageState extends State<HomePage>
       const RecurringLogPatternService();
   final RecurringLogPreferenceStore _recurringLogStore =
       RecurringLogPreferenceStore();
+  final TimeTrackerSyncService _timeTrackerSyncService =
+      TimeTrackerSyncService();
   bool _isRefreshingRecommendations = false;
   Map<String, ContactMatch> _activeMatches = {};
   String _aiLabel = 'on-device';
@@ -153,6 +158,7 @@ class _HomePageState extends State<HomePage>
   bool _wasKeyboardVisible = false;
   StreamSubscription<void>? _syncSubscription;
   StreamSubscription<void>? _contactsChangedSubscription;
+  VoidCallback? _timeTrackerListener;
 
   @override
   void initState() {
@@ -187,7 +193,59 @@ class _HomePageState extends State<HomePage>
       setState(() {
         _isInitialLoad = false;
       });
+      _setupTimeTrackerSync();
     }
+  }
+
+  void _setupTimeTrackerSync() {
+    _timeTrackerListener = () {
+      if (mounted) setState(() {});
+    };
+    _timeTrackerSyncService.addListener(_timeTrackerListener!);
+    _checkTimeTrackerUpdates();
+  }
+
+  Future<void> _checkTimeTrackerUpdates() async {
+    if (_timeTrackerSyncService.hasStagedCandidates) {
+      _showTimeTrackerStagingSheet();
+      return;
+    }
+
+    final googleUser = await GoogleDriveService().currentUser;
+    if (googleUser != null) {
+      final candidates = await _timeTrackerSyncService.syncFromDrive(
+        contacts: _contacts,
+      );
+      if (candidates.isNotEmpty && mounted) {
+        _showTimeTrackerStagingSheet();
+      }
+    }
+  }
+
+  void _showTimeTrackerStagingSheet() {
+    if (!mounted || _timeTrackerSyncService.stagingQueue.isEmpty) return;
+
+    final targetContext = context;
+    showModalBottomSheet(
+      context: targetContext,
+      isScrollControlled: true,
+      builder: (ctx) => TimeTrackerStagingSheet(
+        candidates: _timeTrackerSyncService.stagingQueue,
+        contacts: _contacts,
+        onConfirm: (confirmed) async {
+          await _timeTrackerSyncService.commitCandidates(
+            confirmed,
+            saveInteraction: (Interaction interaction) =>
+                DBHelper().insertInteraction(interaction),
+          );
+          if (mounted) {
+            _fetchContacts(forceRefresh: true);
+            CrispToast.show(
+                context, 'Imported ${confirmed.length} interactions');
+          }
+        },
+      ),
+    );
   }
 
   @override
@@ -550,6 +608,65 @@ class _HomePageState extends State<HomePage>
     );
     await _recurringLogStore.save(updated);
     await _rebuildReadyToLogItems();
+  }
+
+  Widget _buildTimeTrackerCard() {
+    final count = _timeTrackerSyncService.stagingQueue.length;
+    if (count == 0) return const SizedBox.shrink();
+
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: colorScheme.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: colorScheme.primary.withValues(alpha: 0.5)),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: _showTimeTrackerStagingSheet,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 13),
+          child: Row(
+            children: [
+              Icon(Icons.timer_outlined, size: 20, color: colorScheme.primary),
+              const SizedBox(width: 11),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Time Tracker Staging Queue ($count)',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14.5,
+                        color: colorScheme.onSurface,
+                      ),
+                    ),
+                    const SizedBox(height: 1),
+                    Text(
+                      'Tap to review and import pending events',
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w500,
+                        color: colorScheme.secondaryText,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                Icons.chevron_right_rounded,
+                size: 18,
+                color: colorScheme.primary,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   Widget _buildReviewAlertCard() {
@@ -1916,6 +2033,7 @@ class _HomePageState extends State<HomePage>
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
+                              _buildTimeTrackerCard(),
                               _buildReviewAlertCard(),
                               _buildReadyToLogCard(),
                               const SizedBox(height: 16),

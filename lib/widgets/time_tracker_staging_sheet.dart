@@ -1,0 +1,270 @@
+import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+import 'package:bnpb/main.dart';
+import 'package:bnpb/models/candidate_interaction.dart';
+import 'package:bnpb/models/contact.dart';
+
+/// A bottom sheet for reviewing, editing, and confirming [CandidateInteraction]s
+/// staged from Simple Time Tracker before importing them into BNPB.
+class TimeTrackerStagingSheet extends StatefulWidget {
+  final List<CandidateInteraction> candidates;
+  final List<Contact> contacts;
+  final ValueChanged<List<CandidateInteraction>> onConfirm;
+  final VoidCallback? onDismiss;
+
+  const TimeTrackerStagingSheet({
+    super.key,
+    required this.candidates,
+    required this.contacts,
+    required this.onConfirm,
+    this.onDismiss,
+  });
+
+  @override
+  State<TimeTrackerStagingSheet> createState() =>
+      _TimeTrackerStagingSheetState();
+}
+
+class _TimeTrackerStagingSheetState extends State<TimeTrackerStagingSheet> {
+  late List<CandidateInteraction> _items;
+
+  @override
+  void initState() {
+    super.initState();
+    _items = widget.candidates.map((e) => e.copyWith()).toList();
+  }
+
+  int get _selectedCount => _items.where((e) => e.selected).length;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final dateFormat = DateFormat('MMM d, yyyy  h:mm a');
+
+    return Container(
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.85,
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.timer_outlined, color: colorScheme.primary),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Time Tracker Staging Queue',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.close),
+                onPressed: () {
+                  widget.onDismiss?.call();
+                  Navigator.of(context).maybePop();
+                },
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Review detected events from Simple Time Tracker before adding to BNPB history.',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: colorScheme.secondaryText,
+            ),
+          ),
+          const Divider(height: 20),
+          Expanded(
+            child: ListView.separated(
+              shrinkWrap: true,
+              itemCount: _items.length,
+              separatorBuilder: (_, __) => const Divider(height: 1),
+              itemBuilder: (context, index) {
+                final item = _items[index];
+                return _buildCandidateTile(item, dateFormat, theme);
+              },
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              TextButton(
+                onPressed: () {
+                  widget.onDismiss?.call();
+                  Navigator.of(context).maybePop();
+                },
+                child: const Text('Later'),
+              ),
+              const Spacer(),
+              ElevatedButton(
+                onPressed: _selectedCount > 0
+                    ? () {
+                        final confirmed =
+                            _items.where((e) => e.selected).toList();
+                        widget.onConfirm(confirmed);
+                        Navigator.of(context).maybePop();
+                      }
+                    : null,
+                child: Text('Import $_selectedCount Selected'),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCandidateTile(
+    CandidateInteraction item,
+    DateFormat dateFormat,
+    ThemeData theme,
+  ) {
+    // Find matched contact names
+    final matchedContacts = widget.contacts
+        .where((c) => item.matchedContactIds.contains(c.id))
+        .toList();
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Checkbox(
+            value: item.selected,
+            onChanged: (val) {
+              setState(() {
+                item.selected = val ?? false;
+              });
+            },
+          ),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        item.summary,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.edit_outlined, size: 18),
+                      tooltip: 'Edit summary',
+                      onPressed: () => _editCandidate(item),
+                    ),
+                  ],
+                ),
+                Text(
+                  '${dateFormat.format(item.occurredAt)} (${item.durationMinutes ?? 0}m)',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.secondaryText,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 4,
+                  children: [
+                    for (final contact in matchedContacts)
+                      Chip(
+                        label: Text(
+                          contact.fullName.isNotEmpty
+                              ? contact.fullName
+                              : contact.firstName,
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                        avatar: const CircleAvatar(
+                          radius: 10,
+                          child: Icon(Icons.person, size: 12),
+                        ),
+                        deleteIcon: const Icon(Icons.close, size: 14),
+                        onDeleted: () {
+                          setState(() {
+                            item.matchedContactIds.remove(contact.id);
+                          });
+                        },
+                      ),
+                    ActionChip(
+                      label: const Text('+ Add Contact',
+                          style: TextStyle(fontSize: 12)),
+                      onPressed: () => _pickContact(item),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _editCandidate(CandidateInteraction item) async {
+    final controller = TextEditingController(text: item.summary);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Edit Summary'),
+        content: TextField(
+          controller: controller,
+          decoration: const InputDecoration(labelText: 'Summary'),
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && controller.text.trim().isNotEmpty) {
+      setState(() {
+        item.summary = controller.text.trim();
+      });
+    }
+  }
+
+  Future<void> _pickContact(CandidateInteraction item) async {
+    final available = widget.contacts
+        .where((c) => !item.matchedContactIds.contains(c.id))
+        .toList();
+
+    if (available.isEmpty) return;
+
+    final selected = await showDialog<Contact>(
+      context: context,
+      builder: (ctx) => SimpleDialog(
+        title: const Text('Select Contact'),
+        children: available.map((c) {
+          final label = c.fullName.isNotEmpty ? c.fullName : c.firstName;
+          return SimpleDialogOption(
+            onPressed: () => Navigator.pop(ctx, c),
+            child: Text(label),
+          );
+        }).toList(),
+      ),
+    );
+
+    if (selected != null) {
+      setState(() {
+        item.matchedContactIds.add(selected.id);
+      });
+    }
+  }
+}
