@@ -2,6 +2,13 @@
 
 All notable changes to the BNPB project are documented here.
 
+## [1.4.0](https://github.com/Shir0o/bnpb/compare/v1.3.0...v1.4.0) (2026-09-16)
+
+
+### Features
+
+* **sync:** automate Simple Time Tracker CSV sync via Google Drive with Staging Queue ([#277](https://github.com/Shir0o/bnpb/issues/277)) ([#278](https://github.com/Shir0o/bnpb/issues/278)) ([c733898](https://github.com/Shir0o/bnpb/commit/c733898e2cd5ed4baea3329adc4b39799973c339))
+
 ## [1.3.0](https://github.com/Shir0o/bnpb/compare/v1.2.1...v1.3.0) (2026-09-14)
 
 
