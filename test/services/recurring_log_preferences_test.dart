@@ -49,4 +49,31 @@ void main() {
     expect(
         loaded.preferenceFor('contact@@workout@@in person').confirmed, isTrue);
   });
+
+  test('round-trips combined-pattern preferences through JSON', () {
+    final preferences = RecurringLogPreferences({
+      'bible reading@@coffee@@alice,bob': RecurringLogPreference(
+        confirmed: true,
+        displayNameOverride: 'Group reading',
+        canonicalIdentity: const PatternIdentity(
+          activity: 'bible reading',
+          medium: 'coffee',
+          participantIds: ['alice', 'bob'],
+        ),
+      ),
+      'alice@@bible reading@@coffee': const RecurringLogPreference(
+          mergedIntoKey: 'bible reading@@coffee@@alice,bob'),
+    });
+
+    final decoded = RecurringLogPreferences.fromJson(preferences.toJson());
+
+    final combined = decoded.preferenceFor('bible reading@@coffee@@alice,bob');
+    expect(combined.confirmed, isTrue);
+    expect(combined.displayNameOverride, 'Group reading');
+    expect(combined.canonicalIdentity?.participantIds, ['alice', 'bob']);
+    expect(
+      decoded.preferenceFor('alice@@bible reading@@coffee').mergedIntoKey,
+      'bible reading@@coffee@@alice,bob',
+    );
+  });
 }

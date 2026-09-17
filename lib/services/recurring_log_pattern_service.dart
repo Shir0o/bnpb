@@ -15,48 +15,78 @@ class RecurringLogPatternService {
   final int retireAfterDays;
   final int minOccurrences;
 
+  /// Detects recurring log patterns across all Contacts.
+  ///
+  /// Interactions sharing the same normalized activity and medium are grouped,
+  /// then clustered into connected components where two interactions belong to
+  /// the same recurring engagement when their participant sets overlap (a
+  /// subset attending one week still connects to the wider group). A component
+  /// becomes one pattern whose regular participants are the union of the
+  /// participants across its occurrences.
   List<RecurringLogPattern> detectPatterns(
     List<Contact> contacts, {
     required DateTime now,
   }) {
     final cutoff = dateOnly(now).subtract(Duration(days: lookbackDays));
-    final patterns = <RecurringLogPattern>[];
-
+    final items = <_GroupItem>[];
     for (final contact in contacts) {
-      final groups = <String, List<Interaction>>{};
       for (final interaction in contact.interactions) {
         if (interaction.summary.trim().isEmpty) continue;
         final occurred = dateOnly(interaction.occurredAt);
         if (occurred.isBefore(cutoff)) continue;
-        final identity =
-            PatternIdentity.fromInteraction(contact.id, interaction);
-        groups.putIfAbsent(identity.key, () => []).add(interaction);
+        items.add(_GroupItem(contact.id, interaction));
       }
+    }
 
-      for (final group in groups.values) {
-        group.sort((a, b) => b.occurredAt.compareTo(a.occurredAt));
-        if (group.length < minOccurrences) continue;
-        final latest = group.first;
+    final byActivity = <String, List<_GroupItem>>{};
+    for (final item in items) {
+      final activity = PatternIdentity.normalize(item.interaction.summary);
+      final medium = PatternIdentity.normalize(item.interaction.medium);
+      byActivity.putIfAbsent('$activity@@$medium', () => []).add(item);
+    }
+
+    final patterns = <RecurringLogPattern>[];
+    for (final group in byActivity.values) {
+      for (final component in _connectedComponents(group)) {
+        final interactions = component.map((item) => item.interaction).toList()
+          ..sort((a, b) => b.occurredAt.compareTo(a.occurredAt));
+        final distinctDates =
+            interactions.map((i) => dateOnly(i.occurredAt)).toSet();
+        if (distinctDates.length < minOccurrences) continue;
+
+        final latest = interactions.first;
         if (dateOnly(now).difference(dateOnly(latest.occurredAt)).inDays >
             retireAfterDays) {
           continue;
         }
-        final cadence = _inferCadence(group);
+
+        final cadence = _inferCadence(interactions);
         if (cadence == null) continue;
+
+        final participantIds = <String>{
+          for (final item in component) item.contactId,
+          for (final item in component) ...item.interaction.participantIds,
+        };
+
         final latestNotes = latest.notes;
-        final usesScripture = group.any(_hasScripturePayload) ||
+        final usesScripture = interactions.any(_hasScripturePayload) ||
             _looksLikeScripture(latest.summary) ||
             (latestNotes != null && _looksLikeScripture(latestNotes));
+
         patterns.add(
           RecurringLogPattern(
-            identity: PatternIdentity.fromInteraction(contact.id, latest),
+            identity: PatternIdentity.fromOccurrence(
+              activity: latest.summary,
+              medium: latest.medium,
+              participantIds: participantIds,
+            ),
             displayActivity: latest.summary.trim(),
             cadence: cadence,
-            occurrenceCount: group.length,
+            occurrenceCount: distinctDates.length,
             lastOccurredAt: latest.occurredAt,
-            inferredSpan: _inferSpan(group),
+            inferredSpan: _inferSpan(interactions),
             usesScripturePayload: usesScripture,
-            matchingInteractions: List<Interaction>.from(group),
+            matchingInteractions: interactions,
           ),
         );
       }
@@ -65,13 +95,153 @@ class RecurringLogPatternService {
     return patterns;
   }
 
+  /// Folds patterns whose preferences redirect into another pattern (via
+  /// [RecurringLogPreference.mergedIntoKey]) into a single combined pattern.
+  List<RecurringLogPattern> resolvePatterns(
+    List<RecurringLogPattern> detected,
+    RecurringLogPreferences preferences,
+  ) {
+    if (detected.isEmpty) return detected;
+
+    String canonicalKey(String key) {
+      final seen = <String>{};
+      var current = key;
+      while (true) {
+        final mergedInto = preferences.get(current)?.mergedIntoKey;
+        if (mergedInto == null ||
+            mergedInto == current ||
+            seen.contains(mergedInto)) {
+          return current;
+        }
+        seen.add(current);
+        current = mergedInto;
+      }
+    }
+
+    final byCanonical = <String, List<RecurringLogPattern>>{};
+    for (final pattern in detected) {
+      byCanonical.putIfAbsent(canonicalKey(pattern.key), () => []).add(pattern);
+    }
+
+    final resolved = <RecurringLogPattern>[];
+    for (final entry in byCanonical.entries) {
+      final canonical = entry.key;
+      final members = entry.value;
+      final canonicalPreference = preferences.preferenceFor(canonical);
+
+      final interactions = <Interaction>[
+        for (final member in members) ...member.matchingInteractions,
+      ]..sort((a, b) => b.occurredAt.compareTo(a.occurredAt));
+
+      final primary = members.firstWhere(
+        (member) => member.key == canonical,
+        orElse: () => members.first,
+      );
+
+      final identity = canonicalPreference.canonicalIdentity ??
+          PatternIdentity.fromOccurrence(
+            activity: primary.identity.activity,
+            medium: primary.identity.medium,
+            participantIds: {
+              for (final member in members) ...member.identity.participantIds,
+            },
+          );
+
+      final distinctDates =
+          interactions.map((i) => dateOnly(i.occurredAt)).toSet();
+
+      resolved.add(
+        RecurringLogPattern(
+          identity: identity,
+          displayActivity: canonicalPreference.displayNameOverride ??
+              primary.displayActivity,
+          cadence: canonicalPreference.cadenceOverride ?? primary.cadence,
+          occurrenceCount: distinctDates.length,
+          lastOccurredAt: interactions.first.occurredAt,
+          inferredSpan:
+              canonicalPreference.spanOverride ?? primary.inferredSpan,
+          usesScripturePayload: primary.usesScripturePayload,
+          matchingInteractions: interactions,
+        ),
+      );
+    }
+    return resolved;
+  }
+
+  /// Combines [target] with [sources] into a single pattern, persisting the
+  /// combined identity and redirecting the folded patterns' preference keys.
+  RecurringLogPreferences combinePatterns(
+    RecurringLogPreferences preferences,
+    RecurringLogPattern target,
+    List<RecurringLogPattern> sources,
+  ) {
+    final participants = <String>{
+      ...target.identity.participantIds,
+      for (final source in sources) ...source.identity.participantIds,
+    };
+    final identity = PatternIdentity.fromOccurrence(
+      activity: target.identity.activity,
+      medium: target.identity.medium,
+      participantIds: participants,
+    );
+    final targetKey = identity.key;
+
+    final anyConfirmed = preferences.preferenceFor(target.key).confirmed ||
+        sources
+            .any((source) => preferences.preferenceFor(source.key).confirmed);
+
+    var updated = preferences.withPreference(
+      targetKey,
+      preferences.preferenceFor(targetKey).copyWith(
+            confirmed: anyConfirmed,
+            displayNameOverride: target.displayActivity,
+            canonicalIdentity: identity,
+          ),
+    );
+
+    final keysToRedirect = <String>{
+      target.key,
+      for (final source in sources) source.key,
+    }..remove(targetKey);
+
+    for (final key in keysToRedirect) {
+      updated = updated.withPreference(
+        key,
+        preferences.preferenceFor(key).copyWith(mergedIntoKey: targetKey),
+      );
+    }
+    return updated;
+  }
+
+  /// Rewrites a pattern's preference to a new identity, redirecting the old
+  /// key so previously saved choices survive the change.
+  RecurringLogPreferences rekeyPattern(
+    RecurringLogPreferences preferences,
+    String oldKey,
+    PatternIdentity newIdentity,
+    RecurringLogPreference preference,
+  ) {
+    final newKey = newIdentity.key;
+    var updated = preferences.withPreference(newKey, preference);
+    if (newKey != oldKey) {
+      updated = updated.withPreference(
+        oldKey,
+        preferences.preferenceFor(oldKey).copyWith(mergedIntoKey: newKey),
+      );
+    }
+    return updated;
+  }
+
   RecurringLogResult buildDueSuggestions({
     required List<Contact> contacts,
     required DateTime now,
     required RecurringLogPreferences preferences,
     int maxSuggestions = 3,
   }) {
-    final patterns = detectPatterns(contacts, now: now);
+    final patterns = resolvePatterns(
+      detectPatterns(contacts, now: now),
+      preferences,
+    );
     final contactById = {for (final contact in contacts) contact.id: contact};
     final suggestions = <ReadyToLogSuggestion>[];
     final pending = <PendingRoutine>[];
@@ -83,7 +253,7 @@ class RecurringLogPatternService {
 
       final due = _dueStatus(pattern, now);
       if (due == null) continue;
-      final contact = contactById[pattern.identity.contactId];
+      final contact = _primaryContact(pattern, contactById);
       if (contact == null) continue;
       final latest = pattern.matchingInteractions.first;
 
@@ -127,6 +297,53 @@ class RecurringLogPatternService {
       suggestions: suggestions.take(maxSuggestions).toList(),
       pendingConfirmations: pending.take(1).toList(),
     );
+  }
+
+  Contact? _primaryContact(
+    RecurringLogPattern pattern,
+    Map<String, Contact> contactById,
+  ) {
+    for (final participantId in pattern.identity.participantIds) {
+      final contact = contactById[participantId];
+      if (contact != null) return contact;
+    }
+    return null;
+  }
+
+  List<List<_GroupItem>> _connectedComponents(List<_GroupItem> group) {
+    final n = group.length;
+    if (n <= 1) return [group];
+
+    final parent = List<int>.generate(n, (i) => i);
+    int find(int x) {
+      while (parent[x] != x) {
+        parent[x] = parent[parent[x]];
+        x = parent[x];
+      }
+      return x;
+    }
+
+    void union(int a, int b) {
+      final rootA = find(a);
+      final rootB = find(b);
+      if (rootA != rootB) parent[rootA] = rootB;
+    }
+
+    for (var i = 0; i < n; i++) {
+      for (var j = i + 1; j < n; j++) {
+        final a = group[i];
+        final b = group[j];
+        if (a.participantIds.intersection(b.participantIds).isNotEmpty) {
+          union(i, j);
+        }
+      }
+    }
+
+    final buckets = <int, List<_GroupItem>>{};
+    for (var i = 0; i < n; i++) {
+      buckets.putIfAbsent(find(i), () => []).add(group[i]);
+    }
+    return buckets.values.toList();
   }
 
   PatternCadence? _inferCadence(List<Interaction> interactions) {
@@ -299,6 +516,21 @@ class RecurringLogPatternService {
     final middle = sorted.length ~/ 2;
     if (sorted.length.isOdd) return sorted[middle];
     return ((sorted[middle - 1] + sorted[middle]) / 2).round();
+  }
+}
+
+class _GroupItem {
+  _GroupItem(this.contactId, this.interaction);
+
+  final String contactId;
+  final Interaction interaction;
+
+  /// The actual attendees of this interaction. Logged interactions always
+  /// include the owning contact in [Interaction.participantIds]; legacy data
+  /// with an empty list falls back to the owning contact.
+  Set<String> get participantIds {
+    final participants = interaction.participantIds;
+    return participants.isEmpty ? {contactId} : participants.toSet();
   }
 }
 
