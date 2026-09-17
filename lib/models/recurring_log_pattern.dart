@@ -2,30 +2,80 @@ import 'interaction.dart';
 import 'contact.dart';
 
 /// Stable identity for a recurring log pattern.
+///
+/// Identity is engagement-scoped: it is the normalized activity and medium
+/// together with the regular participant Contact ids, independent of who
+/// attends any individual occurrence.
 class PatternIdentity {
   const PatternIdentity({
-    required this.contactId,
     required this.activity,
     required this.medium,
+    required this.participantIds,
   });
 
-  final String contactId;
   final String activity;
   final String medium;
 
-  String get key => '$contactId@@$activity@@$medium';
+  /// Regular participant Contact ids, sorted and unique.
+  final List<String> participantIds;
 
-  static PatternIdentity fromInteraction(
-      String contactId, Interaction interaction) {
+  /// The key under which pattern preferences are persisted. Single-participant
+  /// patterns keep the legacy `contact@@activity@@medium` shape so existing
+  /// saved preferences still resolve.
+  String get key {
+    if (participantIds.length == 1) {
+      return '${participantIds.first}@@$activity@@$medium';
+    }
+    return '$activity@@$medium@@${participantIds.join(',')}';
+  }
+
+  /// Builds an identity from the raw activity, medium, and regular
+  /// participant Contact ids, normalizing activity/medium and sorting ids.
+  static PatternIdentity fromOccurrence({
+    required String activity,
+    required String medium,
+    required Set<String> participantIds,
+  }) {
+    final sorted = participantIds.toList()..sort();
     return PatternIdentity(
-      contactId: contactId,
-      activity: normalize(interaction.summary),
-      medium: normalize(interaction.medium),
+      activity: normalize(activity),
+      medium: normalize(medium),
+      participantIds: sorted,
     );
   }
 
   static String normalize(String value) {
     return value.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'activity': activity,
+      'medium': medium,
+      'participantIds': participantIds,
+    };
+  }
+
+  /// Restores an identity from [PatternIdentity.toJson] output, or null when
+  /// the payload is malformed.
+  static PatternIdentity? fromJson(Map<String, dynamic> json) {
+    final activity = json['activity'];
+    final medium = json['medium'];
+    final raw = json['participantIds'];
+    if (activity is! String || medium is! String) return null;
+    if (raw is! List) return null;
+    final ids = raw
+        .map((entry) => entry.toString())
+        .where((id) => id.isNotEmpty)
+        .toSet()
+        .toList()
+      ..sort();
+    if (ids.isEmpty) return null;
+    return PatternIdentity(
+      activity: activity,
+      medium: medium,
+      participantIds: ids,
+    );
   }
 }
 

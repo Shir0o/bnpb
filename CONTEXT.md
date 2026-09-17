@@ -52,11 +52,11 @@ _Avoid_: Task, ticket
 ### Recurring Logs & Suggestions
 
 **Ready-to-log suggestion**:
-A prompt to log a recurring Interaction for a Contact, pre-filled from an inferred pattern so the user can confirm it in one step.
+A prompt to record a Pattern occurrence, pre-filled from its Recurring log pattern, with actual attendees confirmed when logging.
 _Avoid_: Reminder, quick log, routine
 
 **Recurring log pattern**:
-A routine inferred from a Contact's Interaction history, combining an activity identity, a cadence, and an optional payload rule.
+A recurring engagement with one or more Contacts, combining an activity identity, a cadence, regular participants, and an optional payload rule. Individual occurrences can have different attendees without becoming different patterns.
 _Avoid_: Habit, series, schedule
 
 **Pattern cadence**:
@@ -72,15 +72,35 @@ A payload rule that reads a Bible reference from the latest Interaction note and
 _Avoid_: Verse increment, Bible suggestion
 
 **Pattern identity**:
-The stable criteria that bind Interaction logs to the same Recurring log pattern: the Contact, the normalized activity summary, and the medium.
+The enduring identity of a Recurring log pattern, independent of who attends an individual occurrence.
 _Avoid_: Activity tag, category
+
+**Pattern occurrence**:
+A single instance of a Recurring log pattern, with its own actual attendees and Interaction details. Editing an occurrence does not change the saved pattern's regular participants, cadence, or defaults.
+_Avoid_: Event, separate pattern
+
+**Regular participants**:
+The Contacts normally expected to participate in a Recurring log pattern, distinct from the actual attendees of any one Pattern occurrence.
+_Avoid_: Attendees, fixed membership
+
+**Saved pattern defaults**:
+The editable name, regular participants, cadence, medium, and note or scripture settings used to pre-fill future suggestions for a Recurring log pattern. Changing these defaults does not rewrite past Interaction logs.
+_Avoid_: Occurrence details
+
+**Pattern combination**:
+A user-confirmed consolidation of recurring log patterns that represent the same recurring engagement into one pattern. Similar activities alone do not establish that patterns should be combined.
+_Avoid_: Automatic merge
+
+**Completed occurrence**:
+A Pattern occurrence recorded with its actual attendees, even when only a subset of the regular participants attended. Completion satisfies the pattern for that occurrence without recording Interactions or leaving an overdue occurrence for absent Contacts.
+_Avoid_: Full attendance
 
 **Pattern span**:
 The size of one occurrence of a Recurring log pattern, such as two Bible chapters.
 _Avoid_: Increment, step
 
 **Due**:
-A state of a Recurring log pattern on one of its Pattern cadence days when no matching Interaction has been logged for that day.
+A state of a Recurring log pattern on one of its Pattern cadence days when its expected occurrence has not been completed.
 _Avoid_: Active, pending
 
 **Overdue**:

@@ -33,7 +33,10 @@ class _RecurringRoutinesPageState extends State<RecurringRoutinesPage> {
     if (mounted) setState(() => _loading = true);
     final contacts = await ContactService().getContacts(forceRefresh: true);
     final preferences = await _store.load();
-    final patterns = _service.detectPatterns(contacts, now: DateTime.now());
+    final patterns = _service.resolvePatterns(
+      _service.detectPatterns(contacts, now: DateTime.now()),
+      preferences,
+    );
     if (mounted == false) return;
     setState(() {
       _contacts = contacts;
@@ -44,10 +47,16 @@ class _RecurringRoutinesPageState extends State<RecurringRoutinesPage> {
   }
 
   Contact? _contactFor(RecurringLogPattern pattern) {
-    for (final contact in _contacts) {
-      if (contact.id == pattern.identity.contactId) return contact;
-    }
-    return null;
+    final participants = _participantsFor(pattern);
+    return participants.isEmpty ? null : participants.first;
+  }
+
+  List<Contact> _participantsFor(RecurringLogPattern pattern) {
+    final byId = {for (final contact in _contacts) contact.id: contact};
+    return [
+      for (final participantId in pattern.identity.participantIds)
+        if (byId[participantId] != null) byId[participantId]!,
+    ];
   }
 
   RecurringLogPreference _preferenceFor(RecurringLogPattern pattern) =>
@@ -59,6 +68,11 @@ class _RecurringRoutinesPageState extends State<RecurringRoutinesPage> {
   ) async {
     final updated = _preferences.withPreference(key, preference);
     await _store.save(updated);
+    await _load();
+  }
+
+  Future<void> _saveAll(RecurringLogPreferences preferences) async {
+    await _store.save(preferences);
     await _load();
   }
 
@@ -84,11 +98,103 @@ class _RecurringRoutinesPageState extends State<RecurringRoutinesPage> {
     );
   }
 
+  Future<void> _combinePatterns() async {
+    final candidates = _patterns
+        .where((pattern) => _preferenceFor(pattern).suppressed == false)
+        .toList();
+    if (candidates.length < 2) return;
+
+    final selected = <String>{};
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text('Combine routines'),
+              content: SizedBox(
+                width: double.maxFinite,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text(
+                      'Select the routines that are really the same '
+                      'engagement. They will be merged into one.',
+                      style: TextStyle(fontSize: 13),
+                    ),
+                    const SizedBox(height: 12),
+                    Flexible(
+                      child: ListView(
+                        shrinkWrap: true,
+                        children: [
+                          for (final pattern in candidates)
+                            CheckboxListTile(
+                              dense: true,
+                              title: Text(
+                                '${_participantNames(pattern)} - '
+                                '${pattern.displayActivity}',
+                                style: const TextStyle(fontSize: 13.5),
+                              ),
+                              value: selected.contains(pattern.key),
+                              onChanged: (value) {
+                                setDialogState(() {
+                                  if (value == true) {
+                                    selected.add(pattern.key);
+                                  } else {
+                                    selected.remove(pattern.key);
+                                  }
+                                });
+                              },
+                            ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(false),
+                  child: const Text('Cancel'),
+                ),
+                FilledButton(
+                  onPressed: selected.length >= 2
+                      ? () => Navigator.of(context).pop(true)
+                      : null,
+                  child: const Text('Combine'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    if (confirmed != true || selected.length < 2) return;
+
+    final chosen = candidates
+        .where((pattern) => selected.contains(pattern.key))
+        .toList()
+      ..sort((a, b) => b.occurrenceCount.compareTo(a.occurrenceCount));
+    final target = chosen.first;
+    final sources = chosen.skip(1).toList();
+
+    final updated = _service.combinePatterns(_preferences, target, sources);
+    await _saveAll(updated);
+  }
+
   Future<void> _editPattern(RecurringLogPattern pattern) async {
     final preference = _preferenceFor(pattern);
+    final latest = pattern.matchingInteractions.first;
+    final nameController = TextEditingController(
+      text: preference.displayNameOverride ?? pattern.displayActivity,
+    );
+    final mediumController = TextEditingController(text: latest.medium);
     final spanController = TextEditingController(
       text: (preference.spanOverride ?? pattern.inferredSpan).toString(),
     );
+    final selectedParticipants =
+        Set<String>.from(pattern.identity.participantIds);
     var cadenceValue = _cadenceValue(override: preference.cadenceOverride);
 
     final saved = await showDialog<bool>(
@@ -98,49 +204,98 @@ class _RecurringRoutinesPageState extends State<RecurringRoutinesPage> {
           builder: (context, setDialogState) {
             return AlertDialog(
               title: Text(pattern.displayActivity),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  TextField(
-                    controller: spanController,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
-                      labelText: 'Chapters per session',
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    TextField(
+                      controller: nameController,
+                      decoration: const InputDecoration(
+                        labelText: 'Name',
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                  DropdownButtonFormField<String>(
-                    initialValue: cadenceValue,
-                    decoration: const InputDecoration(labelText: 'Cadence'),
-                    items: const [
-                      DropdownMenuItem(
-                        value: 'detected',
-                        child: Text('Use detected cadence'),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: mediumController,
+                      decoration: const InputDecoration(
+                        labelText: 'Medium',
                       ),
-                      DropdownMenuItem(
-                        value: 'daily',
-                        child: Text('Every day'),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: spanController,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: 'Chapters per session',
                       ),
-                      DropdownMenuItem(
-                        value: 'mon-sat',
-                        child: Text('Monday to Saturday'),
+                    ),
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<String>(
+                      initialValue: cadenceValue,
+                      decoration: const InputDecoration(labelText: 'Cadence'),
+                      items: const [
+                        DropdownMenuItem(
+                          value: 'detected',
+                          child: Text('Use detected cadence'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'daily',
+                          child: Text('Every day'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'mon-sat',
+                          child: Text('Monday to Saturday'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'every2',
+                          child: Text('Every 2 days'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'every7',
+                          child: Text('Every 7 days'),
+                        ),
+                      ],
+                      onChanged: (value) {
+                        if (value == null) return;
+                        setDialogState(() => cadenceValue = value);
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Regular participants',
+                      style: TextStyle(fontSize: 12.5),
+                    ),
+                    const SizedBox(height: 8),
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxHeight: 160),
+                      child: SingleChildScrollView(
+                        child: Wrap(
+                          spacing: 6,
+                          runSpacing: 4,
+                          children: [
+                            for (final contact in _contacts)
+                              FilterChip(
+                                label: Text(contact.displayName),
+                                selected: selectedParticipants.contains(
+                                  contact.id,
+                                ),
+                                onSelected: (value) {
+                                  setDialogState(() {
+                                    if (value) {
+                                      selectedParticipants.add(contact.id);
+                                    } else {
+                                      selectedParticipants.remove(contact.id);
+                                    }
+                                  });
+                                },
+                              ),
+                          ],
+                        ),
                       ),
-                      DropdownMenuItem(
-                        value: 'every2',
-                        child: Text('Every 2 days'),
-                      ),
-                      DropdownMenuItem(
-                        value: 'every7',
-                        child: Text('Every 7 days'),
-                      ),
-                    ],
-                    onChanged: (value) {
-                      if (value == null) return;
-                      setDialogState(() => cadenceValue = value);
-                    },
-                  ),
-                ],
+                    ),
+                  ],
+                ),
               ),
               actions: [
                 TextButton(
@@ -159,20 +314,49 @@ class _RecurringRoutinesPageState extends State<RecurringRoutinesPage> {
     );
 
     if (saved == true) {
+      final name = nameController.text.trim();
+      final medium = mediumController.text.trim();
       final span = int.tryParse(spanController.text.trim());
       final cadenceOverride = _cadenceFromValue(cadenceValue);
-      await _savePreference(
-        pattern.key,
-        preference.copyWith(
-          confirmed: true,
-          spanOverride: span,
-          clearSpan: span == null,
-          cadenceOverride: cadenceOverride,
-          clearCadence: cadenceOverride == null,
-        ),
+
+      final newIdentity = PatternIdentity(
+        activity: pattern.identity.activity,
+        medium: medium.isEmpty
+            ? pattern.identity.medium
+            : PatternIdentity.normalize(medium),
+        participantIds: selectedParticipants.isEmpty
+            ? pattern.identity.participantIds
+            : selectedParticipants.toList(),
       );
+
+      final overrides = preference.copyWith(
+        confirmed: true,
+        displayNameOverride: name.isEmpty ? null : name,
+        clearDisplayName: name.isEmpty,
+        spanOverride: span,
+        clearSpan: span == null,
+        cadenceOverride: cadenceOverride,
+        clearCadence: cadenceOverride == null,
+        canonicalIdentity: newIdentity,
+      );
+
+      final updated = _service.rekeyPattern(
+        _preferences,
+        pattern.key,
+        newIdentity,
+        overrides,
+      );
+      await _saveAll(updated);
     }
+    nameController.dispose();
+    mediumController.dispose();
     spanController.dispose();
+  }
+
+  String _participantNames(RecurringLogPattern pattern) {
+    final contacts = _participantsFor(pattern);
+    if (contacts.isEmpty) return 'Unknown contact';
+    return contacts.map((contact) => contact.displayName).join(', ');
   }
 
   String _cadenceValue({PatternCadence? override}) {
@@ -227,7 +411,17 @@ class _RecurringRoutinesPageState extends State<RecurringRoutinesPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Routines')),
+      appBar: AppBar(
+        title: const Text('Routines'),
+        actions: [
+          if (_patterns.length >= 2)
+            IconButton(
+              tooltip: 'Combine routines',
+              icon: const Icon(Icons.merge),
+              onPressed: _combinePatterns,
+            ),
+        ],
+      ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _buildBody(),
@@ -260,8 +454,12 @@ class _RecurringRoutinesPageState extends State<RecurringRoutinesPage> {
         final contact = _contactFor(pattern);
         final preference = _preferenceFor(pattern);
         final span = preference.spanOverride ?? pattern.inferredSpan;
-        final contactName =
-            contact == null ? 'Unknown contact' : contact.displayName;
+        final participants = _participantsFor(pattern);
+        final contactName = participants.length > 1
+            ? participants.map((contact) => contact.displayName).join(', ')
+            : contact == null
+                ? 'Unknown contact'
+                : contact.displayName;
         final subtitle =
             '$contactName - $pattern.cadence.description - $span chapters';
         return ListTile(

@@ -11,6 +11,9 @@ class RecurringLogPreference {
     this.snoozedUntil,
     this.spanOverride,
     this.cadenceOverride,
+    this.displayNameOverride,
+    this.mergedIntoKey,
+    this.canonicalIdentity,
   });
 
   final bool confirmed;
@@ -18,6 +21,17 @@ class RecurringLogPreference {
   final DateTime? snoozedUntil;
   final int? spanOverride;
   final PatternCadence? cadenceOverride;
+
+  /// User-edited display name for the pattern.
+  final String? displayNameOverride;
+
+  /// When set, this pattern's occurrences fold into the pattern whose key is
+  /// [mergedIntoKey].
+  final String? mergedIntoKey;
+
+  /// Pinned identity (regular participants, activity, medium) for a combined
+  /// or edited pattern, stable across detection drift.
+  final PatternIdentity? canonicalIdentity;
 
   RecurringLogPreference copyWith({
     bool? confirmed,
@@ -27,6 +41,10 @@ class RecurringLogPreference {
     bool clearSpan = false,
     PatternCadence? cadenceOverride,
     bool clearCadence = false,
+    String? displayNameOverride,
+    bool clearDisplayName = false,
+    String? mergedIntoKey,
+    PatternIdentity? canonicalIdentity,
   }) {
     return RecurringLogPreference(
       confirmed: confirmed ?? this.confirmed,
@@ -35,6 +53,11 @@ class RecurringLogPreference {
       spanOverride: clearSpan ? null : (spanOverride ?? this.spanOverride),
       cadenceOverride:
           clearCadence ? null : (cadenceOverride ?? this.cadenceOverride),
+      displayNameOverride: clearDisplayName
+          ? null
+          : (displayNameOverride ?? this.displayNameOverride),
+      mergedIntoKey: mergedIntoKey ?? this.mergedIntoKey,
+      canonicalIdentity: canonicalIdentity ?? this.canonicalIdentity,
     );
   }
 
@@ -45,12 +68,16 @@ class RecurringLogPreference {
       'snoozedUntil': snoozedUntil?.toIso8601String(),
       'spanOverride': spanOverride,
       'cadenceOverride': cadenceOverride?.toJson(),
+      'displayNameOverride': displayNameOverride,
+      'mergedIntoKey': mergedIntoKey,
+      'canonicalIdentity': canonicalIdentity?.toJson(),
     };
   }
 
   static RecurringLogPreference fromJson(Map<String, dynamic> json) {
     final snoozeRaw = json['snoozedUntil'];
     final cadenceRaw = json['cadenceOverride'];
+    final canonicalRaw = json['canonicalIdentity'];
     return RecurringLogPreference(
       confirmed: json['confirmed'] == true,
       suppressed: json['suppressed'] == true,
@@ -60,6 +87,15 @@ class RecurringLogPreference {
           : null,
       cadenceOverride: cadenceRaw is Map
           ? PatternCadence.fromJson(Map<String, dynamic>.from(cadenceRaw))
+          : null,
+      displayNameOverride: json['displayNameOverride'] is String
+          ? json['displayNameOverride'] as String
+          : null,
+      mergedIntoKey: json['mergedIntoKey'] is String
+          ? json['mergedIntoKey'] as String
+          : null,
+      canonicalIdentity: canonicalRaw is Map
+          ? PatternIdentity.fromJson(Map<String, dynamic>.from(canonicalRaw))
           : null,
     );
   }

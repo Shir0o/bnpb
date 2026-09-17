@@ -1651,6 +1651,7 @@ class _HomePageState extends State<HomePage>
 
   Future<void> _openLogInteractionForItem(ReadyToLogSuggestion item) async {
     final last = item.latestInteraction;
+    final regular = item.pattern.identity.participantIds;
     final prefill = Interaction(
       summary: last.summary,
       medium: last.medium,
@@ -1658,9 +1659,7 @@ class _HomePageState extends State<HomePage>
       location: last.location,
       notes: item.prefillNotes,
       occurredAt: DateTime.now(),
-      participantIds: last.participantIds.contains(item.contact.id)
-          ? last.participantIds
-          : [item.contact.id, ...last.participantIds],
+      participantIds: regular.isEmpty ? [item.contact.id] : regular,
     );
     await _openLogInteractionForContact(
       item.contact,
