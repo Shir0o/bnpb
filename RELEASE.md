@@ -2,6 +2,14 @@
 
 All notable changes to the BNPB project are documented here.
 
+## [1.5.0](https://github.com/Shir0o/bnpb/compare/v1.4.0...v1.5.0) (2026-09-18)
+
+
+### Features
+
+* **recurring:** shared patterns with per-occurrence attendance and editable defaults ([#283](https://github.com/Shir0o/bnpb/issues/283)) ([e02b090](https://github.com/Shir0o/bnpb/commit/e02b090d3196812e68068cf2229752340845e2c6))
+* **sync:** configurable Google Drive folder, incremental scope authorization, and resilient UI error handling ([#285](https://github.com/Shir0o/bnpb/issues/285)) ([#286](https://github.com/Shir0o/bnpb/issues/286)) ([3b36877](https://github.com/Shir0o/bnpb/commit/3b3687708c6d6e64bc46c2e4666ffaf024410067))
+
 ## [1.4.0](https://github.com/Shir0o/bnpb/compare/v1.3.0...v1.4.0) (2026-09-16)
 
 
