@@ -14,7 +14,7 @@ class TimeTrackerSyncService extends ChangeNotifier {
       'stt_imported_fingerprints';
   static const String _prefKeyStagedCandidates = 'stt_staged_candidates';
   static const String _prefKeyDriveFolder = 'stt_drive_folder_name';
-  static const String defaultDriveFolderName = 'Time Track';
+  static const String defaultDriveFolderName = 'Time track';
 
   final GoogleDriveService _driveService;
   List<CandidateInteraction> _stagingQueue = [];

@@ -265,5 +265,48 @@ void main() {
       expect(listCallCount, 1);
       expect(files, hasLength(1));
     });
+
+    test('findLatestFileInFolder matches folder name case-insensitively',
+        () async {
+      await signIn();
+
+      final mockClient = MockClient((request) async {
+        final query = request.url.queryParameters['q'] ?? '';
+        if (query.contains("name contains 'Time track'") ||
+            query.contains('mimeType')) {
+          // Return folder with different casing e.g. "Time Track" or "time track"
+          return jsonResponse({
+            'files': [
+              {'id': 'folder_tt', 'name': 'Time Track'},
+            ],
+          });
+        }
+
+        if (query.contains("'folder_tt' in parents")) {
+          return jsonResponse({
+            'files': [
+              {
+                'id': 'stt_csv_1',
+                'name': 'stt_records_automatic.csv',
+                'modifiedTime': '2026-09-17T00:00:00Z'
+              },
+            ],
+          });
+        }
+
+        return jsonResponse({'files': []});
+      });
+
+      service.setDriveApiForTest(drive.DriveApi(mockClient));
+
+      // Query with lowercase "Time track"
+      final file = await service.findLatestFileInFolder(
+        folderName: 'Time track',
+        namePrefix: 'stt_records_automatic',
+      );
+
+      expect(file, isNotNull);
+      expect(file!.id, 'stt_csv_1');
+    });
   });
 }

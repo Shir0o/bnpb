@@ -338,7 +338,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.textContaining('Folder: Time Track'), findsOneWidget);
+      expect(find.textContaining('Folder: Time track'), findsOneWidget);
 
       // Verify folder button opens dialog
       final folderButton = find.byIcon(Icons.folder_open_outlined);

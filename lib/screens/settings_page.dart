@@ -632,7 +632,7 @@ class _SettingsPageState extends State<SettingsPage>
                       controller: controller,
                       decoration: const InputDecoration(
                         labelText: 'Drive Folder Name',
-                        hintText: 'Time Track',
+                        hintText: 'Time track',
                         border: OutlineInputBorder(),
                       ),
                       autofocus: true,

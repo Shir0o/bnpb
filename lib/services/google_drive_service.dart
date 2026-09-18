@@ -482,17 +482,30 @@ class GoogleDriveService {
     String? namePrefix,
   }) async {
     return await _executeWithRetry(() async {
+      // Find matching folder case-insensitively by querying matching candidates
+      // then filtering locally by lower-case equality.
+      final escaped = folderName.replaceAll("'", "\\'");
       final folderQuery =
-          "name = '$folderName' and mimeType = 'application/vnd.google-apps.folder' and trashed = false";
+          "name contains '$escaped' and mimeType = 'application/vnd.google-apps.folder' and trashed = false";
       final folderList = await _driveApi!.files
-          .list(q: folderQuery)
+          .list(
+            q: folderQuery,
+            $fields: 'files(id, name)',
+            pageSize: 20,
+          )
           .timeout(const Duration(seconds: 10));
 
-      if (folderList.files == null || folderList.files!.isEmpty) {
+      final targetLower = folderName.toLowerCase().trim();
+      final matchedFolder = folderList.files?.cast<drive.File?>().firstWhere(
+            (f) => (f?.name?.toLowerCase().trim() ?? '') == targetLower,
+            orElse: () => null,
+          );
+
+      if (matchedFolder == null || matchedFolder.id == null) {
         return null;
       }
 
-      final folderId = folderList.files!.first.id;
+      final folderId = matchedFolder.id!;
       var fileQuery = "'$folderId' in parents and trashed = false";
       if (namePrefix != null && namePrefix.isNotEmpty) {
         fileQuery += " and name contains '$namePrefix'";
