@@ -42,6 +42,12 @@ activity name,time started,time ended,comment,categories,record tags,duration,du
       expect(await syncService.getDriveFolderName(), 'My Work/Time Logs');
     });
 
+    test('name markers default to w/ and with and can be configured', () async {
+      expect(await syncService.getNameMarkers(), ['w/', 'with ']);
+      await syncService.setNameMarkers('@, ##');
+      expect(await syncService.getNameMarkers(), ['@', '##']);
+    });
+
     test(
         'syncFromDrive queries configured folder instead of hardcoded Time track',
         () async {

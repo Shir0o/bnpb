@@ -8,9 +8,16 @@ import 'package:bnpb/models/contact.dart';
 class TimeTrackerParser {
   /// Parses a Simple Time Tracker CSV content and extracts [CandidateInteraction]s
   /// for records tagged with "Contact".
+  ///
+  /// [markers] are the comment prefixes that signal a contact name follows
+  /// (default `w/` and `with `). When a marker is present, only text after it
+  /// is scanned for names. When no marker is present, the whole comment is
+  /// scanned but only a strong name signature (full name, first+last, or
+  /// nickname) counts.
   static List<CandidateInteraction> parseCsv(
     String csvContent, {
     List<Contact> contacts = const [],
+    List<String> markers = const ['w/', 'with '],
   }) {
     if (csvContent.trim().isEmpty) return [];
 
@@ -75,6 +82,7 @@ class TimeTrackerParser {
         activityName: activityName,
         comment: comment,
         contacts: contacts,
+        markers: markers,
       );
 
       candidates.add(
@@ -86,6 +94,9 @@ class TimeTrackerParser {
           summary: extraction.summary,
           matchedContactIds: extraction.contactIds,
           rawComment: comment,
+          // Default to unselected when no contact is matched, so the bulk of
+          // first-run noise doesn't silently import without review.
+          selected: extraction.contactIds.isNotEmpty,
         ),
       );
     }
@@ -108,6 +119,7 @@ class TimeTrackerParser {
     required String activityName,
     required String comment,
     required List<Contact> contacts,
+    required List<String> markers,
   }) {
     if (comment.isEmpty) {
       return _ExtractionResult(
@@ -116,16 +128,13 @@ class TimeTrackerParser {
       );
     }
 
-    // 1. Check for "w/" or "with " pattern
-    // e.g. "w/ Abel", "Boba w/ Benji Jeremy Timothy Isai ", "w/ Luis and Mayra "
-    final withRegex =
-        RegExp(r'(?:^(.*)\s+)?(?:w\/|with\s+)(.*)$', caseSensitive: false);
-    final match = withRegex.firstMatch(comment);
-
-    if (match != null) {
-      final prefix = match.group(1)?.trim(); // e.g. "Boba" or null
-      final namesPart =
-          match.group(2)?.trim() ?? ''; // e.g. "Benji Jeremy Timothy Isai"
+    // 1. Marker-respected first. If a configured marker is present, only the
+    // text after it is scanned for names. A bare first name is acceptable here
+    // because the marker signals the user's intent to name a contact.
+    final marker = _matchMarker(comment, markers);
+    if (marker != null) {
+      final prefix = marker.$1?.trim();
+      final namesPart = marker.$2.trim();
 
       final matchedIds = _resolveNames(namesPart, contacts);
       String summary;
@@ -141,33 +150,12 @@ class TimeTrackerParser {
       );
     }
 
-    // 2. Check if comment starts with or matches a contact name
-    // e.g. "Edgar Flores ", "Matthew V piano"
-    Contact? bestMatch;
-    int matchLength = 0;
-
-    for (final contact in contacts) {
-      final namesToCheck = [
-        contact.fullName.trim(),
-        '${contact.firstName} ${contact.lastName ?? ''}'.trim(),
-        contact.firstName.trim(),
-        if (contact.nickname != null && contact.nickname!.isNotEmpty)
-          contact.nickname!.trim(),
-      ];
-
-      for (final name in namesToCheck) {
-        if (name.isEmpty) continue;
-        if (comment.toLowerCase().startsWith(name.toLowerCase())) {
-          if (name.length > matchLength) {
-            matchLength = name.length;
-            bestMatch = contact;
-          }
-        }
-      }
-    }
-
-    if (bestMatch != null) {
-      final remainder = comment.substring(matchLength).trim();
+    // 2. No marker present: strict whole-comment scan. Only a strong name
+    // signature (full name, first+last, or nickname) counts — a bare first
+    // name is treated as ambiguous to avoid false auto-associations.
+    final strictMatch = _matchStrongName(comment, contacts);
+    if (strictMatch != null) {
+      final remainder = comment.substring(strictMatch.$2).trim();
       String summary;
       if (remainder.isNotEmpty) {
         summary = '$activityName - $remainder';
@@ -177,15 +165,90 @@ class TimeTrackerParser {
 
       return _ExtractionResult(
         summary: summary,
-        contactIds: [bestMatch.id],
+        contactIds: [strictMatch.$1.id],
       );
     }
 
-    // 3. Fallback: general activity with comment
+    // 3. Fallback: general activity with comment.
     return _ExtractionResult(
       summary: '$activityName - $comment',
       contactIds: [],
     );
+  }
+
+  /// Returns the first (leftmost) configured marker occurrence in [comment],
+  /// as `(prefix, namesPart)` where [prefix] is the text before the marker and
+  /// [namesPart] is the text after it. `null` when no marker is present.
+  static (String?, String)? _matchMarker(
+    String comment,
+    List<String> markers,
+  ) {
+    (String?, String)? best;
+    int? bestIndex;
+
+    for (final marker in markers) {
+      final m = marker.trim();
+      if (m.isEmpty) continue;
+
+      // A marker ending in a word character needs a trailing boundary so it
+      // doesn't match inside a longer word (e.g. "with" must not match
+      // "within"). Non-word markers (e.g. "w/") already self-delimit.
+      final needsBoundary = RegExp(r'[A-Za-z0-9]$').hasMatch(m);
+      final pattern = RegExp(
+        RegExp.escape(m) + (needsBoundary ? r'(?=\s|$)' : ''),
+        caseSensitive: false,
+      );
+
+      final match = pattern.firstMatch(comment);
+      if (match == null) continue;
+
+      if (bestIndex == null || match.start < bestIndex) {
+        bestIndex = match.start;
+        final prefix = comment.substring(0, match.start);
+        final namesPart = comment.substring(match.end);
+        best = (prefix, namesPart);
+      }
+    }
+
+    return best;
+  }
+
+  /// Scans the whole [comment] for a strong contact signature and returns
+  /// `(contact, endIndex)` for the longest match, or `null`.
+  static (Contact, int)? _matchStrongName(
+    String comment,
+    List<Contact> contacts,
+  ) {
+    (Contact, int)? best;
+    int bestLength = 0;
+
+    for (final contact in contacts) {
+      final namesToCheck = <String>{
+        contact.fullName.trim(),
+        '${contact.firstName} ${contact.lastName ?? ''}'.trim(),
+        if (contact.nickname != null && contact.nickname!.isNotEmpty)
+          contact.nickname!.trim(),
+      };
+
+      for (final name in namesToCheck) {
+        if (name.isEmpty) continue;
+
+        final regex = RegExp(
+          r'\b' + RegExp.escape(name) + r'\b',
+          caseSensitive: false,
+        );
+        final match = regex.firstMatch(comment);
+        if (match == null) continue;
+
+        // Prefer the longest name signature (full over first, etc.).
+        if (name.length > bestLength) {
+          bestLength = name.length;
+          best = (contact, match.end);
+        }
+      }
+    }
+
+    return best;
   }
 
   static List<String> _resolveNames(String namesPart, List<Contact> contacts) {

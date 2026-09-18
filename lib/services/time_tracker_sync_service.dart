@@ -14,7 +14,9 @@ class TimeTrackerSyncService extends ChangeNotifier {
       'stt_imported_fingerprints';
   static const String _prefKeyStagedCandidates = 'stt_staged_candidates';
   static const String _prefKeyDriveFolder = 'stt_drive_folder_name';
+  static const String _prefKeyNameMarkers = 'stt_name_markers';
   static const String defaultDriveFolderName = 'Time track';
+  static const List<String> defaultNameMarkers = ['w/', 'with '];
 
   final GoogleDriveService _driveService;
   List<CandidateInteraction> _stagingQueue = [];
@@ -129,6 +131,25 @@ class TimeTrackerSyncService extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Returns the configured name markers, defaulting to [defaultNameMarkers].
+  Future<List<String>> getNameMarkers() async {
+    final prefs = await SharedPreferences.getInstance();
+    final stored = prefs.getString(_prefKeyNameMarkers);
+    if (stored == null || stored.isEmpty) return List.of(defaultNameMarkers);
+    return stored
+        .split(',')
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
+        .toList();
+  }
+
+  /// Sets the configured name markers from a comma-separated string.
+  Future<void> setNameMarkers(String value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_prefKeyNameMarkers, value.trim());
+    notifyListeners();
+  }
+
   /// Queries Google Drive for the newest `stt_records_automatic*.csv` in the
   /// configured folder (or [folderName]), parses rows tagged with "Contact",
   /// filters already imported items, and populates the staging queue.
@@ -154,9 +175,11 @@ class TimeTrackerSyncService extends ChangeNotifier {
 
       final csvContent =
           await _driveService.downloadFileAsString(latestFile.id!);
+      final markers = await getNameMarkers();
       final parsedCandidates = TimeTrackerParser.parseCsv(
         csvContent,
         contacts: contacts,
+        markers: markers,
       );
 
       final importedFps = await getImportedFingerprints();

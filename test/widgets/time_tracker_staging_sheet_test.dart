@@ -57,7 +57,8 @@ void main() {
       expect(find.text('Dinner - Boba'), findsOneWidget);
       expect(find.text('Import 2 Selected'), findsOneWidget);
 
-      // Uncheck the first candidate
+      // Uncheck the first candidate. Newest-first sort puts Dinner (Sep 19)
+      // above Lunch (Sep 17), so the first checkbox is Dinner.
       final checkboxes = find.byType(Checkbox);
       expect(checkboxes, findsNWidgets(2));
       await tester.tap(checkboxes.first);
@@ -71,7 +72,131 @@ void main() {
 
       expect(confirmedCandidates, isNotNull);
       expect(confirmedCandidates!.length, 1);
-      expect(confirmedCandidates!.first.fingerprint, 'fp2');
+      expect(confirmedCandidates!.first.fingerprint, 'fp1');
+    });
+
+    testWidgets('sorts newest-first', (tester) async {
+      final candidates = [
+        CandidateInteraction(
+          fingerprint: 'fp1',
+          occurredAt: DateTime(2025, 9, 17, 11, 46),
+          durationMinutes: 60,
+          activityName: 'Lunch',
+          summary: 'Lunch w/ Abel',
+          matchedContactIds: ['c1'],
+          rawComment: 'w/ Abel',
+          selected: true,
+        ),
+        CandidateInteraction(
+          fingerprint: 'fp2',
+          occurredAt: DateTime(2025, 9, 19, 22, 16),
+          durationMinutes: 46,
+          activityName: 'Dinner',
+          summary: 'Dinner - Boba',
+          matchedContactIds: ['c2'],
+          rawComment: 'Boba w/ Benji',
+          selected: true,
+        ),
+      ];
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: TimeTrackerStagingSheet(
+              candidates: candidates,
+              contacts: contacts,
+              onConfirm: (_) {},
+            ),
+          ),
+        ),
+      );
+
+      // First candidate row should be the newer Dinner.
+      final firstSummary =
+          tester.widget<Text>(find.text('Dinner - Boba').first).data;
+      expect(firstSummary, 'Dinner - Boba');
+
+      // Checkbox order: Dinner first, then Lunch.
+      final checkboxes = find.byType(Checkbox);
+      final positions = [
+        for (var i = 0; i < 2; i++) tester.getTopLeft(checkboxes.at(i)).dy
+      ];
+      expect(positions[0], lessThan(positions[1]));
+    });
+
+    testWidgets('filters by contact chip', (tester) async {
+      final candidates = [
+        CandidateInteraction(
+          fingerprint: 'fp1',
+          occurredAt: DateTime(2025, 9, 17, 11, 46),
+          durationMinutes: 60,
+          activityName: 'Lunch',
+          summary: 'Lunch w/ Abel',
+          matchedContactIds: ['c1'],
+          rawComment: 'w/ Abel',
+          selected: true,
+        ),
+        CandidateInteraction(
+          fingerprint: 'fp2',
+          occurredAt: DateTime(2025, 9, 19, 22, 16),
+          durationMinutes: 46,
+          activityName: 'Dinner',
+          summary: 'Dinner - Boba',
+          matchedContactIds: ['c2'],
+          rawComment: 'Boba w/ Benji',
+          selected: true,
+        ),
+        CandidateInteraction(
+          fingerprint: 'fp3',
+          occurredAt: DateTime(2025, 9, 20, 9, 0),
+          durationMinutes: 30,
+          activityName: 'Meeting',
+          summary: 'Meeting - general',
+          matchedContactIds: [],
+          rawComment: 'general',
+          selected: false,
+        ),
+      ];
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: TimeTrackerStagingSheet(
+              candidates: candidates,
+              contacts: contacts,
+              onConfirm: (_) {},
+            ),
+          ),
+        ),
+      );
+
+      // Enlarge viewport so the lazy list builds all items.
+      tester.view.physicalSize = const Size(1200, 2400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      await tester.pumpAndSettle();
+
+      // All three visible.
+      expect(find.text('Lunch w/ Abel'), findsOneWidget);
+      expect(find.text('Dinner - Boba'), findsOneWidget);
+      expect(find.text('Meeting - general'), findsOneWidget);
+
+      // Tap the Abel filter chip.
+      await tester.tap(find.widgetWithText(FilterChip, 'Abel Smith'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Lunch w/ Abel'), findsOneWidget);
+      expect(find.text('Dinner - Boba'), findsNothing);
+      expect(find.text('Meeting - general'), findsNothing);
+
+      // Tap Unassigned.
+      await tester.tap(find.text('Unassigned'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Meeting - general'), findsOneWidget);
+      expect(find.text('Lunch w/ Abel'), findsNothing);
+      expect(find.text('Dinner - Boba'), findsNothing);
     });
   });
 }
