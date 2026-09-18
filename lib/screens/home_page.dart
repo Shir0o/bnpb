@@ -1763,6 +1763,9 @@ class _HomePageState extends State<HomePage>
 
   @override
   void dispose() {
+    if (_timeTrackerListener != null) {
+      _timeTrackerSyncService.removeListener(_timeTrackerListener!);
+    }
     WidgetsBinding.instance.removeObserver(this);
     _searchController.dispose();
     _searchFocusNode.dispose();

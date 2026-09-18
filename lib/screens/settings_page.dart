@@ -568,20 +568,10 @@ class _SettingsPageState extends State<SettingsPage>
                 ? 'Staging: ${_timeTrackerService.stagingQueue.length} pending • Folder: $_sttFolderName'
                 : 'Folder: $_sttFolderName • Tap to sync',
           ),
-          trailing: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              IconButton(
-                icon: const Icon(Icons.folder_open_outlined),
-                tooltip: 'Change Google Drive folder',
-                onPressed: _showChangeSttFolderDialog,
-              ),
-              IconButton(
-                icon: const Icon(Icons.file_download_outlined),
-                tooltip: 'Sync Time Tracker records',
-                onPressed: _syncTimeTracker,
-              ),
-            ],
+          trailing: IconButton(
+            icon: const Icon(Icons.folder_open_outlined),
+            tooltip: 'Change Google Drive folder',
+            onPressed: _showChangeSttFolderDialog,
           ),
           onTap: () {
             if (_timeTrackerService.hasStagedCandidates) {
@@ -599,24 +589,23 @@ class _SettingsPageState extends State<SettingsPage>
     final controller = TextEditingController(text: _sttFolderName);
     List<String> availableFolders = [];
     bool isLoadingFolders = false;
+    void Function(void Function())? updateDialogState;
 
     if (_googleUser != null) {
       isLoadingFolders = true;
       GoogleDriveService().listUserFolders().then((folders) {
         if (mounted) {
-          setState(() {
-            availableFolders = folders
-                .map((f) => f.name ?? '')
-                .where((n) => n.isNotEmpty)
-                .toList();
-            isLoadingFolders = false;
-          });
+          availableFolders = folders
+              .map((f) => f.name ?? '')
+              .where((n) => n.isNotEmpty)
+              .toList();
+          isLoadingFolders = false;
+          updateDialogState?.call(() {});
         }
       }).catchError((_) {
         if (mounted) {
-          setState(() {
-            isLoadingFolders = false;
-          });
+          isLoadingFolders = false;
+          updateDialogState?.call(() {});
         }
       });
     }
@@ -626,6 +615,7 @@ class _SettingsPageState extends State<SettingsPage>
       builder: (ctx) {
         return StatefulBuilder(
           builder: (dialogCtx, setDialogState) {
+            updateDialogState = setDialogState;
             return AlertDialog(
               title: const Text('Time Tracker Folder'),
               content: SingleChildScrollView(
