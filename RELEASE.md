@@ -2,6 +2,13 @@
 
 All notable changes to the BNPB project are documented here.
 
+## [1.6.0](https://github.com/Shir0o/bnpb/compare/v1.5.0...v1.6.0) (2026-09-18)
+
+
+### Features
+
+* **sync:** configurable contact name markers and staging triage ([#288](https://github.com/Shir0o/bnpb/issues/288)) ([b90ed5f](https://github.com/Shir0o/bnpb/commit/b90ed5f169e3accf52fea3d769db63b7bb558311))
+
 ## [1.5.0](https://github.com/Shir0o/bnpb/compare/v1.4.0...v1.5.0) (2026-09-18)
 
 
