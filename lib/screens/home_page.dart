@@ -211,14 +211,18 @@ class _HomePageState extends State<HomePage>
       return;
     }
 
-    final googleUser = await GoogleDriveService().currentUser;
-    if (googleUser != null) {
-      final candidates = await _timeTrackerSyncService.syncFromDrive(
-        contacts: _contacts,
-      );
-      if (candidates.isNotEmpty && mounted) {
-        _showTimeTrackerStagingSheet();
+    try {
+      final googleUser = await GoogleDriveService().currentUser;
+      if (googleUser != null) {
+        final candidates = await _timeTrackerSyncService.syncFromDrive(
+          contacts: _contacts,
+        );
+        if (candidates.isNotEmpty && mounted) {
+          _showTimeTrackerStagingSheet();
+        }
       }
+    } catch (e) {
+      debugPrint('Silent Time Tracker check skipped: $e');
     }
   }
 
@@ -1759,6 +1763,9 @@ class _HomePageState extends State<HomePage>
 
   @override
   void dispose() {
+    if (_timeTrackerListener != null) {
+      _timeTrackerSyncService.removeListener(_timeTrackerListener!);
+    }
     WidgetsBinding.instance.removeObserver(this);
     _searchController.dispose();
     _searchFocusNode.dispose();

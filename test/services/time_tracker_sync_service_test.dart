@@ -35,8 +35,42 @@ activity name,time started,time ended,comment,categories,record tags,duration,du
       );
     });
 
+    test('getDriveFolderName defaults to Time track and can be configured',
+        () async {
+      expect(await syncService.getDriveFolderName(), 'Time track');
+      await syncService.setDriveFolderName('My Work/Time Logs');
+      expect(await syncService.getDriveFolderName(), 'My Work/Time Logs');
+    });
+
     test(
-        'syncFromDrive parses candidates from newest file in Time Track folder',
+        'syncFromDrive queries configured folder instead of hardcoded Time track',
+        () async {
+      await syncService.setDriveFolderName('Custom STT Folder');
+
+      final driveFile = drive.File()
+        ..id = 'file_456'
+        ..name = 'stt_records_automatic.csv'
+        ..modifiedTime = DateTime.parse('2025-09-20 00:00:00Z');
+
+      when(() => mockDriveService.findLatestFileInFolder(
+            folderName: 'Custom STT Folder',
+            namePrefix: 'stt_records_automatic',
+          )).thenAnswer((_) async => driveFile);
+
+      when(() => mockDriveService.downloadFileAsString('file_456'))
+          .thenAnswer((_) async => sampleCsv);
+
+      final candidates = await syncService.syncFromDrive(contacts: contacts);
+
+      expect(candidates.length, 2);
+      verify(() => mockDriveService.findLatestFileInFolder(
+            folderName: 'Custom STT Folder',
+            namePrefix: 'stt_records_automatic',
+          )).called(1);
+    });
+
+    test(
+        'syncFromDrive parses candidates from newest file in Time track folder',
         () async {
       final driveFile = drive.File()
         ..id = 'file_123'
@@ -44,7 +78,7 @@ activity name,time started,time ended,comment,categories,record tags,duration,du
         ..modifiedTime = DateTime.parse('2025-09-20 00:00:00Z');
 
       when(() => mockDriveService.findLatestFileInFolder(
-            folderName: 'Time Track',
+            folderName: 'Time track',
             namePrefix: 'stt_records_automatic',
           )).thenAnswer((_) async => driveFile);
 
@@ -67,7 +101,7 @@ activity name,time started,time ended,comment,categories,record tags,duration,du
         ..name = 'stt_records_automatic (4).csv';
 
       when(() => mockDriveService.findLatestFileInFolder(
-            folderName: 'Time Track',
+            folderName: 'Time track',
             namePrefix: 'stt_records_automatic',
           )).thenAnswer((_) async => driveFile);
 

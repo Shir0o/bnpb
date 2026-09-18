@@ -70,6 +70,8 @@ class _SettingsPageState extends State<SettingsPage>
   DateTime? _lastBackupTime;
   SyncType _syncType = SyncType.local;
   GoogleSignInAccount? _googleUser;
+  String _sttFolderName = TimeTrackerSyncService.defaultDriveFolderName;
+  final TimeTrackerSyncService _timeTrackerService = TimeTrackerSyncService();
 
   @override
   void initState() {
@@ -93,7 +95,15 @@ class _SettingsPageState extends State<SettingsPage>
       }
     });
 
+    _timeTrackerService.addListener(_onTimeTrackerChanged);
+
     _load();
+  }
+
+  void _onTimeTrackerChanged() {
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   Future<void> _load() async {
@@ -104,6 +114,7 @@ class _SettingsPageState extends State<SettingsPage>
     _syncPath = await SyncService().getSyncDirectory();
     _lastBackupTime = await SyncService().getLastBackupTime();
     _syncType = await SyncService().getSyncType();
+    _sttFolderName = await _timeTrackerService.getDriveFolderName();
 
     // Note: We no longer await GoogleDriveService().currentUser here
     // to prevent blocking page load. The listener in initState handles updates.
@@ -150,6 +161,7 @@ class _SettingsPageState extends State<SettingsPage>
 
   @override
   void dispose() {
+    _timeTrackerService.removeListener(_onTimeTrackerChanged);
     _userSubscription.cancel();
     _syncSubscription.cancel();
     super.dispose();
@@ -551,45 +563,211 @@ class _SettingsPageState extends State<SettingsPage>
         ListTile(
           leading: const Icon(Icons.timer_outlined),
           title: const Text('Simple Time Tracker'),
-          subtitle: const Text('Sync "Time Track" CSV logs from Google Drive'),
-          trailing: IconButton(
-            icon: const Icon(Icons.file_download_outlined),
-            tooltip: 'Sync Time Tracker records',
-            onPressed: _syncTimeTracker,
+          subtitle: Text(
+            _timeTrackerService.hasStagedCandidates
+                ? 'Staging: ${_timeTrackerService.stagingQueue.length} pending • Folder: $_sttFolderName'
+                : 'Folder: $_sttFolderName • Tap to sync',
           ),
-          onTap: _openTimeTrackerQueue,
+          trailing: IconButton(
+            icon: const Icon(Icons.folder_open_outlined),
+            tooltip: 'Change Google Drive folder',
+            onPressed: _showChangeSttFolderDialog,
+          ),
+          onTap: () {
+            if (_timeTrackerService.hasStagedCandidates) {
+              _openTimeTrackerQueue();
+            } else {
+              _syncTimeTracker();
+            }
+          },
         ),
       ],
     );
   }
 
+  Future<void> _showChangeSttFolderDialog() async {
+    final controller = TextEditingController(text: _sttFolderName);
+    List<String> availableFolders = [];
+    bool isLoadingFolders = false;
+    void Function(void Function())? updateDialogState;
+
+    if (_googleUser != null) {
+      isLoadingFolders = true;
+      GoogleDriveService().listUserFolders().then((folders) {
+        if (mounted) {
+          availableFolders = folders
+              .map((f) => f.name ?? '')
+              .where((n) => n.isNotEmpty)
+              .toList();
+          isLoadingFolders = false;
+          updateDialogState?.call(() {});
+        }
+      }).catchError((_) {
+        if (mounted) {
+          isLoadingFolders = false;
+          updateDialogState?.call(() {});
+        }
+      });
+    }
+
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (dialogCtx, setDialogState) {
+            updateDialogState = setDialogState;
+            return AlertDialog(
+              title: const Text('Time Tracker Folder'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Enter the Google Drive folder name where Simple Time Tracker automated CSV exports are saved:',
+                      style: TextStyle(fontSize: 13),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: controller,
+                      decoration: const InputDecoration(
+                        labelText: 'Drive Folder Name',
+                        hintText: 'Time track',
+                        border: OutlineInputBorder(),
+                      ),
+                      autofocus: true,
+                    ),
+                    if (isLoadingFolders) ...[
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          const SizedBox(
+                            width: 14,
+                            height: 14,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Loading folders from Drive...',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Theme.of(context).colorScheme.outline,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ] else if (availableFolders.isNotEmpty) ...[
+                      const SizedBox(height: 12),
+                      const Text(
+                        'Suggestions from your Drive:',
+                        style: TextStyle(
+                            fontSize: 12, fontWeight: FontWeight.w600),
+                      ),
+                      const SizedBox(height: 6),
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 4,
+                        children: availableFolders
+                            .take(10)
+                            .map(
+                              (folder) => ActionChip(
+                                label: Text(folder,
+                                    style: const TextStyle(fontSize: 12)),
+                                onPressed: () {
+                                  controller.text = folder;
+                                  setDialogState(() {});
+                                },
+                              ),
+                            )
+                            .toList(),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogCtx).pop(),
+                  child: const Text('Cancel'),
+                ),
+                FilledButton(
+                  onPressed: () async {
+                    final entered = controller.text.trim();
+                    if (entered.isNotEmpty) {
+                      await _timeTrackerService.setDriveFolderName(entered);
+                      if (mounted) {
+                        setState(() {
+                          _sttFolderName = entered;
+                        });
+                        CrispToast.show(context, 'Folder set to "$entered"');
+                      }
+                    }
+                    if (dialogCtx.mounted) {
+                      Navigator.of(dialogCtx).pop();
+                    }
+                  },
+                  child: const Text('Save'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
   Future<void> _syncTimeTracker() async {
-    final contacts = await ContactService().getContacts();
-    final timeTrackerService = TimeTrackerSyncService();
-    if (!mounted) return;
     final overlay = Overlay.of(context);
-
-    CrispToast.showOnOverlay(
-        overlay, 'Checking Google Drive for Time Track CSVs...');
-    final candidates =
-        await timeTrackerService.syncFromDrive(contacts: contacts);
-
-    if (!mounted) return;
-
-    if (candidates.isEmpty) {
+    final googleUser = await GoogleDriveService().currentUser;
+    if (googleUser == null) {
       CrispToast.showOnOverlay(
-          overlay, 'No new Contact interactions found in Time Track');
-    } else {
-      _openTimeTrackerQueue();
+        overlay,
+        'Please sign in to Google Drive first',
+      );
+      return;
+    }
+
+    try {
+      final contacts = await ContactService().getContacts();
+      CrispToast.showOnOverlay(
+          overlay, 'Checking Google Drive for "$_sttFolderName" CSVs...');
+
+      final candidates =
+          await _timeTrackerService.syncFromDrive(contacts: contacts);
+
+      if (!mounted) return;
+
+      if (candidates.isEmpty) {
+        CrispToast.showOnOverlay(
+            overlay, 'No new Contact records found in "$_sttFolderName"');
+      } else {
+        _openTimeTrackerQueue();
+      }
+    } catch (e) {
+      if (!mounted) return;
+      final errorStr = e.toString();
+      if (errorStr.contains('Not authorized for Google Drive scopes')) {
+        // Try interactive scope authorization
+        CrispToast.showOnOverlay(
+            overlay, 'Requesting Google Drive read permissions...');
+        final granted = await GoogleDriveService().requestDrivePermissions();
+        if (granted && mounted) {
+          _syncTimeTracker();
+          return;
+        }
+      }
+      CrispToast.showOnOverlay(
+        overlay,
+        'Time Tracker sync failed: ${e.toString().replaceAll('Exception: ', '')}',
+      );
     }
   }
 
   Future<void> _openTimeTrackerQueue() async {
     final contacts = await ContactService().getContacts();
-    final timeTrackerService = TimeTrackerSyncService();
 
     if (!mounted) return;
-    if (timeTrackerService.stagingQueue.isEmpty) {
+    if (_timeTrackerService.stagingQueue.isEmpty) {
       final overlay = Overlay.of(context);
       CrispToast.showOnOverlay(
           overlay, 'No pending Time Tracker candidates to review');
@@ -600,10 +778,10 @@ class _SettingsPageState extends State<SettingsPage>
       context: context,
       isScrollControlled: true,
       builder: (ctx) => TimeTrackerStagingSheet(
-        candidates: timeTrackerService.stagingQueue,
+        candidates: _timeTrackerService.stagingQueue,
         contacts: contacts,
         onConfirm: (confirmed) async {
-          await timeTrackerService.commitCandidates(
+          await _timeTrackerService.commitCandidates(
             confirmed,
             saveInteraction: (Interaction interaction) =>
                 DBHelper().insertInteraction(interaction),

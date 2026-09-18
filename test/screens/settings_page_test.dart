@@ -318,4 +318,44 @@ void main() {
       expect(themeModeNotifier.value, ThemeMode.dark);
     },
   );
+
+  testWidgets(
+    'SettingsPage displays Simple Time Tracker tile with configured folder',
+    (WidgetTester tester) async {
+      await tester.pumpWidget(const MaterialApp(home: SettingsPage()));
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.pumpAndSettle();
+
+      final sttTile = find.text('Simple Time Tracker', skipOffstage: false);
+      expect(sttTile, findsOneWidget);
+
+      final tileFinder =
+          find.ancestor(of: sttTile, matching: find.byType(ListTile));
+      await tester.scrollUntilVisible(
+        tileFinder,
+        100.0,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Folder: Time track'), findsOneWidget);
+
+      // Verify folder button opens dialog
+      final folderButton = find.byIcon(Icons.folder_open_outlined);
+      expect(folderButton, findsOneWidget);
+
+      await tester.tap(folderButton);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Time Tracker Folder'), findsOneWidget);
+      expect(find.byType(TextField), findsOneWidget);
+
+      // Save folder
+      await tester.enterText(find.byType(TextField), 'Custom Folder');
+      await tester.tap(find.text('Save'));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Folder: Custom Folder'), findsOneWidget);
+    },
+  );
 }
