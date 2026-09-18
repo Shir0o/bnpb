@@ -27,14 +27,25 @@ class TimeTrackerStagingSheet extends StatefulWidget {
 
 class _TimeTrackerStagingSheetState extends State<TimeTrackerStagingSheet> {
   late List<CandidateInteraction> _items;
+  // Filter state: null = All, 'unassigned' = no contact, else a contact id.
+  String? _filter;
 
   @override
   void initState() {
     super.initState();
-    _items = widget.candidates.map((e) => e.copyWith()).toList();
+    _items = widget.candidates.map((e) => e.copyWith()).toList()
+      ..sort((a, b) => b.occurredAt.compareTo(a.occurredAt));
   }
 
   int get _selectedCount => _items.where((e) => e.selected).length;
+
+  List<CandidateInteraction> get _filteredItems {
+    if (_filter == null) return _items;
+    if (_filter == 'unassigned') {
+      return _items.where((e) => e.matchedContactIds.isEmpty).toList();
+    }
+    return _items.where((e) => e.matchedContactIds.contains(_filter)).toList();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -80,13 +91,15 @@ class _TimeTrackerStagingSheetState extends State<TimeTrackerStagingSheet> {
             ),
           ),
           const Divider(height: 20),
+          _buildFilterRow(theme),
+          const SizedBox(height: 8),
           Expanded(
             child: ListView.separated(
               shrinkWrap: true,
-              itemCount: _items.length,
+              itemCount: _filteredItems.length,
               separatorBuilder: (_, __) => const Divider(height: 1),
               itemBuilder: (context, index) {
-                final item = _items[index];
+                final item = _filteredItems[index];
                 return _buildCandidateTile(item, dateFormat, theme);
               },
             ),
@@ -116,6 +129,57 @@ class _TimeTrackerStagingSheetState extends State<TimeTrackerStagingSheet> {
             ],
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildFilterRow(ThemeData theme) {
+    final contacts = widget.contacts;
+    // Contacts that actually appear in the queue.
+    final matchedIds = <String>{
+      for (final item in _items) ...item.matchedContactIds,
+    };
+    final relevantContacts =
+        contacts.where((c) => matchedIds.contains(c.id)).toList();
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          _filterChip(
+            label: 'All (${_items.length})',
+            selected: _filter == null,
+            onSelected: () => setState(() => _filter = null),
+          ),
+          _filterChip(
+            label: 'Unassigned',
+            selected: _filter == 'unassigned',
+            onSelected: () => setState(() => _filter = 'unassigned'),
+          ),
+          for (final contact in relevantContacts)
+            _filterChip(
+              label: contact.fullName.isNotEmpty
+                  ? contact.fullName
+                  : contact.firstName,
+              selected: _filter == contact.id,
+              onSelected: () => setState(() => _filter = contact.id),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _filterChip({
+    required String label,
+    required bool selected,
+    required VoidCallback onSelected,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: FilterChip(
+        label: Text(label, style: const TextStyle(fontSize: 12)),
+        selected: selected,
+        onSelected: (_) => onSelected(),
       ),
     );
   }

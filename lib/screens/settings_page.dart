@@ -71,6 +71,7 @@ class _SettingsPageState extends State<SettingsPage>
   SyncType _syncType = SyncType.local;
   GoogleSignInAccount? _googleUser;
   String _sttFolderName = TimeTrackerSyncService.defaultDriveFolderName;
+  String _sttMarkers = TimeTrackerSyncService.defaultNameMarkers.join(', ');
   final TimeTrackerSyncService _timeTrackerService = TimeTrackerSyncService();
 
   @override
@@ -115,6 +116,7 @@ class _SettingsPageState extends State<SettingsPage>
     _lastBackupTime = await SyncService().getLastBackupTime();
     _syncType = await SyncService().getSyncType();
     _sttFolderName = await _timeTrackerService.getDriveFolderName();
+    _sttMarkers = (await _timeTrackerService.getNameMarkers()).join(', ');
 
     // Note: We no longer await GoogleDriveService().currentUser here
     // to prevent blocking page load. The listener in initState handles updates.
@@ -581,6 +583,20 @@ class _SettingsPageState extends State<SettingsPage>
             }
           },
         ),
+        ListTile(
+          leading: const Icon(Icons.tag_outlined),
+          title: const Text('Contact name markers'),
+          subtitle: Text(
+            'Names after "$_sttMarkers" are matched to contacts. '
+            'Comma-separated.',
+          ),
+          trailing: IconButton(
+            icon: const Icon(Icons.edit_outlined),
+            tooltip: 'Edit name markers',
+            onPressed: _showChangeSttMarkersDialog,
+          ),
+          onTap: _showChangeSttMarkersDialog,
+        ),
       ],
     );
   }
@@ -713,6 +729,48 @@ class _SettingsPageState extends State<SettingsPage>
           },
         );
       },
+    );
+  }
+
+  Future<void> _showChangeSttMarkersDialog() async {
+    final controller = TextEditingController(text: _sttMarkers);
+    await showDialog<void>(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        title: const Text('Contact Name Markers'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          decoration: const InputDecoration(
+            labelText: 'Markers (comma-separated)',
+            hintText: 'w/, with ',
+            helperText:
+                'Text after these prefixes is scanned for contact names. '
+                'Default: "w/, with ".',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogCtx).pop(),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () {
+              final entered = controller.text.trim();
+              if (entered.isNotEmpty) {
+                _timeTrackerService.setNameMarkers(entered);
+                setState(() {
+                  _sttMarkers = entered;
+                });
+              }
+              if (dialogCtx.mounted) {
+                Navigator.of(dialogCtx).pop();
+              }
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
     );
   }
 

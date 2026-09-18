@@ -121,6 +121,10 @@ _Avoid_: STT event, time log item
 An in-memory parsed representation of a Time Tracker Record mapped to potential BNPB Contact(s) and Interaction fields, staged for user review.
 _Avoid_: Draft interaction, pending import
 
+**Name marker**:
+A user-configurable prefix (default `w/` or `with `) in a Time Tracker Record's comment that signals a contact name follows, used by the deterministic matcher to associate the record with a Contact. When no marker is present, the matcher scans the whole comment but requires a stronger name signature (full name, first+last, or nickname) to avoid false associations; a bare first name is only accepted directly after a marker.
+_Avoid_: Pattern, regex, delimiter
+
 **Import Staging Queue**:
 A reviewable, dismissible queue presented on app launch (and accessible from the interaction dashboard) where candidate interactions can be inspected, edited, assigned to contacts, selected, and committed to the database.
 _Avoid_: Import popup, review dialog
