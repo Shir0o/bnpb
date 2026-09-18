@@ -211,14 +211,18 @@ class _HomePageState extends State<HomePage>
       return;
     }
 
-    final googleUser = await GoogleDriveService().currentUser;
-    if (googleUser != null) {
-      final candidates = await _timeTrackerSyncService.syncFromDrive(
-        contacts: _contacts,
-      );
-      if (candidates.isNotEmpty && mounted) {
-        _showTimeTrackerStagingSheet();
+    try {
+      final googleUser = await GoogleDriveService().currentUser;
+      if (googleUser != null) {
+        final candidates = await _timeTrackerSyncService.syncFromDrive(
+          contacts: _contacts,
+        );
+        if (candidates.isNotEmpty && mounted) {
+          _showTimeTrackerStagingSheet();
+        }
       }
+    } catch (e) {
+      debugPrint('Silent Time Tracker check skipped: $e');
     }
   }
 

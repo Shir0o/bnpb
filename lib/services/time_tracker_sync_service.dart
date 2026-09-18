@@ -13,6 +13,8 @@ class TimeTrackerSyncService extends ChangeNotifier {
   static const String _prefKeyImportedFingerprints =
       'stt_imported_fingerprints';
   static const String _prefKeyStagedCandidates = 'stt_staged_candidates';
+  static const String _prefKeyDriveFolder = 'stt_drive_folder_name';
+  static const String defaultDriveFolderName = 'Time Track';
 
   final GoogleDriveService _driveService;
   List<CandidateInteraction> _stagingQueue = [];
@@ -114,18 +116,33 @@ class TimeTrackerSyncService extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Returns the configured Google Drive folder name, defaulting to [defaultDriveFolderName].
+  Future<String> getDriveFolderName() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_prefKeyDriveFolder) ?? defaultDriveFolderName;
+  }
+
+  /// Sets the configured Google Drive folder name.
+  Future<void> setDriveFolderName(String folderName) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_prefKeyDriveFolder, folderName.trim());
+    notifyListeners();
+  }
+
   /// Queries Google Drive for the newest `stt_records_automatic*.csv` in the
-  /// `Time Track` folder, parses rows tagged with "Contact", filters already
-  /// imported items, and populates the staging queue.
+  /// configured folder (or [folderName]), parses rows tagged with "Contact",
+  /// filters already imported items, and populates the staging queue.
   Future<List<CandidateInteraction>> syncFromDrive({
     required List<Contact> contacts,
+    String? folderName,
   }) async {
     _isSyncing = true;
     notifyListeners();
 
     try {
+      final targetFolder = folderName ?? await getDriveFolderName();
       final latestFile = await _driveService.findLatestFileInFolder(
-        folderName: 'Time Track',
+        folderName: targetFolder,
         namePrefix: 'stt_records_automatic',
       );
 

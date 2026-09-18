@@ -265,10 +265,26 @@ class GoogleDriveService {
     }
   }
 
+  /// Requests Drive scope authorization interactively if needed.
+  Future<bool> requestDrivePermissions() async {
+    try {
+      await _ensureApiInitialized(force: true, interactive: true);
+      return true;
+    } catch (e) {
+      if (kDebugMode) {
+        print('requestDrivePermissions failed: $e');
+      }
+      return false;
+    }
+  }
+
   /// Ensures the Drive API client is initialized.
   /// This may trigger a keychain access prompt on macOS.
-  /// Silent by default; will NOT trigger interactive sign-in dialog.
-  Future<void> _ensureApiInitialized({bool force = false}) async {
+  /// Silent by default; will NOT trigger interactive sign-in dialog unless [interactive] is true.
+  Future<void> _ensureApiInitialized({
+    bool force = false,
+    bool interactive = false,
+  }) async {
     if (!await _hasConnectivity()) {
       throw Exception('No internet connection');
     }
@@ -297,7 +313,7 @@ class GoogleDriveService {
         );
 
         if (auth == null) {
-          if (force) {
+          if (force || interactive) {
             auth = await user.authorizationClient.authorizeScopes(_scopes);
           } else {
             throw Exception('Not authorized for Google Drive scopes');
@@ -495,6 +511,21 @@ class GoogleDriveService {
         return fileList.files!.first;
       }
       return null;
+    });
+  }
+
+  /// Lists non-trashed folders accessible in Google Drive (up to 50), ordered by name.
+  Future<List<drive.File>> listUserFolders() async {
+    return await _executeWithRetry(() async {
+      final folderList = await _driveApi!.files
+          .list(
+            q: "mimeType = 'application/vnd.google-apps.folder' and trashed = false",
+            orderBy: 'name',
+            pageSize: 50,
+            $fields: 'files(id, name)',
+          )
+          .timeout(const Duration(seconds: 15));
+      return folderList.files ?? [];
     });
   }
 
