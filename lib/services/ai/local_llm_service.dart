@@ -104,13 +104,15 @@ class FlutterGemmaLlmService implements LocalLlmService {
   bool get isReady => _model != null;
 
   @override
-  Future<void> load(String modelPath) async {
+  Future<void> load(String modelPath, [ModelType? modelType]) async {
     if (_loadedPath == modelPath && _model != null) return;
     await unload();
 
+    final type = modelType ?? _inferModelType(modelPath);
+
     final sw = Stopwatch()..start();
     await FlutterGemma.installModel(
-      modelType: ModelType.gemmaIt,
+      modelType: type,
     ).fromFile(modelPath).install();
     // Prefer GPU. flutter_gemma falls back GPU → CPU automatically if the
     // device can't satisfy the request, so this is safe to default-on.
@@ -301,4 +303,12 @@ class FlutterGemmaLlmService implements LocalLlmService {
   }
 
   String _prefixHash(String s) => s.hashCode.toRadixString(16);
+
+  static ModelType _inferModelType(String path) {
+    final lower = path.toLowerCase();
+    if (lower.contains('llama')) return ModelType.llama;
+    if (lower.contains('qwen')) return ModelType.qwen;
+    if (lower.contains('deepseek')) return ModelType.deepSeek;
+    return ModelType.gemmaIt;
+  }
 }

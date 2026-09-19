@@ -77,10 +77,17 @@ class AiServices {
     if (_llm is! FlutterGemmaLlmService) return;
     await (_modelLoadInFlight ??= () async {
       try {
-        final manager = ModelManager();
+        final selectedId = await _gate.getSelectedModel(AiBackend.local);
+        final spec = OnDeviceModelSpec.forId(selectedId);
+        final manager = ModelManager(modelSpec: spec);
         final status = await manager.status();
         if (status == ModelStatus.ready) {
-          await _llm.load(await manager.modelPath());
+          final llm = _llm;
+          if (llm is FlutterGemmaLlmService) {
+            await llm.load(await manager.modelPath(), spec.modelType);
+          } else {
+            await llm.load(await manager.modelPath());
+          }
         }
         manager.dispose();
       } catch (_) {

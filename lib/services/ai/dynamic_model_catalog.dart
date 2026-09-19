@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'ai_feature_gate.dart';
+import 'model_manager.dart';
 
 /// Represents a model discovered from a provider API with pricing details.
 class AiModelInfo {
@@ -52,13 +53,14 @@ class DynamicModelCatalog {
   }
 
   List<AiModelInfo> _getLocalModels() {
-    return const [
-      AiModelInfo(
-        id: 'gemma-3n-e2b-int4',
-        displayName: 'Gemma 3n E2B (int4)',
-        description: 'On-device private model via MediaPipe / LiteRT',
-        isFree: true,
-      ),
+    return [
+      for (final spec in OnDeviceModelSpec.supportedModels)
+        AiModelInfo(
+          id: spec.id,
+          displayName: '${spec.displayName} (${spec.sizeLabel})',
+          description: spec.description,
+          isFree: true,
+        ),
     ];
   }
 
@@ -106,38 +108,51 @@ class DynamicModelCatalog {
   List<AiModelInfo> _fallbackGeminiModels() {
     return const [
       AiModelInfo(
+        id: 'gemini-3.8-flash',
+        displayName: 'Gemini 3.8 Flash',
+        description: 'Latest next-gen intelligence & reasoning',
+        inputPricePerMillion: 0.75,
+        outputPricePerMillion: 3.75,
+      ),
+      AiModelInfo(
         id: 'gemini-2.5-flash',
         displayName: 'Gemini 2.5 Flash',
         description: 'High-speed multimodal, low cost',
-        inputPricePerMillion: 0.15,
-        outputPricePerMillion: 0.60,
+        inputPricePerMillion: 0.30,
+        outputPricePerMillion: 2.50,
       ),
       AiModelInfo(
         id: 'gemini-2.5-pro',
         displayName: 'Gemini 2.5 Pro',
-        description: 'Advanced reasoning and analysis',
+        description: 'Advanced reasoning and complex analysis',
         inputPricePerMillion: 1.25,
         outputPricePerMillion: 5.00,
       ),
       AiModelInfo(
-        id: 'gemini-2.0-flash',
-        displayName: 'Gemini 2.0 Flash',
-        description: 'Ultra fast standard generation',
-        inputPricePerMillion: 0.10,
-        outputPricePerMillion: 0.40,
+        id: 'gemini-2.5-flash-lite',
+        displayName: 'Gemini 2.5 Flash-Lite',
+        description: 'Ultra-low cost high throughput',
+        inputPricePerMillion: 0.075,
+        outputPricePerMillion: 0.30,
       ),
     ];
   }
 
   (double?, double?) _resolveGeminiPrice(String id) {
     final lower = id.toLowerCase();
+    if (lower.contains('3.8') || lower.contains('3.7')) {
+      return (0.75, 3.75);
+    }
+    if (lower.contains('lite')) {
+      return (0.075, 0.30);
+    }
     if (lower.contains('pro')) {
       return (1.25, 5.00);
     }
     if (lower.contains('flash')) {
-      return (0.15, 0.60);
+      return (0.30, 2.50);
     }
-    return (0.50, 1.50);
+    return (0.50, 2.00);
   }
 
   Future<List<AiModelInfo>> _getClaudeModels(String? apiKey) async {
