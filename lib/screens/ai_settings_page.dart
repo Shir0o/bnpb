@@ -10,6 +10,7 @@ import '../services/ai/dynamic_model_catalog.dart';
 import '../services/ai/embedder_manager.dart';
 import '../services/ai/hf_token_store.dart';
 import '../services/ai/key_validation.dart';
+import '../services/ai/local_llm_service.dart';
 import '../services/ai/model_manager.dart';
 import '../services/security_service.dart';
 import '../widgets/crisp_toast.dart';
@@ -23,7 +24,7 @@ class AiSettingsPage extends StatefulWidget {
 }
 
 class _AiSettingsPageState extends State<AiSettingsPage> {
-  final ModelManager _modelManager = ModelManager();
+  ModelManager? _modelManager;
   final EmbedderManager _embedderManager = EmbedderManager();
   final HfTokenStore _tokenStore = HfTokenStore();
   bool _enabled = false;
@@ -40,10 +41,16 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
   String _selectedModel = '';
   List<AiModelInfo> _availableModels = [];
   bool _loadingModels = false;
+  String _selectedLocalModelId = OnDeviceModelSpec.supportedModels.first.id;
   double? _downloadProgress;
   double? _embedderDownloadProgress;
   StreamSubscription<ModelDownloadProgress>? _downloadSub;
   StreamSubscription<EmbedderDownloadProgress>? _embedderDownloadSub;
+
+  ModelManager get _activeModelManager {
+    final spec = OnDeviceModelSpec.forId(_selectedLocalModelId);
+    return _modelManager ??= ModelManager(modelSpec: spec);
+  }
 
   @override
   void initState() {
@@ -55,7 +62,7 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
   void dispose() {
     _downloadSub?.cancel();
     _embedderDownloadSub?.cancel();
-    _modelManager.dispose();
+    _modelManager?.dispose();
     _embedderManager.dispose();
     super.dispose();
   }
@@ -66,10 +73,18 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
         await AiServices().gate.isShowSuggestionsOnSaveEnabled();
     final scriptureRefAdvancement =
         await AiServices().gate.isScriptureRefAdvancementEnabled();
-    final status = await _modelManager.status();
+    final backend = await AiServices().gate.backend();
+    final selectedLocalId =
+        await AiServices().gate.getSelectedModel(AiBackend.local);
+    _selectedLocalModelId = selectedLocalId;
+
+    _modelManager?.dispose();
+    final spec = OnDeviceModelSpec.forId(selectedLocalId);
+    _modelManager = ModelManager(modelSpec: spec);
+
+    final status = await _modelManager!.status();
     final embedderStatus = await _embedderManager.status();
     final token = await _tokenStore.read();
-    final backend = await AiServices().gate.backend();
     final hasGeminiKey = await SecurityService().hasGeminiApiKey();
     final hasClaudeKey = await SecurityService().hasAnthropicApiKey();
     final selectedModel = await AiServices().gate.getSelectedModel(backend);
@@ -100,8 +115,6 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
       key = await SecurityService().getGeminiApiKey();
     } else if (backend == AiBackend.claude) {
       key = await SecurityService().getAnthropicApiKey();
-    } else if (backend == AiBackend.huggingface) {
-      key = await _tokenStore.read();
     }
 
     final models = await DynamicModelCatalog().getModels(backend, apiKey: key);
@@ -121,10 +134,10 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
       builder: (ctx) => _KeyDialog(
         title: 'Hugging Face access token',
         explanation:
-            'The Gemma model is gated by Google. Create a read-only token '
-            'at huggingface.co/settings/tokens, accept the Gemma license on '
-            'the model page, then paste the token below. It is stored in '
-            'the device key store and only sent to huggingface.co.',
+            'Gated models require an access token. Create a read-only token '
+            'at huggingface.co/settings/tokens, accept the model license if required, '
+            'then paste the token below. It is stored securely on device and '
+            'only used to download model files. All AI inference runs 100% offline.',
         fieldLabel: 'hf_…',
         initialValue: existing ?? '',
         validate: KeyValidator.huggingFace,
@@ -154,8 +167,7 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
       // Loading the model file is only meaningful for the local backend.
       if (_backend == AiBackend.local && _status == ModelStatus.ready) {
         try {
-          final path = await _modelManager.modelPath();
-          await AiServices().llm.load(path);
+          await _loadLocalModel();
         } catch (error) {
           if (mounted) {
             CrispToast.show(context, 'Could not load model: $error');
@@ -199,7 +211,7 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
     });
     try {
       final token = await _tokenStore.read();
-      final stream = _modelManager.download(huggingFaceToken: token);
+      final stream = _activeModelManager.download(huggingFaceToken: token);
       _downloadSub = stream.listen(
         (progress) {
           if (!mounted) return;
@@ -214,8 +226,7 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
           await _refresh();
           if (_enabled) {
             try {
-              final path = await _modelManager.modelPath();
-              await AiServices().llm.load(path);
+              await _loadLocalModel();
             } catch (_) {}
           }
         },
@@ -244,7 +255,7 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
     if (sub == null) return;
     _downloadSub = null;
     await sub.cancel();
-    await _modelManager.deletePartial();
+    await _activeModelManager.deletePartial();
     if (!mounted) return;
     setState(() {
       _downloadProgress = null;
@@ -277,7 +288,7 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
     if (confirmed != true) return;
     setState(() => _busy = true);
     await AiServices().llm.unload();
-    await _modelManager.delete();
+    await _activeModelManager.delete();
     await _refresh();
     if (mounted) setState(() => _busy = false);
   }
@@ -374,7 +385,18 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
     if (mounted) setState(() => _busy = false);
   }
 
-  Future<bool> _showCloudDisclosure() async {
+  Future<bool> _showCloudDisclosure(AiBackend backend) async {
+    final isClaude = backend == AiBackend.claude;
+    final providerName = isClaude ? 'Anthropic Claude' : 'Google Gemini';
+    final endpoint = isClaude
+        ? 'api.anthropic.com (Anthropic Claude)'
+        : 'generativelanguage.googleapis.com (Google Gemini)';
+    final keyStore =
+        isClaude ? 'Anthropic API key' : 'Google AI Studio API key';
+    final termsAuthority = isClaude
+        ? "Anthropic's Commercial Terms and privacy policy"
+        : "Google's API terms of service and privacy policy";
+
     final confirmed = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
@@ -397,7 +419,7 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
                     Padding(
                       padding: const EdgeInsets.only(bottom: 12),
                       child: Text(
-                        'Switch AI to Google Gemini?',
+                        'Switch AI to $providerName?',
                         style: theme.textTheme.titleLarge,
                       ),
                     ),
@@ -411,15 +433,12 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
                           '•  The text you ask the AI to process — '
                           'interaction notes, prayer requests, summaries — '
                           'will be sent over HTTPS to '
-                          'generativelanguage.googleapis.com (Google '
-                          'Gemini) using your own API key.\n\n'
-                          '•  That data is governed by Google\'s API terms '
-                          'of service and privacy policy, not just '
+                          '$endpoint using your own API key.\n\n'
+                          '•  That data is governed by $termsAuthority, not just '
                           'BNPB\'s.\n\n'
-                          '•  Your Google AI Studio API key is stored in '
+                          '•  Your $keyStore is stored in '
                           'this device\'s secure key store (Keychain / '
-                          'Keystore) and is only sent in the Authorization '
-                          'header to Google.\n\n'
+                          'Keystore) and is only sent in headers to $providerName.\n\n'
                           '•  AI features that depend on the network will '
                           'fail with a visible error when offline. BNPB '
                           'will not silently fall back to the on-device '
@@ -551,11 +570,34 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
     // user can use AI immediately after switching back.
     if (_enabled && _status == ModelStatus.ready) {
       try {
-        final path = await _modelManager.modelPath();
-        await AiServices().llm.load(path);
+        await _loadLocalModel();
       } catch (_) {}
     }
     if (mounted) await _refresh();
+  }
+
+  Future<void> _loadLocalModel([String? modelId]) async {
+    final spec = OnDeviceModelSpec.forId(modelId ?? _selectedLocalModelId);
+    final manager = ModelManager(modelSpec: spec);
+    final path = await manager.modelPath();
+    final llm = AiServices().llm;
+    if (llm is FlutterGemmaLlmService) {
+      await llm.load(path, spec.modelType);
+    } else {
+      await llm.load(path);
+    }
+    manager.dispose();
+  }
+
+  Future<void> _onLocalModelSelected(String modelId) async {
+    await AiServices().gate.setSelectedModel(AiBackend.local, modelId);
+    await AiServices().llm.unload();
+    await _refresh();
+    if (_enabled && _status == ModelStatus.ready) {
+      try {
+        await _loadLocalModel(modelId);
+      } catch (_) {}
+    }
   }
 
   String _embedderStatusLabel() {
@@ -595,7 +637,7 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
                     'BNPB can suggest follow-up actions and tags after you '
                     'log an interaction. AI is off until you turn it on, and '
                     'runs entirely on this device unless you explicitly '
-                    'switch the backend to Google Gemini in the Backend '
+                    'switch the backend to a cloud provider in the Backend '
                     'section below.',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                           color: Theme.of(context).colorScheme.secondaryText,
@@ -616,13 +658,9 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
                                     ? _hasClaudeKey
                                         ? 'On — using Anthropic Claude (cloud)'
                                         : 'On — Claude selected, no API key set'
-                                    : _backend == AiBackend.huggingface
-                                        ? _hasToken
-                                            ? 'On — using Hugging Face Inference'
-                                            : 'On — HF selected, no token set'
-                                        : _status == ModelStatus.ready
-                                            ? 'On — using on-device model'
-                                            : 'On — model not downloaded'
+                                    : _status == ModelStatus.ready
+                                        ? 'On — using on-device model'
+                                        : 'On — model not downloaded'
                             : 'Off',
                       ),
                       value: _enabled,
@@ -671,10 +709,10 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
                 Padding(
                   padding: const EdgeInsets.fromLTRB(22, 0, 22, 16),
                   child: Text(
-                    'On-device keeps every prompt and result on this phone. '
-                    'Cloud sends note text to Google Gemini for faster and '
-                    'higher-quality suggestions; you supply your own API key '
-                    'and accept that the text leaves your device.',
+                    'On-device keeps every prompt and result strictly on this phone. '
+                    'Cloud backends (Google Gemini or Anthropic Claude) offer faster responses '
+                    'and higher intelligence; you supply your own API key and accept that '
+                    'the prompt text leaves your device.',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                           color: Theme.of(context).colorScheme.secondaryText,
                         ),
@@ -684,8 +722,9 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
                   children: [
                     RadioListTile<AiBackend>(
                       title: const Text('On-device (Private)'),
-                      subtitle: const Text(
-                          'Gemma / LiteRT — runs locally, zero data sent to servers'),
+                      subtitle: Text(
+                        '${OnDeviceModelSpec.forId(_selectedLocalModelId).displayName} — runs locally, zero data leaves device',
+                      ),
                       value: AiBackend.local,
                       groupValue: _backend,
                       onChanged: _busy
@@ -708,7 +747,7 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
                           ? null
                           : (val) async {
                               if (val == null) return;
-                              final confirmed = await _showCloudDisclosure();
+                              final confirmed = await _showCloudDisclosure(val);
                               if (!confirmed) return;
                               setState(() => _backend = val);
                               await _applyCloudBackend();
@@ -726,7 +765,7 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
                           ? null
                           : (val) async {
                               if (val == null) return;
-                              final confirmed = await _showCloudDisclosure();
+                              final confirmed = await _showCloudDisclosure(val);
                               if (!confirmed) return;
                               setState(() => _backend = val);
                               await AiServices().gate.setBackend(val);
@@ -737,24 +776,6 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
                                 await AiServices().refreshBackend();
                               }
                               if (mounted) await _refresh();
-                            },
-                    ),
-                    const Divider(height: 1, indent: 16, endIndent: 16),
-                    RadioListTile<AiBackend>(
-                      title: const Text('Hugging Face Inference (Cloud)'),
-                      subtitle: Text(_hasToken
-                          ? 'Access token configured'
-                          : 'Access token required'),
-                      value: AiBackend.huggingface,
-                      groupValue: _backend,
-                      onChanged: _busy
-                          ? null
-                          : (val) async {
-                              if (val == null) return;
-                              setState(() => _backend = val);
-                              await AiServices().gate.setBackend(val);
-                              await AiServices().refreshBackend();
-                              await _refresh();
                             },
                     ),
                     if (_backend == AiBackend.cloud) ...[
@@ -882,15 +903,9 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
                 Padding(
                   padding: const EdgeInsets.fromLTRB(22, 0, 22, 16),
                   child: Text(
-                    _backend == AiBackend.cloud
-                        ? 'Used when the backend above is set back to '
-                            'on-device. The Gemma model file (~3.1 GB) can '
-                            'stay on disk as a fallback or be deleted to '
-                            'free space.'
-                        : 'The Gemma model (~3.1 GB) is downloaded from '
-                            'Hugging Face. A read-only access token is '
-                            'required because the repository is gated by '
-                            'Google.',
+                    'Select an offline model to run locally on this phone. '
+                    'Models are downloaded directly from Hugging Face into device storage. '
+                    'Inference runs 100% offline with zero external network calls.',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                           color: Theme.of(context).colorScheme.secondaryText,
                         ),
@@ -898,6 +913,62 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
                 ),
                 _buildCardGroup(
                   children: [
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16.0, vertical: 12.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Active On-Device Model',
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(height: 8),
+                          DropdownButtonFormField<String>(
+                            value: _selectedLocalModelId,
+                            isExpanded: true,
+                            decoration: const InputDecoration(
+                              contentPadding: EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 8),
+                              border: OutlineInputBorder(),
+                            ),
+                            items:
+                                OnDeviceModelSpec.supportedModels.map((spec) {
+                              return DropdownMenuItem<String>(
+                                value: spec.id,
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Text(
+                                      '${spec.displayName} (${spec.sizeLabel})',
+                                      style: const TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 13),
+                                    ),
+                                    Text(
+                                      spec.description,
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .secondaryText,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }).toList(),
+                            onChanged: _busy
+                                ? null
+                                : (val) {
+                                    if (val != null) _onLocalModelSelected(val);
+                                  },
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Divider(height: 1, indent: 16, endIndent: 16),
                     if (_status == ModelStatus.ready) ...[
                       Container(
                         padding: const EdgeInsets.all(16),
@@ -922,7 +993,7 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    'On-device model ready',
+                                    '${OnDeviceModelSpec.forId(_selectedLocalModelId).displayName} ready',
                                     style: TextStyle(
                                       color:
                                           Theme.of(context).colorScheme.primary,
@@ -931,7 +1002,7 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
                                     ),
                                   ),
                                   Text(
-                                    'Gemma is ready for local AI suggestions.',
+                                    'Ready for offline AI suggestions on this device.',
                                     style: TextStyle(
                                       color: Theme.of(context)
                                           .colorScheme
@@ -954,7 +1025,7 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
                       subtitle: Text(
                         _hasToken
                             ? 'Saved — tap to update'
-                            : 'Required to download the gated Gemma model',
+                            : 'Required to download gated models from Hugging Face',
                       ),
                       enabled: !_busy,
                       onTap: _busy ? null : _promptForToken,
