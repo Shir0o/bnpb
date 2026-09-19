@@ -2,6 +2,18 @@
 
 All notable changes to the BNPB project are documented here.
 
+## [1.8.0](https://github.com/Shir0o/bnpb/compare/v1.7.0...v1.8.0) (2026-09-19)
+
+
+### Features
+
+* improve staging queue, quick contact create, and AI resolver reliability ([#296](https://github.com/Shir0o/bnpb/issues/296)) ([bcf2201](https://github.com/Shir0o/bnpb/commit/bcf2201e7c3fa25dda8f8e1e259e139ecb232d9e))
+
+
+### Bug Fixes
+
+* **ai:** remove hf cloud, dynamic cloud disclosure, accurate gemini rates, and on-device model selector ([#295](https://github.com/Shir0o/bnpb/issues/295)) ([b8436e8](https://github.com/Shir0o/bnpb/commit/b8436e8f3c4cc4722dcb1fcee4e69a3c23066bc8))
+
 ## [1.7.0](https://github.com/Shir0o/bnpb/compare/v1.6.0...v1.7.0) (2026-09-19)
 
 
