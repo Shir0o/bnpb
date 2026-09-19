@@ -149,6 +149,28 @@ class SecurityService {
     return _secureStorage.read(key: _geminiApiKeyV2Key);
   }
 
+  static const _anthropicApiKeyKey = 'anthropic_api_key';
+
+  /// Whether an Anthropic (Claude) API key is stored.
+  Future<bool> hasAnthropicApiKey() async {
+    final key = await _secureStorage.read(key: _anthropicApiKeyKey);
+    return key != null && key.isNotEmpty;
+  }
+
+  /// Stores or clears the user-supplied Anthropic API key.
+  Future<void> setAnthropicApiKey(String? key) async {
+    if (key == null || key.isEmpty) {
+      await _secureStorage.delete(key: _anthropicApiKeyKey);
+      return;
+    }
+    await _secureStorage.write(key: _anthropicApiKeyKey, value: key);
+  }
+
+  /// Retrieves the stored Anthropic API key, or `null` if none is set.
+  Future<String?> getAnthropicApiKey() async {
+    return _secureStorage.read(key: _anthropicApiKeyKey);
+  }
+
   /// Indicates whether a passcode has been configured.
   Future<bool> hasPasscode() async {
     final hash = await _secureStorage.read(key: _passwordHashKey);

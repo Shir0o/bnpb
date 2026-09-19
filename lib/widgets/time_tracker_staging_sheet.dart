@@ -3,6 +3,8 @@ import 'package:intl/intl.dart';
 import 'package:bnpb/main.dart';
 import 'package:bnpb/models/candidate_interaction.dart';
 import 'package:bnpb/models/contact.dart';
+import 'package:bnpb/services/ai/time_tracker_ai_resolver.dart';
+import 'package:bnpb/widgets/contact_multi_select.dart';
 
 /// A bottom sheet for reviewing, editing, and confirming [CandidateInteraction]s
 /// staged from Simple Time Tracker before importing them into BNPB.
@@ -29,6 +31,7 @@ class _TimeTrackerStagingSheetState extends State<TimeTrackerStagingSheet> {
   late List<CandidateInteraction> _items;
   // Filter state: null = All, 'unassigned' = no contact, else a contact id.
   String? _filter;
+  bool _resolvingAi = false;
 
   @override
   void initState() {
@@ -73,6 +76,17 @@ class _TimeTrackerStagingSheetState extends State<TimeTrackerStagingSheet> {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
+              ),
+              IconButton(
+                icon: _resolvingAi
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.auto_awesome_outlined, size: 20),
+                tooltip: 'Resolve unmatched records with AI',
+                onPressed: _resolvingAi ? null : _resolveUnmatchedWithAi,
               ),
               IconButton(
                 icon: const Icon(Icons.close),
@@ -222,6 +236,11 @@ class _TimeTrackerStagingSheetState extends State<TimeTrackerStagingSheet> {
                       ),
                     ),
                     IconButton(
+                      icon: const Icon(Icons.auto_awesome_outlined, size: 18),
+                      tooltip: 'Resolve with AI',
+                      onPressed: () => _resolveSingleWithAi(item),
+                    ),
+                    IconButton(
                       icon: const Icon(Icons.edit_outlined, size: 18),
                       tooltip: 'Edit summary',
                       onPressed: () => _editCandidate(item),
@@ -234,6 +253,38 @@ class _TimeTrackerStagingSheetState extends State<TimeTrackerStagingSheet> {
                     color: theme.colorScheme.secondaryText,
                   ),
                 ),
+                if (item.possibleDuplicateOf != null) ...[
+                  const SizedBox(height: 4),
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.amber.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(6),
+                      border:
+                          Border.all(color: Colors.amber.shade700, width: 0.8),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.warning_amber_rounded,
+                            size: 14, color: Colors.amber.shade800),
+                        const SizedBox(width: 4),
+                        Flexible(
+                          child: Text(
+                            item.duplicateReason ??
+                                'Possible duplicate of existing interaction',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: Colors.amber.shade900,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 4),
                 Wrap(
                   spacing: 6,
@@ -305,30 +356,72 @@ class _TimeTrackerStagingSheetState extends State<TimeTrackerStagingSheet> {
   }
 
   Future<void> _pickContact(CandidateInteraction item) async {
-    final available = widget.contacts
-        .where((c) => !item.matchedContactIds.contains(c.id))
-        .toList();
-
-    if (available.isEmpty) return;
-
-    final selected = await showDialog<Contact>(
-      context: context,
-      builder: (ctx) => SimpleDialog(
-        title: const Text('Select Contact'),
-        children: available.map((c) {
-          final label = c.fullName.isNotEmpty ? c.fullName : c.firstName;
-          return SimpleDialogOption(
-            onPressed: () => Navigator.pop(ctx, c),
-            child: Text(label),
-          );
-        }).toList(),
-      ),
+    final selectedIds = await ContactMultiSelect.show(
+      context,
+      contacts: widget.contacts,
+      initialSelectedIds: item.matchedContactIds.toSet(),
+      title: 'Select Attendees',
     );
 
-    if (selected != null) {
+    if (selectedIds != null) {
       setState(() {
-        item.matchedContactIds.add(selected.id);
+        item.matchedContactIds = selectedIds;
       });
+    }
+  }
+
+  Future<void> _resolveSingleWithAi(CandidateInteraction item) async {
+    final resolver = TimeTrackerAiResolver();
+    final matched = await resolver.resolveContactsForCandidate(
+      candidate: item,
+      contacts: widget.contacts,
+    );
+    if (!mounted) return;
+    if (matched.isNotEmpty) {
+      setState(() {
+        item.matchedContactIds = matched;
+        item.selected = true;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Matched ${matched.length} contact(s) via AI')),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No contacts matched by AI')),
+      );
+    }
+  }
+
+  Future<void> _resolveUnmatchedWithAi() async {
+    final unmatched = _items.where((e) => e.matchedContactIds.isEmpty).toList();
+    if (unmatched.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No unmatched candidates to resolve')),
+      );
+      return;
+    }
+
+    setState(() => _resolvingAi = true);
+    final resolver = TimeTrackerAiResolver();
+    var resolvedCount = 0;
+
+    for (final item in unmatched) {
+      final matched = await resolver.resolveContactsForCandidate(
+        candidate: item,
+        contacts: widget.contacts,
+      );
+      if (matched.isNotEmpty) {
+        item.matchedContactIds = matched;
+        item.selected = true;
+        resolvedCount++;
+      }
+    }
+
+    if (mounted) {
+      setState(() => _resolvingAi = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Resolved $resolvedCount candidate(s) via AI')),
+      );
     }
   }
 }

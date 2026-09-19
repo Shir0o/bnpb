@@ -97,8 +97,11 @@ class _ContactSelectionSheetState extends State<ContactSelectionSheet> {
         _selectedIds.remove(contactId);
       } else {
         _selectedIds.add(contactId);
+        // Clear query and maintain focus for continuous typing without extra clicks!
+        _searchController.clear();
       }
     });
+    _searchFocusNode.requestFocus();
   }
 
   Future<void> _createNewContact(BuildContext context) async {

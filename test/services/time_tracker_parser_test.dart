@@ -184,5 +184,54 @@ activity name,time started,time ended,comment,categories,record tags,duration,du
       expect(candidates.first.matchedContactIds, ['c1']);
       expect(candidates.first.summary, 'Dinner - Boba');
     });
+
+    test(
+        'parses multiple contacts split by delimiters (e.g. "w/ vicente isai will")',
+        () {
+      final multiContacts = [
+        Contact(id: 'c_vicente', firstName: 'Vicente', lastName: 'R'),
+        Contact(id: 'c_isai', firstName: 'Isai', lastName: 'G'),
+        Contact(id: 'c_will', firstName: 'Will', lastName: 'S'),
+        Contact(id: 'c_angel', firstName: 'Angel', lastName: 'M'),
+      ];
+      const csvData = '''
+activity name,time started,time ended,comment,categories,record tags,duration,duration minutes
+"Meeting",2025-09-19 10:00:00,2025-09-19 11:00:00,"w/ vicente isai will","Essentials","Contact",1:00:00,60
+''';
+
+      final candidates =
+          TimeTrackerParser.parseCsv(csvData, contacts: multiContacts);
+      expect(candidates.first.matchedContactIds,
+          containsAll(['c_vicente', 'c_isai', 'c_will']));
+      expect(candidates.first.matchedContactIds, isNot(contains('c_angel')));
+    });
+
+    test(
+        'does not falsely match unrelated contact on Spanish or common word (e.g. "peinado")',
+        () {
+      final testContacts = [
+        Contact(id: 'c_abel', firstName: 'Abel', lastName: 'Mojica'),
+      ];
+      const csvData = '''
+activity name,time started,time ended,comment,categories,record tags,duration,duration minutes
+"Haircut",2025-09-19 12:00:00,2025-09-19 12:30:00,"peinado","Personal","Contact",0:30:00,30
+''';
+
+      final candidates =
+          TimeTrackerParser.parseCsv(csvData, contacts: testContacts);
+      expect(candidates.first.matchedContactIds, isEmpty);
+      expect(candidates.first.selected, isFalse);
+    });
+
+    test('defaults to unselected when comment is empty or whitespace', () {
+      const csvData = '''
+activity name,time started,time ended,comment,categories,record tags,duration,duration minutes
+"General",2025-09-19 12:00:00,2025-09-19 12:30:00,"   ","Personal","Contact",0:30:00,30
+''';
+
+      final candidates =
+          TimeTrackerParser.parseCsv(csvData, contacts: contacts);
+      expect(candidates.first.selected, isFalse);
+    });
   });
 }
