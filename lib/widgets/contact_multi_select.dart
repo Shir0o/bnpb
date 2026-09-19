@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/contact.dart';
 import 'contact_avatar.dart';
+import 'quick_create_contact_dialog.dart';
 
 /// A fast search-and-token component for selecting contacts.
 ///
@@ -57,12 +58,14 @@ class ContactMultiSelect extends StatefulWidget {
 class _ContactMultiSelectState extends State<ContactMultiSelect> {
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _focusNode = FocusNode();
+  late final List<Contact> _contacts;
   late final Set<String> _selectedIds;
   String _query = '';
 
   @override
   void initState() {
     super.initState();
+    _contacts = List.from(widget.contacts);
     _selectedIds = Set<String>.from(widget.initialSelectedIds);
     _searchController.addListener(() {
       final newQuery = _searchController.text.trim().toLowerCase();
@@ -72,6 +75,25 @@ class _ContactMultiSelectState extends State<ContactMultiSelect> {
         });
       }
     });
+  }
+
+  Future<void> _quickCreateContact() async {
+    final rawQuery = _searchController.text.trim();
+    final newContact = await QuickCreateContactDialog.show(
+      context,
+      initialQuery: rawQuery,
+    );
+    if (newContact != null && mounted) {
+      setState(() {
+        if (!_contacts.any((c) => c.id == newContact.id)) {
+          _contacts.add(newContact);
+        }
+        _selectedIds.add(newContact.id);
+        _searchController.clear();
+        _query = '';
+      });
+      _focusNode.requestFocus();
+    }
   }
 
   @override
@@ -100,14 +122,14 @@ class _ContactMultiSelectState extends State<ContactMultiSelect> {
     final theme = Theme.of(context);
     final mediaQuery = MediaQuery.of(context);
 
-    final contactMap = {for (final c in widget.contacts) c.id: c};
+    final contactMap = {for (final c in _contacts) c.id: c};
     final selectedContacts =
         _selectedIds.map((id) => contactMap[id]).whereType<Contact>().toList();
 
     // Filter contacts based on query
     List<Contact> searchResults = [];
     if (_query.isNotEmpty) {
-      searchResults = widget.contacts.where((c) {
+      searchResults = _contacts.where((c) {
         final full = c.fullName.toLowerCase();
         final first = c.firstName.toLowerCase();
         final nick = c.nickname?.toLowerCase() ?? '';
@@ -303,16 +325,53 @@ class _ContactMultiSelectState extends State<ContactMultiSelect> {
                             },
                           ))
                     : (searchResults.isEmpty
-                        ? const Center(
+                        ? Center(
                             child: Padding(
-                              padding: EdgeInsets.all(24.0),
-                              child: Text('No matching contacts found'),
+                              padding: const EdgeInsets.all(24.0),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Text('No matching contacts found'),
+                                  const SizedBox(height: 12),
+                                  ElevatedButton.icon(
+                                    icon: const Icon(Icons.person_add_outlined,
+                                        size: 18),
+                                    label: Text(
+                                        "Quick Create '${_searchController.text.trim()}'"),
+                                    onPressed: _quickCreateContact,
+                                  ),
+                                ],
+                              ),
                             ),
                           )
                         : ListView.builder(
-                            itemCount: searchResults.length,
+                            itemCount: searchResults.length + 1,
                             itemBuilder: (ctx, idx) {
-                              final contact = searchResults[idx];
+                              if (idx == 0) {
+                                final query = _searchController.text.trim();
+                                return ListTile(
+                                  leading: CircleAvatar(
+                                    radius: 18,
+                                    backgroundColor:
+                                        theme.colorScheme.primaryContainer,
+                                    foregroundColor:
+                                        theme.colorScheme.onPrimaryContainer,
+                                    child:
+                                        const Icon(Icons.person_add, size: 18),
+                                  ),
+                                  title: Text(
+                                    "Quick Create '$query'",
+                                    style: TextStyle(
+                                      color: theme.colorScheme.primary,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  subtitle: const Text('Add and select person'),
+                                  onTap: _quickCreateContact,
+                                );
+                              }
+
+                              final contact = searchResults[idx - 1];
                               final isSelected =
                                   _selectedIds.contains(contact.id);
                               return ListTile(

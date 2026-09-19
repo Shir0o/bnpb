@@ -4,7 +4,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:bnpb/db/db_helper.dart';
 import 'package:bnpb/models/contact.dart';
 import 'package:bnpb/widgets/contact_selection_sheet.dart';
-import 'package:bnpb/screens/add_contact_page.dart';
+import 'package:bnpb/widgets/quick_create_contact_dialog.dart';
 import 'package:bnpb/services/backup_service.dart';
 import 'package:bnpb/services/reminder_coordinator.dart';
 import 'package:bnpb/services/contact_search_service.dart';
@@ -46,7 +46,7 @@ void main() {
   });
 
   testWidgets(
-      'displays Create New Contact tile and handles creation & auto-selection',
+      'displays Create New Contact tile and handles creation & auto-selection via QuickCreateContactDialog',
       (
     WidgetTester tester,
   ) async {
@@ -120,34 +120,28 @@ void main() {
 
     // 4. Tap on "Create Contact 'John Doe'"
     await tester.tap(find.text("Create Contact 'John Doe'"));
-    // Settle the navigation animation pushing AddContactPage
     await tester.pumpAndSettle();
 
-    // Verify we are now on the AddContactPage
-    expect(find.byType(AddContactPage), findsOneWidget);
+    // Verify QuickCreateContactDialog is displayed
+    expect(find.byType(QuickCreateContactDialog), findsOneWidget);
 
     // First name and last name should be pre-filled as "John" and "Doe"
-    final textFormFields =
-        tester.widgetList<TextFormField>(find.byType(TextFormField)).toList();
-    expect(textFormFields[0].controller?.text, 'John');
-    expect(textFormFields[2].controller?.text, 'Doe');
+    expect(find.text('John'), findsOneWidget);
+    expect(find.text('Doe'), findsOneWidget);
 
-    // 5. Save the contact from AddContactPage
-    // Tap Save button
-    await tester.tap(find.text('Save'));
-    // Let the async save database and reminder operations finish
+    // 5. Save the contact from QuickCreateContactDialog
+    await tester.tap(find.text('Create & Select'));
     await tester.idle();
 
-    // Rebuild and complete the pop navigation transition and selection sheet reload
     for (int i = 0; i < 10; i++) {
       await tester.pump(const Duration(milliseconds: 100));
     }
 
-    // Verify that we popped back to ContactSelectionSheet
-    expect(find.byType(AddContactPage), findsNothing);
+    // Verify that dialog popped
+    expect(find.byType(QuickCreateContactDialog), findsNothing);
     expect(find.byType(ContactSelectionSheet), findsOneWidget);
 
-    // Verify John Doe is now in the list
+    // Verify John Doe is now in the list and selected
     final johnDoeTile = find.widgetWithText(ListTile, 'John Doe');
     expect(johnDoeTile, findsOneWidget);
 

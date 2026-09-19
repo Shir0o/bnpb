@@ -13,10 +13,11 @@ class CandidateInteraction {
     this.medium = 'In Person',
     required this.matchedContactIds,
     required this.rawComment,
-    this.selected = true,
+    bool? selected,
     this.possibleDuplicateOf,
     this.duplicateReason,
-  });
+  }) : selected = selected ??
+            (rawComment.trim().isNotEmpty && matchedContactIds.isNotEmpty);
 
   /// SHA-256 fingerprint identifying this time tracker record for deduplication.
   final String fingerprint;
@@ -106,6 +107,11 @@ class CandidateInteraction {
 
   /// Deserializes a [CandidateInteraction] from JSON.
   factory CandidateInteraction.fromJson(Map<String, dynamic> json) {
+    final rawComment = json['rawComment'] as String? ?? '';
+    final matchedIds = (json['matchedContactIds'] as List<dynamic>?)
+            ?.map((e) => e.toString())
+            .toList() ??
+        [];
     return CandidateInteraction(
       fingerprint: json['fingerprint'] as String,
       occurredAt: DateTime.parse(json['occurredAt'] as String),
@@ -113,12 +119,10 @@ class CandidateInteraction {
       activityName: json['activityName'] as String,
       summary: json['summary'] as String,
       medium: (json['medium'] as String?) ?? 'In Person',
-      matchedContactIds: (json['matchedContactIds'] as List<dynamic>?)
-              ?.map((e) => e.toString())
-              .toList() ??
-          [],
-      rawComment: json['rawComment'] as String? ?? '',
-      selected: json['selected'] as bool? ?? true,
+      matchedContactIds: matchedIds,
+      rawComment: rawComment,
+      selected: json['selected'] as bool? ??
+          (rawComment.trim().isNotEmpty && matchedIds.isNotEmpty),
       possibleDuplicateOf: json['possibleDuplicateOf'] as String?,
       duplicateReason: json['duplicateReason'] as String?,
     );

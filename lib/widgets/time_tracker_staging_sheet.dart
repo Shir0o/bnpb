@@ -32,6 +32,7 @@ class _TimeTrackerStagingSheetState extends State<TimeTrackerStagingSheet> {
   // Filter state: null = All, 'unassigned' = no contact, else a contact id.
   String? _filter;
   bool _resolvingAi = false;
+  final Set<String> _resolvingItemFingerprints = {};
 
   @override
   void initState() {
@@ -236,14 +237,29 @@ class _TimeTrackerStagingSheetState extends State<TimeTrackerStagingSheet> {
                       ),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.auto_awesome_outlined, size: 18),
+                      icon: _resolvingItemFingerprints
+                              .contains(item.fingerprint)
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.auto_awesome_outlined, size: 18),
                       tooltip: 'Resolve with AI',
-                      onPressed: () => _resolveSingleWithAi(item),
+                      onPressed:
+                          _resolvingItemFingerprints.contains(item.fingerprint)
+                              ? null
+                              : () => _resolveSingleWithAi(item),
                     ),
                     IconButton(
                       icon: const Icon(Icons.edit_outlined, size: 18),
                       tooltip: 'Edit summary',
                       onPressed: () => _editCandidate(item),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.check_circle_outline, size: 18),
+                      tooltip: 'Import this item',
+                      onPressed: () => _commitSingle(item),
                     ),
                   ],
                 ),
@@ -370,24 +386,46 @@ class _TimeTrackerStagingSheetState extends State<TimeTrackerStagingSheet> {
     }
   }
 
+  void _commitSingle(CandidateInteraction item) {
+    widget.onConfirm([item]);
+    setState(() {
+      _items.removeWhere((e) => e.fingerprint == item.fingerprint);
+    });
+    if (_items.isEmpty) {
+      Navigator.of(context).maybePop();
+    }
+  }
+
   Future<void> _resolveSingleWithAi(CandidateInteraction item) async {
+    setState(() {
+      _resolvingItemFingerprints.add(item.fingerprint);
+    });
+
     final resolver = TimeTrackerAiResolver();
     final matched = await resolver.resolveContactsForCandidate(
       candidate: item,
       contacts: widget.contacts,
     );
+
     if (!mounted) return;
-    if (matched.isNotEmpty) {
-      setState(() {
+
+    setState(() {
+      _resolvingItemFingerprints.remove(item.fingerprint);
+      if (matched.isNotEmpty) {
         item.matchedContactIds = matched;
         item.selected = true;
-      });
+      }
+    });
+
+    if (matched.isNotEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Matched ${matched.length} contact(s) via AI')),
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No contacts matched by AI')),
+        const SnackBar(
+            content: Text(
+                'No contacts matched by AI (ensure AI is enabled in Settings)')),
       );
     }
   }
