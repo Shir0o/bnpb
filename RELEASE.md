@@ -2,6 +2,13 @@
 
 All notable changes to the BNPB project are documented here.
 
+## [1.7.0](https://github.com/Shir0o/bnpb/compare/v1.6.0...v1.7.0) (2026-09-19)
+
+
+### Features
+
+* **sync:** tokenized attendance parsing, collision triage, multi-select, and dynamic multi-provider AI ([#291](https://github.com/Shir0o/bnpb/issues/291)) ([#292](https://github.com/Shir0o/bnpb/issues/292)) ([39bfa4f](https://github.com/Shir0o/bnpb/commit/39bfa4f69f716915e6cb8d4feaa612629565b002))
+
 ## [1.6.0](https://github.com/Shir0o/bnpb/compare/v1.5.0...v1.6.0) (2026-09-18)
 
 
