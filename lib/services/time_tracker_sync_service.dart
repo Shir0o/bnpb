@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:bnpb/models/candidate_interaction.dart';
 import 'package:bnpb/models/contact.dart';
 import 'package:bnpb/models/interaction.dart';
+import 'package:bnpb/services/candidate_collision_detector.dart';
 import 'package:bnpb/services/google_drive_service.dart';
 import 'package:bnpb/services/time_tracker_parser.dart';
 
@@ -152,9 +153,11 @@ class TimeTrackerSyncService extends ChangeNotifier {
 
   /// Queries Google Drive for the newest `stt_records_automatic*.csv` in the
   /// configured folder (or [folderName]), parses rows tagged with "Contact",
-  /// filters already imported items, and populates the staging queue.
+  /// filters already imported items, checks collisions against [existingInteractions],
+  /// and populates the staging queue.
   Future<List<CandidateInteraction>> syncFromDrive({
     required List<Contact> contacts,
+    List<Interaction>? existingInteractions,
     String? folderName,
   }) async {
     _isSyncing = true;
@@ -185,9 +188,16 @@ class TimeTrackerSyncService extends ChangeNotifier {
       final importedFps = await getImportedFingerprints();
 
       // Only retain candidates that have not yet been imported
-      final newCandidates = parsedCandidates
+      var newCandidates = parsedCandidates
           .where((c) => !importedFps.contains(c.fingerprint))
           .toList();
+
+      if (existingInteractions != null && existingInteractions.isNotEmpty) {
+        newCandidates = CandidateCollisionDetector.detectCollisions(
+          candidates: newCandidates,
+          existingInteractions: existingInteractions,
+        );
+      }
 
       setStagingQueue(newCandidates);
       return _stagingQueue;

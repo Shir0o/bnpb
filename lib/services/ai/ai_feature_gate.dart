@@ -2,19 +2,14 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 /// Which AI backend is active when the feature gate is enabled.
 ///
-/// [local] is the default and uses the on-device Gemma model. No data
-/// leaves the device. [cloud] routes every AI request to Google's
-/// Gemini API using a user-supplied API key — see [SecurityService]
-/// for credential storage and [AiSettingsPage] for the opt-in flow.
-enum AiBackend { local, cloud }
+/// [local] is on-device Gemma / LiteRT.
+/// [cloud] is Google's Gemini API.
+/// [claude] is Anthropic's Claude API.
+/// [huggingface] is Hugging Face Serverless Inference API.
+enum AiBackend { local, cloud, claude, huggingface }
 
 /// User-controlled opt-in flag for AI features and the backend that
 /// services them.
-///
-/// BNPB's privacy posture is offline-first, so AI is off by default
-/// and only enabled after the user explicitly opts in. When enabled,
-/// the on-device backend is the default; the cloud backend is a
-/// further explicit opt-in with separate disclosure.
 class AiFeatureGate {
   AiFeatureGate();
 
@@ -22,6 +17,8 @@ class AiFeatureGate {
   static const String _backendKey = 'ai.features.backend';
   static const String _backendCloud = 'cloud';
   static const String _backendLocal = 'local';
+  static const String _backendClaude = 'claude';
+  static const String _backendHf = 'huggingface';
 
   Future<bool> isEnabled() async {
     final prefs = await SharedPreferences.getInstance();
@@ -42,15 +39,62 @@ class AiFeatureGate {
   Future<AiBackend> backend() async {
     final prefs = await SharedPreferences.getInstance();
     final raw = prefs.getString(_backendKey);
-    return raw == _backendCloud ? AiBackend.cloud : AiBackend.local;
+    switch (raw) {
+      case _backendCloud:
+        return AiBackend.cloud;
+      case _backendClaude:
+        return AiBackend.claude;
+      case _backendHf:
+        return AiBackend.huggingface;
+      default:
+        return AiBackend.local;
+    }
   }
 
   Future<void> setBackend(AiBackend value) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(
-      _backendKey,
-      value == AiBackend.cloud ? _backendCloud : _backendLocal,
-    );
+    String raw;
+    switch (value) {
+      case AiBackend.cloud:
+        raw = _backendCloud;
+        break;
+      case AiBackend.claude:
+        raw = _backendClaude;
+        break;
+      case AiBackend.huggingface:
+        raw = _backendHf;
+        break;
+      case AiBackend.local:
+        raw = _backendLocal;
+        break;
+    }
+    await prefs.setString(_backendKey, raw);
+  }
+
+  /// Returns the selected model ID for a given backend, falling back to its default.
+  Future<String> getSelectedModel(AiBackend backend) async {
+    final prefs = await SharedPreferences.getInstance();
+    final key = 'ai.provider.${backend.name}.model';
+    final saved = prefs.getString(key);
+    if (saved != null && saved.isNotEmpty) return saved;
+
+    switch (backend) {
+      case AiBackend.cloud:
+        return 'gemini-2.5-flash';
+      case AiBackend.claude:
+        return 'claude-3-5-haiku-latest';
+      case AiBackend.huggingface:
+        return 'meta-llama/Llama-3.2-3B-Instruct';
+      case AiBackend.local:
+        return 'gemma-3n-e2b-int4';
+    }
+  }
+
+  /// Sets the selected model ID for a given backend.
+  Future<void> setSelectedModel(AiBackend backend, String modelId) async {
+    final prefs = await SharedPreferences.getInstance();
+    final key = 'ai.provider.${backend.name}.model';
+    await prefs.setString(key, modelId.trim());
   }
 
   Future<bool> isShowSuggestionsOnSaveEnabled() async {

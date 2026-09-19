@@ -106,4 +106,36 @@ class KeyValidator {
       );
     }
   }
+
+  /// Validates an Anthropic API key by querying the /v1/models endpoint.
+  static Future<KeyValidationResult> claude(String apiKey) async {
+    final url = Uri.parse('https://api.anthropic.com/v1/models');
+    try {
+      final response = await http.get(url, headers: {
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+      }).timeout(const Duration(seconds: 8));
+      switch (response.statusCode) {
+        case 200:
+          return KeyValidationResult.valid;
+        case 401:
+        case 403:
+          return KeyValidationResult.rejected(
+            'Anthropic rejected this key. Please check your API key from console.anthropic.com.',
+          );
+        default:
+          return KeyValidationResult.unreachable(
+            'Anthropic returned HTTP ${response.statusCode}. Try again in a moment.',
+          );
+      }
+    } on TimeoutException {
+      return KeyValidationResult.unreachable(
+        'Timed out reaching Anthropic. Check your network and try again.',
+      );
+    } catch (_) {
+      return KeyValidationResult.unreachable(
+        'Could not reach Anthropic to validate the key.',
+      );
+    }
+  }
 }

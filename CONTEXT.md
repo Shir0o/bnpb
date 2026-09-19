@@ -32,8 +32,17 @@ The local SQLite database encrypted with 256-bit AES cipher, with keys secured v
 _Avoid_: Local cache, unencrypted DB
 
 **On-Device AI**:
-Optional client-side inference executing on local Gemma models via MediaPipe without transmitting user contact data to external cloud servers.
+Optional client-side inference executing on local Gemma or compatible LiteRT models via MediaPipe without transmitting user contact data to external cloud servers.
 _Avoid_: Cloud AI, API inference
+
+**Cloud AI Provider**:
+A user-configured third-party LLM service (Google Gemini, Anthropic Claude, or Hugging Face Inference) authenticating via a user-supplied API key.
+_Avoid_: External AI, server LLM
+
+**Dynamic Model Catalog**:
+A cached, dynamically discovered list of available models queried directly from the provider's API (e.g. Gemini `models.list`, Anthropic models endpoint, or Hugging Face model hub) paired with up-to-date pricing metadata.
+_Avoid_: Static model list, hardcoded models
+
 
 ### Core Domain
 
@@ -132,4 +141,13 @@ _Avoid_: Import popup, review dialog
 **Interaction Fingerprint**:
 A deterministic hash of the time tracker record's start timestamp, duration, activity name, and raw comment used for idempotent deduplication.
 _Avoid_: Sync hash, record ID
+
+**Candidate Interaction Duplicate**:
+A candidate interaction whose timestamp, activity, or participants closely align with a pre-existing logged interaction in the database, flagged with a collision warning in the staging queue rather than being silently dropped.
+_Avoid_: Collision conflict, duplicate import, redundant entry
+
+**Contact Multi-Select**:
+A focused search-and-token component that immediately appends selected contacts as dismissible chips, clears the query for rapid successive entry, and surfaces contextual suggestions (such as regular participants or recent contacts) without multiple modal round-trips.
+_Avoid_: Multi-checkbox list, contact tag picker
+
 

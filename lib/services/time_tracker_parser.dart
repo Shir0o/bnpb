@@ -94,9 +94,9 @@ class TimeTrackerParser {
           summary: extraction.summary,
           matchedContactIds: extraction.contactIds,
           rawComment: comment,
-          // Default to unselected when no contact is matched, so the bulk of
-          // first-run noise doesn't silently import without review.
-          selected: extraction.contactIds.isNotEmpty,
+          // Default to unselected when comment is empty or no contact is matched,
+          // so empty/noise records don't silently import without review.
+          selected: comment.isNotEmpty && extraction.contactIds.isNotEmpty,
         ),
       );
     }
@@ -253,36 +253,54 @@ class TimeTrackerParser {
 
   static List<String> _resolveNames(String namesPart, List<Contact> contacts) {
     final matchedIds = <String>{};
-    if (namesPart.isEmpty || contacts.isEmpty) return [];
+    if (namesPart.trim().isEmpty || contacts.isEmpty) return [];
 
-    // Check full name, first name, and nicknames
-    for (final contact in contacts) {
-      final firstName = contact.firstName.trim().toLowerCase();
-      final fullName = contact.fullName.trim().toLowerCase();
-      final nickname = contact.nickname?.trim().toLowerCase();
+    // Split on common list delimiters: comma, semicolon, &, +, 'and', 'y'
+    final rawTokens = namesPart
+        .split(RegExp(r'[,;&+]|\b(?:and|y)\b', caseSensitive: false))
+        .map((s) => s.trim())
+        .where((s) => s.isNotEmpty)
+        .toList();
 
-      final regexFirst = RegExp(r'\b' + RegExp.escape(firstName) + r'\b',
-          caseSensitive: false);
-      if (regexFirst.hasMatch(namesPart)) {
-        matchedIds.add(contact.id);
-        continue;
-      }
-
-      if (fullName.isNotEmpty) {
-        final regexFull = RegExp(r'\b' + RegExp.escape(fullName) + r'\b',
-            caseSensitive: false);
-        if (regexFull.hasMatch(namesPart)) {
-          matchedIds.add(contact.id);
-          continue;
+    for (final token in rawTokens) {
+      // 1. Try matching full name first
+      Contact? bestMatch;
+      for (final contact in contacts) {
+        final fullName = contact.fullName.trim();
+        if (fullName.isNotEmpty) {
+          final regex = RegExp(r'\b' + RegExp.escape(fullName) + r'\b',
+              caseSensitive: false);
+          if (regex.hasMatch(token)) {
+            bestMatch = contact;
+            break;
+          }
         }
       }
 
-      if (nickname != null && nickname.isNotEmpty) {
-        final regexNick = RegExp(r'\b' + RegExp.escape(nickname) + r'\b',
-            caseSensitive: false);
-        if (regexNick.hasMatch(namesPart)) {
-          matchedIds.add(contact.id);
-          continue;
+      if (bestMatch != null) {
+        matchedIds.add(bestMatch.id);
+        continue;
+      }
+
+      // 2. Try matching first names or nicknames word by word in token
+      final words = token.split(RegExp(r'\s+')).where((w) => w.isNotEmpty);
+      for (final word in words) {
+        final cleanWord = word.replaceAll(RegExp(r'[^\w]'), '');
+        if (cleanWord.isEmpty) continue;
+
+        for (final contact in contacts) {
+          final firstName = contact.firstName.trim();
+          final nickname = contact.nickname?.trim();
+
+          final isFirstName = firstName.isNotEmpty &&
+              firstName.toLowerCase() == cleanWord.toLowerCase();
+          final isNickname = nickname != null &&
+              nickname.isNotEmpty &&
+              nickname.toLowerCase() == cleanWord.toLowerCase();
+
+          if (isFirstName || isNickname) {
+            matchedIds.add(contact.id);
+          }
         }
       }
     }

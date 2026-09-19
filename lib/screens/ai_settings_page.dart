@@ -1,3 +1,4 @@
+// ignore_for_file: deprecated_member_use
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -5,6 +6,7 @@ import 'package:flutter/material.dart';
 import '../main.dart' show CrispColorScheme;
 import '../services/ai/ai_feature_gate.dart';
 import '../services/ai/ai_services.dart';
+import '../services/ai/dynamic_model_catalog.dart';
 import '../services/ai/embedder_manager.dart';
 import '../services/ai/hf_token_store.dart';
 import '../services/ai/key_validation.dart';
@@ -34,6 +36,10 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
   bool _busy = false;
   AiBackend _backend = AiBackend.local;
   bool _hasGeminiKey = false;
+  bool _hasClaudeKey = false;
+  String _selectedModel = '';
+  List<AiModelInfo> _availableModels = [];
+  bool _loadingModels = false;
   double? _downloadProgress;
   double? _embedderDownloadProgress;
   StreamSubscription<ModelDownloadProgress>? _downloadSub;
@@ -65,6 +71,9 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
     final token = await _tokenStore.read();
     final backend = await AiServices().gate.backend();
     final hasGeminiKey = await SecurityService().hasGeminiApiKey();
+    final hasClaudeKey = await SecurityService().hasAnthropicApiKey();
+    final selectedModel = await AiServices().gate.getSelectedModel(backend);
+
     if (!mounted) return;
     setState(() {
       _enabled = enabled;
@@ -75,7 +84,31 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
       _hasToken = token != null && token.isNotEmpty;
       _backend = backend;
       _hasGeminiKey = hasGeminiKey;
+      _hasClaudeKey = hasClaudeKey;
+      _selectedModel = selectedModel;
       _loading = false;
+    });
+
+    _loadModels(backend);
+  }
+
+  Future<void> _loadModels(AiBackend backend) async {
+    if (!mounted) return;
+    setState(() => _loadingModels = true);
+    String? key;
+    if (backend == AiBackend.cloud) {
+      key = await SecurityService().getGeminiApiKey();
+    } else if (backend == AiBackend.claude) {
+      key = await SecurityService().getAnthropicApiKey();
+    } else if (backend == AiBackend.huggingface) {
+      key = await _tokenStore.read();
+    }
+
+    final models = await DynamicModelCatalog().getModels(backend, apiKey: key);
+    if (!mounted) return;
+    setState(() {
+      _availableModels = models;
+      _loadingModels = false;
     });
   }
 
@@ -461,25 +494,43 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
     await _refresh();
   }
 
-  Future<void> _setBackend(bool useCloud) async {
-    if (useCloud == (_backend == AiBackend.cloud)) return;
+  Future<void> _promptForClaudeApiKey() async {
+    final existing = await SecurityService().getAnthropicApiKey();
+    if (!mounted) return;
+    final result = await showDialog<_KeyDialogResult>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => _KeyDialog(
+        title: 'Anthropic (Claude) API key',
+        explanation: 'Create a key at console.anthropic.com and paste '
+            'it here. The key is stored in this device\'s secure key store '
+            'and only sent to Anthropic in the x-api-key header. Leave '
+            'blank to clear.',
+        fieldLabel: 'sk-ant-…',
+        initialValue: existing ?? '',
+        validate: KeyValidator.claude,
+      ),
+    );
+    if (result == null) return;
+    await SecurityService().setAnthropicApiKey(
+      result.cleared ? null : result.value,
+    );
+    await AiServices().refreshBackend();
+    if (!mounted) return;
+    final msg = result.cleared
+        ? 'Claude API key cleared'
+        : result.validated
+            ? 'Claude API key saved and validated'
+            : 'Claude API key saved without validation';
+    CrispToast.show(context, msg);
+    await _refresh();
+  }
 
-    if (useCloud) {
-      // Disclosure must happen BEFORE the optimistic flip — the toggle
-      // represents consent and we can't grant it on the user's behalf.
-      final confirmed = await _showCloudDisclosure();
-      if (!confirmed) return;
-      // Optimistic: user has confirmed consent, so flip the toggle now
-      // and persist + maybe prompt for a key in the background. If they
-      // back out of the key prompt, the toggle stays on with the
-      // "no API key set" subtitle and a tap on the API key tile finishes
-      // the setup.
-      setState(() => _backend = AiBackend.cloud);
-      unawaited(_applyCloudBackend());
-    } else {
-      // Optimistic flip — turning cloud off doesn't need confirmation.
-      setState(() => _backend = AiBackend.local);
-      unawaited(_applyLocalBackend());
+  Future<void> _onModelSelected(String modelId) async {
+    await AiServices().gate.setSelectedModel(_backend, modelId);
+    await AiServices().refreshBackend();
+    if (mounted) {
+      setState(() => _selectedModel = modelId);
     }
   }
 
@@ -560,10 +611,18 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
                             ? _backend == AiBackend.cloud
                                 ? _hasGeminiKey
                                     ? 'On — using Google Gemini (cloud)'
-                                    : 'On — cloud selected, no API key set'
-                                : _status == ModelStatus.ready
-                                    ? 'On — using on-device model'
-                                    : 'On — model not downloaded'
+                                    : 'On — Gemini selected, no API key set'
+                                : _backend == AiBackend.claude
+                                    ? _hasClaudeKey
+                                        ? 'On — using Anthropic Claude (cloud)'
+                                        : 'On — Claude selected, no API key set'
+                                    : _backend == AiBackend.huggingface
+                                        ? _hasToken
+                                            ? 'On — using Hugging Face Inference'
+                                            : 'On — HF selected, no token set'
+                                        : _status == ModelStatus.ready
+                                            ? 'On — using on-device model'
+                                            : 'On — model not downloaded'
                             : 'Off',
                       ),
                       value: _enabled,
@@ -623,18 +682,80 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
                 ),
                 _buildCardGroup(
                   children: [
-                    SwitchListTile.adaptive(
-                      secondary: const Icon(Icons.cloud_outlined),
-                      title: const Text('Use Google Gemini (cloud)'),
-                      subtitle: Text(
-                        _backend == AiBackend.cloud
-                            ? _hasGeminiKey
-                                ? 'On — note text is sent to Google'
-                                : 'On — add an API key below'
-                            : 'Off — AI runs entirely on this device',
-                      ),
-                      value: _backend == AiBackend.cloud,
-                      onChanged: _busy ? null : _setBackend,
+                    RadioListTile<AiBackend>(
+                      title: const Text('On-device (Private)'),
+                      subtitle: const Text(
+                          'Gemma / LiteRT — runs locally, zero data sent to servers'),
+                      value: AiBackend.local,
+                      groupValue: _backend,
+                      onChanged: _busy
+                          ? null
+                          : (val) async {
+                              if (val == null) return;
+                              setState(() => _backend = val);
+                              await _applyLocalBackend();
+                            },
+                    ),
+                    const Divider(height: 1, indent: 16, endIndent: 16),
+                    RadioListTile<AiBackend>(
+                      title: const Text('Google Gemini (Cloud)'),
+                      subtitle: Text(_hasGeminiKey
+                          ? 'API key configured'
+                          : 'API key required'),
+                      value: AiBackend.cloud,
+                      groupValue: _backend,
+                      onChanged: _busy
+                          ? null
+                          : (val) async {
+                              if (val == null) return;
+                              final confirmed = await _showCloudDisclosure();
+                              if (!confirmed) return;
+                              setState(() => _backend = val);
+                              await _applyCloudBackend();
+                            },
+                    ),
+                    const Divider(height: 1, indent: 16, endIndent: 16),
+                    RadioListTile<AiBackend>(
+                      title: const Text('Anthropic Claude (Cloud)'),
+                      subtitle: Text(_hasClaudeKey
+                          ? 'API key configured'
+                          : 'API key required'),
+                      value: AiBackend.claude,
+                      groupValue: _backend,
+                      onChanged: _busy
+                          ? null
+                          : (val) async {
+                              if (val == null) return;
+                              final confirmed = await _showCloudDisclosure();
+                              if (!confirmed) return;
+                              setState(() => _backend = val);
+                              await AiServices().gate.setBackend(val);
+                              if (!await SecurityService()
+                                  .hasAnthropicApiKey()) {
+                                if (mounted) await _promptForClaudeApiKey();
+                              } else {
+                                await AiServices().refreshBackend();
+                              }
+                              if (mounted) await _refresh();
+                            },
+                    ),
+                    const Divider(height: 1, indent: 16, endIndent: 16),
+                    RadioListTile<AiBackend>(
+                      title: const Text('Hugging Face Inference (Cloud)'),
+                      subtitle: Text(_hasToken
+                          ? 'Access token configured'
+                          : 'Access token required'),
+                      value: AiBackend.huggingface,
+                      groupValue: _backend,
+                      onChanged: _busy
+                          ? null
+                          : (val) async {
+                              if (val == null) return;
+                              setState(() => _backend = val);
+                              await AiServices().gate.setBackend(val);
+                              await AiServices().refreshBackend();
+                              await _refresh();
+                            },
                     ),
                     if (_backend == AiBackend.cloud) ...[
                       const Divider(height: 1, indent: 16, endIndent: 16),
@@ -643,11 +764,103 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
                         title: const Text('Gemini API key'),
                         subtitle: Text(
                           _hasGeminiKey
-                              ? 'Saved in this device\'s key store — tap to update or clear'
-                              : 'Required. Get a free key at aistudio.google.com/app/apikey',
+                              ? 'Saved in key store — tap to update or clear'
+                              : 'Required. Get a key at aistudio.google.com/app/apikey',
                         ),
                         enabled: !_busy,
                         onTap: _busy ? null : _promptForGeminiApiKey,
+                      ),
+                    ],
+                    if (_backend == AiBackend.claude) ...[
+                      const Divider(height: 1, indent: 16, endIndent: 16),
+                      ListTile(
+                        leading: const Icon(Icons.key_outlined),
+                        title: const Text('Anthropic API key'),
+                        subtitle: Text(
+                          _hasClaudeKey
+                              ? 'Saved in key store — tap to update or clear'
+                              : 'Required. Get a key at console.anthropic.com',
+                        ),
+                        enabled: !_busy,
+                        onTap: _busy ? null : _promptForClaudeApiKey,
+                      ),
+                    ],
+                    if (_backend != AiBackend.local) ...[
+                      const Divider(height: 1, indent: 16, endIndent: 16),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16.0, vertical: 8.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Text(
+                                  'Model Selection & Pricing',
+                                  style: TextStyle(fontWeight: FontWeight.bold),
+                                ),
+                                if (_loadingModels)
+                                  const SizedBox(
+                                    width: 14,
+                                    height: 14,
+                                    child: CircularProgressIndicator(
+                                        strokeWidth: 2),
+                                  )
+                                else
+                                  IconButton(
+                                    icon: const Icon(Icons.refresh, size: 18),
+                                    tooltip: 'Refresh model catalog',
+                                    onPressed: () => _loadModels(_backend),
+                                  ),
+                              ],
+                            ),
+                            if (_availableModels.isNotEmpty)
+                              DropdownButtonFormField<String>(
+                                value: _availableModels
+                                        .any((m) => m.id == _selectedModel)
+                                    ? _selectedModel
+                                    : _availableModels.first.id,
+                                isExpanded: true,
+                                decoration: const InputDecoration(
+                                  contentPadding: EdgeInsets.symmetric(
+                                      horizontal: 12, vertical: 8),
+                                  border: OutlineInputBorder(),
+                                ),
+                                items: _availableModels.map((model) {
+                                  return DropdownMenuItem<String>(
+                                    value: model.id,
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Text(
+                                          model.displayName,
+                                          style: const TextStyle(
+                                              fontWeight: FontWeight.w600,
+                                              fontSize: 13),
+                                        ),
+                                        Text(
+                                          model.pricingLabel,
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .primary,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                }).toList(),
+                                onChanged: (val) {
+                                  if (val != null) _onModelSelected(val);
+                                },
+                              ),
+                          ],
+                        ),
                       ),
                     ],
                   ],

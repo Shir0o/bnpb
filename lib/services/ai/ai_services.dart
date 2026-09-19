@@ -6,11 +6,14 @@ import 'package:path_provider/path_provider.dart';
 import '../../models/contact.dart';
 import '../security_service.dart';
 import 'ai_feature_gate.dart';
+import 'anthropic_api_llm_service.dart';
 import 'auto_tag_service.dart';
 import 'embedding_service.dart';
 import 'embedder_manager.dart';
 import 'follow_up_suggestion_service.dart';
 import 'gemini_api_llm_service.dart';
+import 'hf_token_store.dart';
+import 'hugging_face_api_llm_service.dart';
 import 'local_llm_service.dart';
 import 'model_manager.dart';
 import 'semantic_search_service.dart';
@@ -104,20 +107,43 @@ class AiServices {
   /// access wires them up against the new backend.
   Future<void> refreshBackend() async {
     final backend = await _gate.backend();
-    if (backend == AiBackend.cloud) {
-      final apiKey = await SecurityService().getGeminiApiKey();
-      if (apiKey == null || apiKey.isEmpty) {
-        // User asked for cloud but never supplied a key — fall back to
-        // local so existing call sites that null-check `isReady` still
-        // give a coherent answer. AiSettingsPage's toggle UI is what
-        // surfaces this state to the user.
+    final modelId = await _gate.getSelectedModel(backend);
+
+    switch (backend) {
+      case AiBackend.cloud:
+        final apiKey = await SecurityService().getGeminiApiKey();
+        if (apiKey == null || apiKey.isEmpty) {
+          await _setBackend(FlutterGemmaLlmService());
+          return;
+        }
+        await _setBackend(
+            GeminiApiLlmService(apiKey: apiKey, modelId: modelId));
+        return;
+
+      case AiBackend.claude:
+        final apiKey = await SecurityService().getAnthropicApiKey();
+        if (apiKey == null || apiKey.isEmpty) {
+          await _setBackend(FlutterGemmaLlmService());
+          return;
+        }
+        await _setBackend(
+            AnthropicApiLlmService(apiKey: apiKey, modelId: modelId));
+        return;
+
+      case AiBackend.huggingface:
+        final token = await HfTokenStore().read();
+        if (token == null || token.isEmpty) {
+          await _setBackend(FlutterGemmaLlmService());
+          return;
+        }
+        await _setBackend(
+            HuggingFaceApiLlmService(apiKey: token, modelId: modelId));
+        return;
+
+      case AiBackend.local:
         await _setBackend(FlutterGemmaLlmService());
         return;
-      }
-      await _setBackend(GeminiApiLlmService(apiKey: apiKey));
-      return;
     }
-    await _setBackend(FlutterGemmaLlmService());
   }
 
   Future<void> _setBackend(LocalLlmService next) async {

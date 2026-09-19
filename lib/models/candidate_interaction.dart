@@ -14,6 +14,8 @@ class CandidateInteraction {
     required this.matchedContactIds,
     required this.rawComment,
     this.selected = true,
+    this.possibleDuplicateOf,
+    this.duplicateReason,
   });
 
   /// SHA-256 fingerprint identifying this time tracker record for deduplication.
@@ -43,12 +45,20 @@ class CandidateInteraction {
   /// Whether this candidate is selected for import.
   bool selected;
 
+  /// ID of an existing interaction that this candidate possibly duplicates.
+  String? possibleDuplicateOf;
+
+  /// Explanation of why this candidate was flagged as a collision (e.g. time and attendee).
+  String? duplicateReason;
+
   /// Creates a copy of this [CandidateInteraction].
   CandidateInteraction copyWith({
     String? summary,
     String? medium,
     List<String>? matchedContactIds,
     bool? selected,
+    String? possibleDuplicateOf,
+    String? duplicateReason,
   }) {
     return CandidateInteraction(
       fingerprint: fingerprint,
@@ -60,6 +70,8 @@ class CandidateInteraction {
       matchedContactIds: matchedContactIds ?? List.from(this.matchedContactIds),
       rawComment: rawComment,
       selected: selected ?? this.selected,
+      possibleDuplicateOf: possibleDuplicateOf ?? this.possibleDuplicateOf,
+      duplicateReason: duplicateReason ?? this.duplicateReason,
     );
   }
 
@@ -87,6 +99,8 @@ class CandidateInteraction {
       'matchedContactIds': matchedContactIds,
       'rawComment': rawComment,
       'selected': selected,
+      'possibleDuplicateOf': possibleDuplicateOf,
+      'duplicateReason': duplicateReason,
     };
   }
 
@@ -105,6 +119,8 @@ class CandidateInteraction {
           [],
       rawComment: json['rawComment'] as String? ?? '',
       selected: json['selected'] as bool? ?? true,
+      possibleDuplicateOf: json['possibleDuplicateOf'] as String?,
+      duplicateReason: json['duplicateReason'] as String?,
     );
   }
 }
