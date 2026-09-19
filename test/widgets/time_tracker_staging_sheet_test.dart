@@ -198,5 +198,65 @@ void main() {
       expect(find.text('Lunch w/ Abel'), findsNothing);
       expect(find.text('Dinner - Boba'), findsNothing);
     });
+
+    testWidgets('allows committing a single item without importing all',
+        (tester) async {
+      final candidates = [
+        CandidateInteraction(
+          fingerprint: 'fp1',
+          occurredAt: DateTime(2025, 9, 17, 11, 46),
+          durationMinutes: 60,
+          activityName: 'Lunch',
+          summary: 'Lunch w/ Abel',
+          matchedContactIds: ['c1'],
+          rawComment: 'w/ Abel',
+          selected: false,
+        ),
+        CandidateInteraction(
+          fingerprint: 'fp2',
+          occurredAt: DateTime(2025, 9, 19, 22, 16),
+          durationMinutes: 46,
+          activityName: 'Dinner',
+          summary: 'Dinner - Boba',
+          matchedContactIds: ['c2'],
+          rawComment: 'Boba w/ Benji',
+          selected: false,
+        ),
+      ];
+
+      List<CandidateInteraction>? confirmed;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: TimeTrackerStagingSheet(
+              candidates: candidates,
+              contacts: contacts,
+              onConfirm: (items) {
+                confirmed = items;
+              },
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('Dinner - Boba'), findsOneWidget);
+      expect(find.text('Lunch w/ Abel'), findsOneWidget);
+
+      // Find the single-item commit button for Dinner (the first candidate)
+      final importSingleBtns = find.byTooltip('Import this item');
+      expect(importSingleBtns, findsNWidgets(2));
+
+      await tester.tap(importSingleBtns.first);
+      await tester.pumpAndSettle();
+
+      expect(confirmed, isNotNull);
+      expect(confirmed!.length, 1);
+      expect(confirmed!.first.fingerprint, 'fp2');
+
+      // Dinner is now removed from queue, Lunch remains
+      expect(find.text('Dinner - Boba'), findsNothing);
+      expect(find.text('Lunch w/ Abel'), findsOneWidget);
+    });
   });
 }

@@ -29,6 +29,7 @@ class AiServices {
   factory AiServices() => _instance;
 
   LocalLlmService _llm = FlutterGemmaLlmService();
+  bool _llmOverridden = false;
   AiFeatureGate _gate = AiFeatureGate();
   EmbeddingService _embedding = FlutterGemmaEmbeddingService();
   SemanticSearchService? _semanticSearchCache;
@@ -113,6 +114,7 @@ class AiServices {
   /// changed API key. Cached AI services are invalidated so the next
   /// access wires them up against the new backend.
   Future<void> refreshBackend() async {
+    if (_llmOverridden) return;
     final backend = await _gate.backend();
     final modelId = await _gate.getSelectedModel(backend);
 
@@ -251,6 +253,7 @@ class AiServices {
   }) {
     if (llm != null) {
       _llm = llm;
+      _llmOverridden = true;
       _followUpCache = null;
       _autoTagCache = null;
     }

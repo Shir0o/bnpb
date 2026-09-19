@@ -96,7 +96,8 @@ class TimeTrackerParser {
           rawComment: comment,
           // Default to unselected when comment is empty or no contact is matched,
           // so empty/noise records don't silently import without review.
-          selected: comment.isNotEmpty && extraction.contactIds.isNotEmpty,
+          selected:
+              comment.trim().isNotEmpty && extraction.contactIds.isNotEmpty,
         ),
       );
     }

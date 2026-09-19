@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import '../db/db_helper.dart';
-import '../models/contact.dart';
-import '../screens/add_contact_page.dart';
 import '../services/contact_search_service.dart';
 import 'contact_avatar.dart';
+import 'quick_create_contact_dialog.dart';
 import 'skeleton_loader.dart';
 
 class ContactSelectionSheet extends StatefulWidget {
@@ -106,27 +105,9 @@ class _ContactSelectionSheetState extends State<ContactSelectionSheet> {
 
   Future<void> _createNewContact(BuildContext context) async {
     final query = _searchController.text.trim();
-    String? initialFirstName;
-    String? initialLastName;
-    if (query.isNotEmpty) {
-      final parts = query.split(RegExp(r'\s+'));
-      if (parts.length > 1) {
-        initialFirstName = parts.first;
-        initialLastName = parts.sublist(1).join(' ');
-      } else {
-        initialFirstName = query;
-      }
-    }
-
-    final newContact = await Navigator.push<Contact>(
+    final newContact = await QuickCreateContactDialog.show(
       context,
-      MaterialPageRoute(
-        builder: (context) => AddContactPage(
-          popOnSave: true,
-          initialFirstName: initialFirstName,
-          initialLastName: initialLastName,
-        ),
-      ),
+      initialQuery: query,
     );
 
     if (newContact != null && mounted) {

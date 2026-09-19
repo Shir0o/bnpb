@@ -16,13 +16,22 @@ class TimeTrackerAiResolver {
     required CandidateInteraction candidate,
     required List<Contact> contacts,
   }) async {
-    if (!_aiServices.llm.isReady || contacts.isEmpty) return [];
+    if (contacts.isEmpty) return [];
 
-    final contactListStr = contacts
-        .map((c) => '{"id": "${c.id}", "name": "${c.displayName}"}')
-        .join(',\n');
+    try {
+      await _aiServices.refreshBackend();
+      final ready = await _aiServices.isReady();
+      if (!ready) {
+        debugPrint(
+            'TimeTrackerAiResolver: AI backend is not ready or not enabled');
+        return [];
+      }
 
-    final prompt = '''
+      final contactListStr = contacts
+          .map((c) => '{"id": "${c.id}", "name": "${c.displayName}"}')
+          .join(',\n');
+
+      final prompt = '''
 You are an assistant matching a user's logged activity to their private contact list.
 Given an activity comment: "${candidate.rawComment.isNotEmpty ? candidate.rawComment : candidate.activityName}"
 
@@ -36,8 +45,9 @@ Respond with ONLY a JSON array of matching contact id strings, e.g. ["id1", "id2
 If no contacts match, return []. Do not include markdown codeblocks or other commentary.
 ''';
 
-    try {
-      final response = await _aiServices.llm.generate(prompt);
+      final response = await _aiServices.llm
+          .generate(prompt)
+          .timeout(const Duration(seconds: 15));
       final clean = response.replaceAll(RegExp(r'```json|```'), '').trim();
       final decoded = jsonDecode(clean);
       if (decoded is List) {
