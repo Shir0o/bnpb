@@ -16,6 +16,9 @@ import 'platform_info.dart' as platform_info;
 class ReminderService {
   ReminderService._();
 
+  @visibleForTesting
+  ReminderService.testHarness();
+
   static final ReminderService _instance = ReminderService._();
   static ReminderService? _testOverride;
 

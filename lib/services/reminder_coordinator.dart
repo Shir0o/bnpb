@@ -114,9 +114,9 @@ class ReminderCoordinator {
         return;
       }
 
-      var scheduledFor = followUpAt.subtract(preference.leadTime);
+      final scheduledFor = followUpAt.subtract(preference.leadTime);
       if (!scheduledFor.isAfter(DateTime.now())) {
-        scheduledFor = DateTime.now().add(const Duration(minutes: 5));
+        return;
       }
 
       final formattedFollowUp = DateFormat.yMMMd().add_jm().format(
@@ -186,9 +186,9 @@ class ReminderCoordinator {
         return;
       }
 
-      var scheduledFor = request.requestedAt.add(preference.leadTime);
+      final scheduledFor = request.requestedAt.add(preference.leadTime);
       if (!scheduledFor.isAfter(DateTime.now())) {
-        scheduledFor = DateTime.now().add(const Duration(hours: 1));
+        return;
       }
 
       final body =

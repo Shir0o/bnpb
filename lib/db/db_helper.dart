@@ -32,6 +32,9 @@ class DBHelper {
 
   DBHelper._();
 
+  @visibleForTesting
+  DBHelper.testHarness();
+
   factory DBHelper() => _testOverride ?? _instance;
 
   @visibleForTesting
