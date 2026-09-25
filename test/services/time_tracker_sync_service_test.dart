@@ -30,17 +30,17 @@ activity name,time started,time ended,comment,categories,record tags,duration,du
     setUp(() {
       SharedPreferences.setMockInitialValues({});
       mockDriveService = MockGoogleDriveService();
-      syncService = TimeTrackerSyncService(
-        driveService: mockDriveService,
-      );
+      syncService = TimeTrackerSyncService(driveService: mockDriveService);
     });
 
-    test('getDriveFolderName defaults to Time track and can be configured',
-        () async {
-      expect(await syncService.getDriveFolderName(), 'Time track');
-      await syncService.setDriveFolderName('My Work/Time Logs');
-      expect(await syncService.getDriveFolderName(), 'My Work/Time Logs');
-    });
+    test(
+      'getDriveFolderName defaults to Time track and can be configured',
+      () async {
+        expect(await syncService.getDriveFolderName(), 'Time track');
+        await syncService.setDriveFolderName('My Work/Time Logs');
+        expect(await syncService.getDriveFolderName(), 'My Work/Time Logs');
+      },
+    );
 
     test('name markers default to w/ and with and can be configured', () async {
       expect(await syncService.getNameMarkers(), ['w/', 'with ']);
@@ -49,55 +49,63 @@ activity name,time started,time ended,comment,categories,record tags,duration,du
     });
 
     test(
-        'syncFromDrive queries configured folder instead of hardcoded Time track',
-        () async {
-      await syncService.setDriveFolderName('Custom STT Folder');
+      'syncFromDrive queries configured folder instead of hardcoded Time track',
+      () async {
+        await syncService.setDriveFolderName('Custom STT Folder');
 
-      final driveFile = drive.File()
-        ..id = 'file_456'
-        ..name = 'stt_records_automatic.csv'
-        ..modifiedTime = DateTime.parse('2025-09-20 00:00:00Z');
+        final driveFile = drive.File()
+          ..id = 'file_456'
+          ..name = 'stt_records_automatic.csv'
+          ..modifiedTime = DateTime.parse('2025-09-20 00:00:00Z');
 
-      when(() => mockDriveService.findLatestFileInFolder(
+        when(
+          () => mockDriveService.findLatestFileInFolder(
             folderName: 'Custom STT Folder',
             namePrefix: 'stt_records_automatic',
-          )).thenAnswer((_) async => driveFile);
+          ),
+        ).thenAnswer((_) async => driveFile);
 
-      when(() => mockDriveService.downloadFileAsString('file_456'))
-          .thenAnswer((_) async => sampleCsv);
+        when(() => mockDriveService.downloadFileAsString('file_456'))
+            .thenAnswer((_) async => sampleCsv);
 
-      final candidates = await syncService.syncFromDrive(contacts: contacts);
+        final candidates = await syncService.syncFromDrive(contacts: contacts);
 
-      expect(candidates.length, 2);
-      verify(() => mockDriveService.findLatestFileInFolder(
+        expect(candidates.length, 2);
+        verify(
+          () => mockDriveService.findLatestFileInFolder(
             folderName: 'Custom STT Folder',
             namePrefix: 'stt_records_automatic',
-          )).called(1);
-    });
+          ),
+        ).called(1);
+      },
+    );
 
     test(
-        'syncFromDrive parses candidates from newest file in Time track folder',
-        () async {
-      final driveFile = drive.File()
-        ..id = 'file_123'
-        ..name = 'stt_records_automatic (4).csv'
-        ..modifiedTime = DateTime.parse('2025-09-20 00:00:00Z');
+      'syncFromDrive parses candidates from newest file in Time track folder',
+      () async {
+        final driveFile = drive.File()
+          ..id = 'file_123'
+          ..name = 'stt_records_automatic (4).csv'
+          ..modifiedTime = DateTime.parse('2025-09-20 00:00:00Z');
 
-      when(() => mockDriveService.findLatestFileInFolder(
+        when(
+          () => mockDriveService.findLatestFileInFolder(
             folderName: 'Time track',
             namePrefix: 'stt_records_automatic',
-          )).thenAnswer((_) async => driveFile);
+          ),
+        ).thenAnswer((_) async => driveFile);
 
-      when(() => mockDriveService.downloadFileAsString('file_123'))
-          .thenAnswer((_) async => sampleCsv);
+        when(() => mockDriveService.downloadFileAsString('file_123'))
+            .thenAnswer((_) async => sampleCsv);
 
-      final candidates = await syncService.syncFromDrive(contacts: contacts);
+        final candidates = await syncService.syncFromDrive(contacts: contacts);
 
-      expect(candidates.length, 2);
-      expect(candidates[0].activityName, 'Lunch');
-      expect(candidates[1].activityName, 'Dinner');
-      expect(syncService.stagingQueue.length, 2);
-    });
+        expect(candidates.length, 2);
+        expect(candidates[0].activityName, 'Lunch');
+        expect(candidates[1].activityName, 'Dinner');
+        expect(syncService.stagingQueue.length, 2);
+      },
+    );
 
     test(
         'deduplication ignores fingerprints that were already confirmed and imported',
@@ -106,10 +114,12 @@ activity name,time started,time ended,comment,categories,record tags,duration,du
         ..id = 'file_123'
         ..name = 'stt_records_automatic (4).csv';
 
-      when(() => mockDriveService.findLatestFileInFolder(
-            folderName: 'Time track',
-            namePrefix: 'stt_records_automatic',
-          )).thenAnswer((_) async => driveFile);
+      when(
+        () => mockDriveService.findLatestFileInFolder(
+          folderName: 'Time track',
+          namePrefix: 'stt_records_automatic',
+        ),
+      ).thenAnswer((_) async => driveFile);
 
       when(() => mockDriveService.downloadFileAsString('file_123'))
           .thenAnswer((_) async => sampleCsv);
@@ -127,29 +137,99 @@ activity name,time started,time ended,comment,categories,record tags,duration,du
       expect(candidates2.first.activityName, 'Dinner');
     });
 
-    test('stagingQueue maintains candidates and allows updating or removing',
-        () {
-      final candidate = CandidateInteraction(
-        fingerprint: 'fp1',
-        occurredAt: DateTime.now(),
-        durationMinutes: 30,
-        activityName: 'Coffee',
-        summary: 'Coffee w/ Abel',
-        matchedContactIds: ['c1'],
-        rawComment: 'w/ Abel',
+    test(
+      'stagingQueue maintains candidates and allows updating or removing',
+      () {
+        final candidate = CandidateInteraction(
+          fingerprint: 'fp1',
+          occurredAt: DateTime.now(),
+          durationMinutes: 30,
+          activityName: 'Coffee',
+          summary: 'Coffee w/ Abel',
+          matchedContactIds: ['c1'],
+          rawComment: 'w/ Abel',
+        );
+
+        syncService.setStagingQueue([candidate]);
+        expect(syncService.stagingQueue.length, 1);
+
+        // Update candidate
+        candidate.summary = 'Morning Coffee w/ Abel';
+        syncService.updateCandidate(candidate);
+        expect(
+          syncService.stagingQueue.first.summary,
+          'Morning Coffee w/ Abel',
+        );
+
+        // Dismiss / remove candidate
+        syncService.removeCandidates([candidate.fingerprint]);
+        expect(syncService.stagingQueue, isEmpty);
+      },
+    );
+
+    test(
+        'dismissCandidates persists fingerprints and filters them from future syncs',
+        () async {
+      final driveFile = drive.File()
+        ..id = 'file_123'
+        ..name = 'stt_records_automatic (4).csv';
+
+      when(
+        () => mockDriveService.findLatestFileInFolder(
+          folderName: 'Time track',
+          namePrefix: 'stt_records_automatic',
+        ),
+      ).thenAnswer((_) async => driveFile);
+
+      when(() => mockDriveService.downloadFileAsString('file_123'))
+          .thenAnswer((_) async => sampleCsv);
+
+      // First sync
+      final candidates1 = await syncService.syncFromDrive(contacts: contacts);
+      expect(candidates1.length, 2);
+      final dismissedFingerprint = candidates1.first.fingerprint;
+
+      // Dismiss the first candidate
+      await syncService.dismissCandidates([dismissedFingerprint]);
+      expect(syncService.stagingQueue.length, 1);
+      expect(
+        await syncService.getDismissedFingerprints(),
+        contains(dismissedFingerprint),
       );
 
-      syncService.setStagingQueue([candidate]);
-      expect(syncService.stagingQueue.length, 1);
-
-      // Update candidate
-      candidate.summary = 'Morning Coffee w/ Abel';
-      syncService.updateCandidate(candidate);
-      expect(syncService.stagingQueue.first.summary, 'Morning Coffee w/ Abel');
-
-      // Dismiss / remove candidate
-      syncService.removeCandidates([candidate.fingerprint]);
-      expect(syncService.stagingQueue, isEmpty);
+      // Second sync should skip the dismissed candidate
+      final candidates2 = await syncService.syncFromDrive(contacts: contacts);
+      expect(candidates2.length, 1);
+      expect(candidates2.first.activityName, 'Dinner');
     });
+
+    test(
+      'clearDismissed allows dismissed candidates to be suggested again',
+      () async {
+        final driveFile = drive.File()
+          ..id = 'file_123'
+          ..name = 'stt_records_automatic (4).csv';
+
+        when(
+          () => mockDriveService.findLatestFileInFolder(
+            folderName: 'Time track',
+            namePrefix: 'stt_records_automatic',
+          ),
+        ).thenAnswer((_) async => driveFile);
+
+        when(() => mockDriveService.downloadFileAsString('file_123'))
+            .thenAnswer((_) async => sampleCsv);
+
+        final candidates1 = await syncService.syncFromDrive(contacts: contacts);
+        await syncService.dismissCandidates([candidates1.first.fingerprint]);
+        expect(await syncService.getDismissedFingerprints(), isNotEmpty);
+
+        await syncService.clearDismissed();
+        expect(await syncService.getDismissedFingerprints(), isEmpty);
+
+        final candidates2 = await syncService.syncFromDrive(contacts: contacts);
+        expect(candidates2.length, 2);
+      },
+    );
   });
 }

@@ -138,6 +138,10 @@ _Avoid_: Pattern, regex, delimiter
 A reviewable, dismissible queue presented on app launch (and accessible from the interaction dashboard) where candidate interactions can be inspected, edited, assigned to contacts, selected, and committed to the database.
 _Avoid_: Import popup, review dialog
 
+**Candidate dismissal**:
+An explicit user decision to skip a Candidate Interaction during import. The candidate's fingerprint is persisted so future syncs do not re-suggest it, and no Interaction is created. Distinct from an imported candidate (which creates an Interaction) and a Candidate Interaction Duplicate (a warning flag, not an action).
+_Avoid_: Skip, suppress, ignore
+
 **Interaction Fingerprint**:
 A deterministic hash of the time tracker record's start timestamp, duration, activity name, and raw comment used for idempotent deduplication.
 _Avoid_: Sync hash, record ID

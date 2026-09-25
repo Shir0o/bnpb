@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io' show Platform;
+
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -72,6 +73,7 @@ class _SettingsPageState extends State<SettingsPage>
   GoogleSignInAccount? _googleUser;
   String _sttFolderName = TimeTrackerSyncService.defaultDriveFolderName;
   String _sttMarkers = TimeTrackerSyncService.defaultNameMarkers.join(', ');
+  int _dismissedRecordCount = 0;
   final TimeTrackerSyncService _timeTrackerService = TimeTrackerSyncService();
 
   @override
@@ -101,10 +103,11 @@ class _SettingsPageState extends State<SettingsPage>
     _load();
   }
 
-  void _onTimeTrackerChanged() {
-    if (mounted) {
-      setState(() {});
-    }
+  Future<void> _onTimeTrackerChanged() async {
+    if (!mounted) return;
+    _dismissedRecordCount =
+        (await _timeTrackerService.getDismissedFingerprints()).length;
+    if (mounted) setState(() {});
   }
 
   Future<void> _load() async {
@@ -117,6 +120,8 @@ class _SettingsPageState extends State<SettingsPage>
     _syncType = await SyncService().getSyncType();
     _sttFolderName = await _timeTrackerService.getDriveFolderName();
     _sttMarkers = (await _timeTrackerService.getNameMarkers()).join(', ');
+    _dismissedRecordCount =
+        (await _timeTrackerService.getDismissedFingerprints()).length;
 
     // Note: We no longer await GoogleDriveService().currentUser here
     // to prevent blocking page load. The listener in initState handles updates.
@@ -257,11 +262,7 @@ class _SettingsPageState extends State<SettingsPage>
             _buildSyncGroup(context),
             const SizedBox(height: 16),
             _buildSectionHeader('Security'),
-            _buildCardGroup(
-              children: [
-                _buildSecurityGroup(context),
-              ],
-            ),
+            _buildCardGroup(children: [_buildSecurityGroup(context)]),
             const SizedBox(height: 16),
             _buildSectionHeader('Display'),
             _buildCardGroup(
@@ -307,9 +308,7 @@ class _SettingsPageState extends State<SettingsPage>
                 ListTile(
                   leading: const Icon(Icons.repeat_outlined),
                   title: const Text('Recurring logs'),
-                  subtitle: const Text(
-                    'Review and edit detected routines',
-                  ),
+                  subtitle: const Text('Review and edit detected routines'),
                   onTap: () => Navigator.of(context).push(
                     MaterialPageRoute(
                       builder: (_) => const RecurringRoutinesPage(),
@@ -326,12 +325,12 @@ class _SettingsPageState extends State<SettingsPage>
                   ListTile(
                     leading: const Icon(Icons.auto_awesome_outlined),
                     title: const Text('AI features'),
-                    subtitle:
-                        const Text('On-device suggestions, off by default'),
-                    onTap: () => Navigator.of(
-                      context,
-                    ).push(MaterialPageRoute(
-                        builder: (_) => const AiSettingsPage())),
+                    subtitle: const Text(
+                      'On-device suggestions, off by default',
+                    ),
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const AiSettingsPage()),
+                    ),
                   ),
                   const Divider(height: 1, indent: 16, endIndent: 16),
                 ],
@@ -340,7 +339,8 @@ class _SettingsPageState extends State<SettingsPage>
                   title: const Text('Privacy policy'),
                   onTap: () => Navigator.of(context).push(
                     MaterialPageRoute(
-                        builder: (_) => const PrivacyPolicyPage()),
+                      builder: (_) => const PrivacyPolicyPage(),
+                    ),
                   ),
                 ),
               ],
@@ -434,9 +434,10 @@ class _SettingsPageState extends State<SettingsPage>
                       },
                     ),
                   ),
-                  const Text('A',
-                      style:
-                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  const Text(
+                    'A',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
                 ],
               ),
             ),
@@ -597,6 +598,16 @@ class _SettingsPageState extends State<SettingsPage>
           ),
           onTap: _showChangeSttMarkersDialog,
         ),
+        if (_dismissedRecordCount > 0)
+          ListTile(
+            leading: const Icon(Icons.restore_from_trash_outlined),
+            title: const Text('Clear dismissed records'),
+            subtitle: Text(
+              '$_dismissedRecordCount dismissed record(s) will be '
+              'suggested again on the next sync.',
+            ),
+            onTap: _clearDismissedRecords,
+          ),
       ],
     );
   }
@@ -677,7 +688,9 @@ class _SettingsPageState extends State<SettingsPage>
                       const Text(
                         'Suggestions from your Drive:',
                         style: TextStyle(
-                            fontSize: 12, fontWeight: FontWeight.w600),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                       const SizedBox(height: 6),
                       Wrap(
@@ -687,8 +700,10 @@ class _SettingsPageState extends State<SettingsPage>
                             .take(10)
                             .map(
                               (folder) => ActionChip(
-                                label: Text(folder,
-                                    style: const TextStyle(fontSize: 12)),
+                                label: Text(
+                                  folder,
+                                  style: const TextStyle(fontSize: 12),
+                                ),
                                 onPressed: () {
                                   controller.text = folder;
                                   setDialogState(() {});
@@ -778,26 +793,28 @@ class _SettingsPageState extends State<SettingsPage>
     final overlay = Overlay.of(context);
     final googleUser = await GoogleDriveService().currentUser;
     if (googleUser == null) {
-      CrispToast.showOnOverlay(
-        overlay,
-        'Please sign in to Google Drive first',
-      );
+      CrispToast.showOnOverlay(overlay, 'Please sign in to Google Drive first');
       return;
     }
 
     try {
       final contacts = await ContactService().getContacts();
       CrispToast.showOnOverlay(
-          overlay, 'Checking Google Drive for "$_sttFolderName" CSVs...');
+        overlay,
+        'Checking Google Drive for "$_sttFolderName" CSVs...',
+      );
 
-      final candidates =
-          await _timeTrackerService.syncFromDrive(contacts: contacts);
+      final candidates = await _timeTrackerService.syncFromDrive(
+        contacts: contacts,
+      );
 
       if (!mounted) return;
 
       if (candidates.isEmpty) {
         CrispToast.showOnOverlay(
-            overlay, 'No new Contact records found in "$_sttFolderName"');
+          overlay,
+          'No new Contact records found in "$_sttFolderName"',
+        );
       } else {
         _openTimeTrackerQueue();
       }
@@ -807,7 +824,9 @@ class _SettingsPageState extends State<SettingsPage>
       if (errorStr.contains('Not authorized for Google Drive scopes')) {
         // Try interactive scope authorization
         CrispToast.showOnOverlay(
-            overlay, 'Requesting Google Drive read permissions...');
+          overlay,
+          'Requesting Google Drive read permissions...',
+        );
         final granted = await GoogleDriveService().requestDrivePermissions();
         if (granted && mounted) {
           _syncTimeTracker();
@@ -828,7 +847,9 @@ class _SettingsPageState extends State<SettingsPage>
     if (_timeTrackerService.stagingQueue.isEmpty) {
       final overlay = Overlay.of(context);
       CrispToast.showOnOverlay(
-          overlay, 'No pending Time Tracker candidates to review');
+        overlay,
+        'No pending Time Tracker candidates to review',
+      );
       return;
     }
 
@@ -838,6 +859,8 @@ class _SettingsPageState extends State<SettingsPage>
       builder: (ctx) => TimeTrackerStagingSheet(
         candidates: _timeTrackerService.stagingQueue,
         contacts: contacts,
+        onDismissCandidates: (fingerprints) =>
+            _timeTrackerService.dismissCandidates(fingerprints),
         onConfirm: (confirmed) async {
           await _timeTrackerService.commitCandidates(
             confirmed,
@@ -846,11 +869,43 @@ class _SettingsPageState extends State<SettingsPage>
           );
           if (mounted) {
             CrispToast.show(
-                context, 'Imported ${confirmed.length} interactions');
+              context,
+              'Imported ${confirmed.length} interactions',
+            );
           }
         },
       ),
     );
+  }
+
+  Future<void> _clearDismissedRecords() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Clear dismissed records?'),
+        content: const Text(
+          'Dismissed Time Tracker records will be suggested again '
+          'on the next sync.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Clear'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    await _timeTrackerService.clearDismissed();
+    if (!mounted) return;
+    final overlay = Overlay.of(context);
+    CrispToast.showOnOverlay(overlay, 'Dismissed records cleared');
   }
 
   Widget _buildSecurityGroup(BuildContext context) {
@@ -884,10 +939,7 @@ class _SettingsPageState extends State<SettingsPage>
         color: colorScheme.surface,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(14),
-          side: BorderSide(
-            color: colorScheme.cardBorder,
-            width: 1,
-          ),
+          side: BorderSide(color: colorScheme.cardBorder, width: 1),
         ),
         clipBehavior: Clip.antiAlias,
         child: Column(
@@ -941,7 +993,8 @@ class _SettingsPageState extends State<SettingsPage>
             return 0.0;
           }),
           shadowColor: WidgetStateProperty.all(
-              colorScheme.shadow.withValues(alpha: 0.1)),
+            colorScheme.shadow.withValues(alpha: 0.1),
+          ),
           side: WidgetStateProperty.all(BorderSide.none),
           shape: WidgetStateProperty.all(
             RoundedRectangleBorder(borderRadius: BorderRadius.circular(9)),
@@ -1191,7 +1244,9 @@ class _SettingsPageState extends State<SettingsPage>
   }
 
   List<String> _getProposedChanges(
-      InteractionDuplicateGroup group, Map<String, String> contactNames) {
+    InteractionDuplicateGroup group,
+    Map<String, String> contactNames,
+  ) {
     final primary = group.primary;
     final duplicates = group.duplicates;
     final changes = <String>[];
@@ -1246,7 +1301,8 @@ class _SettingsPageState extends State<SettingsPage>
     }
     if (mergedDuration != primary.durationMinutes) {
       changes.add(
-          'Duration: ${primary.durationMinutes != null ? "${primary.durationMinutes} mins" : "[None]"} → $mergedDuration mins');
+        'Duration: ${primary.durationMinutes != null ? "${primary.durationMinutes} mins" : "[None]"} → $mergedDuration mins',
+      );
     }
 
     // 5. Follow up
@@ -1258,7 +1314,8 @@ class _SettingsPageState extends State<SettingsPage>
     }
     if (mergedFollowUp != primary.followUpAt && mergedFollowUp != null) {
       changes.add(
-          'Follow up: [None] → ${DateFormat.yMMMd().format(mergedFollowUp.toLocal())}');
+        'Follow up: [None] → ${DateFormat.yMMMd().format(mergedFollowUp.toLocal())}',
+      );
     }
 
     // 6. Notes
@@ -1402,8 +1459,10 @@ class _SettingsPageState extends State<SettingsPage>
                 ),
               ),
               child: Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
                 child: ConstrainedBox(
                   constraints: BoxConstraints(
                     maxHeight: MediaQuery.of(context).size.height * 0.3,
@@ -1418,13 +1477,16 @@ class _SettingsPageState extends State<SettingsPage>
                             contentPadding: EdgeInsets.zero,
                             title: Text(
                               group.primary.summary,
-                              style:
-                                  const TextStyle(fontWeight: FontWeight.bold),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                             subtitle: Builder(
                               builder: (context) {
-                                final groupChanges =
-                                    _getProposedChanges(group, contactNames);
+                                final groupChanges = _getProposedChanges(
+                                  group,
+                                  contactNames,
+                                );
                                 return Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
@@ -1437,13 +1499,16 @@ class _SettingsPageState extends State<SettingsPage>
                                       const Text(
                                         'Changes to apply:',
                                         style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 11),
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 11,
+                                        ),
                                       ),
                                       for (final change in groupChanges)
                                         Padding(
                                           padding: const EdgeInsets.only(
-                                              left: 8.0, top: 2.0),
+                                            left: 8.0,
+                                            top: 2.0,
+                                          ),
                                           child: Text(
                                             '• $change',
                                             style: TextStyle(

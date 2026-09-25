@@ -12,6 +12,7 @@ class TimeTrackerStagingSheet extends StatefulWidget {
   final List<CandidateInteraction> candidates;
   final List<Contact> contacts;
   final ValueChanged<List<CandidateInteraction>> onConfirm;
+  final ValueChanged<List<String>>? onDismissCandidates;
   final VoidCallback? onDismiss;
 
   const TimeTrackerStagingSheet({
@@ -19,6 +20,7 @@ class TimeTrackerStagingSheet extends StatefulWidget {
     required this.candidates,
     required this.contacts,
     required this.onConfirm,
+    this.onDismissCandidates,
     this.onDismiss,
   });
 
@@ -42,6 +44,9 @@ class _TimeTrackerStagingSheetState extends State<TimeTrackerStagingSheet> {
   }
 
   int get _selectedCount => _items.where((e) => e.selected).length;
+
+  int get _unassignedCount =>
+      _items.where((e) => e.matchedContactIds.isEmpty).length;
 
   List<CandidateInteraction> get _filteredItems {
     if (_filter == null) return _items;
@@ -122,6 +127,20 @@ class _TimeTrackerStagingSheetState extends State<TimeTrackerStagingSheet> {
           const SizedBox(height: 12),
           Row(
             children: [
+              TextButton.icon(
+                icon: const Icon(Icons.clear_all, size: 18),
+                label: const Text('Dismiss all unassigned'),
+                style: TextButton.styleFrom(
+                  foregroundColor: theme.colorScheme.secondaryText,
+                ),
+                onPressed:
+                    _unassignedCount > 0 ? _confirmDismissAllUnassigned : null,
+              ),
+              const Spacer(),
+            ],
+          ),
+          Row(
+            children: [
               TextButton(
                 onPressed: () {
                   widget.onDismiss?.call();
@@ -131,14 +150,7 @@ class _TimeTrackerStagingSheetState extends State<TimeTrackerStagingSheet> {
               ),
               const Spacer(),
               ElevatedButton(
-                onPressed: _selectedCount > 0
-                    ? () {
-                        final confirmed =
-                            _items.where((e) => e.selected).toList();
-                        widget.onConfirm(confirmed);
-                        Navigator.of(context).maybePop();
-                      }
-                    : null,
+                onPressed: _selectedCount > 0 ? _confirmImportSelected : null,
                 child: Text('Import $_selectedCount Selected'),
               ),
             ],
@@ -261,6 +273,11 @@ class _TimeTrackerStagingSheetState extends State<TimeTrackerStagingSheet> {
                       tooltip: 'Import this item',
                       onPressed: () => _commitSingle(item),
                     ),
+                    IconButton(
+                      icon: const Icon(Icons.remove_circle_outline, size: 18),
+                      tooltip: 'Dismiss this item',
+                      onPressed: () => _dismissCandidate(item),
+                    ),
                   ],
                 ),
                 Text(
@@ -272,19 +289,26 @@ class _TimeTrackerStagingSheetState extends State<TimeTrackerStagingSheet> {
                 if (item.possibleDuplicateOf != null) ...[
                   const SizedBox(height: 4),
                   Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.amber.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(6),
-                      border:
-                          Border.all(color: Colors.amber.shade700, width: 0.8),
+                      border: Border.all(
+                        color: Colors.amber.shade700,
+                        width: 0.8,
+                      ),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.warning_amber_rounded,
-                            size: 14, color: Colors.amber.shade800),
+                        Icon(
+                          Icons.warning_amber_rounded,
+                          size: 14,
+                          color: Colors.amber.shade800,
+                        ),
                         const SizedBox(width: 4),
                         Flexible(
                           child: Text(
@@ -326,8 +350,10 @@ class _TimeTrackerStagingSheetState extends State<TimeTrackerStagingSheet> {
                         },
                       ),
                     ActionChip(
-                      label: const Text('+ Add Contact',
-                          style: TextStyle(fontSize: 12)),
+                      label: const Text(
+                        '+ Add Contact',
+                        style: TextStyle(fontSize: 12),
+                      ),
                       onPressed: () => _pickContact(item),
                     ),
                   ],
@@ -396,6 +422,82 @@ class _TimeTrackerStagingSheetState extends State<TimeTrackerStagingSheet> {
     }
   }
 
+  Future<void> _confirmImportSelected() async {
+    final count = _selectedCount;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Import selected?'),
+        content: Text('Add $count record(s) to your BNPB interaction history?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Import'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    final confirmedItems = _items.where((e) => e.selected).toList();
+    widget.onConfirm(confirmedItems);
+    Navigator.of(context).maybePop();
+  }
+
+  Future<void> _confirmDismissAllUnassigned() async {
+    final unassigned =
+        _items.where((e) => e.matchedContactIds.isEmpty).toList();
+    if (unassigned.isEmpty) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Dismiss unassigned?'),
+        content: Text(
+          'Dismiss ${unassigned.length} record(s) with no contact? '
+          'They will not be suggested again.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Dismiss'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    widget.onDismissCandidates?.call(
+      unassigned.map((e) => e.fingerprint).toList(),
+    );
+    setState(() {
+      _items.removeWhere((e) => e.matchedContactIds.isEmpty);
+    });
+    if (_items.isEmpty) {
+      Navigator.of(context).maybePop();
+    }
+  }
+
+  void _dismissCandidate(CandidateInteraction item) {
+    widget.onDismissCandidates?.call([item.fingerprint]);
+    setState(() {
+      _items.removeWhere((e) => e.fingerprint == item.fingerprint);
+    });
+    if (_items.isEmpty) {
+      Navigator.of(context).maybePop();
+    }
+  }
+
   Future<void> _resolveSingleWithAi(CandidateInteraction item) async {
     setState(() {
       _resolvingItemFingerprints.add(item.fingerprint);
@@ -424,8 +526,10 @@ class _TimeTrackerStagingSheetState extends State<TimeTrackerStagingSheet> {
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-            content: Text(
-                'No contacts matched by AI (ensure AI is enabled in Settings)')),
+          content: Text(
+            'No contacts matched by AI (ensure AI is enabled in Settings)',
+          ),
+        ),
       );
     }
   }
