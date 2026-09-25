@@ -236,6 +236,8 @@ class _HomePageState extends State<HomePage>
       builder: (ctx) => TimeTrackerStagingSheet(
         candidates: _timeTrackerSyncService.stagingQueue,
         contacts: _contacts,
+        onDismissCandidates: (fingerprints) =>
+            _timeTrackerSyncService.dismissCandidates(fingerprints),
         onConfirm: (confirmed) async {
           await _timeTrackerSyncService.commitCandidates(
             confirmed,
@@ -245,7 +247,9 @@ class _HomePageState extends State<HomePage>
           if (mounted) {
             _fetchContacts(forceRefresh: true);
             CrispToast.show(
-                context, 'Imported ${confirmed.length} interactions');
+              context,
+              'Imported ${confirmed.length} interactions',
+            );
           }
         },
       ),
@@ -256,7 +260,12 @@ class _HomePageState extends State<HomePage>
   void didChangeMetrics() {
     super.didChangeMetrics();
     final bottomInset = WidgetsBinding
-        .instance.platformDispatcher.views.first.viewInsets.bottom;
+        .instance
+        .platformDispatcher
+        .views
+        .first
+        .viewInsets
+        .bottom;
     final isKeyboardVisible = bottomInset > 0.0;
 
     // If keyboard was visible and now is not, and we have focus, un-focus to close suggestions.
@@ -279,14 +288,13 @@ class _HomePageState extends State<HomePage>
     }
 
     // If using skeleton, enforce minimum delay to prevent flashing
-    final minDelay =
-        useSkeleton ? const Duration(milliseconds: 300) : Duration.zero;
+    final minDelay = useSkeleton
+        ? const Duration(milliseconds: 300)
+        : Duration.zero;
 
     await Future.wait([
       (() async {
-        final contacts = await ContactService().getContacts(
-          forceRefresh: true,
-        );
+        final contacts = await ContactService().getContacts(forceRefresh: true);
         _applyContactsSnapshot(contacts);
         await Future.wait([
           _loadPrayerInsights(),
@@ -562,8 +570,9 @@ class _HomePageState extends State<HomePage>
       if (text.trim().isEmpty) continue;
 
       try {
-        final current =
-            await service.extract(text).timeout(const Duration(seconds: 3));
+        final current = await service
+            .extract(text)
+            .timeout(const Duration(seconds: 3));
         if (current == null) continue;
         final preference = preferences.preferenceFor(cached.pattern.key);
         final span = preference.spanOverride ?? cached.pattern.inferredSpan;
@@ -741,20 +750,20 @@ class _HomePageState extends State<HomePage>
 
   void _openReview() {
     Navigator.of(context)
-        .push(
-      MaterialPageRoute<void>(builder: (_) => const ReviewPage()),
-    )
+        .push(MaterialPageRoute<void>(builder: (_) => const ReviewPage()))
         .then((_) {
-      if (mounted) {
-        _fetchContacts(forceRefresh: true);
-      }
-    });
+          if (mounted) {
+            _fetchContacts(forceRefresh: true);
+          }
+        });
   }
 
   Widget _buildReadyToLogCard() {
     final items = _readyToLogItemsCache
-        .where((item) =>
-            item.pill != null || item.pattern.usesScripturePayload == false)
+        .where(
+          (item) =>
+              item.pill != null || item.pattern.usesScripturePayload == false,
+        )
         .toList();
     final pending = _pendingRoutine;
     if (items.isEmpty && pending == null) return const SizedBox.shrink();
@@ -1043,7 +1052,8 @@ class _HomePageState extends State<HomePage>
                         .push(
                           MaterialPageRoute(
                             builder: (_) => const PrayerDiaryPage(
-                                initialFilter: 'Answered'),
+                              initialFilter: 'Answered',
+                            ),
                           ),
                         )
                         .then((_) => _fetchContacts(forceRefresh: true));
@@ -1221,9 +1231,7 @@ class _HomePageState extends State<HomePage>
                           decoration: BoxDecoration(
                             color: const Color(0x0EFFFFFF),
                             borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: const Color(0x1AFFFFFF),
-                            ),
+                            border: Border.all(color: const Color(0x1AFFFFFF)),
                           ),
                           child: InkWell(
                             borderRadius: BorderRadius.circular(12),
@@ -1260,9 +1268,9 @@ class _HomePageState extends State<HomePage>
                                             Container(
                                               padding:
                                                   const EdgeInsets.symmetric(
-                                                horizontal: 6,
-                                                vertical: 2,
-                                              ),
+                                                    horizontal: 6,
+                                                    vertical: 2,
+                                                  ),
                                               decoration: BoxDecoration(
                                                 color: tagBg,
                                                 borderRadius:
@@ -1305,7 +1313,8 @@ class _HomePageState extends State<HomePage>
                                       borderRadius: BorderRadius.circular(16),
                                       onTap: () =>
                                           _openLogInteractionForContact(
-                                              rec.contact),
+                                            rec.contact,
+                                          ),
                                       child: Container(
                                         padding: const EdgeInsets.symmetric(
                                           horizontal: 10,
@@ -1313,8 +1322,9 @@ class _HomePageState extends State<HomePage>
                                         ),
                                         decoration: BoxDecoration(
                                           color: const Color(0x245FE0A0),
-                                          borderRadius:
-                                              BorderRadius.circular(16),
+                                          borderRadius: BorderRadius.circular(
+                                            16,
+                                          ),
                                           border: Border.all(
                                             color: const Color(0x805FE0A0),
                                             width: 1,
@@ -1366,8 +1376,8 @@ class _HomePageState extends State<HomePage>
     for (var contact in contacts) {
       final location =
           (contact.location != null && contact.location!.isNotEmpty)
-              ? contact.location!
-              : 'Unknown';
+          ? contact.location!
+          : 'Unknown';
       grouped.putIfAbsent(location, () => []);
       grouped[location]!.add(contact);
     }
@@ -1556,8 +1566,9 @@ class _HomePageState extends State<HomePage>
 
   Future<void> _deleteContact(String id) async {
     final previousContacts = List<Contact>.from(_contacts);
-    final optimisticContacts =
-        previousContacts.where((contact) => contact.id != id).toList();
+    final optimisticContacts = previousContacts
+        .where((contact) => contact.id != id)
+        .toList();
 
     _applyContactsSnapshot(optimisticContacts);
 
@@ -1665,10 +1676,7 @@ class _HomePageState extends State<HomePage>
       occurredAt: DateTime.now(),
       participantIds: regular.isEmpty ? [item.contact.id] : regular,
     );
-    await _openLogInteractionForContact(
-      item.contact,
-      customPrefill: prefill,
-    );
+    await _openLogInteractionForContact(item.contact, customPrefill: prefill);
   }
 
   Future<void> _openLogInteractionForContact(
@@ -1725,40 +1733,42 @@ class _HomePageState extends State<HomePage>
   void _navigateToContactDetails(Contact contact) {
     Navigator.of(context)
         .push<Contact>(
-      MaterialPageRoute(
-        builder: (context) => ContactDetailsPage(
-          contact: contact,
-          onDelete: () => _deleteContact(contact.id),
-        ),
-      ),
-    )
+          MaterialPageRoute(
+            builder: (context) => ContactDetailsPage(
+              contact: contact,
+              onDelete: () => _deleteContact(contact.id),
+            ),
+          ),
+        )
         .then((updatedContact) {
-      final targetContact = updatedContact ?? contact;
-      final targetLocation =
-          (targetContact.location != null && targetContact.location!.isNotEmpty)
+          final targetContact = updatedContact ?? contact;
+          final targetLocation =
+              (targetContact.location != null &&
+                  targetContact.location!.isNotEmpty)
               ? targetContact.location!
               : 'Unknown';
 
-      setState(() {
-        _anchorContactId = targetContact.id;
-        if (!_expandedLocations.contains(targetLocation)) {
-          _expandedLocations.add(targetLocation);
-        }
-      });
+          setState(() {
+            _anchorContactId = targetContact.id;
+            if (!_expandedLocations.contains(targetLocation)) {
+              _expandedLocations.add(targetLocation);
+            }
+          });
 
-      _fetchContacts(forceRefresh: true).then((_) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (_anchorContactId != null && _anchorKey.currentContext != null) {
-            Scrollable.ensureVisible(
-              _anchorKey.currentContext!,
-              duration: const Duration(milliseconds: 300),
-              curve: Curves.easeInOut,
-            );
-            _anchorContactId = null;
-          }
+          _fetchContacts(forceRefresh: true).then((_) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (_anchorContactId != null &&
+                  _anchorKey.currentContext != null) {
+                Scrollable.ensureVisible(
+                  _anchorKey.currentContext!,
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeInOut,
+                );
+                _anchorContactId = null;
+              }
+            });
+          });
         });
-      });
-    });
   }
 
   @override
@@ -1794,11 +1804,7 @@ class _HomePageState extends State<HomePage>
           child: SizedBox(
             width: containerSize,
             height: containerSize,
-            child: Icon(
-              icon,
-              size: iconSize,
-              color: iconColor,
-            ),
+            child: Icon(icon, size: iconSize, color: iconColor),
           ),
         ),
       ),
@@ -1826,8 +1832,10 @@ class _HomePageState extends State<HomePage>
       appBar: _isBulkSelectMode
           ? AppBar(
               leading: IconButton(
-                icon: Icon(Icons.close,
-                    color: Theme.of(context).colorScheme.iconColor),
+                icon: Icon(
+                  Icons.close,
+                  color: Theme.of(context).colorScheme.iconColor,
+                ),
                 onPressed: () {
                   setState(() {
                     _isBulkSelectMode = false;
@@ -1850,19 +1858,24 @@ class _HomePageState extends State<HomePage>
               toolbarHeight: 64,
               actions: [
                 IconButton(
-                  icon: Icon(Icons.select_all_rounded,
-                      color: Theme.of(context).colorScheme.iconColor),
+                  icon: Icon(
+                    Icons.select_all_rounded,
+                    color: Theme.of(context).colorScheme.iconColor,
+                  ),
                   tooltip: 'Select All',
                   onPressed: () {
                     setState(() {
-                      _selectedContactIds
-                          .addAll(_filteredContacts.map((c) => c.id));
+                      _selectedContactIds.addAll(
+                        _filteredContacts.map((c) => c.id),
+                      );
                     });
                   },
                 ),
                 IconButton(
-                  icon: Icon(Icons.deselect,
-                      color: Theme.of(context).colorScheme.iconColor),
+                  icon: Icon(
+                    Icons.deselect,
+                    color: Theme.of(context).colorScheme.iconColor,
+                  ),
                   tooltip: 'Deselect All',
                   onPressed: () {
                     setState(() {
@@ -1871,11 +1884,14 @@ class _HomePageState extends State<HomePage>
                   },
                 ),
                 IconButton(
-                  icon: Icon(Icons.edit_location_alt_rounded,
-                      color: Theme.of(context).colorScheme.primary),
+                  icon: Icon(
+                    Icons.edit_location_alt_rounded,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
                   tooltip: 'Edit Location',
-                  onPressed:
-                      _selectedContactIds.isEmpty ? null : _bulkEditLocation,
+                  onPressed: _selectedContactIds.isEmpty
+                      ? null
+                      : _bulkEditLocation,
                 ),
                 const SizedBox(width: 14),
               ],
@@ -1910,8 +1926,9 @@ class _HomePageState extends State<HomePage>
                             ),
                           );
                         },
-                        backgroundColor:
-                            Theme.of(context).colorScheme.surfaceTint,
+                        backgroundColor: Theme.of(context)
+                            .colorScheme
+                            .surfaceTint,
                         iconColor: Theme.of(context).colorScheme.iconColor,
                         tooltip: 'Prayer Lists',
                         containerSize: buttonSize,
@@ -1927,8 +1944,9 @@ class _HomePageState extends State<HomePage>
                             ),
                           );
                         },
-                        backgroundColor:
-                            Theme.of(context).colorScheme.surfaceTint,
+                        backgroundColor: Theme.of(context)
+                            .colorScheme
+                            .surfaceTint,
                         iconColor: Theme.of(context).colorScheme.iconColor,
                         tooltip: 'Prayer Diary',
                         containerSize: buttonSize,
@@ -1938,8 +1956,9 @@ class _HomePageState extends State<HomePage>
                       _buildHeaderButton(
                         icon: Icons.history_rounded,
                         onTap: _openRestoreSheet,
-                        backgroundColor:
-                            Theme.of(context).colorScheme.surfaceTint,
+                        backgroundColor: Theme.of(context)
+                            .colorScheme
+                            .surfaceTint,
                         iconColor: Theme.of(context).colorScheme.iconColor,
                         tooltip: 'Backup and Restore',
                         containerSize: buttonSize,
@@ -1990,8 +2009,10 @@ class _HomePageState extends State<HomePage>
                               fontWeight: FontWeight.w500,
                             ),
                             prefixIcon: Padding(
-                              padding:
-                                  const EdgeInsets.only(left: 15, right: 11),
+                              padding: const EdgeInsets.only(
+                                left: 15,
+                                right: 11,
+                              ),
                               child: Icon(
                                 Icons.search,
                                 color: Theme.of(context).colorScheme.outline,
@@ -2005,8 +2026,9 @@ class _HomePageState extends State<HomePage>
                             suffixIcon: _searchController.text.isNotEmpty
                                 ? IconButton(
                                     icon: const Icon(Icons.clear, size: 18),
-                                    color:
-                                        Theme.of(context).colorScheme.outline,
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .outline,
                                     onPressed: () {
                                       _searchController.clear();
                                     },
@@ -2017,8 +2039,9 @@ class _HomePageState extends State<HomePage>
                               borderSide: BorderSide.none,
                             ),
                             filled: true,
-                            fillColor:
-                                Theme.of(context).colorScheme.surfaceTint,
+                            fillColor: Theme.of(context)
+                                .colorScheme
+                                .surfaceTint,
                             contentPadding: const EdgeInsets.symmetric(
                               vertical: 13,
                               horizontal: 15,
@@ -2094,8 +2117,9 @@ class _HomePageState extends State<HomePage>
                                           color: Theme.of(context)
                                               .colorScheme
                                               .surfaceContainerLow,
-                                          borderRadius:
-                                              BorderRadius.circular(20),
+                                          borderRadius: BorderRadius.circular(
+                                            20,
+                                          ),
                                         ),
                                         child: Text(
                                           '${contactsInLocation.length}',
@@ -2136,8 +2160,8 @@ class _HomePageState extends State<HomePage>
                                   itemCount: isExpanded
                                       ? contactsInLocation.length
                                       : (contactsInLocation.length > 5
-                                          ? 5
-                                          : contactsInLocation.length),
+                                            ? 5
+                                            : contactsInLocation.length),
                                   itemBuilder: (context, index) {
                                     final contact = contactsInLocation[index];
                                     final match = _activeMatches[contact.id];
@@ -2155,22 +2179,26 @@ class _HomePageState extends State<HomePage>
                                                 setState(() {
                                                   if (_selectedContactIds
                                                       .contains(contact.id)) {
-                                                    _selectedContactIds
-                                                        .remove(contact.id);
+                                                    _selectedContactIds.remove(
+                                                      contact.id,
+                                                    );
                                                   } else {
-                                                    _selectedContactIds
-                                                        .add(contact.id);
+                                                    _selectedContactIds.add(
+                                                      contact.id,
+                                                    );
                                                   }
                                                 });
                                               }
                                             : () => _navigateToContactDetails(
-                                                contact),
+                                                contact,
+                                              ),
                                         onLongPress: () {
                                           if (!_isBulkSelectMode) {
                                             setState(() {
                                               _isBulkSelectMode = true;
-                                              _selectedContactIds
-                                                  .add(contact.id);
+                                              _selectedContactIds.add(
+                                                contact.id,
+                                              );
                                             });
                                           }
                                         },
@@ -2181,8 +2209,9 @@ class _HomePageState extends State<HomePage>
                                                 onChanged: (bool? checked) {
                                                   setState(() {
                                                     if (checked == true) {
-                                                      _selectedContactIds
-                                                          .add(contact.id);
+                                                      _selectedContactIds.add(
+                                                        contact.id,
+                                                      );
                                                     } else {
                                                       _selectedContactIds
                                                           .remove(contact.id);
@@ -2216,20 +2245,18 @@ class _HomePageState extends State<HomePage>
                                   Icon(
                                     Icons.person_off_outlined,
                                     size: 48,
-                                    color: Theme.of(
-                                      context,
-                                    ).colorScheme.outline,
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .outline,
                                   ),
                                   const SizedBox(height: 16),
                                   Text(
                                     'No contacts found',
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .bodyLarge
+                                    style: Theme.of(context).textTheme.bodyLarge
                                         ?.copyWith(
-                                          color: Theme.of(
-                                            context,
-                                          ).colorScheme.outline,
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .outline,
                                         ),
                                   ),
                                 ],

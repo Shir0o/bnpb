@@ -1,4 +1,5 @@
 import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:bnpb/models/candidate_interaction.dart';
@@ -13,6 +14,8 @@ import 'package:bnpb/services/time_tracker_parser.dart';
 class TimeTrackerSyncService extends ChangeNotifier {
   static const String _prefKeyImportedFingerprints =
       'stt_imported_fingerprints';
+  static const String _prefKeyDismissedFingerprints =
+      'stt_dismissed_fingerprints';
   static const String _prefKeyStagedCandidates = 'stt_staged_candidates';
   static const String _prefKeyDriveFolder = 'stt_drive_folder_name';
   static const String _prefKeyNameMarkers = 'stt_name_markers';
@@ -24,9 +27,8 @@ class TimeTrackerSyncService extends ChangeNotifier {
   bool _isSyncing = false;
 
   /// Creates a [TimeTrackerSyncService].
-  TimeTrackerSyncService({
-    GoogleDriveService? driveService,
-  }) : _driveService = driveService ?? GoogleDriveService() {
+  TimeTrackerSyncService({GoogleDriveService? driveService})
+    : _driveService = driveService ?? GoogleDriveService() {
     _loadStagedCandidates();
   }
 
@@ -47,8 +49,10 @@ class TimeTrackerSyncService extends ChangeNotifier {
       if (jsonStr != null && jsonStr.isNotEmpty) {
         final list = jsonDecode(jsonStr) as List<dynamic>;
         _stagingQueue = list
-            .map((item) =>
-                CandidateInteraction.fromJson(item as Map<String, dynamic>))
+            .map(
+              (item) =>
+                  CandidateInteraction.fromJson(item as Map<String, dynamic>),
+            )
             .toList();
         notifyListeners();
       }
@@ -74,16 +78,43 @@ class TimeTrackerSyncService extends ChangeNotifier {
     return list.toSet();
   }
 
+  /// Retrieves the set of record fingerprints the user explicitly dismissed.
+  Future<Set<String>> getDismissedFingerprints() async {
+    final prefs = await SharedPreferences.getInstance();
+    final list = prefs.getStringList(_prefKeyDismissedFingerprints) ?? [];
+    return list.toSet();
+  }
+
   /// Marks [fingerprints] as imported in persistent storage and removes them from staging.
   Future<void> markImported(Iterable<String> fingerprints) async {
     final prefs = await SharedPreferences.getInstance();
-    final current =
-        (prefs.getStringList(_prefKeyImportedFingerprints) ?? []).toSet();
+    final current = (prefs.getStringList(_prefKeyImportedFingerprints) ?? [])
+        .toSet();
     current.addAll(fingerprints);
     await prefs.setStringList(_prefKeyImportedFingerprints, current.toList());
 
     // Also remove from staging queue
     removeCandidates(fingerprints);
+  }
+
+  /// Marks [fingerprints] as dismissed so future syncs skip them, and removes
+  /// them from the staging queue without creating Interactions.
+  Future<void> dismissCandidates(Iterable<String> fingerprints) async {
+    final prefs = await SharedPreferences.getInstance();
+    final current = (prefs.getStringList(_prefKeyDismissedFingerprints) ?? [])
+        .toSet();
+    current.addAll(fingerprints);
+    await prefs.setStringList(_prefKeyDismissedFingerprints, current.toList());
+
+    removeCandidates(fingerprints);
+  }
+
+  /// Clears all dismissed fingerprints so previously dismissed candidates
+  /// are suggested again on future syncs.
+  Future<void> clearDismissed() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_prefKeyDismissedFingerprints);
+    notifyListeners();
   }
 
   /// Replaces the current staging queue with [candidates].
@@ -95,8 +126,9 @@ class TimeTrackerSyncService extends ChangeNotifier {
 
   /// Updates an existing candidate in the staging queue.
   void updateCandidate(CandidateInteraction candidate) {
-    final idx =
-        _stagingQueue.indexWhere((e) => e.fingerprint == candidate.fingerprint);
+    final idx = _stagingQueue.indexWhere(
+      (e) => e.fingerprint == candidate.fingerprint,
+    );
     if (idx != -1) {
       _stagingQueue[idx] = candidate;
       _saveStagedCandidates();
@@ -176,8 +208,9 @@ class TimeTrackerSyncService extends ChangeNotifier {
         return _stagingQueue;
       }
 
-      final csvContent =
-          await _driveService.downloadFileAsString(latestFile.id!);
+      final csvContent = await _driveService.downloadFileAsString(
+        latestFile.id!,
+      );
       final markers = await getNameMarkers();
       final parsedCandidates = TimeTrackerParser.parseCsv(
         csvContent,
@@ -186,10 +219,15 @@ class TimeTrackerSyncService extends ChangeNotifier {
       );
 
       final importedFps = await getImportedFingerprints();
+      final dismissedFps = await getDismissedFingerprints();
 
-      // Only retain candidates that have not yet been imported
+      // Only retain candidates that have not yet been imported or dismissed
       var newCandidates = parsedCandidates
-          .where((c) => !importedFps.contains(c.fingerprint))
+          .where(
+            (c) =>
+                !importedFps.contains(c.fingerprint) &&
+                !dismissedFps.contains(c.fingerprint),
+          )
           .toList();
 
       if (existingInteractions != null && existingInteractions.isNotEmpty) {

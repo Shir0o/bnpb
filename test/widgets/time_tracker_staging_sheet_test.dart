@@ -11,8 +11,9 @@ void main() {
       Contact(id: 'c2', firstName: 'Benji', lastName: 'Lee'),
     ];
 
-    testWidgets('renders candidates and allows selecting / deselecting',
-        (tester) async {
+    testWidgets('renders candidates and allows selecting / deselecting', (
+      tester,
+    ) async {
       final candidates = [
         CandidateInteraction(
           fingerprint: 'fp1',
@@ -66,8 +67,10 @@ void main() {
 
       expect(find.text('Import 1 Selected'), findsOneWidget);
 
-      // Tap confirm button
+      // Tap confirm button, then confirm the dialog.
       await tester.tap(find.text('Import 1 Selected'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(ElevatedButton, 'Import'));
       await tester.pumpAndSettle();
 
       expect(confirmedCandidates, isNotNull);
@@ -112,14 +115,15 @@ void main() {
       );
 
       // First candidate row should be the newer Dinner.
-      final firstSummary =
-          tester.widget<Text>(find.text('Dinner - Boba').first).data;
+      final firstSummary = tester
+          .widget<Text>(find.text('Dinner - Boba').first)
+          .data;
       expect(firstSummary, 'Dinner - Boba');
 
       // Checkbox order: Dinner first, then Lunch.
       final checkboxes = find.byType(Checkbox);
       final positions = [
-        for (var i = 0; i < 2; i++) tester.getTopLeft(checkboxes.at(i)).dy
+        for (var i = 0; i < 2; i++) tester.getTopLeft(checkboxes.at(i)).dy,
       ];
       expect(positions[0], lessThan(positions[1]));
     });
@@ -199,8 +203,9 @@ void main() {
       expect(find.text('Dinner - Boba'), findsNothing);
     });
 
-    testWidgets('allows committing a single item without importing all',
-        (tester) async {
+    testWidgets('allows committing a single item without importing all', (
+      tester,
+    ) async {
       final candidates = [
         CandidateInteraction(
           fingerprint: 'fp1',
@@ -257,6 +262,179 @@ void main() {
       // Dinner is now removed from queue, Lunch remains
       expect(find.text('Dinner - Boba'), findsNothing);
       expect(find.text('Lunch w/ Abel'), findsOneWidget);
+    });
+
+    testWidgets('dismisses a single item and reports its fingerprint', (
+      tester,
+    ) async {
+      final candidates = [
+        CandidateInteraction(
+          fingerprint: 'fp1',
+          occurredAt: DateTime(2025, 9, 17, 11, 46),
+          durationMinutes: 60,
+          activityName: 'Lunch',
+          summary: 'Lunch w/ Abel',
+          matchedContactIds: ['c1'],
+          rawComment: 'w/ Abel',
+          selected: false,
+        ),
+        CandidateInteraction(
+          fingerprint: 'fp2',
+          occurredAt: DateTime(2025, 9, 19, 22, 16),
+          durationMinutes: 46,
+          activityName: 'Dinner',
+          summary: 'Dinner - Boba',
+          matchedContactIds: ['c2'],
+          rawComment: 'Boba w/ Benji',
+          selected: false,
+        ),
+      ];
+
+      final dismissedFingerprints = <String>[];
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: TimeTrackerStagingSheet(
+              candidates: candidates,
+              contacts: contacts,
+              onConfirm: (_) {},
+              onDismissCandidates: (fingerprints) {
+                dismissedFingerprints.addAll(fingerprints);
+              },
+            ),
+          ),
+        ),
+      );
+
+      // Dismiss the first (newest, Dinner) item.
+      final dismissBtns = find.byTooltip('Dismiss this item');
+      expect(dismissBtns, findsNWidgets(2));
+      await tester.tap(dismissBtns.first);
+      await tester.pumpAndSettle();
+
+      expect(dismissedFingerprints, ['fp2']);
+      expect(find.text('Dinner - Boba'), findsNothing);
+      expect(find.text('Lunch w/ Abel'), findsOneWidget);
+    });
+
+    testWidgets(
+      'dismiss all unassigned requires confirmation and removes them',
+      (tester) async {
+        final candidates = [
+          CandidateInteraction(
+            fingerprint: 'fp1',
+            occurredAt: DateTime(2025, 9, 17, 11, 46),
+            durationMinutes: 60,
+            activityName: 'Lunch',
+            summary: 'Lunch w/ Abel',
+            matchedContactIds: ['c1'],
+            rawComment: 'w/ Abel',
+            selected: false,
+          ),
+          CandidateInteraction(
+            fingerprint: 'fp3',
+            occurredAt: DateTime(2025, 9, 20, 9, 0),
+            durationMinutes: 30,
+            activityName: 'Meeting',
+            summary: 'Meeting - general',
+            matchedContactIds: [],
+            rawComment: 'general',
+            selected: false,
+          ),
+        ];
+
+        final dismissedFingerprints = <String>[];
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: TimeTrackerStagingSheet(
+                candidates: candidates,
+                contacts: contacts,
+                onConfirm: (_) {},
+                onDismissCandidates: (fingerprints) {
+                  dismissedFingerprints.addAll(fingerprints);
+                },
+              ),
+            ),
+          ),
+        );
+
+        expect(find.text('Dismiss all unassigned'), findsOneWidget);
+
+        // Cancel the confirmation dialog: nothing is dismissed.
+        await tester.tap(find.text('Dismiss all unassigned'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.widgetWithText(TextButton, 'Cancel'));
+        await tester.pumpAndSettle();
+        expect(dismissedFingerprints, isEmpty);
+        expect(find.text('Meeting - general'), findsOneWidget);
+
+        // Confirm the dialog: unassigned item dismissed, assigned stays.
+        await tester.tap(find.text('Dismiss all unassigned'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.widgetWithText(ElevatedButton, 'Dismiss'));
+        await tester.pumpAndSettle();
+
+        expect(dismissedFingerprints, ['fp3']);
+        expect(find.text('Meeting - general'), findsNothing);
+        expect(find.text('Lunch w/ Abel'), findsOneWidget);
+      },
+    );
+
+    testWidgets('import all is gated behind confirmation', (tester) async {
+      final candidates = [
+        CandidateInteraction(
+          fingerprint: 'fp1',
+          occurredAt: DateTime(2025, 9, 17, 11, 46),
+          durationMinutes: 60,
+          activityName: 'Lunch',
+          summary: 'Lunch w/ Abel',
+          matchedContactIds: ['c1'],
+          rawComment: 'w/ Abel',
+          selected: true,
+        ),
+        CandidateInteraction(
+          fingerprint: 'fp2',
+          occurredAt: DateTime(2025, 9, 19, 22, 16),
+          durationMinutes: 46,
+          activityName: 'Dinner',
+          summary: 'Dinner - Boba',
+          matchedContactIds: ['c2'],
+          rawComment: 'Boba w/ Benji',
+          selected: true,
+        ),
+      ];
+
+      var confirmCalls = 0;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: TimeTrackerStagingSheet(
+              candidates: candidates,
+              contacts: contacts,
+              onConfirm: (_) => confirmCalls++,
+            ),
+          ),
+        ),
+      );
+
+      // Cancel leaves everything in place.
+      await tester.tap(find.text('Import 2 Selected'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(TextButton, 'Cancel'));
+      await tester.pumpAndSettle();
+      expect(confirmCalls, 0);
+      expect(find.text('Dinner - Boba'), findsOneWidget);
+
+      // Confirm triggers onConfirm once.
+      await tester.tap(find.text('Import 2 Selected'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(ElevatedButton, 'Import'));
+      await tester.pumpAndSettle();
+      expect(confirmCalls, 1);
     });
   });
 }
