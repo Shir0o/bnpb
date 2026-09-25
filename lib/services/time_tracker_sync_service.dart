@@ -28,7 +28,7 @@ class TimeTrackerSyncService extends ChangeNotifier {
 
   /// Creates a [TimeTrackerSyncService].
   TimeTrackerSyncService({GoogleDriveService? driveService})
-    : _driveService = driveService ?? GoogleDriveService() {
+      : _driveService = driveService ?? GoogleDriveService() {
     _loadStagedCandidates();
   }
 
@@ -88,8 +88,8 @@ class TimeTrackerSyncService extends ChangeNotifier {
   /// Marks [fingerprints] as imported in persistent storage and removes them from staging.
   Future<void> markImported(Iterable<String> fingerprints) async {
     final prefs = await SharedPreferences.getInstance();
-    final current = (prefs.getStringList(_prefKeyImportedFingerprints) ?? [])
-        .toSet();
+    final current =
+        (prefs.getStringList(_prefKeyImportedFingerprints) ?? []).toSet();
     current.addAll(fingerprints);
     await prefs.setStringList(_prefKeyImportedFingerprints, current.toList());
 
@@ -101,8 +101,8 @@ class TimeTrackerSyncService extends ChangeNotifier {
   /// them from the staging queue without creating Interactions.
   Future<void> dismissCandidates(Iterable<String> fingerprints) async {
     final prefs = await SharedPreferences.getInstance();
-    final current = (prefs.getStringList(_prefKeyDismissedFingerprints) ?? [])
-        .toSet();
+    final current =
+        (prefs.getStringList(_prefKeyDismissedFingerprints) ?? []).toSet();
     current.addAll(fingerprints);
     await prefs.setStringList(_prefKeyDismissedFingerprints, current.toList());
 

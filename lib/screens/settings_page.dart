@@ -145,8 +145,8 @@ class _SettingsPageState extends State<SettingsPage>
     _biometricEnabled = await _securityService.isBiometricEnabled();
     _biometricAvailable = await _securityService.canUseBiometrics();
     final reminderService = ReminderService();
-    _supportsExactAlarmPermission = await reminderService
-        .isExactAlarmPermissionRelevant();
+    _supportsExactAlarmPermission =
+        await reminderService.isExactAlarmPermissionRelevant();
     _exactAlarmOptIn = await reminderService.isExactAlarmOptInEnabled();
 
     final elapsed = stopwatch.elapsedMilliseconds;
@@ -620,24 +620,21 @@ class _SettingsPageState extends State<SettingsPage>
 
     if (_googleUser != null) {
       isLoadingFolders = true;
-      GoogleDriveService()
-          .listUserFolders()
-          .then((folders) {
-            if (mounted) {
-              availableFolders = folders
-                  .map((f) => f.name ?? '')
-                  .where((n) => n.isNotEmpty)
-                  .toList();
-              isLoadingFolders = false;
-              updateDialogState?.call(() {});
-            }
-          })
-          .catchError((_) {
-            if (mounted) {
-              isLoadingFolders = false;
-              updateDialogState?.call(() {});
-            }
-          });
+      GoogleDriveService().listUserFolders().then((folders) {
+        if (mounted) {
+          availableFolders = folders
+              .map((f) => f.name ?? '')
+              .where((n) => n.isNotEmpty)
+              .toList();
+          isLoadingFolders = false;
+          updateDialogState?.call(() {});
+        }
+      }).catchError((_) {
+        if (mounted) {
+          isLoadingFolders = false;
+          updateDialogState?.call(() {});
+        }
+      });
     }
 
     await showDialog<void>(
@@ -1075,8 +1072,8 @@ class _SettingsPageState extends State<SettingsPage>
     }
 
     final reminderService = ReminderService();
-    final supportsExactAlarmPermission = await reminderService
-        .isExactAlarmPermissionRelevant();
+    final supportsExactAlarmPermission =
+        await reminderService.isExactAlarmPermissionRelevant();
     final exactAlarmOptIn = await reminderService.isExactAlarmOptInEnabled();
 
     if (mounted) {
@@ -1125,7 +1122,8 @@ class _SettingsPageState extends State<SettingsPage>
       const Duration(hours: 1),
       const Duration(days: 1),
       current,
-    }.toList()..sort();
+    }.toList()
+      ..sort();
   }
 
   String _formatLeadTime(ReminderChannel channel, Duration d) {
@@ -1446,13 +1444,17 @@ class _SettingsPageState extends State<SettingsPage>
             ),
             const SizedBox(height: 8),
             Material(
-              color: Theme.of(context).colorScheme.surfaceContainerHighest
+              color: Theme.of(context)
+                  .colorScheme
+                  .surfaceContainerHighest
                   .withValues(alpha: 0.3),
               clipBehavior: Clip.antiAlias,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(8),
                 side: BorderSide(
-                  color: Theme.of(context).colorScheme.outline
+                  color: Theme.of(context)
+                      .colorScheme
+                      .outline
                       .withValues(alpha: 0.2),
                 ),
               ),

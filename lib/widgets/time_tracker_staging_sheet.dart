@@ -133,9 +133,8 @@ class _TimeTrackerStagingSheetState extends State<TimeTrackerStagingSheet> {
                 style: TextButton.styleFrom(
                   foregroundColor: theme.colorScheme.secondaryText,
                 ),
-                onPressed: _unassignedCount > 0
-                    ? _confirmDismissAllUnassigned
-                    : null,
+                onPressed:
+                    _unassignedCount > 0 ? _confirmDismissAllUnassigned : null,
               ),
               const Spacer(),
             ],
@@ -167,9 +166,8 @@ class _TimeTrackerStagingSheetState extends State<TimeTrackerStagingSheet> {
     final matchedIds = <String>{
       for (final item in _items) ...item.matchedContactIds,
     };
-    final relevantContacts = contacts
-        .where((c) => matchedIds.contains(c.id))
-        .toList();
+    final relevantContacts =
+        contacts.where((c) => matchedIds.contains(c.id)).toList();
 
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
@@ -251,8 +249,8 @@ class _TimeTrackerStagingSheetState extends State<TimeTrackerStagingSheet> {
                       ),
                     ),
                     IconButton(
-                      icon:
-                          _resolvingItemFingerprints.contains(item.fingerprint)
+                      icon: _resolvingItemFingerprints
+                              .contains(item.fingerprint)
                           ? const SizedBox(
                               width: 16,
                               height: 16,
@@ -262,8 +260,8 @@ class _TimeTrackerStagingSheetState extends State<TimeTrackerStagingSheet> {
                       tooltip: 'Resolve with AI',
                       onPressed:
                           _resolvingItemFingerprints.contains(item.fingerprint)
-                          ? null
-                          : () => _resolveSingleWithAi(item),
+                              ? null
+                              : () => _resolveSingleWithAi(item),
                     ),
                     IconButton(
                       icon: const Icon(Icons.edit_outlined, size: 18),
@@ -452,9 +450,8 @@ class _TimeTrackerStagingSheetState extends State<TimeTrackerStagingSheet> {
   }
 
   Future<void> _confirmDismissAllUnassigned() async {
-    final unassigned = _items
-        .where((e) => e.matchedContactIds.isEmpty)
-        .toList();
+    final unassigned =
+        _items.where((e) => e.matchedContactIds.isEmpty).toList();
     if (unassigned.isEmpty) return;
 
     final confirmed = await showDialog<bool>(

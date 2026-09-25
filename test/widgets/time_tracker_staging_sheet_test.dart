@@ -115,9 +115,8 @@ void main() {
       );
 
       // First candidate row should be the newer Dinner.
-      final firstSummary = tester
-          .widget<Text>(find.text('Dinner - Boba').first)
-          .data;
+      final firstSummary =
+          tester.widget<Text>(find.text('Dinner - Boba').first).data;
       expect(firstSummary, 'Dinner - Boba');
 
       // Checkbox order: Dinner first, then Lunch.
