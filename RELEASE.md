@@ -2,6 +2,18 @@
 
 All notable changes to the BNPB project are documented here.
 
+## [1.9.0](https://github.com/Shir0o/bnpb/compare/v1.8.0...v1.9.0) (2026-09-25)
+
+
+### Features
+
+* **sync:** persistent dismissal of Time Tracker staging candidates ([#301](https://github.com/Shir0o/bnpb/issues/301)) ([e260fcd](https://github.com/Shir0o/bnpb/commit/e260fcd90a09ef7df57336e6bb1149d71ecbc1b8))
+
+
+### Bug Fixes
+
+* **reminders:** stop recurring rescheduling of overdue prayer requests and interactions ([#299](https://github.com/Shir0o/bnpb/issues/299)) ([47cae8b](https://github.com/Shir0o/bnpb/commit/47cae8bbf2d54c4f6f1d06f54289cd79c5f5ed27)), closes [#287](https://github.com/Shir0o/bnpb/issues/287)
+
 ## [1.8.0](https://github.com/Shir0o/bnpb/compare/v1.7.0...v1.8.0) (2026-09-19)
 
 
