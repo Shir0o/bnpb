@@ -195,19 +195,33 @@ jobs:
             # Strip Markdown commit links and issue links: e.g. ([#123](...)) or ([abc](...))
             cleaned = body.gsub(/\s*\(\[[^\]]+\]\([^)]+\)\)/, "")
             cleaned = cleaned.gsub(/\[([^\]]+)\]\([^)]+\)/, "\\1")
-            # Strip bold/italic formatting
-            cleaned = cleaned.gsub(/\*\*([^*]+)\*\*/, "\\1")
-            cleaned = cleaned.gsub(/\*([^*]+)\*/, "\\1")
 
             # Convert markdown headings (### Features) to plain titles with colon
             cleaned = cleaned.gsub(/^###?\s+(.+)$/, "\\1:")
 
-            # Standardize bullet points using unicode bullet
-            cleaned = cleaned.gsub(/^\s*[\*\-]\s+/, "\u2022 ")
+            # Process line-by-line: standardize bullets, strip bold/italics
+            lines = cleaned.lines.map do |line|
+              l = line.strip
+              if l =~ /^[\*\-]\s+(.*)$/
+                item = $1.gsub(/\*\*([^*]+)\*\*/, "\\1").gsub(/\*([^*]+)\*/, "\\1").strip
+                "\u2022 #{item}"
+              else
+                l.gsub(/\*\*([^*]+)\*\*/, "\\1").gsub(/\*([^*]+)\*/, "\\1")
+              end
+            end
 
-            # Clean trailing spaces and excess blank lines
-            cleaned = cleaned.lines.map(&:rstrip).join("\n")
-            cleaned = cleaned.gsub(/\n{3,}/, "\n\n").strip
+            # Remove blank lines immediately following headings (e.g. "Features:\n")
+            # and collapse multiple consecutive blank lines into at most one.
+            formatted = []
+            lines.each do |l|
+              if l.empty?
+                formatted << "" unless formatted.empty? || formatted.last == "" || formatted.last.end_with?(":")
+              else
+                formatted << l
+              end
+            end
+
+            cleaned = formatted.join("\n").strip
 
             # Enforce 500-char Play Store limit
             if cleaned.length > 500
