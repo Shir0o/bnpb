@@ -2,6 +2,13 @@
 
 All notable changes to the BNPB project are documented here.
 
+## [1.9.1](https://github.com/Shir0o/bnpb/compare/v1.9.0...v1.9.1) (2026-10-02)
+
+
+### Bug Fixes
+
+* **ci:** format Play Store release notes without leading spaces or excess blank lines ([#306](https://github.com/Shir0o/bnpb/issues/306)) ([344ac06](https://github.com/Shir0o/bnpb/commit/344ac064d63311e12c8280dec761bbc8d416ad99))
+
 ## [1.9.0](https://github.com/Shir0o/bnpb/compare/v1.8.0...v1.9.0) (2026-09-25)
 
 
