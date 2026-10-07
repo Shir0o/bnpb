@@ -46,111 +46,109 @@ void main() {
   });
 
   testWidgets(
-      'displays Create New Contact tile and handles creation & auto-selection via QuickCreateContactDialog',
-      (
-    WidgetTester tester,
-  ) async {
-    Contact? createdContact;
+    'displays Create New Contact tile and handles creation & auto-selection via QuickCreateContactDialog',
+    (WidgetTester tester) async {
+      Contact? createdContact;
 
-    // 1. Stub DBHelper and mock search service
-    when(() => mockDBHelper.getContacts()).thenAnswer((_) async => [
+      // 1. Stub DBHelper and mock search service
+      when(() => mockDBHelper.getContacts()).thenAnswer(
+        (_) async => [
           Contact(id: 'c1', firstName: 'Alice', lastName: 'Smith'),
           if (createdContact != null) createdContact!,
-        ]);
-    when(() => mockDBHelper.getDistinctLocations()).thenAnswer((_) async => []);
-    when(() => mockDBHelper.insertContact(any()))
-        .thenAnswer((invocation) async {
-      createdContact = invocation.positionalArguments[0] as Contact;
-    });
+        ],
+      );
+      when(() => mockDBHelper.getDistinctLocations())
+          .thenAnswer((_) async => []);
+      when(() => mockDBHelper.insertContact(any()))
+          .thenAnswer((invocation) async {
+        createdContact = invocation.positionalArguments[0] as Contact;
+      });
 
-    when(() => mockBackupService.exportBackup()).thenAnswer((_) async => null);
-    when(() => mockReminderCoordinator.syncSignificantDates(any()))
-        .thenAnswer((_) async {});
+      when(() => mockBackupService.exportBackup())
+          .thenAnswer((_) async => null);
+      when(() => mockReminderCoordinator.syncSignificantDates(any()))
+          .thenAnswer((_) async {});
 
-    when(() => mockSearchService.index(any())).thenReturn(null);
-    when(() => mockSearchService.search(any())).thenAnswer((invocation) async {
-      final query = invocation.positionalArguments[0] as String;
-      if (query.isEmpty) {
-        return [
-          ContactMatch(
-            contact: Contact(id: 'c1', firstName: 'Alice', lastName: 'Smith'),
-            score: 0,
-          ),
-        ];
-      } else if (query == 'John Doe') {
-        if (createdContact != null) {
+      when(() => mockSearchService.index(any())).thenReturn(null);
+      when(() => mockSearchService.search(any())).thenAnswer((
+        invocation,
+      ) async {
+        final query = invocation.positionalArguments[0] as String;
+        if (query.isEmpty) {
           return [
-            ContactMatch(contact: createdContact!, score: 1.0),
+            ContactMatch(
+              contact: Contact(id: 'c1', firstName: 'Alice', lastName: 'Smith'),
+              score: 0,
+            ),
           ];
+        } else if (query == 'John Doe') {
+          if (createdContact != null) {
+            return [ContactMatch(contact: createdContact!, score: 1.0)];
+          }
+          return [];
         }
         return [];
-      }
-      return [];
-    });
+      });
 
-    // 2. Pump ContactSelectionSheet inside a MaterialApp
-    await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: ContactSelectionSheet(
-            searchService: mockSearchService,
+      // 2. Pump ContactSelectionSheet inside a MaterialApp
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: ContactSelectionSheet(searchService: mockSearchService),
           ),
         ),
-      ),
-    );
+      );
 
-    // Wait for the loading delay (400ms) to complete
-    await tester.pump(const Duration(milliseconds: 500));
-    await tester.pump();
+      // Wait for the loading delay (400ms) to complete
+      await tester.pump(const Duration(milliseconds: 500));
+      await tester.pump();
 
-    // Verify existing contacts are displayed
-    expect(find.text('Alice Smith'), findsOneWidget);
+      // Verify existing contacts are displayed
+      expect(find.text('Alice Smith'), findsOneWidget);
 
-    // Verify "Create New Contact" tile is present
-    expect(find.text('Create New Contact'), findsOneWidget);
-    expect(find.text('Add a new person to your contacts'), findsOneWidget);
+      // Verify "Create New Contact" tile is present
+      expect(find.text('Create New Contact'), findsOneWidget);
+      expect(find.text('Add a new person to your contacts'), findsOneWidget);
 
-    // 3. Enter search query
-    await tester.enterText(find.byType(TextField), 'John Doe');
-    await tester.pump();
+      // 3. Enter search query
+      await tester.enterText(find.byType(TextField), 'John Doe');
+      await tester.pump();
 
-    // Verify the tile text updates to reflect search query
-    expect(find.text("Create Contact 'John Doe'"), findsOneWidget);
-    expect(find.text("Create and select 'John Doe'"), findsOneWidget);
+      // Verify the tile text updates to reflect search query
+      expect(find.text("Create Contact 'John Doe'"), findsOneWidget);
+      expect(find.text("Create and select 'John Doe'"), findsOneWidget);
 
-    // 4. Tap on "Create Contact 'John Doe'"
-    await tester.tap(find.text("Create Contact 'John Doe'"));
-    await tester.pumpAndSettle();
+      // 4. Tap on "Create Contact 'John Doe'"
+      await tester.tap(find.text("Create Contact 'John Doe'"));
+      await tester.pumpAndSettle();
 
-    // Verify QuickCreateContactDialog is displayed
-    expect(find.byType(QuickCreateContactDialog), findsOneWidget);
+      // Verify QuickCreateContactDialog is displayed
+      expect(find.byType(QuickCreateContactDialog), findsOneWidget);
 
-    // First name and last name should be pre-filled as "John" and "Doe"
-    expect(find.text('John'), findsOneWidget);
-    expect(find.text('Doe'), findsOneWidget);
+      // First name and last name should be pre-filled as "John" and "Doe"
+      expect(find.text('John'), findsOneWidget);
+      expect(find.text('Doe'), findsOneWidget);
 
-    // 5. Save the contact from QuickCreateContactDialog
-    await tester.tap(find.text('Create & Select'));
-    await tester.idle();
+      // 5. Save the contact from QuickCreateContactDialog
+      await tester.tap(find.text('Create & Select'));
+      await tester.idle();
 
-    for (int i = 0; i < 10; i++) {
-      await tester.pump(const Duration(milliseconds: 100));
-    }
+      for (int i = 0; i < 10; i++) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
 
-    // Verify that dialog popped
-    expect(find.byType(QuickCreateContactDialog), findsNothing);
-    expect(find.byType(ContactSelectionSheet), findsOneWidget);
+      // Verify that dialog popped
+      expect(find.byType(QuickCreateContactDialog), findsNothing);
+      expect(find.byType(ContactSelectionSheet), findsOneWidget);
 
-    // Verify John Doe is now in the list and selected
-    final johnDoeTile = find.widgetWithText(ListTile, 'John Doe');
-    expect(johnDoeTile, findsOneWidget);
+      // Verify John Doe is now in the list and selected
+      final johnDoeTile = find.widgetWithText(ListTile, 'John Doe');
+      expect(johnDoeTile, findsOneWidget);
 
-    final johnCheckbox = tester.widget<Checkbox>(
-      find.descendant(
-        of: johnDoeTile,
-        matching: find.byType(Checkbox),
-      ),
-    );
-    expect(johnCheckbox.value, isTrue);
-  });
+      final johnCheckbox = tester.widget<Checkbox>(
+        find.descendant(of: johnDoeTile, matching: find.byType(Checkbox)),
+      );
+      expect(johnCheckbox.value, isTrue);
+    },
+  );
 }

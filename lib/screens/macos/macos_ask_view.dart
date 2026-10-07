@@ -188,16 +188,21 @@ class _MacOSAskViewState extends State<MacOSAskView> {
                     ),
                   ),
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 18, vertical: 15),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 18,
+                    vertical: 15,
+                  ),
                   decoration: BoxDecoration(
                     color: colorScheme.aiCardBg,
                     borderRadius: BorderRadius.circular(14),
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.psychology_outlined,
-                          size: 20, color: Color(0xFF5FE0A0)),
+                      const Icon(
+                        Icons.psychology_outlined,
+                        size: 20,
+                        color: Color(0xFF5FE0A0),
+                      ),
                       const SizedBox(width: 12),
                       Expanded(
                         child: TextField(
@@ -224,15 +229,19 @@ class _MacOSAskViewState extends State<MacOSAskView> {
                           height: 18,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
-                            valueColor:
-                                AlwaysStoppedAnimation(Color(0xFF5FE0A0)),
+                            valueColor: AlwaysStoppedAnimation(
+                              Color(0xFF5FE0A0),
+                            ),
                           ),
                         )
                       else if (_controller.text.isNotEmpty)
                         InkWell(
                           onTap: _clearQuery,
-                          child: const Icon(Icons.close,
-                              size: 18, color: Color(0xFF94A49B)),
+                          child: const Icon(
+                            Icons.close,
+                            size: 18,
+                            color: Color(0xFF94A49B),
+                          ),
                         ),
                     ],
                   ),
@@ -294,8 +303,10 @@ class _MacOSAskViewState extends State<MacOSAskView> {
                 onTap: () => _runHistoryQuery(q),
                 child: Container(
                   margin: const EdgeInsets.only(bottom: 10),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 17, vertical: 14),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 17,
+                    vertical: 14,
+                  ),
                   decoration: BoxDecoration(
                     color: colorScheme.surfaceTint,
                     borderRadius: BorderRadius.circular(13),
@@ -364,8 +375,10 @@ class _MacOSAskViewState extends State<MacOSAskView> {
               onTap: () => _openContact(r.contact),
               child: Container(
                 margin: const EdgeInsets.only(bottom: 10),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 17, vertical: 15),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 17,
+                  vertical: 15,
+                ),
                 decoration: BoxDecoration(
                   border: Border.all(color: colorScheme.cardBorder),
                   borderRadius: BorderRadius.circular(14),
@@ -388,7 +401,9 @@ class _MacOSAskViewState extends State<MacOSAskView> {
                         ),
                         Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 9, vertical: 3),
+                            horizontal: 9,
+                            vertical: 3,
+                          ),
                           decoration: BoxDecoration(
                             color: colorScheme.greenTint,
                             borderRadius: BorderRadius.circular(20),

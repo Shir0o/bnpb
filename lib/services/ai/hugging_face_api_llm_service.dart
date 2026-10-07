@@ -1,5 +1,7 @@
 import 'dart:convert';
+
 import 'package:http/http.dart' as http;
+
 import 'local_llm_service.dart';
 
 /// Cloud backend for [LocalLlmService] that routes prompts to Hugging Face's
@@ -32,8 +34,9 @@ class HuggingFaceApiLlmService implements LocalLlmService {
     int maxTokens = 512,
     double temperature = 0.4,
   }) async {
-    final uri =
-        Uri.parse('https://api-inference.huggingface.co/models/$_modelId');
+    final uri = Uri.parse(
+      'https://api-inference.huggingface.co/models/$_modelId',
+    );
     final response = await _client.post(
       uri,
       headers: {

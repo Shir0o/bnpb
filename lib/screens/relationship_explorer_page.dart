@@ -57,9 +57,9 @@ class _RelationshipExplorerPageState extends State<RelationshipExplorerPage> {
         .where((entry) => entry.value.length > 1)
         .toList()
       ..sort(
-        (a, b) => getDisplayName(
-          a.key,
-        ).toLowerCase().compareTo(getDisplayName(b.key).toLowerCase()),
+        (a, b) => getDisplayName(a.key)
+            .toLowerCase()
+            .compareTo(getDisplayName(b.key).toLowerCase()),
       );
 
     if (!mounted) return;

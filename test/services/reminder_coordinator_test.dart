@@ -135,8 +135,10 @@ void main() {
         silent: true,
       );
 
-      expect(fakeReminderService.cancelledKeys,
-          contains('prayerUpdate:prayer_101'));
+      expect(
+        fakeReminderService.cancelledKeys,
+        contains('prayerUpdate:prayer_101'),
+      );
       expect(fakeReminderService.scheduledCalls, isEmpty);
     });
 
@@ -172,8 +174,10 @@ void main() {
         silent: true,
       );
 
-      expect(fakeReminderService.cancelledKeys,
-          contains('prayerUpdate:prayer_102'));
+      expect(
+        fakeReminderService.cancelledKeys,
+        contains('prayerUpdate:prayer_102'),
+      );
       expect(fakeReminderService.scheduledCalls, hasLength(1));
       final call = fakeReminderService.scheduledCalls.first;
       expect(call.channel, ReminderChannel.prayerUpdate);
@@ -182,79 +186,86 @@ void main() {
     });
 
     test(
-        'syncInteractionReminder does NOT schedule overdue follow-up into future',
-        () async {
-      final fakePreferences = _FakePreferencesRepository(
-        const ResolvedNotificationPreference(
-          enabled: true,
-          leadTime: Duration(hours: 1),
-        ),
-      );
+      'syncInteractionReminder does NOT schedule overdue follow-up into future',
+      () async {
+        final fakePreferences = _FakePreferencesRepository(
+          const ResolvedNotificationPreference(
+            enabled: true,
+            leadTime: Duration(hours: 1),
+          ),
+        );
 
-      final coordinator = ReminderCoordinator.testHarness(
-        reminderService: fakeReminderService,
-        preferencesRepository: fakePreferences,
-        dbHelper: _FakeDBHelper(),
-      );
+        final coordinator = ReminderCoordinator.testHarness(
+          reminderService: fakeReminderService,
+          preferencesRepository: fakePreferences,
+          dbHelper: _FakeDBHelper(),
+        );
 
-      // followUpAt was 2 hours ago
-      final pastInteraction = Interaction(
-        id: 201,
-        occurredAt: DateTime.now().subtract(const Duration(days: 1)),
-        summary: 'Past coffee chat',
-        medium: 'in_person',
-        followUpAt: DateTime.now().subtract(const Duration(hours: 2)),
-      );
+        // followUpAt was 2 hours ago
+        final pastInteraction = Interaction(
+          id: 201,
+          occurredAt: DateTime.now().subtract(const Duration(days: 1)),
+          summary: 'Past coffee chat',
+          medium: 'in_person',
+          followUpAt: DateTime.now().subtract(const Duration(hours: 2)),
+        );
 
-      await coordinator.syncInteractionReminder(
-        testContact,
-        pastInteraction,
-        silent: true,
-      );
+        await coordinator.syncInteractionReminder(
+          testContact,
+          pastInteraction,
+          silent: true,
+        );
 
-      expect(fakeReminderService.cancelledKeys,
-          contains('followUp:interaction_201'));
-      expect(fakeReminderService.scheduledCalls, isEmpty);
-    });
+        expect(
+          fakeReminderService.cancelledKeys,
+          contains('followUp:interaction_201'),
+        );
+        expect(fakeReminderService.scheduledCalls, isEmpty);
+      },
+    );
 
-    test('syncInteractionReminder schedules future follow-up normally',
-        () async {
-      final fakePreferences = _FakePreferencesRepository(
-        const ResolvedNotificationPreference(
-          enabled: true,
-          leadTime: Duration(hours: 1),
-        ),
-      );
+    test(
+      'syncInteractionReminder schedules future follow-up normally',
+      () async {
+        final fakePreferences = _FakePreferencesRepository(
+          const ResolvedNotificationPreference(
+            enabled: true,
+            leadTime: Duration(hours: 1),
+          ),
+        );
 
-      final coordinator = ReminderCoordinator.testHarness(
-        reminderService: fakeReminderService,
-        preferencesRepository: fakePreferences,
-        dbHelper: _FakeDBHelper(),
-      );
+        final coordinator = ReminderCoordinator.testHarness(
+          reminderService: fakeReminderService,
+          preferencesRepository: fakePreferences,
+          dbHelper: _FakeDBHelper(),
+        );
 
-      // followUpAt is tomorrow
-      final futureFollowUp = DateTime.now().add(const Duration(days: 1));
-      final futureInteraction = Interaction(
-        id: 202,
-        occurredAt: DateTime.now(),
-        summary: 'Future meeting',
-        medium: 'in_person',
-        followUpAt: futureFollowUp,
-      );
+        // followUpAt is tomorrow
+        final futureFollowUp = DateTime.now().add(const Duration(days: 1));
+        final futureInteraction = Interaction(
+          id: 202,
+          occurredAt: DateTime.now(),
+          summary: 'Future meeting',
+          medium: 'in_person',
+          followUpAt: futureFollowUp,
+        );
 
-      await coordinator.syncInteractionReminder(
-        testContact,
-        futureInteraction,
-        silent: true,
-      );
+        await coordinator.syncInteractionReminder(
+          testContact,
+          futureInteraction,
+          silent: true,
+        );
 
-      expect(fakeReminderService.cancelledKeys,
-          contains('followUp:interaction_202'));
-      expect(fakeReminderService.scheduledCalls, hasLength(1));
-      final call = fakeReminderService.scheduledCalls.first;
-      expect(call.channel, ReminderChannel.followUp);
-      expect(call.key, 'interaction_202');
-      expect(call.scheduledAt.isAfter(DateTime.now()), isTrue);
-    });
+        expect(
+          fakeReminderService.cancelledKeys,
+          contains('followUp:interaction_202'),
+        );
+        expect(fakeReminderService.scheduledCalls, hasLength(1));
+        final call = fakeReminderService.scheduledCalls.first;
+        expect(call.channel, ReminderChannel.followUp);
+        expect(call.key, 'interaction_202');
+        expect(call.scheduledAt.isAfter(DateTime.now()), isTrue);
+      },
+    );
   });
 }

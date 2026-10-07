@@ -68,9 +68,10 @@ class _FollowUpSuggestionSheetState extends State<FollowUpSuggestionSheet> {
     if (isAiReady) {
       return AiServices().followUp.suggest(widget.interaction);
     } else {
-      return AiServices()
-          .followUp
-          .suggestHeuristic(widget.interaction, DateTime.now());
+      return AiServices().followUp.suggestHeuristic(
+            widget.interaction,
+            DateTime.now(),
+          );
     }
   }
 

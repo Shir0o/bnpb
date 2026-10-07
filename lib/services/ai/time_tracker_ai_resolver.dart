@@ -1,5 +1,7 @@
 import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
+
 import '../../models/candidate_interaction.dart';
 import '../../models/contact.dart';
 import 'ai_services.dart';
@@ -23,7 +25,8 @@ class TimeTrackerAiResolver {
       final ready = await _aiServices.isReady();
       if (!ready) {
         debugPrint(
-            'TimeTrackerAiResolver: AI backend is not ready or not enabled');
+          'TimeTrackerAiResolver: AI backend is not ready or not enabled',
+        );
         return [];
       }
 

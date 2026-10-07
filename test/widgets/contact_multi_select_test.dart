@@ -32,76 +32,78 @@ void main() {
   });
 
   testWidgets(
-      'ContactMultiSelect allows quick creating a contact when search is empty',
-      (tester) async {
-    Contact? created;
-    when(() => mockDBHelper.insertContact(any()))
-        .thenAnswer((invocation) async {
-      created = invocation.positionalArguments[0] as Contact;
-    });
-    when(() => mockBackupService.exportBackup()).thenAnswer((_) async => null);
+    'ContactMultiSelect allows quick creating a contact when search is empty',
+    (tester) async {
+      Contact? created;
+      when(() => mockDBHelper.insertContact(any()))
+          .thenAnswer((invocation) async {
+        created = invocation.positionalArguments[0] as Contact;
+      });
+      when(() => mockBackupService.exportBackup())
+          .thenAnswer((_) async => null);
 
-    final contacts = [
-      Contact(id: 'c1', firstName: 'Alice', lastName: 'Smith'),
-    ];
+      final contacts = [
+        Contact(id: 'c1', firstName: 'Alice', lastName: 'Smith'),
+      ];
 
-    List<String>? selectedResult;
+      List<String>? selectedResult;
 
-    await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: Builder(
-            builder: (context) => ElevatedButton(
-              onPressed: () async {
-                selectedResult = await ContactMultiSelect.show(
-                  context,
-                  contacts: contacts,
-                );
-              },
-              child: const Text('Open'),
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => ElevatedButton(
+                onPressed: () async {
+                  selectedResult = await ContactMultiSelect.show(
+                    context,
+                    contacts: contacts,
+                  );
+                },
+                child: const Text('Open'),
+              ),
             ),
           ),
         ),
-      ),
-    );
+      );
 
-    await tester.tap(find.text('Open'));
-    await tester.pumpAndSettle();
+      await tester.tap(find.text('Open'));
+      await tester.pumpAndSettle();
 
-    expect(find.text('Alice Smith'), findsOneWidget);
+      expect(find.text('Alice Smith'), findsOneWidget);
 
-    // Search for someone nonexistent
-    await tester.enterText(find.byType(TextField), 'Bob Builder');
-    await tester.pumpAndSettle();
+      // Search for someone nonexistent
+      await tester.enterText(find.byType(TextField), 'Bob Builder');
+      await tester.pumpAndSettle();
 
-    expect(find.text('No matching contacts found'), findsOneWidget);
-    expect(find.text("Quick Create 'Bob Builder'"), findsOneWidget);
+      expect(find.text('No matching contacts found'), findsOneWidget);
+      expect(find.text("Quick Create 'Bob Builder'"), findsOneWidget);
 
-    // Tap Quick Create button
-    await tester.tap(find.text("Quick Create 'Bob Builder'"));
-    await tester.pumpAndSettle();
+      // Tap Quick Create button
+      await tester.tap(find.text("Quick Create 'Bob Builder'"));
+      await tester.pumpAndSettle();
 
-    expect(find.byType(QuickCreateContactDialog), findsOneWidget);
-    expect(find.text('Bob'), findsOneWidget);
-    expect(find.text('Builder'), findsOneWidget);
+      expect(find.byType(QuickCreateContactDialog), findsOneWidget);
+      expect(find.text('Bob'), findsOneWidget);
+      expect(find.text('Builder'), findsOneWidget);
 
-    // Save
-    await tester.tap(find.text('Create & Select'));
-    await tester.idle();
+      // Save
+      await tester.tap(find.text('Create & Select'));
+      await tester.idle();
 
-    for (int i = 0; i < 5; i++) {
-      await tester.pump(const Duration(milliseconds: 100));
-    }
+      for (int i = 0; i < 5; i++) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
 
-    expect(created, isNotNull);
-    expect(created!.firstName, 'Bob');
-    expect(created!.lastName, 'Builder');
+      expect(created, isNotNull);
+      expect(created!.firstName, 'Bob');
+      expect(created!.lastName, 'Builder');
 
-    // Tap Done
-    await tester.tap(find.text('Done'));
-    await tester.pumpAndSettle();
+      // Tap Done
+      await tester.tap(find.text('Done'));
+      await tester.pumpAndSettle();
 
-    expect(selectedResult, isNotNull);
-    expect(selectedResult, contains(created!.id));
-  });
+      expect(selectedResult, isNotNull);
+      expect(selectedResult, contains(created!.id));
+    },
+  );
 }

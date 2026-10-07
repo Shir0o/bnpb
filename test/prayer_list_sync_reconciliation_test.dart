@@ -102,8 +102,11 @@ void main() {
       final firstListOnB = listsOnB.first;
 
       // Expect that on Device B, the user sees their contact on "My Prayer List"
-      expect(firstListOnB.contactIds, contains('c-1'),
-          reason: 'User expects "My Prayer List" on Device B to have c-1');
+      expect(
+        firstListOnB.contactIds,
+        contains('c-1'),
+        reason: 'User expects "My Prayer List" on Device B to have c-1',
+      );
     });
 
     test('Case 2: Sync when contacts are added/removed on Device B', () async {
@@ -178,10 +181,11 @@ void main() {
       final prayerListsA = await dbHelper.getPrayerLists();
 
       final exportFile = await exportService.exportJson(
-        contactsA,
-        ['firstName'],
-        prayerLists: prayerListsA,
-      );
+          contactsA,
+          [
+            'firstName',
+          ],
+          prayerLists: prayerListsA);
 
       // Setup Device B (fresh or existing)
       DBHelper.setDatabaseForTest(dbB);
@@ -196,47 +200,48 @@ void main() {
       expect(listsOnB.first.contactIds, contains('c-1'));
     });
 
-    test('Case 4: Export JSON when prayerLists is NOT explicitly passed',
-        () async {
-      // Setup Device A
-      DBHelper.setDatabaseForTest(dbA);
-      SharedPreferences.setMockInitialValues({'sync_device_id': 'device-A'});
+    test(
+      'Case 4: Export JSON when prayerLists is NOT explicitly passed',
+      () async {
+        // Setup Device A
+        DBHelper.setDatabaseForTest(dbA);
+        SharedPreferences.setMockInitialValues({'sync_device_id': 'device-A'});
 
-      final contactA = Contact(id: 'c-1', firstName: 'Alice');
-      await dbHelper.insertContact(contactA);
+        final contactA = Contact(id: 'c-1', firstName: 'Alice');
+        await dbHelper.insertContact(contactA);
 
-      final listA = PrayerList.create(
-        name: 'My Prayer List',
-        description: 'People I am praying for',
-      );
-      await dbHelper.insertPrayerList(listA);
-      await dbHelper.addContactToPrayerList(listA.id, 'c-1');
+        final listA = PrayerList.create(
+          name: 'My Prayer List',
+          description: 'People I am praying for',
+        );
+        await dbHelper.insertPrayerList(listA);
+        await dbHelper.addContactToPrayerList(listA.id, 'c-1');
 
-      // Export JSON from Device A WITHOUT prayerLists parameter
-      final exportService = ExportService();
-      final contactsA = await dbHelper.getContacts();
+        // Export JSON from Device A WITHOUT prayerLists parameter
+        final exportService = ExportService();
+        final contactsA = await dbHelper.getContacts();
 
-      final exportFile = await exportService.exportJson(
-        contactsA,
-        ['firstName'],
-      );
+        final exportFile = await exportService.exportJson(contactsA, [
+          'firstName',
+        ]);
 
-      // Read exported JSON content to check if prayerLists was included
-      final jsonContent = await exportFile.readAsString();
-      final data = jsonDecode(jsonContent) as Map<String, dynamic>;
-      expect(data['prayerLists'], isNotNull);
+        // Read exported JSON content to check if prayerLists was included
+        final jsonContent = await exportFile.readAsString();
+        final data = jsonDecode(jsonContent) as Map<String, dynamic>;
+        expect(data['prayerLists'], isNotNull);
 
-      // Import to Device B
-      DBHelper.setDatabaseForTest(dbB);
-      SharedPreferences.setMockInitialValues({'sync_device_id': 'device-B'});
+        // Import to Device B
+        DBHelper.setDatabaseForTest(dbB);
+        SharedPreferences.setMockInitialValues({'sync_device_id': 'device-B'});
 
-      final importService = ImportService();
-      await importService.importJsonExport(exportFile);
+        final importService = ImportService();
+        await importService.importJsonExport(exportFile);
 
-      final listsOnB = await dbHelper.getPrayerLists();
-      expect(listsOnB, isNotEmpty);
-      expect(listsOnB.first.contactIds, contains('c-1'));
-    });
+        final listsOnB = await dbHelper.getPrayerLists();
+        expect(listsOnB, isNotEmpty);
+        expect(listsOnB.first.contactIds, contains('c-1'));
+      },
+    );
 
     test(
         'Case 5: What if exported JSON has no version (legacy) or imported via legacy path',
@@ -264,8 +269,8 @@ void main() {
             'name': listA.name,
             'description': listA.description,
             'contactIds': ['c-1'],
-          }
-        ]
+          },
+        ],
       };
 
       final legacyFile = File(p.join(tempDir.path, 'legacy.json'));
@@ -316,52 +321,48 @@ void main() {
       expect(reconciledLists.first.contactIds, containsAll(['c-1', 'c-2']));
     });
 
-    test('Case 7: Sync between Device A and Device B with legacy random UUIDs',
-        () async {
-      // Setup Device A with legacy-uuid-A
-      DBHelper.setDatabaseForTest(dbA);
-      SharedPreferences.setMockInitialValues({'sync_device_id': 'device-A'});
-      final coordA = SyncCoordinator(dbHelper);
+    test(
+      'Case 7: Sync between Device A and Device B with legacy random UUIDs',
+      () async {
+        // Setup Device A with legacy-uuid-A
+        DBHelper.setDatabaseForTest(dbA);
+        SharedPreferences.setMockInitialValues({'sync_device_id': 'device-A'});
+        final coordA = SyncCoordinator(dbHelper);
 
-      final c1 = Contact(id: 'c-1', firstName: 'Alice');
-      final c2 = Contact(id: 'c-2', firstName: 'Bob');
-      await dbHelper.insertContact(c1);
-      await dbHelper.insertContact(c2);
+        final c1 = Contact(id: 'c-1', firstName: 'Alice');
+        final c2 = Contact(id: 'c-2', firstName: 'Bob');
+        await dbHelper.insertContact(c1);
+        await dbHelper.insertContact(c2);
 
-      final listA = PrayerList(
-        id: 'legacy-uuid-A',
-        name: 'My Prayer List',
-      );
-      await dbHelper.insertPrayerList(listA);
-      await dbHelper.addContactToPrayerList('legacy-uuid-A', 'c-1');
+        final listA = PrayerList(id: 'legacy-uuid-A', name: 'My Prayer List');
+        await dbHelper.insertPrayerList(listA);
+        await dbHelper.addContactToPrayerList('legacy-uuid-A', 'c-1');
 
-      // Setup Device B with legacy-uuid-B
-      DBHelper.setDatabaseForTest(dbB);
-      SharedPreferences.setMockInitialValues({'sync_device_id': 'device-B'});
-      final coordB = SyncCoordinator(dbHelper);
+        // Setup Device B with legacy-uuid-B
+        DBHelper.setDatabaseForTest(dbB);
+        SharedPreferences.setMockInitialValues({'sync_device_id': 'device-B'});
+        final coordB = SyncCoordinator(dbHelper);
 
-      final listB = PrayerList(
-        id: 'legacy-uuid-B',
-        name: 'My Prayer List',
-      );
-      await dbHelper.insertPrayerList(listB);
-      await dbHelper.addContactToPrayerList('legacy-uuid-B', 'c-2');
+        final listB = PrayerList(id: 'legacy-uuid-B', name: 'My Prayer List');
+        await dbHelper.insertPrayerList(listB);
+        await dbHelper.addContactToPrayerList('legacy-uuid-B', 'c-2');
 
-      // Device A exports to syncDir
-      DBHelper.setDatabaseForTest(dbA);
-      SharedPreferences.setMockInitialValues({'sync_device_id': 'device-A'});
-      await coordA.exportChanges(syncDir);
+        // Device A exports to syncDir
+        DBHelper.setDatabaseForTest(dbA);
+        SharedPreferences.setMockInitialValues({'sync_device_id': 'device-A'});
+        await coordA.exportChanges(syncDir);
 
-      // Device B imports from syncDir
-      DBHelper.setDatabaseForTest(dbB);
-      SharedPreferences.setMockInitialValues({'sync_device_id': 'device-B'});
-      await coordB.importChanges(syncDir);
+        // Device B imports from syncDir
+        DBHelper.setDatabaseForTest(dbB);
+        SharedPreferences.setMockInitialValues({'sync_device_id': 'device-B'});
+        await coordB.importChanges(syncDir);
 
-      final listsOnB = await dbHelper.getPrayerLists();
-      expect(listsOnB, hasLength(1));
-      expect(listsOnB.first.id, equals(PrayerList.defaultListId));
-      expect(listsOnB.first.contactIds, containsAll(['c-1', 'c-2']));
-    });
+        final listsOnB = await dbHelper.getPrayerLists();
+        expect(listsOnB, hasLength(1));
+        expect(listsOnB.first.id, equals(PrayerList.defaultListId));
+        expect(listsOnB.first.contactIds, containsAll(['c-1', 'c-2']));
+      },
+    );
 
     test('Case 8: Sync deletion of prayer list', () async {
       DBHelper.setDatabaseForTest(dbA);
@@ -400,48 +401,53 @@ void main() {
     });
 
     test(
-        'Case 9: ensureDefaultPrayerList() provisions default list idempotently',
-        () async {
-      DBHelper.setDatabaseForTest(dbA);
+      'Case 9: ensureDefaultPrayerList() provisions default list idempotently',
+      () async {
+        DBHelper.setDatabaseForTest(dbA);
 
-      // On a fresh database, ensureDefaultPrayerList should create default_prayer_list
-      final initialList = await dbHelper.ensureDefaultPrayerList();
-      expect(initialList.id, equals(PrayerList.defaultListId));
-      expect(initialList.name, equals(PrayerList.defaultListName));
+        // On a fresh database, ensureDefaultPrayerList should create default_prayer_list
+        final initialList = await dbHelper.ensureDefaultPrayerList();
+        expect(initialList.id, equals(PrayerList.defaultListId));
+        expect(initialList.name, equals(PrayerList.defaultListName));
 
-      // Repeated calls must return the same list without creating duplicates
-      final secondCall = await dbHelper.ensureDefaultPrayerList();
-      expect(secondCall.id, equals(PrayerList.defaultListId));
+        // Repeated calls must return the same list without creating duplicates
+        final secondCall = await dbHelper.ensureDefaultPrayerList();
+        expect(secondCall.id, equals(PrayerList.defaultListId));
 
-      final allLists = await dbHelper.getPrayerLists();
-      expect(allLists, hasLength(1));
-      expect(allLists.first.id, equals(PrayerList.defaultListId));
-    });
+        final allLists = await dbHelper.getPrayerLists();
+        expect(allLists, hasLength(1));
+        expect(allLists.first.id, equals(PrayerList.defaultListId));
+      },
+    );
 
-    test('Case 10: importJsonExport notifies SyncService.onSyncComplete',
-        () async {
-      DBHelper.setDatabaseForTest(dbA);
-      final contactA = Contact(id: 'c-1', firstName: 'Alice');
-      await dbHelper.insertContact(contactA);
+    test(
+      'Case 10: importJsonExport notifies SyncService.onSyncComplete',
+      () async {
+        DBHelper.setDatabaseForTest(dbA);
+        final contactA = Contact(id: 'c-1', firstName: 'Alice');
+        await dbHelper.insertContact(contactA);
 
-      final exportService = ExportService();
-      final exportFile =
-          await exportService.exportJson([contactA], ['firstName']);
+        final exportService = ExportService();
+        final exportFile = await exportService.exportJson(
+          [contactA],
+          ['firstName'],
+        );
 
-      DBHelper.setDatabaseForTest(dbB);
-      final importService = ImportService();
+        DBHelper.setDatabaseForTest(dbB);
+        final importService = ImportService();
 
-      bool syncNotified = false;
-      final sub = SyncService().onSyncComplete.listen((_) {
-        syncNotified = true;
-      });
+        bool syncNotified = false;
+        final sub = SyncService().onSyncComplete.listen((_) {
+          syncNotified = true;
+        });
 
-      await importService.importJsonExport(exportFile);
-      await Future.delayed(const Duration(milliseconds: 10));
+        await importService.importJsonExport(exportFile);
+        await Future.delayed(const Duration(milliseconds: 10));
 
-      expect(syncNotified, isTrue);
-      await sub.cancel();
-    });
+        expect(syncNotified, isTrue);
+        await sub.cancel();
+      },
+    );
   });
 }
 

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../main.dart'; // To access CrispColorScheme extension on ColorScheme
 
 /// A custom switch styled according to the Crisp Utility design specs.
@@ -7,11 +8,7 @@ class CrispSwitch extends StatelessWidget {
   final bool value;
   final ValueChanged<bool>? onChanged;
 
-  const CrispSwitch({
-    super.key,
-    required this.value,
-    required this.onChanged,
-  });
+  const CrispSwitch({super.key, required this.value, required this.onChanged});
 
   @override
   Widget build(BuildContext context) {

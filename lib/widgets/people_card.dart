@@ -35,8 +35,9 @@ class PeopleCard extends StatelessWidget {
     return Card(
       elevation: 0,
       shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: BorderSide(color: theme.colorScheme.surfaceContainerHighest)),
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: theme.colorScheme.surfaceContainerHighest),
+      ),
       // Optimization: Removed Clip.antiAlias to avoid expensive saveLayer calls.
       // Clipping is handled by InkWell.borderRadius for splashes, and padding for content.
       child: InkWell(
@@ -61,11 +62,14 @@ class PeopleCard extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(displayName,
-                              style: theme.textTheme.titleMedium?.copyWith(
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 16.5,
-                                  color: theme.colorScheme.onSurface)),
+                          Text(
+                            displayName,
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 16.5,
+                              color: theme.colorScheme.onSurface,
+                            ),
+                          ),
                           if (contact.nickname != null &&
                               contact.nickname!.isNotEmpty &&
                               contact.nickname!.toLowerCase() !=

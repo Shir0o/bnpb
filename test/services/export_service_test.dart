@@ -93,61 +93,60 @@ void main() {
     });
 
     test(
-      'buildFullExportPayload de-duplicates shared data and includes participants',
-      () async {
-        final now = DateTime.now().toUtc();
-        final interaction = Interaction(
-          id: 1,
-          occurredAt: now,
-          summary: 'Shared Interaction',
-          medium: 'In person',
-          participantIds: ['c1', 'c2'],
-        );
+        'buildFullExportPayload de-duplicates shared data and includes participants',
+        () async {
+      final now = DateTime.now().toUtc();
+      final interaction = Interaction(
+        id: 1,
+        occurredAt: now,
+        summary: 'Shared Interaction',
+        medium: 'In person',
+        participantIds: ['c1', 'c2'],
+      );
 
-        final prayer = PrayerRequest(
-          id: 10,
-          participantIds: ['c1', 'c2'],
-          description: 'Shared Prayer',
-          status: PrayerRequestStatus.pending,
-          requestedAt: now,
-          interactionId: 1,
-        );
+      final prayer = PrayerRequest(
+        id: 10,
+        participantIds: ['c1', 'c2'],
+        description: 'Shared Prayer',
+        status: PrayerRequestStatus.pending,
+        requestedAt: now,
+        interactionId: 1,
+      );
 
-        final contact1 = Contact(
-          id: 'c1',
-          firstName: 'Alice',
-          interactions: [interaction],
-          prayerRequests: [prayer],
-        );
+      final contact1 = Contact(
+        id: 'c1',
+        firstName: 'Alice',
+        interactions: [interaction],
+        prayerRequests: [prayer],
+      );
 
-        final contact2 = Contact(
-          id: 'c2',
-          firstName: 'Bob',
-          interactions: [interaction],
-          prayerRequests: [prayer],
-        );
+      final contact2 = Contact(
+        id: 'c2',
+        firstName: 'Bob',
+        interactions: [interaction],
+        prayerRequests: [prayer],
+      );
 
-        final service = ExportService();
-        final payload = await service.buildFullExportPayload(
-          [contact1, contact2],
-          ['firstName'],
-        );
+      final service = ExportService();
+      final payload = await service.buildFullExportPayload(
+        [contact1, contact2],
+        ['firstName'],
+      );
 
-        expect(payload['version'], 2);
-        expect(payload['contacts'], hasLength(2));
-        expect(payload['interactions'], hasLength(1)); // De-duplicated
-        expect(payload['prayerRequests'], hasLength(1)); // De-duplicated
+      expect(payload['version'], 2);
+      expect(payload['contacts'], hasLength(2));
+      expect(payload['interactions'], hasLength(1)); // De-duplicated
+      expect(payload['prayerRequests'], hasLength(1)); // De-duplicated
 
-        final interactionJson = (payload['interactions'] as List).first;
-        expect(interactionJson['summary'], 'Shared Interaction');
-        expect(interactionJson['participantIds'], containsAll(['c1', 'c2']));
+      final interactionJson = (payload['interactions'] as List).first;
+      expect(interactionJson['summary'], 'Shared Interaction');
+      expect(interactionJson['participantIds'], containsAll(['c1', 'c2']));
 
-        final prayerJson = (payload['prayerRequests'] as List).first;
-        expect(prayerJson['description'], 'Shared Prayer');
-        expect(prayerJson['participantIds'], containsAll(['c1', 'c2']));
-        expect(prayerJson['interactionSyncId'], interaction.syncId);
-      },
-    );
+      final prayerJson = (payload['prayerRequests'] as List).first;
+      expect(prayerJson['description'], 'Shared Prayer');
+      expect(prayerJson['participantIds'], containsAll(['c1', 'c2']));
+      expect(prayerJson['interactionSyncId'], interaction.syncId);
+    });
     group('buildFullExportPayload', () {
       test(
         'correctly de-duplicates interactions and prayer requests',

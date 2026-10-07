@@ -362,9 +362,8 @@ class _AnalyticsPageState extends State<AnalyticsPage>
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
         onTap: () {
-          Navigator.of(
-            context,
-          ).push(MaterialPageRoute(builder: (_) => const AskPage()));
+          Navigator.of(context)
+              .push(MaterialPageRoute(builder: (_) => const AskPage()));
         },
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -1106,10 +1105,7 @@ class _EmptyAnalyticsCard extends StatelessWidget {
             const SizedBox(height: 12),
             Text(
               message,
-              style: TextStyle(
-                fontSize: 14,
-                color: colorScheme.outline,
-              ),
+              style: TextStyle(fontSize: 14, color: colorScheme.outline),
             ),
           ],
         ),
@@ -1195,10 +1191,7 @@ class _InsightCard extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(
                   subtitle,
-                  style: TextStyle(
-                    fontSize: 12.5,
-                    color: subtitleColor,
-                  ),
+                  style: TextStyle(fontSize: 12.5, color: subtitleColor),
                 ),
                 if (phrasing != null && phrasing.isNotEmpty) ...[
                   const SizedBox(height: 6),

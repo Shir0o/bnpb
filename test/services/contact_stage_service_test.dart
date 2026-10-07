@@ -7,6 +7,7 @@ import 'package:bnpb/models/interaction.dart';
 import 'package:bnpb/models/stage_move.dart';
 
 import 'package:bnpb/services/contact_stage_service.dart';
+
 import '../repositories/mock_db_helper.dart';
 
 class _TestDBHelper extends MockDBHelper {
@@ -105,25 +106,30 @@ void main() {
   });
 
   group('buildSuggestions', () {
-    test('proposes a one-step advance when activity outpaces the stage',
-        () async {
-      dbHelper.contacts
-          .add(_contact('c1', 'Gus Hall', 5, stage: 'First contact'));
+    test(
+      'proposes a one-step advance when activity outpaces the stage',
+      () async {
+        dbHelper.contacts.add(
+          _contact('c1', 'Gus Hall', 5, stage: 'First contact'),
+        );
 
-      final suggestions = await service.buildSuggestions(dbHelper.contacts);
+        final suggestions = await service.buildSuggestions(dbHelper.contacts);
 
-      expect(suggestions, hasLength(1));
-      expect(suggestions.single.from, 'First contact');
-      expect(suggestions.single.to, 'Second contact');
-      expect(suggestions.single.path, 'First contact → Second contact');
-      expect(suggestions.single.why, contains('5 interactions'));
-    });
+        expect(suggestions, hasLength(1));
+        expect(suggestions.single.from, 'First contact');
+        expect(suggestions.single.to, 'Second contact');
+        expect(suggestions.single.path, 'First contact → Second contact');
+        expect(suggestions.single.why, contains('5 interactions'));
+      },
+    );
 
     test('no suggestion when the stage already matches the activity', () async {
-      dbHelper.contacts
-          .add(_contact('c1', 'Ann Lee', 2, stage: 'Second contact'));
-      dbHelper.contacts
-          .add(_contact('c2', 'Cal Poe', 6, stage: 'Regular contact'));
+      dbHelper.contacts.add(
+        _contact('c1', 'Ann Lee', 2, stage: 'Second contact'),
+      );
+      dbHelper.contacts.add(
+        _contact('c2', 'Cal Poe', 6, stage: 'Regular contact'),
+      );
 
       final suggestions = await service.buildSuggestions(dbHelper.contacts);
 
@@ -131,8 +137,9 @@ void main() {
     });
 
     test('dismissed suggestions are not re-proposed', () async {
-      dbHelper.contacts
-          .add(_contact('c1', 'Gus Hall', 5, stage: 'First contact'));
+      dbHelper.contacts.add(
+        _contact('c1', 'Gus Hall', 5, stage: 'First contact'),
+      );
       await service.dismissSuggestion('c1', 'Second contact');
 
       final suggestions = await service.buildSuggestions(dbHelper.contacts);
@@ -142,23 +149,26 @@ void main() {
   });
 
   group('confirmSuggestion', () {
-    test('persists the stage, records a move, and dismisses the suggestion',
-        () async {
-      // 3 interactions only justify reaching Second contact, so after
-      // confirming there is nothing further to suggest.
-      dbHelper.contacts
-          .add(_contact('c1', 'Gus Hall', 3, stage: 'First contact'));
+    test(
+      'persists the stage, records a move, and dismisses the suggestion',
+      () async {
+        // 3 interactions only justify reaching Second contact, so after
+        // confirming there is nothing further to suggest.
+        dbHelper.contacts.add(
+          _contact('c1', 'Gus Hall', 3, stage: 'First contact'),
+        );
 
-      await service.confirmSuggestion('c1', 'Second contact');
+        await service.confirmSuggestion('c1', 'Second contact');
 
-      expect(dbHelper.contacts.single.stage, 'Second contact');
-      expect(dbHelper.stageMoves, hasLength(1));
-      expect(dbHelper.stageMoves.single.fromStage, 'First contact');
-      expect(dbHelper.stageMoves.single.toStage, 'Second contact');
+        expect(dbHelper.contacts.single.stage, 'Second contact');
+        expect(dbHelper.stageMoves, hasLength(1));
+        expect(dbHelper.stageMoves.single.fromStage, 'First contact');
+        expect(dbHelper.stageMoves.single.toStage, 'Second contact');
 
-      final suggestions = await service.buildSuggestions(dbHelper.contacts);
-      expect(suggestions, isEmpty);
-    });
+        final suggestions = await service.buildSuggestions(dbHelper.contacts);
+        expect(suggestions, isEmpty);
+      },
+    );
   });
 
   group('setStage', () {
@@ -166,7 +176,9 @@ void main() {
       dbHelper.contacts.add(_contact('c1', 'Ann Lee', 2));
 
       await service.setStage(
-          dbHelper.contacts.single, ContactStage.groupMeeting);
+        dbHelper.contacts.single,
+        ContactStage.groupMeeting,
+      );
 
       expect(dbHelper.contacts.single.stage, 'Group meeting');
       expect(dbHelper.stageMoves.single.fromStage, 'Second contact');
@@ -174,11 +186,14 @@ void main() {
     });
 
     test('no-op when the target equals the current stage', () async {
-      dbHelper.contacts
-          .add(_contact('c1', 'Ann Lee', 2, stage: 'Regular contact'));
+      dbHelper.contacts.add(
+        _contact('c1', 'Ann Lee', 2, stage: 'Regular contact'),
+      );
 
       await service.setStage(
-          dbHelper.contacts.single, ContactStage.regularContact);
+        dbHelper.contacts.single,
+        ContactStage.regularContact,
+      );
 
       expect(dbHelper.stageMoves, isEmpty);
     });

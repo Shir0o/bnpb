@@ -3,6 +3,7 @@ import 'package:bnpb/models/contact.dart';
 import 'package:bnpb/models/interaction.dart';
 
 import 'package:bnpb/repositories/analytics_repository.dart';
+
 import 'mock_db_helper.dart';
 
 class _TestDBHelper extends MockDBHelper {

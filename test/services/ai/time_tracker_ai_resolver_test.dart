@@ -66,28 +66,30 @@ void main() {
       );
     });
 
-    test('returns matching contact ids when LLM responds with JSON array',
-        () async {
-      fakeLlm.response = '["c1"]';
-      final resolver = TimeTrackerAiResolver(aiServices: aiServices);
+    test(
+      'returns matching contact ids when LLM responds with JSON array',
+      () async {
+        fakeLlm.response = '["c1"]';
+        final resolver = TimeTrackerAiResolver(aiServices: aiServices);
 
-      final candidate = CandidateInteraction(
-        fingerprint: 'fp1',
-        occurredAt: DateTime.now(),
-        durationMinutes: 30,
-        activityName: 'Lunch',
-        summary: 'Lunch',
-        matchedContactIds: [],
-        rawComment: 'lunch with Abel',
-      );
+        final candidate = CandidateInteraction(
+          fingerprint: 'fp1',
+          occurredAt: DateTime.now(),
+          durationMinutes: 30,
+          activityName: 'Lunch',
+          summary: 'Lunch',
+          matchedContactIds: [],
+          rawComment: 'lunch with Abel',
+        );
 
-      final matched = await resolver.resolveContactsForCandidate(
-        candidate: candidate,
-        contacts: contacts,
-      );
+        final matched = await resolver.resolveContactsForCandidate(
+          candidate: candidate,
+          contacts: contacts,
+        );
 
-      expect(matched, ['c1']);
-    });
+        expect(matched, ['c1']);
+      },
+    );
 
     test('returns empty when AI is disabled', () async {
       aiServices.debugOverride(

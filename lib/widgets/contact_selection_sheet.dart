@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../db/db_helper.dart';
 import '../services/contact_search_service.dart';
 import 'contact_avatar.dart';

@@ -1,4 +1,5 @@
 import 'package:sqflite_sqlcipher/sqflite.dart';
+
 import '../../models/contact.dart';
 import '../../models/interaction.dart';
 import '../base_dao.dart';

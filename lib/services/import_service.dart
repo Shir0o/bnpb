@@ -3,7 +3,9 @@ import 'dart:io';
 
 import '../db/db_helper.dart';
 import '../models/contact.dart';
+
 import 'package:sqflite_sqlcipher/sqflite.dart' as sqflite;
+
 import '../models/prayer_list.dart';
 import 'ai/ai_services.dart';
 import 'import_duplicate_detector.dart';
@@ -148,8 +150,12 @@ class ImportService {
       for (final contact in restoredContacts) {
         // We need to re-insert the contact's interactions and prayer requests.
         // Calling upsertContactRow inside a single transaction prevents N+1 query overhead.
-        await _dbHelper.contactDao.upsertContactRow(txn, contact,
-            isUpdate: true, forceNowTimestamps: false);
+        await _dbHelper.contactDao.upsertContactRow(
+          txn,
+          contact,
+          isUpdate: true,
+          forceNowTimestamps: false,
+        );
       }
     });
 
@@ -173,13 +179,12 @@ class ImportService {
 
           for (final contactId in list.contactIds) {
             batch.insert(
-              'prayer_list_members',
-              {
-                'listId': list.id,
-                'contactId': contactId,
-              },
-              conflictAlgorithm: sqflite.ConflictAlgorithm.ignore,
-            );
+                'prayer_list_members',
+                {
+                  'listId': list.id,
+                  'contactId': contactId,
+                },
+                conflictAlgorithm: sqflite.ConflictAlgorithm.ignore);
           }
         }
         await batch.commit(noResult: true);

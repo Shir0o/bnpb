@@ -111,9 +111,9 @@ class FlutterGemmaLlmService implements LocalLlmService {
     final type = modelType ?? _inferModelType(modelPath);
 
     final sw = Stopwatch()..start();
-    await FlutterGemma.installModel(
-      modelType: type,
-    ).fromFile(modelPath).install();
+    await FlutterGemma.installModel(modelType: type)
+        .fromFile(modelPath)
+        .install();
     // Prefer GPU. flutter_gemma falls back GPU → CPU automatically if the
     // device can't satisfy the request, so this is safe to default-on.
     // Without this hint the engine picks XNNPack CPU, which on a Pixel

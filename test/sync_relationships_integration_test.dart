@@ -49,9 +49,8 @@ void main() {
         ),
       );
 
-      final exportResult = await SyncCoordinator(
-        dbHelper,
-      ).exportChanges(syncDir);
+      final exportResult =
+          await SyncCoordinator(dbHelper).exportChanges(syncDir);
 
       expect(exportResult.exportedCount, greaterThanOrEqualTo(3));
 
@@ -210,34 +209,32 @@ void main() {
     );
 
     test(
-      'skips a relationship referencing a contact that has not been '
-      'imported yet, without throwing',
-      () async {
-        await dbHelper.insertContact(Contact(id: 'c1', firstName: 'Alice'));
+        'skips a relationship referencing a contact that has not been '
+        'imported yet, without throwing', () async {
+      await dbHelper.insertContact(Contact(id: 'c1', firstName: 'Alice'));
 
-        final payload = {
-          'version': 2,
-          'deviceId': 'remote-device',
-          'timestamp': DateTime(2024, 1, 1).toUtc().toIso8601String(),
-          'integrityCheck': 'valid',
-          'contacts': [],
-          'interactions': [],
-          'prayerRequests': [],
-          'prayerLists': [],
-          'relationships': const [
-            {
-              'sourceContactId': 'c1',
-              'targetContactId': 'unknown-contact',
-              'type': 'Friend',
-            },
-          ],
-        };
+      final payload = {
+        'version': 2,
+        'deviceId': 'remote-device',
+        'timestamp': DateTime(2024, 1, 1).toUtc().toIso8601String(),
+        'integrityCheck': 'valid',
+        'contacts': [],
+        'interactions': [],
+        'prayerRequests': [],
+        'prayerLists': [],
+        'relationships': const [
+          {
+            'sourceContactId': 'c1',
+            'targetContactId': 'unknown-contact',
+            'type': 'Friend',
+          },
+        ],
+      };
 
-        await SyncCoordinator(dbHelper).importSyncData(payload);
+      await SyncCoordinator(dbHelper).importSyncData(payload);
 
-        final relationships = await dbHelper.getAllRelationships();
-        expect(relationships, isEmpty);
-      },
-    );
+      final relationships = await dbHelper.getAllRelationships();
+      expect(relationships, isEmpty);
+    });
   });
 }

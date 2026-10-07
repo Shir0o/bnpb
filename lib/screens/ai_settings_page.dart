@@ -74,8 +74,9 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
     final scriptureRefAdvancement =
         await AiServices().gate.isScriptureRefAdvancementEnabled();
     final backend = await AiServices().gate.backend();
-    final selectedLocalId =
-        await AiServices().gate.getSelectedModel(AiBackend.local);
+    final selectedLocalId = await AiServices().gate.getSelectedModel(
+          AiBackend.local,
+        );
     _selectedLocalModelId = selectedLocalId;
 
     _modelManager?.dispose();
@@ -738,9 +739,11 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
                     const Divider(height: 1, indent: 16, endIndent: 16),
                     RadioListTile<AiBackend>(
                       title: const Text('Google Gemini (Cloud)'),
-                      subtitle: Text(_hasGeminiKey
-                          ? 'API key configured'
-                          : 'API key required'),
+                      subtitle: Text(
+                        _hasGeminiKey
+                            ? 'API key configured'
+                            : 'API key required',
+                      ),
                       value: AiBackend.cloud,
                       groupValue: _backend,
                       onChanged: _busy
@@ -756,9 +759,11 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
                     const Divider(height: 1, indent: 16, endIndent: 16),
                     RadioListTile<AiBackend>(
                       title: const Text('Anthropic Claude (Cloud)'),
-                      subtitle: Text(_hasClaudeKey
-                          ? 'API key configured'
-                          : 'API key required'),
+                      subtitle: Text(
+                        _hasClaudeKey
+                            ? 'API key configured'
+                            : 'API key required',
+                      ),
                       value: AiBackend.claude,
                       groupValue: _backend,
                       onChanged: _busy
@@ -810,7 +815,9 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
                       const Divider(height: 1, indent: 16, endIndent: 16),
                       Padding(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 16.0, vertical: 8.0),
+                          horizontal: 16.0,
+                          vertical: 8.0,
+                        ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -826,7 +833,8 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
                                     width: 14,
                                     height: 14,
                                     child: CircularProgressIndicator(
-                                        strokeWidth: 2),
+                                      strokeWidth: 2,
+                                    ),
                                   )
                                 else
                                   IconButton(
@@ -838,14 +846,17 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
                             ),
                             if (_availableModels.isNotEmpty)
                               DropdownButtonFormField<String>(
-                                value: _availableModels
-                                        .any((m) => m.id == _selectedModel)
+                                value: _availableModels.any(
+                                  (m) => m.id == _selectedModel,
+                                )
                                     ? _selectedModel
                                     : _availableModels.first.id,
                                 isExpanded: true,
                                 decoration: const InputDecoration(
                                   contentPadding: EdgeInsets.symmetric(
-                                      horizontal: 12, vertical: 8),
+                                    horizontal: 12,
+                                    vertical: 8,
+                                  ),
                                   border: OutlineInputBorder(),
                                 ),
                                 items: _availableModels.map((model) {
@@ -860,8 +871,9 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
                                         Text(
                                           model.displayName,
                                           style: const TextStyle(
-                                              fontWeight: FontWeight.w600,
-                                              fontSize: 13),
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 13,
+                                          ),
                                         ),
                                         Text(
                                           model.pricingLabel,
@@ -915,7 +927,9 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
                   children: [
                     Padding(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 16.0, vertical: 12.0),
+                        horizontal: 16.0,
+                        vertical: 12.0,
+                      ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -929,11 +943,14 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
                             isExpanded: true,
                             decoration: const InputDecoration(
                               contentPadding: EdgeInsets.symmetric(
-                                  horizontal: 12, vertical: 8),
+                                horizontal: 12,
+                                vertical: 8,
+                              ),
                               border: OutlineInputBorder(),
                             ),
-                            items:
-                                OnDeviceModelSpec.supportedModels.map((spec) {
+                            items: OnDeviceModelSpec.supportedModels.map((
+                              spec,
+                            ) {
                               return DropdownMenuItem<String>(
                                 value: spec.id,
                                 child: Column(
@@ -943,8 +960,9 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
                                     Text(
                                       '${spec.displayName} (${spec.sizeLabel})',
                                       style: const TextStyle(
-                                          fontWeight: FontWeight.w600,
-                                          fontSize: 13),
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 13,
+                                      ),
                                     ),
                                     Text(
                                       spec.description,
@@ -1174,10 +1192,7 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
         color: colorScheme.surface,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(14),
-          side: BorderSide(
-            color: colorScheme.cardBorder,
-            width: 1,
-          ),
+          side: BorderSide(color: colorScheme.cardBorder, width: 1),
         ),
         clipBehavior: Clip.antiAlias,
         child: Column(

@@ -75,13 +75,15 @@ void main() {
     ContactService().clearCache();
   });
 
-  testWidgets('lists detected routine and opens the edit dialog',
-      (tester) async {
+  testWidgets('lists detected routine and opens the edit dialog', (
+    tester,
+  ) async {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
 
-    fakeDbHelper.contacts
-        .add(_weeklyReadingContact('contact-1', 'Timothy', 'Alvarez', today));
+    fakeDbHelper.contacts.add(
+      _weeklyReadingContact('contact-1', 'Timothy', 'Alvarez', today),
+    );
 
     await tester.pumpWidget(const MaterialApp(home: RecurringRoutinesPage()));
     await tester.pumpAndSettle();
@@ -103,10 +105,12 @@ void main() {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
 
-    fakeDbHelper.contacts
-        .add(_weeklyReadingContact('contact-1', 'Timothy', 'Alvarez', today));
-    fakeDbHelper.contacts
-        .add(_weeklyReadingContact('contact-2', 'Bob', 'Builder', today));
+    fakeDbHelper.contacts.add(
+      _weeklyReadingContact('contact-1', 'Timothy', 'Alvarez', today),
+    );
+    fakeDbHelper.contacts.add(
+      _weeklyReadingContact('contact-2', 'Bob', 'Builder', today),
+    );
 
     await tester.pumpWidget(const MaterialApp(home: RecurringRoutinesPage()));
     await tester.pumpAndSettle();
@@ -129,15 +133,18 @@ void main() {
     expect(find.text('Bible reading'), findsOneWidget);
   });
 
-  testWidgets('editing participants adds them to the saved pattern',
-      (tester) async {
+  testWidgets('editing participants adds them to the saved pattern', (
+    tester,
+  ) async {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
 
-    fakeDbHelper.contacts
-        .add(_weeklyReadingContact('contact-1', 'Timothy', 'Alvarez', today));
-    fakeDbHelper.contacts
-        .add(_weeklyReadingContact('contact-2', 'Bob', 'Builder', today));
+    fakeDbHelper.contacts.add(
+      _weeklyReadingContact('contact-1', 'Timothy', 'Alvarez', today),
+    );
+    fakeDbHelper.contacts.add(
+      _weeklyReadingContact('contact-2', 'Bob', 'Builder', today),
+    );
 
     await tester.pumpWidget(const MaterialApp(home: RecurringRoutinesPage()));
     await tester.pumpAndSettle();

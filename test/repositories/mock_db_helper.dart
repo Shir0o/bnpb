@@ -288,7 +288,9 @@ class MockDBHelper implements DBHelper {
   }) async {}
 
   @override
-  Future<List<StageMove>> getStageMoves(
-          {DateTime? start, DateTime? end}) async =>
+  Future<List<StageMove>> getStageMoves({
+    DateTime? start,
+    DateTime? end,
+  }) async =>
       [];
 }

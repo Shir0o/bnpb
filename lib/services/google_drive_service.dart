@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+
 import 'package:flutter/foundation.dart';
 import 'package:extension_google_sign_in_as_googleapis_auth/extension_google_sign_in_as_googleapis_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -256,9 +257,8 @@ class GoogleDriveService {
   /// Checks if there is basic internet connectivity.
   Future<bool> _hasConnectivity() async {
     try {
-      final result = await InternetAddress.lookup(
-        'google.com',
-      ).timeout(const Duration(seconds: 3));
+      final result = await InternetAddress.lookup('google.com')
+          .timeout(const Duration(seconds: 3));
       return result.isNotEmpty && result[0].rawAddress.isNotEmpty;
     } catch (_) {
       return false;
@@ -488,11 +488,7 @@ class GoogleDriveService {
       final folderQuery =
           "name contains '$escaped' and mimeType = 'application/vnd.google-apps.folder' and trashed = false";
       final folderList = await _driveApi!.files
-          .list(
-            q: folderQuery,
-            $fields: 'files(id, name)',
-            pageSize: 20,
-          )
+          .list(q: folderQuery, $fields: 'files(id, name)', pageSize: 20)
           .timeout(const Duration(seconds: 10));
 
       final targetLower = folderName.toLowerCase().trim();

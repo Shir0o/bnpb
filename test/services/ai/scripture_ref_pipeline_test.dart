@@ -76,18 +76,20 @@ void main() {
       expect(llm.callCount, 0);
     });
 
-    test('returns null and counts timeout when LLM exceeds latency cap',
-        () async {
-      final llm = _FakeLlm('{}', delay: const Duration(milliseconds: 500));
-      final pipeline = ScriptureRefAdvancementPipeline(
-        ScriptureRefAdvancementService(llm),
-      );
+    test(
+      'returns null and counts timeout when LLM exceeds latency cap',
+      () async {
+        final llm = _FakeLlm('{}', delay: const Duration(milliseconds: 500));
+        final pipeline = ScriptureRefAdvancementPipeline(
+          ScriptureRefAdvancementService(llm),
+        );
 
-      final ref = await pipeline.advance('Psalm one-seventeen', useAi: true);
-      expect(ref, isNull);
-      expect(llm.callCount, 1);
-      expect(pipeline.latencyTimeouts, 1);
-    });
+        final ref = await pipeline.advance('Psalm one-seventeen', useAi: true);
+        expect(ref, isNull);
+        expect(llm.callCount, 1);
+        expect(pipeline.latencyTimeouts, 1);
+      },
+    );
 
     test('respects custom latency cap', () async {
       final llm = _FakeLlm('{}', delay: const Duration(milliseconds: 100));

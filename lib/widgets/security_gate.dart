@@ -220,9 +220,10 @@ class _LockScreenState extends State<_LockScreen> {
                       padding: const EdgeInsets.only(top: 8),
                       child: Text(
                         'Biometric unlock is unavailable on this device.',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: Theme.of(context).hintColor,
-                            ),
+                        style: Theme.of(context)
+                            .textTheme
+                            .bodySmall
+                            ?.copyWith(color: Theme.of(context).hintColor),
                         textAlign: TextAlign.center,
                       ),
                     ),

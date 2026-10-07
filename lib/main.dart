@@ -9,6 +9,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:sqlite3/open.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
 import 'screens/add_contact_page.dart';
 import 'screens/analytics_page.dart';
 import 'screens/home_page.dart';
@@ -36,8 +37,9 @@ Future<void> updateFontSize(double newSize) async {
   fontSizeNotifier.value = newSize;
 }
 
-final ValueNotifier<ThemeMode> themeModeNotifier =
-    ValueNotifier<ThemeMode>(ThemeMode.light);
+final ValueNotifier<ThemeMode> themeModeNotifier = ValueNotifier<ThemeMode>(
+  ThemeMode.light,
+);
 
 Future<void> updateThemeMode(ThemeMode mode) async {
   final prefs = await SharedPreferences.getInstance();
@@ -164,9 +166,7 @@ ThemeData buildAppTheme(Brightness brightness, double baseFontSize) {
     ),
     dialogTheme: DialogThemeData(
       backgroundColor: colorScheme.surface,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
     ),
     bottomSheetTheme: BottomSheetThemeData(
       backgroundColor: colorScheme.surface,

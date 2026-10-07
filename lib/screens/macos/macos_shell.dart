@@ -120,10 +120,7 @@ class _MacOSShellState extends State<MacOSShell> {
                           ),
                         ),
                         _KeepAlivePage(
-                          child: _buildNavigator(
-                            1,
-                            const MacOSAnalyticsView(),
-                          ),
+                          child: _buildNavigator(1, const MacOSAnalyticsView()),
                         ),
                         _KeepAlivePage(
                           child: _buildNavigator(
@@ -137,16 +134,11 @@ class _MacOSShellState extends State<MacOSShell> {
                         _KeepAlivePage(
                           child: _buildNavigator(
                             4,
-                            MacOSAddView(
-                              onSaved: () => _selectSection(0),
-                            ),
+                            MacOSAddView(onSaved: () => _selectSection(0)),
                           ),
                         ),
                         _KeepAlivePage(
-                          child: _buildNavigator(
-                            5,
-                            const MacOSSettingsView(),
-                          ),
+                          child: _buildNavigator(5, const MacOSSettingsView()),
                         ),
                       ],
                     ),
@@ -317,8 +309,10 @@ class _MacOSShellState extends State<MacOSShell> {
                 ),
                 if (badge != null)
                   Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 7,
+                      vertical: 2,
+                    ),
                     decoration: BoxDecoration(
                       color: colorScheme.dangerTint,
                       borderRadius: BorderRadius.circular(20),
@@ -334,8 +328,10 @@ class _MacOSShellState extends State<MacOSShell> {
                   ),
                 if (trailingPill != null)
                   Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 7,
+                      vertical: 2,
+                    ),
                     decoration: BoxDecoration(
                       color: colorScheme.surfaceTint,
                       borderRadius: BorderRadius.circular(20),
@@ -370,8 +366,11 @@ class _MacOSShellState extends State<MacOSShell> {
         children: [
           Row(
             children: [
-              const Icon(Icons.auto_awesome,
-                  size: 15, color: Color(0xFF5FE0A0)),
+              const Icon(
+                Icons.auto_awesome,
+                size: 15,
+                color: Color(0xFF5FE0A0),
+              ),
               const SizedBox(width: 7),
               const Text(
                 'Follow-ups',

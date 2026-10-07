@@ -88,8 +88,10 @@ Future<void> _pumpPage(
   final service = MockContactService();
   when(() => service.hasCachedInteractions(any())).thenReturn(false);
   when(
-    () => service.getInteractions(any(),
-        forceRefresh: any(named: 'forceRefresh')),
+    () => service.getInteractions(
+      any(),
+      forceRefresh: any(named: 'forceRefresh'),
+    ),
   ).thenAnswer((_) async => []);
 
   await tester.pumpWidget(
@@ -128,27 +130,26 @@ void main() {
     },
   );
 
-  testWidgets(
-    'saving an edited contact keeps the stored stage column',
-    (tester) async {
-      final original = _annLee();
-      final db = InMemoryDBHelper({'c1': original});
-      DBHelper.overrideForTest(db);
-      addTearDown(DBHelper.resetTestOverride);
+  testWidgets('saving an edited contact keeps the stored stage column', (
+    tester,
+  ) async {
+    final original = _annLee();
+    final db = InMemoryDBHelper({'c1': original});
+    DBHelper.overrideForTest(db);
+    addTearDown(DBHelper.resetTestOverride);
 
-      await _pumpPage(tester, original, db);
+    await _pumpPage(tester, original, db);
 
-      await tester.tap(find.byIcon(Icons.edit_outlined));
-      await tester.pumpAndSettle();
-      await tester.tap(find.byIcon(Icons.check));
-      await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(Icons.edit_outlined));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(Icons.check));
+    await tester.pumpAndSettle();
 
-      final saved = db.contacts['c1'];
-      expect(
-        saved?.stage,
-        'Group meeting',
-        reason: 'an unrelated edit must not wipe the stage column',
-      );
-    },
-  );
+    final saved = db.contacts['c1'];
+    expect(
+      saved?.stage,
+      'Group meeting',
+      reason: 'an unrelated edit must not wipe the stage column',
+    );
+  });
 }

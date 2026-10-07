@@ -45,20 +45,17 @@ void main() {
         forceRefresh: any(named: 'forceRefresh'),
       ),
     ).thenAnswer((_) async => []);
-    when(
-      () => mockContactService.hasCachedInteractions('c1'),
-    ).thenReturn(false);
+    when(() => mockContactService.hasCachedInteractions('c1'))
+        .thenReturn(false);
 
     when(() => mockDBHelper.getContacts()).thenAnswer((_) async => []);
-    when(
-      () => mockDBHelper.getRelationshipsForContact('c1'),
-    ).thenAnswer((_) async => []);
+    when(() => mockDBHelper.getRelationshipsForContact('c1'))
+        .thenAnswer((_) async => []);
     when(() => mockDBHelper.getDistinctLocations()).thenAnswer((_) async => []);
 
     // Stub for inserting interaction
-    when(() => mockDBHelper.insertInteraction(any())).thenAnswer((
-      invocation,
-    ) async {
+    when(() => mockDBHelper.insertInteraction(any()))
+        .thenAnswer((invocation) async {
       final interaction = invocation.positionalArguments[0] as Interaction;
       return interaction.copyWith(id: 1);
     });

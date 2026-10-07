@@ -71,8 +71,9 @@ class ContactStageService {
       );
     }
 
-    suggestions
-        .sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+    suggestions.sort(
+      (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
+    );
     return suggestions;
   }
 

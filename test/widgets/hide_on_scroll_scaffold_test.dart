@@ -31,10 +31,7 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           home: HideOnScrollScaffold(
-            appBar: AppBar(
-              title: const Text('Test'),
-              toolbarHeight: 56,
-            ),
+            appBar: AppBar(title: const Text('Test'), toolbarHeight: 56),
             body: ListView.builder(
               itemCount: 100,
               itemBuilder: (_, i) => ListTile(title: Text('Item $i')),
@@ -60,10 +57,7 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           home: HideOnScrollScaffold(
-            appBar: AppBar(
-              title: const Text('Test'),
-              toolbarHeight: 56,
-            ),
+            appBar: AppBar(title: const Text('Test'), toolbarHeight: 56),
             body: ListView.builder(
               itemCount: 100,
               itemBuilder: (_, i) => ListTile(title: Text('Item $i')),
@@ -114,8 +108,9 @@ void main() {
       expect(scaffold.backgroundColor, Colors.red);
     });
 
-    testWidgets('passes through drawer and bottomNavigationBar properties',
-        (tester) async {
+    testWidgets('passes through drawer and bottomNavigationBar properties', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         MaterialApp(
           home: HideOnScrollScaffold(

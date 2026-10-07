@@ -1,4 +1,5 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 
@@ -68,12 +69,15 @@ class _QuickCreateContactDialogState extends State<QuickCreateContactDialog> {
   @override
   void initState() {
     super.initState();
-    _firstNameController =
-        TextEditingController(text: widget.initialFirstName ?? '');
-    _lastNameController =
-        TextEditingController(text: widget.initialLastName ?? '');
-    _locationController =
-        TextEditingController(text: widget.initialLocation ?? '');
+    _firstNameController = TextEditingController(
+      text: widget.initialFirstName ?? '',
+    );
+    _lastNameController = TextEditingController(
+      text: widget.initialLastName ?? '',
+    );
+    _locationController = TextEditingController(
+      text: widget.initialLocation ?? '',
+    );
   }
 
   @override

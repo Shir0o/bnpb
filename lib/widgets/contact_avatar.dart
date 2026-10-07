@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../models/contact.dart';
 
 /// A reusable avatar widget utilizing the green color palette from Crisp Utility design tokens.

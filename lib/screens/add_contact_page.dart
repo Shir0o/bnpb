@@ -218,7 +218,8 @@ class _AddContactPageState extends State<AddContactPage>
                       : () {
                           Navigator.of(context).push(
                             MaterialPageRoute(
-                                builder: (_) => const AddFamilyPage()),
+                              builder: (_) => const AddFamilyPage(),
+                            ),
                           );
                         },
                 ),
@@ -226,8 +227,10 @@ class _AddContactPageState extends State<AddContactPage>
                 GestureDetector(
                   onTap: _isSavingContact ? null : _saveContact,
                   child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 18,
+                      vertical: 8,
+                    ),
                     decoration: BoxDecoration(
                       color: colorScheme.primary,
                       borderRadius: BorderRadius.circular(12),
@@ -239,7 +242,8 @@ class _AddContactPageState extends State<AddContactPage>
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
                               valueColor: AlwaysStoppedAnimation<Color>(
-                                  Color(0xFFFFFFFF)),
+                                Color(0xFFFFFFFF),
+                              ),
                             ),
                           )
                         : const Text(

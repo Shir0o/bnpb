@@ -1,4 +1,5 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
@@ -13,6 +14,7 @@ import 'package:bnpb/services/google_drive_service.dart';
 import 'package:bnpb/services/reminder_service.dart';
 import 'package:bnpb/services/security_service.dart';
 import 'package:bnpb/services/backup_service.dart';
+
 import '../../test/repositories/mock_db_helper.dart';
 
 class MockGoogleDriveService extends Mock implements GoogleDriveService {}
@@ -103,105 +105,112 @@ void main() {
   });
 
   testWidgets(
-      'HomePage can enter bulk select mode and bulk edit contact locations',
-      (WidgetTester tester) async {
-    // Set screen size to avoid any off-screen tap warnings
-    tester.view.physicalSize = const Size(800, 1200);
-    tester.view.devicePixelRatio = 1.0;
-    addTearDown(() {
-      tester.view.resetPhysicalSize();
-      tester.view.resetDevicePixelRatio();
-    });
+    'HomePage can enter bulk select mode and bulk edit contact locations',
+    (WidgetTester tester) async {
+      // Set screen size to avoid any off-screen tap warnings
+      tester.view.physicalSize = const Size(800, 1200);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
 
-    final contact1 = Contact(
-      id: 'c1',
-      firstName: 'Alice',
-      lastName: 'Smith',
-      location: 'New York',
-      updatedAt: DateTime.now(),
-    );
-    final contact2 = Contact(
-      id: 'c2',
-      firstName: 'Bob',
-      lastName: 'Jones',
-      location: 'London',
-      updatedAt: DateTime.now(),
-    );
-    fakeDbHelper.contacts.addAll([contact1, contact2]);
+      final contact1 = Contact(
+        id: 'c1',
+        firstName: 'Alice',
+        lastName: 'Smith',
+        location: 'New York',
+        updatedAt: DateTime.now(),
+      );
+      final contact2 = Contact(
+        id: 'c2',
+        firstName: 'Bob',
+        lastName: 'Jones',
+        location: 'London',
+        updatedAt: DateTime.now(),
+      );
+      fakeDbHelper.contacts.addAll([contact1, contact2]);
 
-    await tester.pumpWidget(const MaterialApp(home: HomePage()));
-    await tester.pump(const Duration(milliseconds: 400));
-    await tester.pump();
+      await tester.pumpWidget(const MaterialApp(home: HomePage()));
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.pump();
 
-    // Verify groups New York and London are rendered
-    expect(find.text('New York'), findsOneWidget);
-    expect(find.text('London'), findsOneWidget);
+      // Verify groups New York and London are rendered
+      expect(find.text('New York'), findsOneWidget);
+      expect(find.text('London'), findsOneWidget);
 
-    // Expand New York group
-    final newYorkHeader = find.text('New York').first;
-    await tester.tap(newYorkHeader);
-    await tester.pump(const Duration(milliseconds: 400));
-    await tester.pump();
+      // Expand New York group
+      final newYorkHeader = find.text('New York').first;
+      await tester.tap(newYorkHeader);
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.pump();
 
-    // Expand London group
-    final londonHeader = find.text('London').first;
-    await tester.tap(londonHeader);
-    await tester.pump(const Duration(milliseconds: 400));
-    await tester.pump();
+      // Expand London group
+      final londonHeader = find.text('London').first;
+      await tester.tap(londonHeader);
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.pump();
 
-    // Find Alice's card and long press to enter bulk select mode
-    final aliceCard = find.byWidgetPredicate(
-        (widget) => widget is PeopleCard && widget.contact.id == 'c1');
-    expect(aliceCard, findsOneWidget);
+      // Find Alice's card and long press to enter bulk select mode
+      final aliceCard = find.byWidgetPredicate(
+        (widget) => widget is PeopleCard && widget.contact.id == 'c1',
+      );
+      expect(aliceCard, findsOneWidget);
 
-    await tester.longPress(aliceCard);
-    await tester.pump(const Duration(milliseconds: 400));
-    await tester.pump();
+      await tester.longPress(aliceCard);
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.pump();
 
-    // Verify we are in select mode (should show "1 selected" since long press selects the pressed item)
-    expect(find.text('1 selected'), findsOneWidget);
-    expect(find.byIcon(Icons.select_all_rounded), findsOneWidget);
-    expect(find.byIcon(Icons.deselect), findsOneWidget);
+      // Verify we are in select mode (should show "1 selected" since long press selects the pressed item)
+      expect(find.text('1 selected'), findsOneWidget);
+      expect(find.byIcon(Icons.select_all_rounded), findsOneWidget);
+      expect(find.byIcon(Icons.deselect), findsOneWidget);
 
-    final bobCard = find.byWidgetPredicate(
-        (widget) => widget is PeopleCard && widget.contact.id == 'c2');
-    expect(bobCard, findsOneWidget);
+      final bobCard = find.byWidgetPredicate(
+        (widget) => widget is PeopleCard && widget.contact.id == 'c2',
+      );
+      expect(bobCard, findsOneWidget);
 
-    // Tap Bob to select him too
-    await tester.tap(bobCard);
-    await tester.pump(const Duration(milliseconds: 400));
-    await tester.pump();
-    expect(find.text('2 selected'), findsOneWidget);
+      // Tap Bob to select him too
+      await tester.tap(bobCard);
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.pump();
+      expect(find.text('2 selected'), findsOneWidget);
 
-    // Tap Edit Location
-    await tester.tap(find.byIcon(Icons.edit_location_alt_rounded));
-    await tester.pump(const Duration(milliseconds: 400));
-    await tester.pump();
+      // Tap Edit Location
+      await tester.tap(find.byIcon(Icons.edit_location_alt_rounded));
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.pump();
 
-    // Dialog should show up
-    expect(find.text('Change Location'), findsOneWidget);
-    expect(
+      // Dialog should show up
+      expect(find.text('Change Location'), findsOneWidget);
+      expect(
         find.textContaining(
-            'Enter a new location for the 2 selected contact(s).'),
-        findsOneWidget);
+          'Enter a new location for the 2 selected contact(s).',
+        ),
+        findsOneWidget,
+      );
 
-    // Fill location
-    await tester.enterText(find.byType(TextFormField), 'Paris');
-    await tester.pump(const Duration(milliseconds: 100));
-    await tester.pump();
+      // Fill location
+      await tester.enterText(find.byType(TextFormField), 'Paris');
+      await tester.pump(const Duration(milliseconds: 100));
+      await tester.pump();
 
-    // Click Change
-    await tester.tap(find.text('Change'));
-    await tester.pump(); // Start change dialog dismiss
-    await tester.pump(const Duration(
-        milliseconds: 100)); // loading dialog shows up and performs updates
-    await tester.pump(const Duration(
-        milliseconds: 100)); // loading dialog dismiss and sets state
-    await tester.pump(const Duration(milliseconds: 400));
+      // Click Change
+      await tester.tap(find.text('Change'));
+      await tester.pump(); // Start change dialog dismiss
+      await tester.pump(
+        const Duration(milliseconds: 100),
+      ); // loading dialog shows up and performs updates
+      await tester.pump(
+        const Duration(milliseconds: 100),
+      ); // loading dialog dismiss and sets state
+      await tester.pump(const Duration(milliseconds: 400));
 
-    // Verify locations were updated in DBHelper
-    expect(fakeDbHelper.updatedContacts.length, 2);
-    expect(fakeDbHelper.updatedContacts[0].location, 'Paris');
-    expect(fakeDbHelper.updatedContacts[1].location, 'Paris');
-  });
+      // Verify locations were updated in DBHelper
+      expect(fakeDbHelper.updatedContacts.length, 2);
+      expect(fakeDbHelper.updatedContacts[0].location, 'Paris');
+      expect(fakeDbHelper.updatedContacts[1].location, 'Paris');
+    },
+  );
 }

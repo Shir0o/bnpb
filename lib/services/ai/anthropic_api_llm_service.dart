@@ -1,5 +1,7 @@
 import 'dart:convert';
+
 import 'package:http/http.dart' as http;
+
 import 'local_llm_service.dart';
 
 /// Cloud backend for [LocalLlmService] that routes prompts to Anthropic's Claude API.
@@ -44,7 +46,7 @@ class AnthropicApiLlmService implements LocalLlmService {
         'max_tokens': maxTokens,
         'temperature': temperature,
         'messages': [
-          {'role': 'user', 'content': prompt}
+          {'role': 'user', 'content': prompt},
         ],
       }),
     );

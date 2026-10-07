@@ -93,21 +93,20 @@ void main() {
       expect(await service.advance('Psalm 117'), isNull);
     });
 
-    test('returns null when LLM produces invalid (start > end) range',
-        () async {
-      final llm = _FakeLlm('{"book":"Psa","start":10,"end":5}');
-      final service = ScriptureRefAdvancementService(llm);
-      expect(await service.advance('foo'), isNull);
-    });
+    test(
+      'returns null when LLM produces invalid (start > end) range',
+      () async {
+        final llm = _FakeLlm('{"book":"Psa","start":10,"end":5}');
+        final service = ScriptureRefAdvancementService(llm);
+        expect(await service.advance('foo'), isNull);
+      },
+    );
 
     test('throws StateError when LLM is not ready', () {
       final service = ScriptureRefAdvancementService(
         _FakeLlm('{}', ready: false),
       );
-      expect(
-        () => service.advance('Psalm 117'),
-        throwsA(isA<StateError>()),
-      );
+      expect(() => service.advance('Psalm 117'), throwsA(isA<StateError>()));
     });
 
     test('prompt includes the user-supplied note text', () async {

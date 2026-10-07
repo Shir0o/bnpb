@@ -54,10 +54,8 @@ class _ReviewPageState extends State<ReviewPage> {
     if (!mounted || contact == null) return;
     await Navigator.of(context).push<void>(
       MaterialPageRoute<void>(
-        builder: (_) => ContactDetailsPage(
-          contact: contact,
-          onDelete: () async {},
-        ),
+        builder: (_) =>
+            ContactDetailsPage(contact: contact, onDelete: () async {}),
       ),
     );
   }
@@ -68,10 +66,7 @@ class _ReviewPageState extends State<ReviewPage> {
       suggestion.to,
     );
     if (!mounted) return;
-    CrispToast.show(
-      context,
-      '${suggestion.name} → ${suggestion.to}',
-    );
+    CrispToast.show(context, '${suggestion.name} → ${suggestion.to}');
     await _load();
   }
 
@@ -392,8 +387,9 @@ class _ReviewPageState extends State<ReviewPage> {
                         value: entry.fraction,
                         minHeight: 9,
                         backgroundColor: colorScheme.surfaceTint,
-                        valueColor:
-                            AlwaysStoppedAnimation<Color>(resolve(entry.color)),
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          resolve(entry.color),
+                        ),
                       ),
                     ),
                   ],
@@ -488,10 +484,7 @@ class _ReviewPageState extends State<ReviewPage> {
                 decoration: BoxDecoration(
                   color: colorScheme.dangerTint2,
                   borderRadius: BorderRadius.circular(13),
-                  border: Border.all(
-                    color: colorScheme.dangerBorder,
-                    width: 1,
-                  ),
+                  border: Border.all(color: colorScheme.dangerBorder, width: 1),
                 ),
                 child: Column(
                   children: [
@@ -541,11 +534,7 @@ class _ReviewPageState extends State<ReviewPage> {
           children: [
             Row(
               children: [
-                Icon(
-                  Icons.auto_awesome,
-                  size: 17,
-                  color: colorScheme.primary,
-                ),
+                Icon(Icons.auto_awesome, size: 17, color: colorScheme.primary),
                 const SizedBox(width: 8),
                 Text(
                   'Confirm stage changes',
@@ -572,9 +561,7 @@ class _ReviewPageState extends State<ReviewPage> {
               Container(
                 padding: const EdgeInsets.only(top: 12),
                 decoration: BoxDecoration(
-                  border: Border(
-                    top: BorderSide(color: colorScheme.hairline),
-                  ),
+                  border: Border(top: BorderSide(color: colorScheme.hairline)),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -813,9 +800,7 @@ class _ReviewPageState extends State<ReviewPage> {
             mainAxisSpacing: 9,
             crossAxisSpacing: 9,
             childAspectRatio: 2.1,
-            children: [
-              for (final tile in data.care) _CareTile(tile: tile),
-            ],
+            children: [for (final tile in data.care) _CareTile(tile: tile)],
           ),
         ],
       ),
@@ -857,9 +842,7 @@ class _ReviewPageState extends State<ReviewPage> {
             Container(
               padding: const EdgeInsets.symmetric(vertical: 11),
               decoration: BoxDecoration(
-                border: Border(
-                  bottom: BorderSide(color: colorScheme.hairline),
-                ),
+                border: Border(bottom: BorderSide(color: colorScheme.hairline)),
               ),
               child: Row(
                 children: [
@@ -921,18 +904,12 @@ class _ReviewPageState extends State<ReviewPage> {
             Container(
               padding: const EdgeInsets.symmetric(vertical: 10),
               decoration: BoxDecoration(
-                border: Border(
-                  bottom: BorderSide(color: colorScheme.hairline),
-                ),
+                border: Border(bottom: BorderSide(color: colorScheme.hairline)),
               ),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(
-                    Icons.close,
-                    size: 16,
-                    color: colorScheme.faint,
-                  ),
+                  Icon(Icons.close, size: 16, color: colorScheme.faint),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
@@ -962,8 +939,12 @@ class _MarkCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final (Color bg, Color border, Color dot, Color labelColor) =
-        switch (mark.kind) {
+    final (
+      Color bg,
+      Color border,
+      Color dot,
+      Color labelColor,
+    ) = switch (mark.kind) {
       ReviewMarkKind.attention => (
           colorScheme.dangerTint2,
           colorScheme.dangerBorder,

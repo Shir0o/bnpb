@@ -275,17 +275,9 @@ class SyncCoordinator {
       final localUpdatedAt = localContacts[remote.id];
 
       if (localUpdatedAt == null) {
-        await _db.upsertContactFromSync(
-          db,
-          remote,
-          isUpdate: false,
-        );
+        await _db.upsertContactFromSync(db, remote, isUpdate: false);
       } else if (remote.updatedAt.isAfter(localUpdatedAt)) {
-        await _db.upsertContactFromSync(
-          db,
-          remote,
-          isUpdate: true,
-        );
+        await _db.upsertContactFromSync(db, remote, isUpdate: true);
       }
     }
   }
@@ -572,8 +564,9 @@ class SyncCoordinator {
         if (!existingContactIds.contains(remote.contactId)) continue;
 
         final localRow = localPrayerRequests[remote.syncId];
-        final validParticipantIds =
-            remote.participantIds.where(existingContactIds.contains);
+        final validParticipantIds = remote.participantIds.where(
+          existingContactIds.contains,
+        );
 
         if (localRow == null) {
           if (remote.deletedAt != null) continue;
@@ -671,15 +664,23 @@ class SyncCoordinator {
           final deletedList = remoteList.copyWith(id: canonicalId);
           await _db.upsertPrayerListFromSync(db, deletedList);
           if (localList.id != canonicalId) {
-            await db.delete('prayer_list_members',
-                where: 'listId = ?', whereArgs: [localList.id]);
-            await db.delete('prayer_lists',
-                where: 'id = ?', whereArgs: [localList.id]);
+            await db.delete(
+              'prayer_list_members',
+              where: 'listId = ?',
+              whereArgs: [localList.id],
+            );
+            await db.delete(
+              'prayer_lists',
+              where: 'id = ?',
+              whereArgs: [localList.id],
+            );
           }
-          localLists.removeWhere((l) =>
-              l.id == canonicalId ||
-              l.id == localList!.id ||
-              l.id == remoteList.id);
+          localLists.removeWhere(
+            (l) =>
+                l.id == canonicalId ||
+                l.id == localList!.id ||
+                l.id == remoteList.id,
+          );
         }
         continue;
       }
@@ -700,23 +701,37 @@ class SyncCoordinator {
 
       // Clean up old non-canonical IDs if they differed
       if (localList.id != canonicalId) {
-        await db.delete('prayer_list_members',
-            where: 'listId = ?', whereArgs: [localList.id]);
-        await db
-            .delete('prayer_lists', where: 'id = ?', whereArgs: [localList.id]);
+        await db.delete(
+          'prayer_list_members',
+          where: 'listId = ?',
+          whereArgs: [localList.id],
+        );
+        await db.delete(
+          'prayer_lists',
+          where: 'id = ?',
+          whereArgs: [localList.id],
+        );
       }
       if (remoteList.id != canonicalId) {
-        await db.delete('prayer_list_members',
-            where: 'listId = ?', whereArgs: [remoteList.id]);
-        await db.delete('prayer_lists',
-            where: 'id = ?', whereArgs: [remoteList.id]);
+        await db.delete(
+          'prayer_list_members',
+          where: 'listId = ?',
+          whereArgs: [remoteList.id],
+        );
+        await db.delete(
+          'prayer_lists',
+          where: 'id = ?',
+          whereArgs: [remoteList.id],
+        );
       }
 
       await _db.upsertPrayerListFromSync(db, mergedList);
-      localLists.removeWhere((l) =>
-          l.id == canonicalId ||
-          l.id == localList!.id ||
-          l.id == remoteList.id);
+      localLists.removeWhere(
+        (l) =>
+            l.id == canonicalId ||
+            l.id == localList!.id ||
+            l.id == remoteList.id,
+      );
       localLists.add(mergedList);
     }
   }

@@ -37,12 +37,7 @@ const List<BibleBook> bibleBooks = [
   BibleBook('Psa', 150, ['ps', 'psa', 'psalm', 'psalms']),
   BibleBook('Prov', 31, ['prov', 'proverbs']),
   BibleBook('Eccl', 12, ['eccl', 'ecclesiastes']),
-  BibleBook('Song', 8, [
-    'song',
-    'songofsongs',
-    'songofsolomon',
-    'sos',
-  ]),
+  BibleBook('Song', 8, ['song', 'songofsongs', 'songofsolomon', 'sos']),
   BibleBook('Isa', 66, ['isa', 'isaiah']),
   BibleBook('Jer', 52, ['jer', 'jeremiah']),
   BibleBook('Lam', 5, ['lam', 'lamentations']),

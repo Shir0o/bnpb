@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../main.dart'; // To access CrispColorScheme extension on ColorScheme
 import '../models/contact.dart';
 import '../models/relationship.dart';
@@ -107,9 +108,7 @@ class _RelationshipDialogState extends State<RelationshipDialog> {
           children: [
             DropdownButtonFormField<String>(
               initialValue: selectedContactId,
-              decoration: const InputDecoration(
-                labelText: 'Connected contact',
-              ),
+              decoration: const InputDecoration(labelText: 'Connected contact'),
               items: dropdownContacts
                   .map(
                     (contact) => DropdownMenuItem<String>(
@@ -132,9 +131,10 @@ class _RelationshipDialogState extends State<RelationshipDialog> {
             const SizedBox(height: 16),
             Text(
               'Role',
-              style: Theme.of(
-                context,
-              ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),
+              style: Theme.of(context)
+                  .textTheme
+                  .bodyMedium
+                  ?.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
             Wrap(
@@ -174,9 +174,8 @@ class _RelationshipDialogState extends State<RelationshipDialog> {
                     child: Text(
                       getRoleDescription(),
                       style: TextStyle(
-                        color: Theme.of(
-                          context,
-                        ).colorScheme.onSecondaryContainer,
+                        color:
+                            Theme.of(context).colorScheme.onSecondaryContainer,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -188,9 +187,7 @@ class _RelationshipDialogState extends State<RelationshipDialog> {
             TextField(
               controller: notesController,
               maxLines: 2,
-              decoration: const InputDecoration(
-                labelText: 'Notes (optional)',
-              ),
+              decoration: const InputDecoration(labelText: 'Notes (optional)'),
             ),
           ],
         ),

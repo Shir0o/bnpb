@@ -187,8 +187,9 @@ class RecurringLogPatternService {
     final targetKey = identity.key;
 
     final anyConfirmed = preferences.preferenceFor(target.key).confirmed ||
-        sources
-            .any((source) => preferences.preferenceFor(source.key).confirmed);
+        sources.any(
+          (source) => preferences.preferenceFor(source.key).confirmed,
+        );
 
     var updated = preferences.withPreference(
       targetKey,
@@ -286,8 +287,9 @@ class RecurringLogPatternService {
     suggestions.sort((a, b) {
       final overdue = b.overdueDays.compareTo(a.overdueDays);
       if (overdue != 0) return overdue;
-      final confidence =
-          b.pattern.occurrenceCount.compareTo(a.pattern.occurrenceCount);
+      final confidence = b.pattern.occurrenceCount.compareTo(
+        a.pattern.occurrenceCount,
+      );
       if (confidence != 0) return confidence;
       return _payloadRank(b).compareTo(_payloadRank(a));
     });
@@ -361,8 +363,11 @@ class RecurringLogPatternService {
     final medianInterval = _median(intervals);
     final weekdayCounts = <int, int>{};
     for (final date in dates) {
-      weekdayCounts.update(date.weekday, (count) => count + 1,
-          ifAbsent: () => 1);
+      weekdayCounts.update(
+        date.weekday,
+        (count) => count + 1,
+        ifAbsent: () => 1,
+      );
     }
 
     PatternCadence? cadence;
@@ -382,8 +387,9 @@ class RecurringLogPatternService {
 
     if (cadence == null) {
       final rounded = medianInterval.round();
-      final regular =
-          intervals.every((interval) => (interval - rounded).abs() <= 1);
+      final regular = intervals.every(
+        (interval) => (interval - rounded).abs() <= 1,
+      );
       if (rounded >= 2 && regular) {
         cadence = PatternCadence.interval(rounded, dates.last);
       }

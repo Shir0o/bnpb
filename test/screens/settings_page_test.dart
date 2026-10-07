@@ -1,4 +1,5 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
@@ -15,6 +16,7 @@ import 'package:bnpb/services/google_drive_service.dart';
 import 'package:bnpb/services/reminder_service.dart';
 import 'package:bnpb/services/security_service.dart';
 import 'package:uuid/uuid.dart';
+
 import '../repositories/mock_db_helper.dart';
 
 class MockGoogleDriveService extends Mock implements GoogleDriveService {}
@@ -110,31 +112,24 @@ void main() {
 
     mockGoogleDriveService = MockGoogleDriveService();
     when(() => mockGoogleDriveService.isInitializing).thenReturn(false);
-    when(
-      () => mockGoogleDriveService.onUserChanged,
-    ).thenAnswer((_) => const Stream.empty());
-    when(
-      () => mockGoogleDriveService.currentUser,
-    ).thenAnswer((_) async => null);
+    when(() => mockGoogleDriveService.onUserChanged)
+        .thenAnswer((_) => const Stream.empty());
+    when(() => mockGoogleDriveService.currentUser)
+        .thenAnswer((_) async => null);
 
     mockReminderService = MockReminderService();
-    when(
-      () => mockReminderService.isExactAlarmPermissionRelevant(),
-    ).thenAnswer((_) async => false);
-    when(
-      () => mockReminderService.isExactAlarmOptInEnabled(),
-    ).thenAnswer((_) async => false);
+    when(() => mockReminderService.isExactAlarmPermissionRelevant())
+        .thenAnswer((_) async => false);
+    when(() => mockReminderService.isExactAlarmOptInEnabled())
+        .thenAnswer((_) async => false);
 
     mockSecurityService = MockSecurityService();
-    when(
-      () => mockSecurityService.hasPasscode(),
-    ).thenAnswer((_) async => false);
-    when(
-      () => mockSecurityService.isBiometricEnabled(),
-    ).thenAnswer((_) async => false);
-    when(
-      () => mockSecurityService.canUseBiometrics(),
-    ).thenAnswer((_) async => false);
+    when(() => mockSecurityService.hasPasscode())
+        .thenAnswer((_) async => false);
+    when(() => mockSecurityService.isBiometricEnabled())
+        .thenAnswer((_) async => false);
+    when(() => mockSecurityService.canUseBiometrics())
+        .thenAnswer((_) async => false);
 
     fakeDbHelper = FakeDBHelper();
 
@@ -205,8 +200,10 @@ void main() {
       fakeDbHelper.findDuplicateCompleter = findDuplicateCompleter;
 
       // 3. Find and tap the "De-duplicate interactions" tile
-      final deDupTile =
-          find.byIcon(Icons.cleaning_services_outlined, skipOffstage: false);
+      final deDupTile = find.byIcon(
+        Icons.cleaning_services_outlined,
+        skipOffstage: false,
+      );
       await tester.scrollUntilVisible(
         deDupTile,
         100.0,
@@ -291,8 +288,10 @@ void main() {
       final darkModeTile = find.text('Dark mode', skipOffstage: false);
       expect(darkModeTile, findsOneWidget);
 
-      final tileFinder =
-          find.ancestor(of: darkModeTile, matching: find.byType(ListTile));
+      final tileFinder = find.ancestor(
+        of: darkModeTile,
+        matching: find.byType(ListTile),
+      );
       await tester.scrollUntilVisible(
         tileFinder,
         100.0,
@@ -329,8 +328,10 @@ void main() {
       final sttTile = find.text('Simple Time Tracker', skipOffstage: false);
       expect(sttTile, findsOneWidget);
 
-      final tileFinder =
-          find.ancestor(of: sttTile, matching: find.byType(ListTile));
+      final tileFinder = find.ancestor(
+        of: sttTile,
+        matching: find.byType(ListTile),
+      );
       await tester.scrollUntilVisible(
         tileFinder,
         100.0,

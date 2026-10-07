@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+
 import 'package:meta/meta.dart';
 import 'package:path/path.dart';
 import 'package:sqflite_sqlcipher/sqflite.dart';
@@ -695,8 +696,10 @@ class DBHelper {
 
   /// Stage moves within [start, end), newest first. With no bounds, all
   /// active moves are returned.
-  Future<List<StageMove>> getStageMoves(
-      {DateTime? start, DateTime? end}) async {
+  Future<List<StageMove>> getStageMoves({
+    DateTime? start,
+    DateTime? end,
+  }) async {
     final db = await database;
     final rows = await db.query(
       'stage_moves',

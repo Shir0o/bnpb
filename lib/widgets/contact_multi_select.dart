@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../models/contact.dart';
 import 'contact_avatar.dart';
 import 'quick_create_contact_dialog.dart';
@@ -156,7 +157,9 @@ class _ContactMultiSelectState extends State<ContactMultiSelect> {
               // Header
               Padding(
                 padding: const EdgeInsets.symmetric(
-                    horizontal: 16.0, vertical: 12.0),
+                  horizontal: 16.0,
+                  vertical: 12.0,
+                ),
                 child: Row(
                   children: [
                     TextButton(
@@ -175,8 +178,10 @@ class _ContactMultiSelectState extends State<ContactMultiSelect> {
                     TextButton(
                       onPressed: () =>
                           Navigator.pop(context, _selectedIds.toList()),
-                      child: const Text('Done',
-                          style: TextStyle(fontWeight: FontWeight.bold)),
+                      child: const Text(
+                        'Done',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
                     ),
                   ],
                 ),
@@ -186,7 +191,9 @@ class _ContactMultiSelectState extends State<ContactMultiSelect> {
               if (selectedContacts.isNotEmpty)
                 Padding(
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 16.0, vertical: 4.0),
+                    horizontal: 16.0,
+                    vertical: 4.0,
+                  ),
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(maxHeight: 110),
                     child: SingleChildScrollView(
@@ -196,8 +203,10 @@ class _ContactMultiSelectState extends State<ContactMultiSelect> {
                         children: selectedContacts.map((contact) {
                           return Chip(
                             avatar: ContactAvatar(contact: contact, radius: 10),
-                            label: Text(contact.displayName,
-                                style: const TextStyle(fontSize: 12)),
+                            label: Text(
+                              contact.displayName,
+                              style: const TextStyle(fontSize: 12),
+                            ),
                             deleteIcon: const Icon(Icons.close, size: 14),
                             onDeleted: () {
                               setState(() {
@@ -213,8 +222,10 @@ class _ContactMultiSelectState extends State<ContactMultiSelect> {
 
               // Search bar
               Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16.0,
+                  vertical: 8.0,
+                ),
                 child: TextField(
                   controller: _searchController,
                   focusNode: _focusNode,
@@ -233,7 +244,9 @@ class _ContactMultiSelectState extends State<ContactMultiSelect> {
                         : null,
                     isDense: true,
                     contentPadding: const EdgeInsets.symmetric(
-                        vertical: 10, horizontal: 14),
+                      vertical: 10,
+                      horizontal: 14,
+                    ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -249,8 +262,12 @@ class _ContactMultiSelectState extends State<ContactMultiSelect> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Padding(
-                                padding:
-                                    const EdgeInsets.fromLTRB(16, 8, 16, 4),
+                                padding: const EdgeInsets.fromLTRB(
+                                  16,
+                                  8,
+                                  16,
+                                  4,
+                                ),
                                 child: Text(
                                   widget.suggestionsTitle,
                                   style: theme.textTheme.labelMedium?.copyWith(
@@ -261,14 +278,17 @@ class _ContactMultiSelectState extends State<ContactMultiSelect> {
                               ),
                               Padding(
                                 padding: const EdgeInsets.symmetric(
-                                    horizontal: 16.0),
+                                  horizontal: 16.0,
+                                ),
                                 child: Wrap(
                                   spacing: 8,
                                   runSpacing: 4,
                                   children: unselectedSuggestions.map((c) {
                                     return ActionChip(
-                                      avatar:
-                                          ContactAvatar(contact: c, radius: 10),
+                                      avatar: ContactAvatar(
+                                        contact: c,
+                                        radius: 10,
+                                      ),
                                       label: Text(c.displayName),
                                       onPressed: () => _toggleContact(c),
                                     );
@@ -281,19 +301,24 @@ class _ContactMultiSelectState extends State<ContactMultiSelect> {
                                   itemCount: widget.contacts.length,
                                   itemBuilder: (ctx, idx) {
                                     final contact = widget.contacts[idx];
-                                    final isSelected =
-                                        _selectedIds.contains(contact.id);
+                                    final isSelected = _selectedIds.contains(
+                                      contact.id,
+                                    );
                                     return ListTile(
                                       leading: ContactAvatar(
-                                          contact: contact, radius: 18),
+                                        contact: contact,
+                                        radius: 18,
+                                      ),
                                       title: Text(contact.displayName),
                                       subtitle: contact.location != null &&
                                               contact.location!.isNotEmpty
                                           ? Text(contact.location!)
                                           : null,
                                       trailing: isSelected
-                                          ? Icon(Icons.check_circle,
-                                              color: theme.colorScheme.primary)
+                                          ? Icon(
+                                              Icons.check_circle,
+                                              color: theme.colorScheme.primary,
+                                            )
                                           : const Icon(Icons.circle_outlined),
                                       onTap: () => _toggleContact(contact),
                                     );
@@ -306,19 +331,24 @@ class _ContactMultiSelectState extends State<ContactMultiSelect> {
                             itemCount: widget.contacts.length,
                             itemBuilder: (ctx, idx) {
                               final contact = widget.contacts[idx];
-                              final isSelected =
-                                  _selectedIds.contains(contact.id);
+                              final isSelected = _selectedIds.contains(
+                                contact.id,
+                              );
                               return ListTile(
-                                leading:
-                                    ContactAvatar(contact: contact, radius: 18),
+                                leading: ContactAvatar(
+                                  contact: contact,
+                                  radius: 18,
+                                ),
                                 title: Text(contact.displayName),
                                 subtitle: contact.location != null &&
                                         contact.location!.isNotEmpty
                                     ? Text(contact.location!)
                                     : null,
                                 trailing: isSelected
-                                    ? Icon(Icons.check_circle,
-                                        color: theme.colorScheme.primary)
+                                    ? Icon(
+                                        Icons.check_circle,
+                                        color: theme.colorScheme.primary,
+                                      )
                                     : const Icon(Icons.circle_outlined),
                                 onTap: () => _toggleContact(contact),
                               );
@@ -334,10 +364,13 @@ class _ContactMultiSelectState extends State<ContactMultiSelect> {
                                   const Text('No matching contacts found'),
                                   const SizedBox(height: 12),
                                   ElevatedButton.icon(
-                                    icon: const Icon(Icons.person_add_outlined,
-                                        size: 18),
+                                    icon: const Icon(
+                                      Icons.person_add_outlined,
+                                      size: 18,
+                                    ),
                                     label: Text(
-                                        "Quick Create '${_searchController.text.trim()}'"),
+                                      "Quick Create '${_searchController.text.trim()}'",
+                                    ),
                                     onPressed: _quickCreateContact,
                                   ),
                                 ],
@@ -356,8 +389,10 @@ class _ContactMultiSelectState extends State<ContactMultiSelect> {
                                         theme.colorScheme.primaryContainer,
                                     foregroundColor:
                                         theme.colorScheme.onPrimaryContainer,
-                                    child:
-                                        const Icon(Icons.person_add, size: 18),
+                                    child: const Icon(
+                                      Icons.person_add,
+                                      size: 18,
+                                    ),
                                   ),
                                   title: Text(
                                     "Quick Create '$query'",
@@ -366,25 +401,32 @@ class _ContactMultiSelectState extends State<ContactMultiSelect> {
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
-                                  subtitle: const Text('Add and select person'),
+                                  subtitle: const Text(
+                                    'Add and select person',
+                                  ),
                                   onTap: _quickCreateContact,
                                 );
                               }
 
                               final contact = searchResults[idx - 1];
-                              final isSelected =
-                                  _selectedIds.contains(contact.id);
+                              final isSelected = _selectedIds.contains(
+                                contact.id,
+                              );
                               return ListTile(
-                                leading:
-                                    ContactAvatar(contact: contact, radius: 18),
+                                leading: ContactAvatar(
+                                  contact: contact,
+                                  radius: 18,
+                                ),
                                 title: Text(contact.displayName),
                                 subtitle: contact.location != null &&
                                         contact.location!.isNotEmpty
                                     ? Text(contact.location!)
                                     : null,
                                 trailing: isSelected
-                                    ? Icon(Icons.check_circle,
-                                        color: theme.colorScheme.primary)
+                                    ? Icon(
+                                        Icons.check_circle,
+                                        color: theme.colorScheme.primary,
+                                      )
                                     : const Icon(Icons.add_circle_outline),
                                 onTap: () => _toggleContact(contact),
                               );

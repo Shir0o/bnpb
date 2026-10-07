@@ -7,6 +7,7 @@ import 'package:bnpb/models/prayer_request.dart';
 import 'package:bnpb/models/stage_move.dart';
 
 import 'package:bnpb/services/period_review_service.dart';
+
 import '../repositories/mock_db_helper.dart';
 
 class _TestDBHelper extends MockDBHelper {
@@ -59,8 +60,10 @@ class _TestDBHelper extends MockDBHelper {
   }
 
   @override
-  Future<List<StageMove>> getStageMoves(
-      {DateTime? start, DateTime? end}) async {
+  Future<List<StageMove>> getStageMoves({
+    DateTime? start,
+    DateTime? end,
+  }) async {
     return stageMoves
         .where(
           (m) =>
@@ -116,12 +119,7 @@ void main() {
     );
   }
 
-  void move(
-    String contactId,
-    String from,
-    String to,
-    DateTime at,
-  ) {
+  void move(String contactId, String from, String to, DateTime at) {
     dbHelper.stageMoves.add(
       StageMove(
         contactId: contactId,
@@ -143,9 +141,11 @@ void main() {
 
   test('attention alert fires when nobody reached regular contact', () async {
     dbHelper.contacts.add(
-      contact('c1', 'Bob Jones', interactions: [
-        interaction(DateTime(2026, 8, 15)),
-      ]),
+      contact(
+        'c1',
+        'Bob Jones',
+        interactions: [interaction(DateTime(2026, 8, 15))],
+      ),
     );
 
     final data = await service.build(period: ReviewPeriod.month);
@@ -197,11 +197,7 @@ void main() {
 
   test('forward and backward moves are summarized and tagged', () async {
     dbHelper.contacts.addAll([
-      contact(
-        'c1',
-        'Alice',
-        stage: 'Regular contact',
-      ),
+      contact('c1', 'Alice', stage: 'Regular contact'),
       contact('c2', 'Bob', stage: 'Second contact'),
     ]);
     move('c1', 'Second contact', 'Regular contact', DateTime(2026, 8, 3));
@@ -228,28 +224,29 @@ void main() {
 
     final data = await service.build(period: ReviewPeriod.year);
 
-    expect(
-      data.funnel.map((e) => (e.name, e.count)).toList(),
-      [
-        ('First contact', 2),
-        ('Second contact', 1),
-        ('Regular contact', 1),
-        ('Group meeting', 1),
-        ('Church meeting', 0),
-        ('Laboring', 1),
-      ],
-    );
+    expect(data.funnel.map((e) => (e.name, e.count)).toList(), [
+      ('First contact', 2),
+      ('Second contact', 1),
+      ('Regular contact', 1),
+      ('Group meeting', 1),
+      ('Church meeting', 0),
+      ('Laboring', 1),
+    ]);
     // Regular contact bar is marked as the line.
     expect(data.funnel[2].note, 'the line');
   });
 
   test('effort rows report deltas against the previous period', () async {
     dbHelper.contacts.add(
-      contact('c1', 'Cara', interactions: [
-        interaction(DateTime(2026, 7, 5)),
-        interaction(DateTime(2026, 8, 2)),
-        interaction(DateTime(2026, 8, 9)),
-      ]),
+      contact(
+        'c1',
+        'Cara',
+        interactions: [
+          interaction(DateTime(2026, 7, 5)),
+          interaction(DateTime(2026, 8, 2)),
+          interaction(DateTime(2026, 8, 9)),
+        ],
+      ),
     );
 
     final data = await service.build(period: ReviewPeriod.month);
@@ -265,16 +262,20 @@ void main() {
 
   test('prayer answers in period count toward effort', () async {
     dbHelper.contacts.add(
-      contact('c1', 'Dan', prayers: [
-        PrayerRequest(
-          id: 1,
-          participantIds: ['c1'],
-          description: 'Job',
-          status: PrayerRequestStatus.answered,
-          requestedAt: DateTime(2026, 6, 1),
-          answeredAt: DateTime(2026, 8, 3),
-        ),
-      ]),
+      contact(
+        'c1',
+        'Dan',
+        prayers: [
+          PrayerRequest(
+            id: 1,
+            participantIds: ['c1'],
+            description: 'Job',
+            status: PrayerRequestStatus.answered,
+            requestedAt: DateTime(2026, 6, 1),
+            answeredAt: DateTime(2026, 8, 3),
+          ),
+        ],
+      ),
     );
 
     final data = await service.build(period: ReviewPeriod.month);
@@ -285,15 +286,19 @@ void main() {
 
   test('open prayer requests older than 60 days surface in care', () async {
     dbHelper.contacts.add(
-      contact('c1', 'Eve', prayers: [
-        PrayerRequest(
-          id: 1,
-          participantIds: ['c1'],
-          description: 'Health',
-          status: PrayerRequestStatus.pending,
-          requestedAt: DateTime(2026, 4, 1),
-        ),
-      ]),
+      contact(
+        'c1',
+        'Eve',
+        prayers: [
+          PrayerRequest(
+            id: 1,
+            participantIds: ['c1'],
+            description: 'Health',
+            status: PrayerRequestStatus.pending,
+            requestedAt: DateTime(2026, 4, 1),
+          ),
+        ],
+      ),
     );
 
     final data = await service.build(period: ReviewPeriod.month);

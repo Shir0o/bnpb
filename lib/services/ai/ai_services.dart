@@ -126,7 +126,8 @@ class AiServices {
           return;
         }
         await _setBackend(
-            GeminiApiLlmService(apiKey: apiKey, modelId: modelId));
+          GeminiApiLlmService(apiKey: apiKey, modelId: modelId),
+        );
         return;
 
       case AiBackend.claude:
@@ -136,7 +137,8 @@ class AiServices {
           return;
         }
         await _setBackend(
-            AnthropicApiLlmService(apiKey: apiKey, modelId: modelId));
+          AnthropicApiLlmService(apiKey: apiKey, modelId: modelId),
+        );
         return;
 
       case AiBackend.huggingface:
@@ -146,7 +148,8 @@ class AiServices {
           return;
         }
         await _setBackend(
-            HuggingFaceApiLlmService(apiKey: token, modelId: modelId));
+          HuggingFaceApiLlmService(apiKey: token, modelId: modelId),
+        );
         return;
 
       case AiBackend.local:

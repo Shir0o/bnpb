@@ -1,4 +1,5 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../db/db_helper.dart';
@@ -244,16 +245,18 @@ class _PrayerListPageState extends State<PrayerListPage> {
                 const SizedBox(height: 16),
                 Text(
                   'No contacts in your prayer list yet.',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: Theme.of(context).colorScheme.outline,
-                      ),
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleMedium
+                      ?.copyWith(color: Theme.of(context).colorScheme.outline),
                 ),
                 const SizedBox(height: 8),
                 Text(
                   'Tap "Add People" to get started.',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Theme.of(context).colorScheme.outline,
-                      ),
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodyMedium
+                      ?.copyWith(color: Theme.of(context).colorScheme.outline),
                 ),
               ],
             ),

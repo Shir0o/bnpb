@@ -18,7 +18,7 @@ const _standardRoles = <String>[
   'Child',
   'Spouse',
   'Sibling',
-  'Other'
+  'Other',
 ];
 
 String _inverseRole(String role, {String? customType}) {
@@ -184,9 +184,10 @@ class _MacOSAddViewState extends State<MacOSAddView> {
       final memberId = nextId();
       memberContacts.add(
         Contact(
-            id: memberId,
-            firstName: m.firstName.text.trim(),
-            lastName: last.isEmpty ? null : last),
+          id: memberId,
+          firstName: m.firstName.text.trim(),
+          lastName: last.isEmpty ? null : last,
+        ),
       );
 
       final role = m.role;
@@ -194,14 +195,20 @@ class _MacOSAddViewState extends State<MacOSAddView> {
       final forwardType = role == 'Other' ? (customType ?? 'Other') : role;
       final inverseType = _inverseRole(role, customType: customType);
 
-      relationships.add(Relationship(
+      relationships.add(
+        Relationship(
           sourceContactId: anchor.id,
           targetContactId: memberId,
-          type: forwardType));
-      relationships.add(Relationship(
+          type: forwardType,
+        ),
+      );
+      relationships.add(
+        Relationship(
           sourceContactId: memberId,
           targetContactId: anchor.id,
-          type: inverseType));
+          type: inverseType,
+        ),
+      );
     }
 
     for (var i = 0; i < _members.length; i++) {
@@ -210,10 +217,12 @@ class _MacOSAddViewState extends State<MacOSAddView> {
         if (_members[j].role != 'Child') continue;
         final a = memberContacts[i].id;
         final b = memberContacts[j].id;
-        relationships.add(Relationship(
-            sourceContactId: a, targetContactId: b, type: 'Sibling'));
-        relationships.add(Relationship(
-            sourceContactId: b, targetContactId: a, type: 'Sibling'));
+        relationships.add(
+          Relationship(sourceContactId: a, targetContactId: b, type: 'Sibling'),
+        );
+        relationships.add(
+          Relationship(sourceContactId: b, targetContactId: a, type: 'Sibling'),
+        );
       }
     }
 
@@ -222,8 +231,11 @@ class _MacOSAddViewState extends State<MacOSAddView> {
       final dbHelper = DBHelper();
       final database = await dbHelper.database;
       await database.transaction((txn) async {
-        await dbHelper.contactDao
-            .upsertContactRow(txn, anchor, isUpdate: false);
+        await dbHelper.contactDao.upsertContactRow(
+          txn,
+          anchor,
+          isUpdate: false,
+        );
         for (final c in memberContacts) {
           await dbHelper.contactDao.upsertContactRow(txn, c, isUpdate: false);
         }
@@ -284,11 +296,19 @@ class _MacOSAddViewState extends State<MacOSAddView> {
                   child: Row(
                     children: [
                       Expanded(
-                          child: _modeTab(
-                              colorScheme, _AddMode.contact, 'Add contact')),
+                        child: _modeTab(
+                          colorScheme,
+                          _AddMode.contact,
+                          'Add contact',
+                        ),
+                      ),
                       Expanded(
-                          child: _modeTab(
-                              colorScheme, _AddMode.family, 'Add family')),
+                        child: _modeTab(
+                          colorScheme,
+                          _AddMode.family,
+                          'Add family',
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -320,9 +340,10 @@ class _MacOSAddViewState extends State<MacOSAddView> {
             boxShadow: selected
                 ? [
                     BoxShadow(
-                        color: colorScheme.shadow.withValues(alpha: 0.06),
-                        blurRadius: 4,
-                        offset: const Offset(0, 1))
+                      color: colorScheme.shadow.withValues(alpha: 0.06),
+                      blurRadius: 4,
+                      offset: const Offset(0, 1),
+                    ),
                   ]
                 : null,
           ),
@@ -352,49 +373,68 @@ class _MacOSAddViewState extends State<MacOSAddView> {
               Text(
                 'New contact',
                 style: TextStyle(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 24,
-                    color: colorScheme.onSurface,
-                    letterSpacing: -0.3),
+                  fontWeight: FontWeight.w800,
+                  fontSize: 24,
+                  color: colorScheme.onSurface,
+                  letterSpacing: -0.3,
+                ),
               ),
               const Spacer(),
-              _saveButton(colorScheme,
-                  label: 'Save contact',
-                  isSaving: _isSavingContact,
-                  onTap: _saveContact),
+              _saveButton(
+                colorScheme,
+                label: 'Save contact',
+                isSaving: _isSavingContact,
+                onTap: _saveContact,
+              ),
             ],
           ),
           const SizedBox(height: 20),
           _sectionLabel(colorScheme, 'Identity'),
           const SizedBox(height: 10),
-          _field(colorScheme,
-              controller: _firstName,
-              hint: 'First name',
-              icon: Icons.person_outline,
-              validator: (v) =>
-                  v == null || v.trim().isEmpty ? 'Enter first name' : null),
+          _field(
+            colorScheme,
+            controller: _firstName,
+            hint: 'First name',
+            icon: Icons.person_outline,
+            validator: (v) =>
+                v == null || v.trim().isEmpty ? 'Enter first name' : null,
+          ),
           const SizedBox(height: 10),
           Row(
             children: [
               Expanded(
-                  child: _field(colorScheme,
-                      controller: _lastName, hint: 'Last name (optional)')),
+                child: _field(
+                  colorScheme,
+                  controller: _lastName,
+                  hint: 'Last name (optional)',
+                ),
+              ),
               const SizedBox(width: 10),
               Expanded(
-                  child: _field(colorScheme,
-                      controller: _nickname, hint: 'Nickname (optional)')),
+                child: _field(
+                  colorScheme,
+                  controller: _nickname,
+                  hint: 'Nickname (optional)',
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 10),
-          _field(colorScheme,
-              controller: _location,
-              hint: 'Location (optional)',
-              icon: Icons.place_outlined),
+          _field(
+            colorScheme,
+            controller: _location,
+            hint: 'Location (optional)',
+            icon: Icons.place_outlined,
+          ),
           const SizedBox(height: 20),
           _sectionLabel(colorScheme, 'Context'),
           const SizedBox(height: 10),
-          _field(colorScheme,
-              controller: _notes, hint: 'Notes (optional)', maxLines: 4),
+          _field(
+            colorScheme,
+            controller: _notes,
+            hint: 'Notes (optional)',
+            maxLines: 4,
+          ),
         ],
       ),
     );
@@ -411,24 +451,30 @@ class _MacOSAddViewState extends State<MacOSAddView> {
               Text(
                 'New family',
                 style: TextStyle(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 24,
-                    color: colorScheme.onSurface,
-                    letterSpacing: -0.3),
+                  fontWeight: FontWeight.w800,
+                  fontSize: 24,
+                  color: colorScheme.onSurface,
+                  letterSpacing: -0.3,
+                ),
               ),
               const Spacer(),
-              _saveButton(colorScheme,
-                  label: 'Save all',
-                  isSaving: _isSavingFamily,
-                  onTap: _saveFamily),
+              _saveButton(
+                colorScheme,
+                label: 'Save all',
+                isSaving: _isSavingFamily,
+                onTap: _saveFamily,
+              ),
             ],
           ),
           const SizedBox(height: 20),
-          Text('Primary contact',
-              style: TextStyle(
-                  fontWeight: FontWeight.w800,
-                  fontSize: 15,
-                  color: colorScheme.onSurface)),
+          Text(
+            'Primary contact',
+            style: TextStyle(
+              fontWeight: FontWeight.w800,
+              fontSize: 15,
+              color: colorScheme.onSurface,
+            ),
+          ),
           const SizedBox(height: 12),
           Container(
             padding: const EdgeInsets.all(14),
@@ -439,27 +485,34 @@ class _MacOSAddViewState extends State<MacOSAddView> {
             ),
             child: Column(
               children: [
-                _field(colorScheme,
-                    controller: _famFirstName,
-                    hint: 'First name',
-                    validator: (v) => v == null || v.trim().isEmpty
-                        ? 'Enter first name'
-                        : null,
-                    filled: true),
+                _field(
+                  colorScheme,
+                  controller: _famFirstName,
+                  hint: 'First name',
+                  validator: (v) =>
+                      v == null || v.trim().isEmpty ? 'Enter first name' : null,
+                  filled: true,
+                ),
                 const SizedBox(height: 10),
                 Row(
                   children: [
                     Expanded(
-                        child: _field(colorScheme,
-                            controller: _famLastName,
-                            hint: 'Last name (optional)',
-                            filled: true)),
+                      child: _field(
+                        colorScheme,
+                        controller: _famLastName,
+                        hint: 'Last name (optional)',
+                        filled: true,
+                      ),
+                    ),
                     const SizedBox(width: 10),
                     Expanded(
-                        child: _field(colorScheme,
-                            controller: _famLocation,
-                            hint: 'Location (optional)',
-                            filled: true)),
+                      child: _field(
+                        colorScheme,
+                        controller: _famLocation,
+                        hint: 'Location (optional)',
+                        filled: true,
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 6),
@@ -474,11 +527,14 @@ class _MacOSAddViewState extends State<MacOSAddView> {
             ),
           ),
           const SizedBox(height: 24),
-          Text('Family members',
-              style: TextStyle(
-                  fontWeight: FontWeight.w800,
-                  fontSize: 15,
-                  color: colorScheme.onSurface)),
+          Text(
+            'Family members',
+            style: TextStyle(
+              fontWeight: FontWeight.w800,
+              fontSize: 15,
+              color: colorScheme.onSurface,
+            ),
+          ),
           const SizedBox(height: 12),
           for (var i = 0; i < _members.length; i++) ...[
             _memberCard(colorScheme, i),
@@ -494,14 +550,20 @@ class _MacOSAddViewState extends State<MacOSAddView> {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.person_add_alt_1_outlined,
-                        size: 20, color: colorScheme.primary),
+                    Icon(
+                      Icons.person_add_alt_1_outlined,
+                      size: 20,
+                      color: colorScheme.primary,
+                    ),
                     const SizedBox(width: 8),
-                    Text('Add member',
-                        style: TextStyle(
-                            color: colorScheme.primary,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 15)),
+                    Text(
+                      'Add member',
+                      style: TextStyle(
+                        color: colorScheme.primary,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 15,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -517,22 +579,30 @@ class _MacOSAddViewState extends State<MacOSAddView> {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-          border: Border.all(color: colorScheme.cardBorder),
-          borderRadius: BorderRadius.circular(16)),
+        border: Border.all(color: colorScheme.cardBorder),
+        borderRadius: BorderRadius.circular(16),
+      ),
       child: Column(
         children: [
           Row(
             children: [
               Expanded(
-                  child: _field(colorScheme,
-                      controller: m.firstName,
-                      hint: 'First name',
-                      validator: (v) =>
-                          v == null || v.trim().isEmpty ? 'Required' : null)),
+                child: _field(
+                  colorScheme,
+                  controller: m.firstName,
+                  hint: 'First name',
+                  validator: (v) =>
+                      v == null || v.trim().isEmpty ? 'Required' : null,
+                ),
+              ),
               const SizedBox(width: 8),
               Expanded(
-                  child: _field(colorScheme,
-                      controller: m.lastName, hint: 'Last name')),
+                child: _field(
+                  colorScheme,
+                  controller: m.lastName,
+                  hint: 'Last name',
+                ),
+              ),
               IconButton(
                 tooltip: 'Remove',
                 icon: Icon(Icons.close, size: 18, color: colorScheme.outline),
@@ -552,13 +622,15 @@ class _MacOSAddViewState extends State<MacOSAddView> {
           ),
           if (m.role == 'Other') ...[
             const SizedBox(height: 10),
-            _field(colorScheme,
-                controller: m.customRole,
-                hint: 'Custom relationship',
-                validator: (v) =>
-                    m.role == 'Other' && (v == null || v.trim().isEmpty)
-                        ? 'Required'
-                        : null),
+            _field(
+              colorScheme,
+              controller: m.customRole,
+              hint: 'Custom relationship',
+              validator: (v) =>
+                  m.role == 'Other' && (v == null || v.trim().isEmpty)
+                      ? 'Required'
+                      : null,
+            ),
           ],
         ],
       ),
@@ -576,7 +648,8 @@ class _MacOSAddViewState extends State<MacOSAddView> {
           color: isSelected ? colorScheme.greenTint : Colors.transparent,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-              color: isSelected ? colorScheme.primary : colorScheme.cardBorder),
+            color: isSelected ? colorScheme.primary : colorScheme.cardBorder,
+          ),
         ),
         child: Text(
           role,
@@ -594,10 +667,11 @@ class _MacOSAddViewState extends State<MacOSAddView> {
     return Text(
       text.toUpperCase(),
       style: TextStyle(
-          fontSize: 12,
-          letterSpacing: 1.0,
-          color: colorScheme.outline,
-          fontWeight: FontWeight.w700),
+        fontSize: 12,
+        letterSpacing: 1.0,
+        color: colorScheme.outline,
+        fontWeight: FontWeight.w700,
+      ),
     );
   }
 
@@ -635,9 +709,10 @@ class _MacOSAddViewState extends State<MacOSAddView> {
               textCapitalization: TextCapitalization.sentences,
               validator: validator,
               style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                  color: colorScheme.onSurface),
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+                color: colorScheme.onSurface,
+              ),
               decoration: InputDecoration(
                 hintText: hint,
                 hintStyle: TextStyle(color: colorScheme.placeholder),
@@ -667,21 +742,26 @@ class _MacOSAddViewState extends State<MacOSAddView> {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 9),
           decoration: BoxDecoration(
-              color: colorScheme.primary,
-              borderRadius: BorderRadius.circular(11)),
+            color: colorScheme.primary,
+            borderRadius: BorderRadius.circular(11),
+          ),
           child: isSaving
               ? const SizedBox(
                   width: 16,
                   height: 16,
                   child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation(Colors.white)),
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation(Colors.white),
+                  ),
                 )
-              : Text(label,
+              : Text(
+                  label,
                   style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700)),
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
         ),
       ),
     );

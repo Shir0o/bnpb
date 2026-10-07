@@ -213,9 +213,8 @@ class _LogPrayerRequestSheetState extends State<LogPrayerRequestSheet> {
       widget.onSaved(savedRequest);
 
       if (!mounted) return;
-      Navigator.of(
-        context,
-      ).pop(widget.initialRequest == null ? 'created' : 'updated');
+      Navigator.of(context)
+          .pop(widget.initialRequest == null ? 'created' : 'updated');
     } catch (error) {
       if (!mounted) return;
       CrispToast.show(context, 'Failed to save prayer request: $error');
@@ -413,9 +412,7 @@ class _LogPrayerRequestSheetState extends State<LogPrayerRequestSheet> {
             const SizedBox(height: 12),
             TextField(
               controller: _reflectionController,
-              decoration: const InputDecoration(
-                labelText: 'Notes',
-              ),
+              decoration: const InputDecoration(labelText: 'Notes'),
               minLines: 2,
               maxLines: 4,
               textCapitalization: TextCapitalization.sentences,

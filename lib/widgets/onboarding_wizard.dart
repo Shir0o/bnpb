@@ -81,9 +81,8 @@ class _OnboardingWizardState extends State<OnboardingWizard> {
   }
 
   void _jumpToFollowUp(_OnboardingStep step) {
-    Navigator.of(
-      context,
-    ).pop(OnboardingResult(completed: true, followUp: step.followUp));
+    Navigator.of(context)
+        .pop(OnboardingResult(completed: true, followUp: step.followUp));
   }
 
   @override
@@ -102,9 +101,8 @@ class _OnboardingWizardState extends State<OnboardingWizard> {
                 alignment: Alignment.centerRight,
                 child: TextButton(
                   onPressed: () {
-                    Navigator.of(
-                      context,
-                    ).pop(const OnboardingResult(completed: true));
+                    Navigator.of(context)
+                        .pop(const OnboardingResult(completed: true));
                   },
                   child: const Text('Skip'),
                 ),

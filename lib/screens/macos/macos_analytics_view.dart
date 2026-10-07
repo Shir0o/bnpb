@@ -155,8 +155,11 @@ class _MacOSAnalyticsViewState extends State<MacOSAnalyticsView> {
       child: DropdownButtonHideUnderline(
         child: DropdownButton<_Range>(
           value: _range,
-          icon: Icon(Icons.keyboard_arrow_down,
-              size: 16, color: colorScheme.onSurface),
+          icon: Icon(
+            Icons.keyboard_arrow_down,
+            size: 16,
+            color: colorScheme.onSurface,
+          ),
           style: TextStyle(
             fontSize: 13.5,
             fontWeight: FontWeight.w700,
@@ -185,10 +188,12 @@ class _MacOSAnalyticsViewState extends State<MacOSAnalyticsView> {
     }
 
     final visibleInsights = _insights
-        .where((i) =>
-            !_dismissedInsightIds.contains(i.id) &&
-            (i.type == RelationshipInsightType.driftingContact ||
-                i.type == RelationshipInsightType.silenceStreak))
+        .where(
+          (i) =>
+              !_dismissedInsightIds.contains(i.id) &&
+              (i.type == RelationshipInsightType.driftingContact ||
+                  i.type == RelationshipInsightType.silenceStreak),
+        )
         .take(6)
         .toList();
 
@@ -264,8 +269,11 @@ class _MacOSAnalyticsViewState extends State<MacOSAnalyticsView> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon,
-              size: 24, color: dark ? const Color(0xFF5FE0A0) : Colors.white),
+          Icon(
+            icon,
+            size: 24,
+            color: dark ? const Color(0xFF5FE0A0) : Colors.white,
+          ),
           const Spacer(),
           Text(
             value,
@@ -294,7 +302,10 @@ class _MacOSAnalyticsViewState extends State<MacOSAnalyticsView> {
     final entries = summary.contactInvestments.take(5).toList();
     if (entries.isEmpty) {
       return _emptyCard(
-          colorScheme, 'Top contacts', 'No interactions in this range yet.');
+        colorScheme,
+        'Top contacts',
+        'No interactions in this range yet.',
+      );
     }
     final values = entries
         .map((e) => _resolveValue(e.totalMinutes, e.interactionCount))
@@ -341,21 +352,26 @@ class _MacOSAnalyticsViewState extends State<MacOSAnalyticsView> {
                           toY: values[e.key],
                           width: 14,
                           borderRadius: const BorderRadius.vertical(
-                              top: Radius.circular(6)),
+                            top: Radius.circular(6),
+                          ),
                           color: barColors[e.key % barColors.length],
                         ),
                       ],
                     );
                   }).toList(),
                   titlesData: const FlTitlesData(
-                    leftTitles:
-                        AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                    rightTitles:
-                        AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                    topTitles:
-                        AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                    bottomTitles:
-                        AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                    leftTitles: AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
+                    rightTitles: AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
+                    topTitles: AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
+                    bottomTitles: AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
                   ),
                 ),
               ),
@@ -408,7 +424,10 @@ class _MacOSAnalyticsViewState extends State<MacOSAnalyticsView> {
     final timeline = summary.timeline;
     if (timeline.isEmpty) {
       return _emptyCard(
-          colorScheme, 'Activity trend', 'Log interactions to see a trend.');
+        colorScheme,
+        'Activity trend',
+        'Log interactions to see a trend.',
+      );
     }
     final values = timeline
         .map((e) => _resolveValue(e.totalMinutes, e.interactionCount))
@@ -464,14 +483,18 @@ class _MacOSAnalyticsViewState extends State<MacOSAnalyticsView> {
                     ),
                   ],
                   titlesData: const FlTitlesData(
-                    leftTitles:
-                        AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                    rightTitles:
-                        AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                    topTitles:
-                        AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                    bottomTitles:
-                        AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                    leftTitles: AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
+                    rightTitles: AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
+                    topTitles: AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
+                    bottomTitles: AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
                   ),
                 ),
               ),
@@ -484,16 +507,18 @@ class _MacOSAnalyticsViewState extends State<MacOSAnalyticsView> {
               Text(
                 _timelineLabelFormatter.format(timeline.first.date),
                 style: TextStyle(
-                    fontSize: 11.5,
-                    fontWeight: FontWeight.w600,
-                    color: colorScheme.outline),
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w600,
+                  color: colorScheme.outline,
+                ),
               ),
               Text(
                 _timelineLabelFormatter.format(timeline.last.date),
                 style: TextStyle(
-                    fontSize: 11.5,
-                    fontWeight: FontWeight.w600,
-                    color: colorScheme.outline),
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w600,
+                  color: colorScheme.outline,
+                ),
               ),
             ],
           ),
@@ -541,8 +566,11 @@ class _MacOSAnalyticsViewState extends State<MacOSAnalyticsView> {
           ),
           InkWell(
             onTap: () => _dismissInsight(insight.id),
-            child: Icon(Icons.close,
-                size: 16, color: colorScheme.error.withValues(alpha: 0.6)),
+            child: Icon(
+              Icons.close,
+              size: 16,
+              color: colorScheme.error.withValues(alpha: 0.6),
+            ),
           ),
         ],
       ),
@@ -568,8 +596,10 @@ class _MacOSAnalyticsViewState extends State<MacOSAnalyticsView> {
             ),
           ),
           const SizedBox(height: 8),
-          Text(message,
-              style: TextStyle(fontSize: 13, color: colorScheme.outline)),
+          Text(
+            message,
+            style: TextStyle(fontSize: 13, color: colorScheme.outline),
+          ),
         ],
       ),
     );

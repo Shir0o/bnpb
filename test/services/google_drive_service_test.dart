@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:googleapis/drive/v3.dart' as drive;
 import 'package:http/http.dart' as http;
@@ -28,9 +29,8 @@ void main() {
     SharedPreferences.setMockInitialValues({});
 
     // Mock the authenticationEvents stream to avoid errors
-    when(
-      () => mockGoogleSignIn.authenticationEvents,
-    ).thenAnswer((_) => const Stream.empty());
+    when(() => mockGoogleSignIn.authenticationEvents)
+        .thenAnswer((_) => const Stream.empty());
 
     // Mock initialize
     when(
@@ -56,16 +56,14 @@ void main() {
         );
 
         // Mock a successful silent sign-in
-        when(
-          () => mockGoogleSignIn.attemptLightweightAuthentication(),
-        ).thenAnswer((_) async => mockAccount as GoogleSignInAccount?);
+        when(() => mockGoogleSignIn.attemptLightweightAuthentication())
+            .thenAnswer((_) async => mockAccount as GoogleSignInAccount?);
 
         await service.initialize();
 
         // Verify that attemptLightweightAuthentication was called
-        verify(
-          () => mockGoogleSignIn.attemptLightweightAuthentication(),
-        ).called(1);
+        verify(() => mockGoogleSignIn.attemptLightweightAuthentication())
+            .called(1);
         expect(await service.currentUser, mockAccount);
       },
     );
@@ -87,33 +85,27 @@ void main() {
     );
 
     test(
-      'currentUser triggers silent sign-in on first access if previously signed in',
-      () async {
-        SharedPreferences.setMockInitialValues({'google_has_signed_in': true});
-        service = GoogleDriveService.testHarness(
-          googleSignIn: mockGoogleSignIn,
-        );
+        'currentUser triggers silent sign-in on first access if previously signed in',
+        () async {
+      SharedPreferences.setMockInitialValues({'google_has_signed_in': true});
+      service = GoogleDriveService.testHarness(googleSignIn: mockGoogleSignIn);
 
-        when(
-          () => mockGoogleSignIn.attemptLightweightAuthentication(),
-        ).thenAnswer((_) async => mockAccount as GoogleSignInAccount?);
+      when(() => mockGoogleSignIn.attemptLightweightAuthentication())
+          .thenAnswer((_) async => mockAccount as GoogleSignInAccount?);
 
-        final user = await service.currentUser;
+      final user = await service.currentUser;
 
-        expect(user, mockAccount);
-        verify(
-          () => mockGoogleSignIn.attemptLightweightAuthentication(),
-        ).called(1);
-      },
-    );
+      expect(user, mockAccount);
+      verify(() => mockGoogleSignIn.attemptLightweightAuthentication())
+          .called(1);
+    });
 
     test('isSignedIn() returns true after successful silent sign-in', () async {
       SharedPreferences.setMockInitialValues({'google_has_signed_in': true});
       service = GoogleDriveService.testHarness(googleSignIn: mockGoogleSignIn);
 
-      when(
-        () => mockGoogleSignIn.attemptLightweightAuthentication(),
-      ).thenAnswer((_) async => mockAccount as GoogleSignInAccount?);
+      when(() => mockGoogleSignIn.attemptLightweightAuthentication())
+          .thenAnswer((_) async => mockAccount as GoogleSignInAccount?);
 
       final result = await service.isSignedIn();
 
@@ -129,9 +121,8 @@ void main() {
           googleSignIn: mockGoogleSignIn,
         );
 
-        when(
-          () => mockGoogleSignIn.attemptLightweightAuthentication(),
-        ).thenAnswer((_) async => mockAccount as GoogleSignInAccount?);
+        when(() => mockGoogleSignIn.attemptLightweightAuthentication())
+            .thenAnswer((_) async => mockAccount as GoogleSignInAccount?);
 
         GoogleSignInAccount? emittedUser;
         final subscription = service.onUserChanged.listen((user) {
@@ -153,9 +144,8 @@ void main() {
       service = GoogleDriveService.testHarness(googleSignIn: mockGoogleSignIn);
 
       // Mock a slow response that will timeout
-      when(
-        () => mockGoogleSignIn.attemptLightweightAuthentication(),
-      ).thenAnswer((_) => Completer<GoogleSignInAccount?>().future);
+      when(() => mockGoogleSignIn.attemptLightweightAuthentication())
+          .thenAnswer((_) => Completer<GoogleSignInAccount?>().future);
 
       // We need to wait for initialize which now awaits silent sign in
       // But it has a 10s timeout. Let's speed it up by mocking the timeout logic if possible,
@@ -163,9 +153,8 @@ void main() {
       // Actually, the timeout is in _performSilentSignIn.
 
       // Let's just test that it returns null on immediate null from plugin
-      when(
-        () => mockGoogleSignIn.attemptLightweightAuthentication(),
-      ).thenAnswer((_) async => null);
+      when(() => mockGoogleSignIn.attemptLightweightAuthentication())
+          .thenAnswer((_) async => null);
 
       await service.initialize();
       expect(await service.currentUser, isNull);
@@ -176,9 +165,8 @@ void main() {
     Future<void> signIn() async {
       SharedPreferences.setMockInitialValues({'google_has_signed_in': true});
       service = GoogleDriveService.testHarness(googleSignIn: mockGoogleSignIn);
-      when(
-        () => mockGoogleSignIn.attemptLightweightAuthentication(),
-      ).thenAnswer((_) async => mockAccount as GoogleSignInAccount?);
+      when(() => mockGoogleSignIn.attemptLightweightAuthentication())
+          .thenAnswer((_) async => mockAccount as GoogleSignInAccount?);
       // Trigger and await the silent sign-in so currentUser resolves
       // synchronously (from cache) for the rest of the test.
       await service.currentUser;
@@ -266,47 +254,49 @@ void main() {
       expect(files, hasLength(1));
     });
 
-    test('findLatestFileInFolder matches folder name case-insensitively',
-        () async {
-      await signIn();
+    test(
+      'findLatestFileInFolder matches folder name case-insensitively',
+      () async {
+        await signIn();
 
-      final mockClient = MockClient((request) async {
-        final query = request.url.queryParameters['q'] ?? '';
-        if (query.contains("name contains 'Time track'") ||
-            query.contains('mimeType')) {
-          // Return folder with different casing e.g. "Time Track" or "time track"
-          return jsonResponse({
-            'files': [
-              {'id': 'folder_tt', 'name': 'Time Track'},
-            ],
-          });
-        }
+        final mockClient = MockClient((request) async {
+          final query = request.url.queryParameters['q'] ?? '';
+          if (query.contains("name contains 'Time track'") ||
+              query.contains('mimeType')) {
+            // Return folder with different casing e.g. "Time Track" or "time track"
+            return jsonResponse({
+              'files': [
+                {'id': 'folder_tt', 'name': 'Time Track'},
+              ],
+            });
+          }
 
-        if (query.contains("'folder_tt' in parents")) {
-          return jsonResponse({
-            'files': [
-              {
-                'id': 'stt_csv_1',
-                'name': 'stt_records_automatic.csv',
-                'modifiedTime': '2026-09-17T00:00:00Z'
-              },
-            ],
-          });
-        }
+          if (query.contains("'folder_tt' in parents")) {
+            return jsonResponse({
+              'files': [
+                {
+                  'id': 'stt_csv_1',
+                  'name': 'stt_records_automatic.csv',
+                  'modifiedTime': '2026-09-17T00:00:00Z',
+                },
+              ],
+            });
+          }
 
-        return jsonResponse({'files': []});
-      });
+          return jsonResponse({'files': []});
+        });
 
-      service.setDriveApiForTest(drive.DriveApi(mockClient));
+        service.setDriveApiForTest(drive.DriveApi(mockClient));
 
-      // Query with lowercase "Time track"
-      final file = await service.findLatestFileInFolder(
-        folderName: 'Time track',
-        namePrefix: 'stt_records_automatic',
-      );
+        // Query with lowercase "Time track"
+        final file = await service.findLatestFileInFolder(
+          folderName: 'Time track',
+          namePrefix: 'stt_records_automatic',
+        );
 
-      expect(file, isNotNull);
-      expect(file!.id, 'stt_csv_1');
-    });
+        expect(file, isNotNull);
+        expect(file!.id, 'stt_csv_1');
+      },
+    );
   });
 }

@@ -111,10 +111,10 @@ class KeyValidator {
   static Future<KeyValidationResult> claude(String apiKey) async {
     final url = Uri.parse('https://api.anthropic.com/v1/models');
     try {
-      final response = await http.get(url, headers: {
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-      }).timeout(const Duration(seconds: 8));
+      final response = await http.get(
+        url,
+        headers: {'x-api-key': apiKey, 'anthropic-version': '2023-06-01'},
+      ).timeout(const Duration(seconds: 8));
       switch (response.statusCode) {
         case 200:
           return KeyValidationResult.valid;

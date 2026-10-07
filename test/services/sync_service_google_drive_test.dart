@@ -85,13 +85,11 @@ void main() {
           ..name = 'mac_3000_data.json',
       ];
 
-      when(
-        () => googleDrive.listSyncFiles(),
-      ).thenAnswer((_) async => remoteFiles);
+      when(() => googleDrive.listSyncFiles())
+          .thenAnswer((_) async => remoteFiles);
       final downloadedNames = <String>[];
-      when(() => googleDrive.downloadFile(any(), any())).thenAnswer((
-        invocation,
-      ) {
+      when(() => googleDrive.downloadFile(any(), any()))
+          .thenAnswer((invocation) {
         final targetFile = invocation.positionalArguments[1] as File;
         downloadedNames.add(p.basename(targetFile.path));
         return targetFile.writeAsString('{}');

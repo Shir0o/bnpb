@@ -1,4 +1,5 @@
 import 'package:sqflite_sqlcipher/sqflite.dart';
+
 import '../../models/prayer_list.dart';
 import '../base_dao.dart';
 
@@ -70,27 +71,34 @@ class PrayerListDao extends BaseDao {
 
       for (final listRow in defaultRows) {
         final listId = listRow['id'] as String;
-        await txn.delete('prayer_list_members',
-            where: 'listId = ?', whereArgs: [listId]);
+        await txn.delete(
+          'prayer_list_members',
+          where: 'listId = ?',
+          whereArgs: [listId],
+        );
         await txn.delete('prayer_lists', where: 'id = ?', whereArgs: [listId]);
       }
 
       final canonicalRow = Map<String, dynamic>.from(primaryRow);
       canonicalRow['id'] = PrayerList.defaultListId;
-      await txn.insert('prayer_lists', canonicalRow,
-          conflictAlgorithm: ConflictAlgorithm.replace);
+      await txn.insert(
+        'prayer_lists',
+        canonicalRow,
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
 
-      final validContactIds =
-          await _existingContactIds(txn, consolidatedMemberIds);
+      final validContactIds = await _existingContactIds(
+        txn,
+        consolidatedMemberIds,
+      );
       for (final contactId in validContactIds) {
         await txn.insert(
-          'prayer_list_members',
-          {
-            'listId': PrayerList.defaultListId,
-            'contactId': contactId,
-          },
-          conflictAlgorithm: ConflictAlgorithm.ignore,
-        );
+            'prayer_list_members',
+            {
+              'listId': PrayerList.defaultListId,
+              'contactId': contactId,
+            },
+            conflictAlgorithm: ConflictAlgorithm.ignore);
       }
     });
   }
@@ -101,9 +109,11 @@ class PrayerListDao extends BaseDao {
     if (existing != null) return existing;
     final lists = await getPrayerLists();
     final match = lists
-        .where((l) =>
-            l.name.trim().toLowerCase() ==
-            PrayerList.defaultListName.toLowerCase())
+        .where(
+          (l) =>
+              l.name.trim().toLowerCase() ==
+              PrayerList.defaultListName.toLowerCase(),
+        )
         .firstOrNull;
     if (match != null) return match;
     final defaultList = PrayerList.create(

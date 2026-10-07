@@ -97,10 +97,11 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(
-        db.updates.map((r) => r.status),
-        [PrayerRequestStatus.archived],
-        reason: 'picking Archived must persist Archived directly',
-      );
+          db.updates.map((r) => r.status),
+          [
+            PrayerRequestStatus.archived,
+          ],
+          reason: 'picking Archived must persist Archived directly');
       expect(
         find.text('Prayer request details'),
         findsNothing,
@@ -109,21 +110,20 @@ void main() {
     },
   );
 
-  testWidgets(
-    'marking a prayer Answered straight from the list persists it',
-    (tester) async {
-      final db = await _pump(tester);
+  testWidgets('marking a prayer Answered straight from the list persists it', (
+    tester,
+  ) async {
+    final db = await _pump(tester);
 
-      await tester.tap(find.byType(PopupMenuButton<PrayerRequestStatus>));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Answered').last);
-      await tester.pumpAndSettle();
+    await tester.tap(find.byType(PopupMenuButton<PrayerRequestStatus>));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Answered').last);
+    await tester.pumpAndSettle();
 
-      final updated = db.updates.single;
-      expect(updated.status, PrayerRequestStatus.answered);
-      expect(updated.answeredAt, isNotNull);
-    },
-  );
+    final updated = db.updates.single;
+    expect(updated.status, PrayerRequestStatus.answered);
+    expect(updated.answeredAt, isNotNull);
+  });
 
   testWidgets(
     'moving an answered prayer back to Pending clears its answered date',

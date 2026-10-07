@@ -68,7 +68,8 @@ void main() {
       stopwatch.stop();
 
       debugPrint(
-          'Merge 200 interactions execution time: ${stopwatch.elapsedMilliseconds}ms');
+        'Merge 200 interactions execution time: ${stopwatch.elapsedMilliseconds}ms',
+      );
 
       final imported = await dbHelper.getInteractions(includeDeleted: true);
       expect(imported, hasLength(200));
@@ -97,10 +98,12 @@ void main() {
       updateStopwatch.stop();
 
       debugPrint(
-          'Merge update 200 interactions execution time: ${updateStopwatch.elapsedMilliseconds}ms');
+        'Merge update 200 interactions execution time: ${updateStopwatch.elapsedMilliseconds}ms',
+      );
 
-      final updatedImported =
-          await dbHelper.getInteractions(includeDeleted: true);
+      final updatedImported = await dbHelper.getInteractions(
+        includeDeleted: true,
+      );
       expect(updatedImported, hasLength(200));
       expect(updatedImported.first.summary, contains('updated'));
     });

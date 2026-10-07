@@ -213,8 +213,9 @@ class PeriodReviewService {
     ReviewPeriod.year: 6,
   };
 
-  Future<PeriodReviewData> build(
-      {ReviewPeriod period = ReviewPeriod.month}) async {
+  Future<PeriodReviewData> build({
+    ReviewPeriod period = ReviewPeriod.month,
+  }) async {
     final contacts = await _dbHelper.getContacts();
     final now = _now();
     final window = _PeriodWindow.forPeriod(period, now);
@@ -282,10 +283,12 @@ class PeriodReviewService {
     }
 
     // Confirmed movement this period.
-    final moves =
-        (await _dbHelper.getStageMoves(start: window.start, end: window.end))
-            .where((m) => contactLookup.containsKey(m.contactId))
-            .toList();
+    final moves = (await _dbHelper.getStageMoves(
+      start: window.start,
+      end: window.end,
+    ))
+        .where((m) => contactLookup.containsKey(m.contactId))
+        .toList();
     final transitions = moves.map((m) {
       final contact = contactLookup[m.contactId]!;
       final from = ContactStage.tryParse(m.fromStage);
@@ -309,8 +312,10 @@ class PeriodReviewService {
     final fwd = transitions.where((t) => t.forward).length;
     final bwd = transitions.length - fwd;
 
-    final suggestions =
-        await _stageService.buildSuggestions(contacts, now: now);
+    final suggestions = await _stageService.buildSuggestions(
+      contacts,
+      now: now,
+    );
 
     // Previous-period numbers for the effort deltas.
     final prevCounts = _prevPeriodCounts(contacts, prev);
@@ -464,7 +469,10 @@ class PeriodReviewService {
         bad: cov < 50,
       ),
       ReviewCareTile(
-          value: '$never', label: 'never logged once', bad: never > 0),
+        value: '$never',
+        label: 'never logged once',
+        bad: never > 0,
+      ),
       ReviewCareTile(
         value: '$openOld',
         label: 'prayers open 60+ days',

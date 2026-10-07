@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import 'skeleton_loader.dart';
 
 class RecommendationsSkeleton extends StatelessWidget {

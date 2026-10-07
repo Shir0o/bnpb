@@ -68,12 +68,10 @@ void main() {
       // 2. Setup Stubs with specific arguments to ensure matching
 
       // ContactService Stubs
-      when(
-        () => mockContactService.hasCachedInteractions('123'),
-      ).thenReturn(false);
-      when(
-        () => mockContactService.hasCachedInteractions(any()),
-      ).thenReturn(false);
+      when(() => mockContactService.hasCachedInteractions('123'))
+          .thenReturn(false);
+      when(() => mockContactService.hasCachedInteractions(any()))
+          .thenReturn(false);
 
       when(
         () => mockContactService.getInteractions(
@@ -90,20 +88,16 @@ void main() {
 
       // DBHelper Stubs
       when(() => mockDBHelper.getContacts()).thenAnswer((_) async => []);
-      when(
-        () => mockDBHelper.getContacts(contactId: any(named: 'contactId')),
-      ).thenAnswer((_) async => []);
+      when(() => mockDBHelper.getContacts(contactId: any(named: 'contactId')))
+          .thenAnswer((_) async => []);
 
-      when(
-        () => mockDBHelper.getRelationshipsForContact('123'),
-      ).thenAnswer((_) async => []);
-      when(
-        () => mockDBHelper.getRelationshipsForContact(any()),
-      ).thenAnswer((_) async => []);
+      when(() => mockDBHelper.getRelationshipsForContact('123'))
+          .thenAnswer((_) async => []);
+      when(() => mockDBHelper.getRelationshipsForContact(any()))
+          .thenAnswer((_) async => []);
 
-      when(
-        () => mockDBHelper.getDistinctLocations(),
-      ).thenAnswer((_) async => []);
+      when(() => mockDBHelper.getDistinctLocations())
+          .thenAnswer((_) async => []);
 
       debugPrint('STEP: Stubs Setup Complete');
 

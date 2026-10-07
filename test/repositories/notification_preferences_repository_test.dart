@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:bnpb/models/notification_preference.dart';
 import 'package:bnpb/repositories/notification_preferences_repository.dart';
+
 import 'mock_db_helper.dart';
 
 class _TestDBHelper extends MockDBHelper {

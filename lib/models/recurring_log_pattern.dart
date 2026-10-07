@@ -239,10 +239,7 @@ class ReadyToLogSuggestion {
   final bool isOverdue;
   final int overdueDays;
 
-  ReadyToLogSuggestion copyWith({
-    String? pill,
-    String? prefillNotes,
-  }) {
+  ReadyToLogSuggestion copyWith({String? pill, String? prefillNotes}) {
     return ReadyToLogSuggestion(
       pattern: pattern,
       contact: contact,

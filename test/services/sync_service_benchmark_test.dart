@@ -57,9 +57,8 @@ void main() {
     when(() => mockDrive.isSignedIn()).thenAnswer((_) async => true);
     when(() => mockDrive.currentUser).thenAnswer((_) async => null);
     when(() => mockCoordinator.getProcessedFiles()).thenAnswer((_) async => {});
-    when(
-      () => mockCoordinator.getDeviceId(),
-    ).thenAnswer((_) async => 'test_device');
+    when(() => mockCoordinator.getDeviceId())
+        .thenAnswer((_) async => 'test_device');
     when(() => mockCoordinator.importChanges(any())).thenAnswer(
       (_) async => const SyncResult(exportedCount: 0, importedCount: 0),
     );
@@ -82,16 +81,14 @@ void main() {
     when(() => mockDrive.listSyncFiles()).thenAnswer((_) async => remoteFiles);
 
     // Simulate 50ms delay per download
-    when(() => mockDrive.downloadFile(any(), any())).thenAnswer((
-      invocation,
-    ) async {
+    when(() => mockDrive.downloadFile(any(), any()))
+        .thenAnswer((invocation) async {
       await Future.delayed(const Duration(milliseconds: 50));
     });
 
     // Simulate export creating 10 new local files
-    when(() => mockCoordinator.exportChanges(any())).thenAnswer((
-      invocation,
-    ) async {
+    when(() => mockCoordinator.exportChanges(any()))
+        .thenAnswer((invocation) async {
       final dir = invocation.positionalArguments[0] as Directory;
       for (var i = 0; i < 10; i++) {
         File(p.join(dir.path, 'new_export_$i.json')).createSync();
@@ -100,9 +97,8 @@ void main() {
     });
 
     // Simulate 50ms delay per upload
-    when(() => mockDrive.uploadFile(any(), any())).thenAnswer((
-      invocation,
-    ) async {
+    when(() => mockDrive.uploadFile(any(), any()))
+        .thenAnswer((invocation) async {
       await Future.delayed(const Duration(milliseconds: 50));
     });
 

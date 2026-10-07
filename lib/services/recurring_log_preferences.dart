@@ -130,8 +130,9 @@ class RecurringLogPreferences {
     for (final entry in json.entries) {
       final raw = entry.value;
       if (raw is Map) {
-        entries[entry.key] =
-            RecurringLogPreference.fromJson(Map<String, dynamic>.from(raw));
+        entries[entry.key] = RecurringLogPreference.fromJson(
+          Map<String, dynamic>.from(raw),
+        );
       }
     }
     return RecurringLogPreferences(entries);

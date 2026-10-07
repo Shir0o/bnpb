@@ -317,9 +317,8 @@ class _LogInteractionSheetState extends State<LogInteractionSheet> {
   // Tokens like "#new_job" already present in the notes field, so we don't
   // re-suggest them.
   Set<String> _existingTagsInNotes() {
-    final matches = RegExp(
-      r'#([a-z0-9_]+)',
-    ).allMatches(_notesController.text.toLowerCase());
+    final matches = RegExp(r'#([a-z0-9_]+)')
+        .allMatches(_notesController.text.toLowerCase());
     return {for (final m in matches) m.group(1)!};
   }
 

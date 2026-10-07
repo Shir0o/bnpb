@@ -87,7 +87,9 @@ class _PrayerDiaryPageState extends State<PrayerDiaryPage> {
         return;
       }
       CrispToast.show(
-          context, 'Add a contact before logging a prayer request.');
+        context,
+        'Add a contact before logging a prayer request.',
+      );
       return;
     }
 
@@ -195,8 +197,10 @@ class _PrayerDiaryPageState extends State<PrayerDiaryPage> {
               },
               borderRadius: BorderRadius.circular(20),
               child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
                   color:
                       isSelected ? colorScheme.onSurface : colorScheme.surface,
@@ -270,9 +274,10 @@ class _PrayerDiaryPageState extends State<PrayerDiaryPage> {
           padding: const EdgeInsets.all(24.0),
           child: Text(
             'No $_selectedFilter prayers found.',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(context).colorScheme.outline,
-                ),
+            style: Theme.of(context)
+                .textTheme
+                .bodyMedium
+                ?.copyWith(color: Theme.of(context).colorScheme.outline),
           ),
         ),
       );
@@ -339,10 +344,7 @@ class _PrayerDiaryPageState extends State<PrayerDiaryPage> {
       decoration: BoxDecoration(
         color: colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: colorScheme.cardBorder,
-          width: 1,
-        ),
+        border: Border.all(color: colorScheme.cardBorder, width: 1),
       ),
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
@@ -359,11 +361,7 @@ class _PrayerDiaryPageState extends State<PrayerDiaryPage> {
                   color: statusBg,
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: Icon(
-                  statusIcon,
-                  color: statusFg,
-                  size: 18,
-                ),
+                child: Icon(statusIcon, color: statusFg, size: 18),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -422,8 +420,10 @@ class _PrayerDiaryPageState extends State<PrayerDiaryPage> {
                     ),
                 ],
                 child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 11, vertical: 5),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 11,
+                    vertical: 5,
+                  ),
                   decoration: BoxDecoration(
                     color: statusBg,
                     borderRadius: BorderRadius.circular(20),

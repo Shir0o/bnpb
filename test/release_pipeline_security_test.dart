@@ -38,9 +38,7 @@ Iterable<Map<String, dynamic>> _steps(Map<String, dynamic> job) sync* {
   }
 }
 
-Iterable<Map<String, dynamic>> _allSteps(
-  Map<String, dynamic> workflow,
-) sync* {
+Iterable<Map<String, dynamic>> _allSteps(Map<String, dynamic> workflow) sync* {
   for (final entry in _jobs(workflow).entries) {
     final job = Map<String, dynamic>.from(entry.value as Map);
     for (final step in _steps(job)) {
@@ -78,41 +76,45 @@ void main() {
       }
     });
 
-    test('every third-party action is pinned to a commit SHA with a comment',
-        () {
-      final usesLine =
-          RegExp(r'^\s*(?:-\s+)?uses:\s*(\S+)(?:\s+#\s*(\S+))?\s*$');
-      for (final file in files) {
-        var checked = 0;
-        for (final line in file.readAsLinesSync()) {
-          final match = usesLine.firstMatch(line);
-          if (match == null) {
-            continue;
-          }
-          final ref = match.group(1) ?? '';
-          if (ref.startsWith('./')) {
-            continue; // local reusable workflow, not a third-party action
-          }
-          expect(
-            ref,
-            matches(RegExp(r'^[^@\s]+@[0-9a-f]{40}$')),
-            reason: '${file.path}: "$ref" must be pinned to a full commit SHA',
-          );
-          expect(
-            match.group(2),
-            isNotNull,
-            reason: '${file.path}: "$ref" needs a human-readable version '
-                'comment',
-          );
-          checked++;
-        }
-        expect(
-          checked,
-          greaterThan(0),
-          reason: '${file.path} should reference at least one action',
+    test(
+      'every third-party action is pinned to a commit SHA with a comment',
+      () {
+        final usesLine = RegExp(
+          r'^\s*(?:-\s+)?uses:\s*(\S+)(?:\s+#\s*(\S+))?\s*$',
         );
-      }
-    });
+        for (final file in files) {
+          var checked = 0;
+          for (final line in file.readAsLinesSync()) {
+            final match = usesLine.firstMatch(line);
+            if (match == null) {
+              continue;
+            }
+            final ref = match.group(1) ?? '';
+            if (ref.startsWith('./')) {
+              continue; // local reusable workflow, not a third-party action
+            }
+            expect(
+              ref,
+              matches(RegExp(r'^[^@\s]+@[0-9a-f]{40}$')),
+              reason:
+                  '${file.path}: "$ref" must be pinned to a full commit SHA',
+            );
+            expect(
+              match.group(2),
+              isNotNull,
+              reason: '${file.path}: "$ref" needs a human-readable version '
+                  'comment',
+            );
+            checked++;
+          }
+          expect(
+            checked,
+            greaterThan(0),
+            reason: '${file.path} should reference at least one action',
+          );
+        }
+      },
+    );
 
     test('credential files written from secrets are removed on failure', () {
       final workflow = _loadWorkflow(_workflowFile('release.yml'));
@@ -205,39 +207,43 @@ void main() {
       expect(job['environment'], 'production');
     });
 
-    test('versionCode arithmetic is delegated, and the tag arrives as data',
-        () {
-      final workflow = _loadWorkflow(_workflowFile('release.yml'));
-      final runs = _allSteps(workflow)
-          .map((entry) => entry['run'])
-          .whereType<String>()
-          .toList();
-      expect(
-        runs.any((run) => run.contains('tool/derive_version_code.dart')),
-        isTrue,
-        reason: 'the workflow must call the pure versionCode module',
-      );
-      for (final run in runs) {
+    test(
+      'versionCode arithmetic is delegated, and the tag arrives as data',
+      () {
+        final workflow = _loadWorkflow(_workflowFile('release.yml'));
+        final runs = _allSteps(workflow)
+            .map((entry) => entry['run'])
+            .whereType<String>()
+            .toList();
         expect(
-          run,
-          isNot(contains(r'$((')),
-          reason: 'versionCode arithmetic must not live inline in shell',
+          runs.any((run) => run.contains('tool/derive_version_code.dart')),
+          isTrue,
+          reason: 'the workflow must call the pure versionCode module',
         );
-        expect(
-          run,
-          isNot(contains('github.ref_name')),
-          reason: 'the tag must reach steps through the TAG environment '
-              'variable',
-        );
-      }
-    });
+        for (final run in runs) {
+          expect(
+            run,
+            isNot(contains(r'$((')),
+            reason: 'versionCode arithmetic must not live inline in shell',
+          );
+          expect(
+            run,
+            isNot(contains('github.ref_name')),
+            reason: 'the tag must reach steps through the TAG environment '
+                'variable',
+          );
+        }
+      },
+    );
 
-    test('the release workflow consumes the short-lived token, not the PAT',
-        () {
-      final text = _workflowFile('release.yml').readAsStringSync();
-      expect(text, isNot(contains('RELEASE_PLEASE_TOKEN')));
-      expect(text, contains('secrets.GITHUB_TOKEN'));
-    });
+    test(
+      'the release workflow consumes the short-lived token, not the PAT',
+      () {
+        final text = _workflowFile('release.yml').readAsStringSync();
+        expect(text, isNot(contains('RELEASE_PLEASE_TOKEN')));
+        expect(text, contains('secrets.GITHUB_TOKEN'));
+      },
+    );
 
     test('a single action updater keeps the pins current', () {
       final dependabot = File('.github/dependabot.yml').readAsStringSync();

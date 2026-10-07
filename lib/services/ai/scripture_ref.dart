@@ -64,11 +64,7 @@ class ScriptureRef {
       );
     }
     final span = end - start;
-    return ScriptureRef(
-      book: book,
-      start: end + 1,
-      end: end + 1 + span,
-    );
+    return ScriptureRef(book: book, start: end + 1, end: end + 1 + span);
   }
 
   ScripturePassage? nextPassage({required int chapters}) {
@@ -89,11 +85,13 @@ class ScriptureRef {
       }
       final available = bookInfo.chapters - chapterStart + 1;
       final take = remaining < available ? remaining : available;
-      refs.add(ScriptureRef(
-        book: bookInfo.code,
-        start: chapterStart,
-        end: chapterStart + take - 1,
-      ));
+      refs.add(
+        ScriptureRef(
+          book: bookInfo.code,
+          start: chapterStart,
+          end: chapterStart + take - 1,
+        ),
+      );
       remaining -= take;
       bookIndex++;
       chapterStart = 1;
@@ -155,23 +153,23 @@ class ScriptureRef {
           continue;
         }
         if (verseEnd < verseStart) continue;
-        refs.add(ScriptureRef(
-          book: bookInfo.code,
-          start: chapter,
-          end: chapter,
-          verseStart: verseStart,
-          verseEnd: verseEnd,
-        ));
+        refs.add(
+          ScriptureRef(
+            book: bookInfo.code,
+            start: chapter,
+            end: chapter,
+            verseStart: verseStart,
+            verseEnd: verseEnd,
+          ),
+        );
         continue;
       }
       final chapterEnd =
           chapterEndRaw == null ? chapter : int.tryParse(chapterEndRaw);
       if (chapterEnd == null || chapterEnd < chapter) continue;
-      refs.add(ScriptureRef(
-        book: bookInfo.code,
-        start: chapter,
-        end: chapterEnd,
-      ));
+      refs.add(
+        ScriptureRef(book: bookInfo.code, start: chapter, end: chapterEnd),
+      );
     }
 
     if (refs.isEmpty) {

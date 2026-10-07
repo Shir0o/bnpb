@@ -279,7 +279,9 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
       });
       debugPrint('Error loading interactions: $e');
       CrispToast.show(
-          context, 'Unable to load interactions. Please try again.');
+        context,
+        'Unable to load interactions. Please try again.',
+      );
     }
   }
 
@@ -670,8 +672,9 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
           ? ContactAvatar(contact: otherContact, radius: 18)
           : CircleAvatar(
               radius: 18,
-              child:
-                  Text(otherName.isNotEmpty ? otherName[0].toUpperCase() : '?'),
+              child: Text(
+                otherName.isNotEmpty ? otherName[0].toUpperCase() : '?',
+              ),
             ),
       title: Text(otherName),
       subtitle: Column(
@@ -1056,7 +1059,9 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
     await ContactStageService().setStage(widget.contact, stage);
     if (mounted) {
       CrispToast.show(
-          context, '${widget.contact.displayName} → ${stage.label}');
+        context,
+        '${widget.contact.displayName} → ${stage.label}',
+      );
     }
   }
 

@@ -28,27 +28,29 @@ void main() {
     expect(lightTheme.appBarTheme.titleTextStyle?.fontWeight, FontWeight.w800);
   });
 
-  test('theme uses the provided Material 3 color palette for Crisp Utility',
-      () {
-    final colorScheme = buildAppTheme(Brightness.light, 13.0).colorScheme;
+  test(
+    'theme uses the provided Material 3 color palette for Crisp Utility',
+    () {
+      final colorScheme = buildAppTheme(Brightness.light, 13.0).colorScheme;
 
-    expect(colorScheme.primary, const Color(0xFF0D7A4F));
-    expect(colorScheme.onPrimary, const Color(0xFFFFFFFF));
-    expect(colorScheme.primaryContainer, const Color(0xFFEAF6EF));
-    expect(colorScheme.onPrimaryContainer, const Color(0xFF0D7A4F));
-    expect(colorScheme.secondary, const Color(0xFF127A6B));
-    expect(colorScheme.error, const Color(0xFFC25A3F));
-    expect(colorScheme.errorContainer, const Color(0xFFFBEEE9));
-    expect(colorScheme.surface, const Color(0xFFFFFFFF));
-    expect(colorScheme.onSurface, const Color(0xFF0F1512));
-    expect(colorScheme.surfaceTint, const Color(0xFFF1F5F2));
-    expect(colorScheme.surfaceContainerHighest, const Color(0xFFE6EBE7));
-    expect(colorScheme.surfaceContainerLow, const Color(0xFFF1F5F2));
-    expect(colorScheme.outline, const Color(0xFF8A988F));
-    expect(colorScheme.outlineVariant, const Color(0xFFEEF2EF));
-    expect(colorScheme.placeholder, const Color(0xFFA9B3AD));
-    expect(colorScheme.navBg, const Color(0xF0FFFFFF));
-  });
+      expect(colorScheme.primary, const Color(0xFF0D7A4F));
+      expect(colorScheme.onPrimary, const Color(0xFFFFFFFF));
+      expect(colorScheme.primaryContainer, const Color(0xFFEAF6EF));
+      expect(colorScheme.onPrimaryContainer, const Color(0xFF0D7A4F));
+      expect(colorScheme.secondary, const Color(0xFF127A6B));
+      expect(colorScheme.error, const Color(0xFFC25A3F));
+      expect(colorScheme.errorContainer, const Color(0xFFFBEEE9));
+      expect(colorScheme.surface, const Color(0xFFFFFFFF));
+      expect(colorScheme.onSurface, const Color(0xFF0F1512));
+      expect(colorScheme.surfaceTint, const Color(0xFFF1F5F2));
+      expect(colorScheme.surfaceContainerHighest, const Color(0xFFE6EBE7));
+      expect(colorScheme.surfaceContainerLow, const Color(0xFFF1F5F2));
+      expect(colorScheme.outline, const Color(0xFF8A988F));
+      expect(colorScheme.outlineVariant, const Color(0xFFEEF2EF));
+      expect(colorScheme.placeholder, const Color(0xFFA9B3AD));
+      expect(colorScheme.navBg, const Color(0xF0FFFFFF));
+    },
+  );
 
   test('dark theme uses the dark color palette for Crisp Utility', () {
     final colorScheme = buildAppTheme(Brightness.dark, 13.0).colorScheme;

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
@@ -17,6 +18,7 @@ import 'package:bnpb/services/contact_service.dart';
 import 'package:bnpb/services/ai/ai_services.dart';
 import 'package:bnpb/widgets/log_interaction_sheet.dart';
 import 'package:uuid/uuid.dart';
+
 import '../repositories/mock_db_helper.dart';
 import '../services/ai/_fake_pipeline_llm.dart';
 
@@ -126,51 +128,53 @@ void main() {
   });
 
   testWidgets(
-      'HomePage renders prayer insights count cards and navigates to PrayerDiaryPage',
-      (WidgetTester tester) async {
-    final contactId = const Uuid().v4();
-    final contact = Contact(
-      id: contactId,
-      firstName: 'John',
-      lastName: 'Doe',
-      updatedAt: DateTime.now(),
-    );
-    fakeDbHelper.contacts.add(contact);
+    'HomePage renders prayer insights count cards and navigates to PrayerDiaryPage',
+    (WidgetTester tester) async {
+      final contactId = const Uuid().v4();
+      final contact = Contact(
+        id: contactId,
+        firstName: 'John',
+        lastName: 'Doe',
+        updatedAt: DateTime.now(),
+      );
+      fakeDbHelper.contacts.add(contact);
 
-    final request = PrayerRequest(
-      id: 1,
-      participantIds: [contactId],
-      description: 'Heal from sickness',
-      status: PrayerRequestStatus.answered,
-      requestedAt: DateTime.now().subtract(const Duration(days: 5)),
-      answeredAt: DateTime.now().subtract(const Duration(days: 1)),
-    );
-    fakeDbHelper.prayerRequests.add(request);
-    fakeDbHelper.counts[PrayerRequestStatus.answered] = 1;
-    fakeDbHelper.counts[PrayerRequestStatus.pending] = 3;
+      final request = PrayerRequest(
+        id: 1,
+        participantIds: [contactId],
+        description: 'Heal from sickness',
+        status: PrayerRequestStatus.answered,
+        requestedAt: DateTime.now().subtract(const Duration(days: 5)),
+        answeredAt: DateTime.now().subtract(const Duration(days: 1)),
+      );
+      fakeDbHelper.prayerRequests.add(request);
+      fakeDbHelper.counts[PrayerRequestStatus.answered] = 1;
+      fakeDbHelper.counts[PrayerRequestStatus.pending] = 3;
 
-    await tester.pumpWidget(const MaterialApp(home: HomePage()));
-    await tester.pumpAndSettle();
+      await tester.pumpWidget(const MaterialApp(home: HomePage()));
+      await tester.pumpAndSettle();
 
-    expect(find.text('NEEDS PRAYER'), findsOneWidget);
-    expect(find.text('3'), findsOneWidget);
-    expect(find.text('ANSWERED'), findsOneWidget);
-    final answeredCardFinder = find.ancestor(
-      of: find.text('ANSWERED'),
-      matching: find.byType(InkWell),
-    );
-    expect(
-      find.descendant(of: answeredCardFinder, matching: find.text('1')),
-      findsOneWidget,
-    );
+      expect(find.text('NEEDS PRAYER'), findsOneWidget);
+      expect(find.text('3'), findsOneWidget);
+      expect(find.text('ANSWERED'), findsOneWidget);
+      final answeredCardFinder = find.ancestor(
+        of: find.text('ANSWERED'),
+        matching: find.byType(InkWell),
+      );
+      expect(
+        find.descendant(of: answeredCardFinder, matching: find.text('1')),
+        findsOneWidget,
+      );
 
-    await tester.tap(find.text('ANSWERED'));
-    await tester.pumpAndSettle();
-    expect(find.text('Archived'), findsOneWidget);
-  });
+      await tester.tap(find.text('ANSWERED'));
+      await tester.pumpAndSettle();
+      expect(find.text('Archived'), findsOneWidget);
+    },
+  );
 
-  testWidgets('HomePage renders dynamic header action buttons',
-      (WidgetTester tester) async {
+  testWidgets('HomePage renders dynamic header action buttons', (
+    WidgetTester tester,
+  ) async {
     await tester.pumpWidget(const MaterialApp(home: HomePage()));
     await tester.pumpAndSettle();
 
@@ -182,42 +186,44 @@ void main() {
   });
 
   testWidgets(
-      'HomePage renders follow-up suggestion cards with priority badges and log button',
-      (WidgetTester tester) async {
-    final contactId = const Uuid().v4();
-    final contact = Contact(
-      id: contactId,
-      firstName: 'Jane',
-      lastName: 'Smith',
-      updatedAt: DateTime.now(),
-      interactions: [
-        Interaction(
-          id: 1,
-          participantIds: [contactId],
-          occurredAt: DateTime.now().subtract(const Duration(days: 65)),
-          summary: 'Met for coffee',
-          medium: 'In Person',
-        ),
-      ],
-    );
-    fakeDbHelper.contacts.add(contact);
+    'HomePage renders follow-up suggestion cards with priority badges and log button',
+    (WidgetTester tester) async {
+      final contactId = const Uuid().v4();
+      final contact = Contact(
+        id: contactId,
+        firstName: 'Jane',
+        lastName: 'Smith',
+        updatedAt: DateTime.now(),
+        interactions: [
+          Interaction(
+            id: 1,
+            participantIds: [contactId],
+            occurredAt: DateTime.now().subtract(const Duration(days: 65)),
+            summary: 'Met for coffee',
+            medium: 'In Person',
+          ),
+        ],
+      );
+      fakeDbHelper.contacts.add(contact);
 
-    await tester.pumpWidget(const MaterialApp(home: HomePage()));
-    await tester.pumpAndSettle();
+      await tester.pumpWidget(const MaterialApp(home: HomePage()));
+      await tester.pumpAndSettle();
 
-    expect(find.text('Follow-up suggestions'), findsOneWidget);
-    expect(find.text('Jane Smith'), findsOneWidget);
-    expect(find.text('CRITICAL'), findsOneWidget);
-    expect(find.text('Log'), findsOneWidget);
+      expect(find.text('Follow-up suggestions'), findsOneWidget);
+      expect(find.text('Jane Smith'), findsOneWidget);
+      expect(find.text('CRITICAL'), findsOneWidget);
+      expect(find.text('Log'), findsOneWidget);
 
-    await tester.tap(find.text('Log'));
-    await tester.pumpAndSettle();
+      await tester.tap(find.text('Log'));
+      await tester.pumpAndSettle();
 
-    expect(find.byType(LogInteractionSheet), findsOneWidget);
-  });
+      expect(find.byType(LogInteractionSheet), findsOneWidget);
+    },
+  );
 
-  testWidgets('HomePage renders a confirmed routine with a sequence pill',
-      (WidgetTester tester) async {
+  testWidgets('HomePage renders a confirmed routine with a sequence pill', (
+    WidgetTester tester,
+  ) async {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final contactId = const Uuid().v4();
@@ -266,147 +272,151 @@ void main() {
   });
 
   testWidgets(
-      'HomePage asks to confirm a detected routine before suggesting it',
-      (WidgetTester tester) async {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final contactId = const Uuid().v4();
+    'HomePage asks to confirm a detected routine before suggesting it',
+    (WidgetTester tester) async {
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      final contactId = const Uuid().v4();
 
-    Interaction reading(DateTime date, String notes) {
-      return Interaction(
-        id: date.day,
-        participantIds: [contactId],
-        occurredAt: date,
-        summary: 'Bible reading',
-        medium: 'Coffee',
-        durationMinutes: 45,
-        notes: notes,
+      Interaction reading(DateTime date, String notes) {
+        return Interaction(
+          id: date.day,
+          participantIds: [contactId],
+          occurredAt: date,
+          summary: 'Bible reading',
+          medium: 'Coffee',
+          durationMinutes: 45,
+          notes: notes,
+        );
+      }
+
+      final contact = Contact(
+        id: contactId,
+        firstName: 'Timothy',
+        lastName: 'Alvarez',
+        updatedAt: now,
+        interactions: [
+          reading(today.subtract(const Duration(days: 21)), 'Psa. 115-116'),
+          reading(today.subtract(const Duration(days: 14)), 'Psa. 117-118'),
+          reading(today.subtract(const Duration(days: 7)), 'Psa. 119-120'),
+        ],
       );
-    }
+      fakeDbHelper.contacts.add(contact);
 
-    final contact = Contact(
-      id: contactId,
-      firstName: 'Timothy',
-      lastName: 'Alvarez',
-      updatedAt: now,
-      interactions: [
-        reading(today.subtract(const Duration(days: 21)), 'Psa. 115-116'),
-        reading(today.subtract(const Duration(days: 14)), 'Psa. 117-118'),
-        reading(today.subtract(const Duration(days: 7)), 'Psa. 119-120'),
-      ],
-    );
-    fakeDbHelper.contacts.add(contact);
+      await tester.pumpWidget(const MaterialApp(home: HomePage()));
+      await tester.pumpAndSettle();
 
-    await tester.pumpWidget(const MaterialApp(home: HomePage()));
-    await tester.pumpAndSettle();
+      expect(find.text('Routine detected'), findsOneWidget);
+      expect(find.text('Psa. 121\u2013122'), findsNothing);
 
-    expect(find.text('Routine detected'), findsOneWidget);
-    expect(find.text('Psa. 121\u2013122'), findsNothing);
+      await tester.tap(find.text('Confirm'));
+      await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Confirm'));
-    await tester.pumpAndSettle();
-
-    expect(find.text('Psa. 121\u2013122'), findsOneWidget);
-  });
+      expect(find.text('Psa. 121\u2013122'), findsOneWidget);
+    },
+  );
 
   testWidgets(
-      'HomePage falls back to AI for free-form scripture notes when AI is enabled',
-      (WidgetTester tester) async {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final contactId = const Uuid().v4();
-    final key = '$contactId@@bible reading@@in person';
+    'HomePage falls back to AI for free-form scripture notes when AI is enabled',
+    (WidgetTester tester) async {
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      final contactId = const Uuid().v4();
+      final key = '$contactId@@bible reading@@in person';
 
-    SharedPreferences.setMockInitialValues({
-      'ai.features.enabled': true,
-      'ai.features.scripture_ref_advancement': true,
-      'recurring_log.preferences': jsonEncode({
-        key: {'confirmed': true},
-      }),
-    });
-    AiServices().debugOverride(
-      llm: FakePipelineLlm('{"book":"Psa","start":117,"end":117}'),
-    );
-
-    Interaction reading(DateTime date) {
-      return Interaction(
-        id: date.day,
-        participantIds: [contactId],
-        occurredAt: date,
-        summary: 'Bible reading',
-        medium: 'In person',
-        durationMinutes: 30,
-        notes: 'Read psalm one-seventeen together',
+      SharedPreferences.setMockInitialValues({
+        'ai.features.enabled': true,
+        'ai.features.scripture_ref_advancement': true,
+        'recurring_log.preferences': jsonEncode({
+          key: {'confirmed': true},
+        }),
+      });
+      AiServices().debugOverride(
+        llm: FakePipelineLlm('{"book":"Psa","start":117,"end":117}'),
       );
-    }
 
-    final contact = Contact(
-      id: contactId,
-      firstName: 'Joanna',
-      lastName: 'Park',
-      updatedAt: now,
-      interactions: [
-        reading(today.subtract(const Duration(days: 21))),
-        reading(today.subtract(const Duration(days: 14))),
-        reading(today.subtract(const Duration(days: 7))),
-      ],
-    );
-    fakeDbHelper.contacts.add(contact);
+      Interaction reading(DateTime date) {
+        return Interaction(
+          id: date.day,
+          participantIds: [contactId],
+          occurredAt: date,
+          summary: 'Bible reading',
+          medium: 'In person',
+          durationMinutes: 30,
+          notes: 'Read psalm one-seventeen together',
+        );
+      }
 
-    await tester.pumpWidget(const MaterialApp(home: HomePage()));
-    await tester.pumpAndSettle();
+      final contact = Contact(
+        id: contactId,
+        firstName: 'Joanna',
+        lastName: 'Park',
+        updatedAt: now,
+        interactions: [
+          reading(today.subtract(const Duration(days: 21))),
+          reading(today.subtract(const Duration(days: 14))),
+          reading(today.subtract(const Duration(days: 7))),
+        ],
+      );
+      fakeDbHelper.contacts.add(contact);
 
-    expect(find.text('Ready to log'), findsOneWidget);
-    expect(find.text('Psa. 118'), findsOneWidget);
-  });
+      await tester.pumpWidget(const MaterialApp(home: HomePage()));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Ready to log'), findsOneWidget);
+      expect(find.text('Psa. 118'), findsOneWidget);
+    },
+  );
 
   testWidgets(
-      'HomePage does not surface unresolved scripture notes when AI is disabled',
-      (WidgetTester tester) async {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final contactId = const Uuid().v4();
-    final key = '$contactId@@bible reading@@in person';
+    'HomePage does not surface unresolved scripture notes when AI is disabled',
+    (WidgetTester tester) async {
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      final contactId = const Uuid().v4();
+      final key = '$contactId@@bible reading@@in person';
 
-    SharedPreferences.setMockInitialValues({
-      'recurring_log.preferences': jsonEncode({
-        key: {'confirmed': true},
-      }),
-    });
+      SharedPreferences.setMockInitialValues({
+        'recurring_log.preferences': jsonEncode({
+          key: {'confirmed': true},
+        }),
+      });
 
-    Interaction reading(DateTime date) {
-      return Interaction(
-        id: date.day,
-        participantIds: [contactId],
-        occurredAt: date,
-        summary: 'Bible reading',
-        medium: 'In person',
-        durationMinutes: 30,
-        notes: 'Read psalm one-seventeen together',
+      Interaction reading(DateTime date) {
+        return Interaction(
+          id: date.day,
+          participantIds: [contactId],
+          occurredAt: date,
+          summary: 'Bible reading',
+          medium: 'In person',
+          durationMinutes: 30,
+          notes: 'Read psalm one-seventeen together',
+        );
+      }
+
+      final contact = Contact(
+        id: contactId,
+        firstName: 'Mark',
+        lastName: 'Reyes',
+        updatedAt: now,
+        interactions: [
+          reading(today.subtract(const Duration(days: 21))),
+          reading(today.subtract(const Duration(days: 14))),
+          reading(today.subtract(const Duration(days: 7))),
+        ],
       );
-    }
+      fakeDbHelper.contacts.add(contact);
 
-    final contact = Contact(
-      id: contactId,
-      firstName: 'Mark',
-      lastName: 'Reyes',
-      updatedAt: now,
-      interactions: [
-        reading(today.subtract(const Duration(days: 21))),
-        reading(today.subtract(const Duration(days: 14))),
-        reading(today.subtract(const Duration(days: 7))),
-      ],
-    );
-    fakeDbHelper.contacts.add(contact);
+      await tester.pumpWidget(const MaterialApp(home: HomePage()));
+      await tester.pumpAndSettle();
 
-    await tester.pumpWidget(const MaterialApp(home: HomePage()));
-    await tester.pumpAndSettle();
+      expect(find.text('Ready to log'), findsNothing);
+    },
+  );
 
-    expect(find.text('Ready to log'), findsNothing);
-  });
-
-  testWidgets('HomePage shows non-scripture routines without a sequence pill',
-      (WidgetTester tester) async {
+  testWidgets('HomePage shows non-scripture routines without a sequence pill', (
+    WidgetTester tester,
+  ) async {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final contactId = const Uuid().v4();

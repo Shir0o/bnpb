@@ -25,9 +25,7 @@ void main() {
       ),
     );
 
-    final decoded = RecurringLogPreferences.fromJson(
-      preferences.toJson(),
-    );
+    final decoded = RecurringLogPreferences.fromJson(preferences.toJson());
     final value = decoded.preferenceFor('contact@@bible reading@@coffee');
 
     expect(value.confirmed, isTrue);
@@ -47,7 +45,9 @@ void main() {
     final loaded = await store.load();
 
     expect(
-        loaded.preferenceFor('contact@@workout@@in person').confirmed, isTrue);
+      loaded.preferenceFor('contact@@workout@@in person').confirmed,
+      isTrue,
+    );
   });
 
   test('round-trips combined-pattern preferences through JSON', () {
@@ -62,7 +62,8 @@ void main() {
         ),
       ),
       'alice@@bible reading@@coffee': const RecurringLogPreference(
-          mergedIntoKey: 'bible reading@@coffee@@alice,bob'),
+        mergedIntoKey: 'bible reading@@coffee@@alice,bob',
+      ),
     });
 
     final decoded = RecurringLogPreferences.fromJson(preferences.toJson());

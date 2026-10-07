@@ -1,4 +1,5 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
@@ -12,6 +13,7 @@ import 'package:bnpb/models/notification_preference.dart';
 import 'package:bnpb/services/google_drive_service.dart';
 import 'package:bnpb/services/reminder_service.dart';
 import 'package:bnpb/services/security_service.dart';
+
 import '../../test/repositories/mock_db_helper.dart';
 
 class MockGoogleDriveService extends Mock implements GoogleDriveService {}
@@ -132,79 +134,94 @@ void main() {
   });
 
   testWidgets(
-      'SettingsPage deduplicate run dry run shows detailed proposed changes',
-      (WidgetTester tester) async {
-    final contact1 =
-        Contact(id: 'pid-1', firstName: 'Alice', updatedAt: DateTime.now());
-    final contact2 =
-        Contact(id: 'pid-2', firstName: 'Bob', updatedAt: DateTime.now());
-    fakeDbHelper.contacts.addAll([contact1, contact2]);
+    'SettingsPage deduplicate run dry run shows detailed proposed changes',
+    (WidgetTester tester) async {
+      final contact1 = Contact(
+        id: 'pid-1',
+        firstName: 'Alice',
+        updatedAt: DateTime.now(),
+      );
+      final contact2 = Contact(
+        id: 'pid-2',
+        firstName: 'Bob',
+        updatedAt: DateTime.now(),
+      );
+      fakeDbHelper.contacts.addAll([contact1, contact2]);
 
-    final occurredAt = DateTime(2026, 6, 2, 11, 0, 0);
-    final primary = Interaction(
-      id: 1,
-      syncId: 'sync-1',
-      occurredAt: occurredAt,
-      summary: 'Coffee Chat',
-      medium: 'in_person',
-      location: '',
-      attachments: const [],
-      markForPrayer: false,
-      notes: 'Initial primary notes',
-      participantIds: ['pid-1'],
-      updatedAt: DateTime.now().toUtc(),
-    );
-    final duplicate = Interaction(
-      id: 2,
-      syncId: 'sync-2',
-      occurredAt: occurredAt,
-      summary: 'Coffee Chat',
-      medium: 'in_person',
-      location: 'Starbucks',
-      attachments: const [],
-      markForPrayer: true,
-      notes: 'Different notes',
-      participantIds: ['pid-1', 'pid-2'],
-      updatedAt: DateTime.now().toUtc(),
-    );
+      final occurredAt = DateTime(2026, 6, 2, 11, 0, 0);
+      final primary = Interaction(
+        id: 1,
+        syncId: 'sync-1',
+        occurredAt: occurredAt,
+        summary: 'Coffee Chat',
+        medium: 'in_person',
+        location: '',
+        attachments: const [],
+        markForPrayer: false,
+        notes: 'Initial primary notes',
+        participantIds: ['pid-1'],
+        updatedAt: DateTime.now().toUtc(),
+      );
+      final duplicate = Interaction(
+        id: 2,
+        syncId: 'sync-2',
+        occurredAt: occurredAt,
+        summary: 'Coffee Chat',
+        medium: 'in_person',
+        location: 'Starbucks',
+        attachments: const [],
+        markForPrayer: true,
+        notes: 'Different notes',
+        participantIds: ['pid-1', 'pid-2'],
+        updatedAt: DateTime.now().toUtc(),
+      );
 
-    final group = InteractionDuplicateGroup(
-      primary: primary,
-      duplicates: [duplicate],
-    );
-    fakeDbHelper.duplicateGroups.add(group);
-    fakeDbHelper.deDuplicateResult = 1;
+      final group = InteractionDuplicateGroup(
+        primary: primary,
+        duplicates: [duplicate],
+      );
+      fakeDbHelper.duplicateGroups.add(group);
+      fakeDbHelper.deDuplicateResult = 1;
 
-    await tester.pumpWidget(const MaterialApp(home: SettingsPage()));
-    await tester.pump(const Duration(milliseconds: 400));
-    await tester.pumpAndSettle();
+      await tester.pumpWidget(const MaterialApp(home: SettingsPage()));
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.pumpAndSettle();
 
-    // Scroll and click the Deduplicate button
-    final deDupTile =
-        find.byIcon(Icons.cleaning_services_outlined, skipOffstage: false);
-    await tester.scrollUntilVisible(
-      deDupTile,
-      100.0,
-      scrollable: find.byType(Scrollable).first,
-    );
-    expect(deDupTile, findsOneWidget);
-    await tester.pump(const Duration(milliseconds: 400));
-    await tester.pump();
-    await tester.tap(find.text('De-duplicate interactions'));
-    await tester.pump(); // Scanning dialog
-    await tester.pump(const Duration(milliseconds: 400));
-    await tester.pump();
+      // Scroll and click the Deduplicate button
+      final deDupTile = find.byIcon(
+        Icons.cleaning_services_outlined,
+        skipOffstage: false,
+      );
+      await tester.scrollUntilVisible(
+        deDupTile,
+        100.0,
+        scrollable: find.byType(Scrollable).first,
+      );
+      expect(deDupTile, findsOneWidget);
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.pump();
+      await tester.tap(find.text('De-duplicate interactions'));
+      await tester.pump(); // Scanning dialog
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.pump();
 
-    // Verify confirmation dialog title
-    expect(find.text('Merge Duplicate Interactions?'), findsOneWidget);
+      // Verify confirmation dialog title
+      expect(find.text('Merge Duplicate Interactions?'), findsOneWidget);
 
-    // Verify detailed dry run changes are rendered
-    expect(
-        find.textContaining('Location: [None] → "Starbucks"'), findsOneWidget);
-    expect(
-        find.textContaining('Mark for prayer: false → true'), findsOneWidget);
-    expect(find.textContaining('Add participants: Bob'), findsOneWidget);
-    expect(find.textContaining('Notes: Appended additional notes'),
-        findsOneWidget);
-  });
+      // Verify detailed dry run changes are rendered
+      expect(
+        find.textContaining('Location: [None] → "Starbucks"'),
+        findsOneWidget,
+      );
+      expect(
+        find.textContaining('Mark for prayer: false → true'),
+        findsOneWidget,
+      );
+      expect(find.textContaining('Add participants: Bob'), findsOneWidget);
+      expect(
+        find.textContaining('Notes: Appended additional notes'),
+        findsOneWidget,
+      );
+    },
+  );
 }

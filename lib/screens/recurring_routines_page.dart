@@ -193,8 +193,9 @@ class _RecurringRoutinesPageState extends State<RecurringRoutinesPage> {
     final spanController = TextEditingController(
       text: (preference.spanOverride ?? pattern.inferredSpan).toString(),
     );
-    final selectedParticipants =
-        Set<String>.from(pattern.identity.participantIds);
+    final selectedParticipants = Set<String>.from(
+      pattern.identity.participantIds,
+    );
     var cadenceValue = _cadenceValue(override: preference.cadenceOverride);
 
     final saved = await showDialog<bool>(
@@ -211,16 +212,12 @@ class _RecurringRoutinesPageState extends State<RecurringRoutinesPage> {
                   children: [
                     TextField(
                       controller: nameController,
-                      decoration: const InputDecoration(
-                        labelText: 'Name',
-                      ),
+                      decoration: const InputDecoration(labelText: 'Name'),
                     ),
                     const SizedBox(height: 12),
                     TextField(
                       controller: mediumController,
-                      decoration: const InputDecoration(
-                        labelText: 'Medium',
-                      ),
+                      decoration: const InputDecoration(labelText: 'Medium'),
                     ),
                     const SizedBox(height: 12),
                     TextField(

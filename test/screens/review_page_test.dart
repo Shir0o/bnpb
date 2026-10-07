@@ -7,6 +7,7 @@ import 'package:bnpb/models/contact.dart';
 import 'package:bnpb/models/interaction.dart';
 import 'package:bnpb/models/stage_move.dart';
 import 'package:bnpb/screens/review_page.dart';
+
 import '../repositories/mock_db_helper.dart';
 
 class _TestDBHelper extends MockDBHelper {
@@ -53,8 +54,10 @@ class _TestDBHelper extends MockDBHelper {
   }
 
   @override
-  Future<List<StageMove>> getStageMoves(
-      {DateTime? start, DateTime? end}) async {
+  Future<List<StageMove>> getStageMoves({
+    DateTime? start,
+    DateTime? end,
+  }) async {
     return stageMoves
         .where(
           (m) =>
@@ -85,8 +88,11 @@ Contact _contact(
         Interaction(
           occurredAt: monthsAgo == 0
               ? DateTime(now.year, now.month, 2 + i)
-              : DateTime(now.year, now.month - monthsAgo, 1)
-                  .subtract(Duration(days: i + 1)),
+              : DateTime(
+                  now.year,
+                  now.month - monthsAgo,
+                  1,
+                ).subtract(Duration(days: i + 1)),
           summary: 'Chat',
           medium: 'Call',
         ),
@@ -132,7 +138,9 @@ void main() {
 
     expect(find.text('Marks'), findsOneWidget);
     expect(
-        find.textContaining('No one reached regular contact'), findsOneWidget);
+      find.textContaining('No one reached regular contact'),
+      findsOneWidget,
+    );
     expect(find.text('Intention'), findsOneWidget);
     expect(find.text('Care'), findsOneWidget);
 
@@ -168,8 +176,9 @@ void main() {
     expect(find.text('Review'), findsOneWidget);
   });
 
-  testWidgets('renders the empty movement state when nobody advanced',
-      (tester) async {
+  testWidgets('renders the empty movement state when nobody advanced', (
+    tester,
+  ) async {
     dbHelper.contacts.addAll([
       _contact('c1', 'Abe', 0),
       _contact('c2', 'Bea', 0),
@@ -182,8 +191,9 @@ void main() {
 
   testWidgets('suggests stage changes and confirms them', (tester) async {
     // 2 interactions justify Second contact, but the stage is pinned lower.
-    dbHelper.contacts
-        .add(_contact('c1', 'Gus Hall', 2, stage: 'First contact'));
+    dbHelper.contacts.add(
+      _contact('c1', 'Gus Hall', 2, stage: 'First contact'),
+    );
 
     await pumpReview(tester);
 
@@ -204,8 +214,9 @@ void main() {
   });
 
   testWidgets('dismissing a suggestion removes it', (tester) async {
-    dbHelper.contacts
-        .add(_contact('c1', 'Gus Hall', 2, stage: 'First contact'));
+    dbHelper.contacts.add(
+      _contact('c1', 'Gus Hall', 2, stage: 'First contact'),
+    );
 
     await pumpReview(tester);
 

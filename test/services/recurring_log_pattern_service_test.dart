@@ -35,15 +35,15 @@ void main() {
 
   RecurringLogPreferences confirmedPreferences({int? spanOverride}) {
     return RecurringLogPreferences({
-      key: RecurringLogPreference(
-        confirmed: true,
-        spanOverride: spanOverride,
-      ),
+      key: RecurringLogPreference(confirmed: true, spanOverride: spanOverride),
     });
   }
 
-  Contact soloContact(String id, String firstName,
-      {List<Interaction>? interactions}) {
+  Contact soloContact(
+    String id,
+    String firstName, {
+    List<Interaction>? interactions,
+  }) {
     return Contact(
       id: id,
       firstName: firstName,
@@ -73,28 +73,30 @@ void main() {
     DateTime(2026, 9, 12),
   ];
 
-  test('detects a Mon-Sat Bible reading pattern and infers a 2-chapter span',
-      () {
-    final service = RecurringLogPatternService();
-    final interactions = [
-      reading(DateTime(2026, 9, 7), 'Psa. 115-116'),
-      reading(DateTime(2026, 9, 8), 'Psa. 117-118'),
-      reading(DateTime(2026, 9, 9), 'Psa. 119-120'),
-      reading(DateTime(2026, 9, 10), 'Psa. 121-122'),
-      reading(DateTime(2026, 9, 11), 'Psa. 123-124'),
-      reading(DateTime(2026, 9, 12), 'Psa. 125-126'),
-    ];
+  test(
+    'detects a Mon-Sat Bible reading pattern and infers a 2-chapter span',
+    () {
+      final service = RecurringLogPatternService();
+      final interactions = [
+        reading(DateTime(2026, 9, 7), 'Psa. 115-116'),
+        reading(DateTime(2026, 9, 8), 'Psa. 117-118'),
+        reading(DateTime(2026, 9, 9), 'Psa. 119-120'),
+        reading(DateTime(2026, 9, 10), 'Psa. 121-122'),
+        reading(DateTime(2026, 9, 11), 'Psa. 123-124'),
+        reading(DateTime(2026, 9, 12), 'Psa. 125-126'),
+      ];
 
-    final patterns = service.detectPatterns(
-      contactsWith(interactions),
-      now: DateTime(2026, 9, 14, 10),
-    );
+      final patterns = service.detectPatterns(
+        contactsWith(interactions),
+        now: DateTime(2026, 9, 14, 10),
+      );
 
-    expect(patterns, hasLength(1));
-    expect(patterns.first.cadence.description, 'Mon-Sat');
-    expect(patterns.first.inferredSpan, 2);
-    expect(patterns.first.usesScripturePayload, isTrue);
-  });
+      expect(patterns, hasLength(1));
+      expect(patterns.first.cadence.description, 'Mon-Sat');
+      expect(patterns.first.inferredSpan, 2);
+      expect(patterns.first.usesScripturePayload, isTrue);
+    },
+  );
 
   test(
       'returns a pending confirmation instead of a suggestion before confirmation',
@@ -142,27 +144,29 @@ void main() {
     expect(result.suggestions.first.isOverdue, isFalse);
   });
 
-  test('crosses into the next book when the span reaches the end of a book',
-      () {
-    final service = RecurringLogPatternService();
-    final interactions = [
-      reading(DateTime(2026, 9, 7), 'Psa. 143-144'),
-      reading(DateTime(2026, 9, 8), 'Psa. 145-146'),
-      reading(DateTime(2026, 9, 9), 'Psa. 147-148'),
-      reading(DateTime(2026, 9, 10), 'Psa. 149-150'),
-      reading(DateTime(2026, 9, 11), 'Psa. 149-150'),
-      reading(DateTime(2026, 9, 12), 'Psa. 149-150'),
-    ];
+  test(
+    'crosses into the next book when the span reaches the end of a book',
+    () {
+      final service = RecurringLogPatternService();
+      final interactions = [
+        reading(DateTime(2026, 9, 7), 'Psa. 143-144'),
+        reading(DateTime(2026, 9, 8), 'Psa. 145-146'),
+        reading(DateTime(2026, 9, 9), 'Psa. 147-148'),
+        reading(DateTime(2026, 9, 10), 'Psa. 149-150'),
+        reading(DateTime(2026, 9, 11), 'Psa. 149-150'),
+        reading(DateTime(2026, 9, 12), 'Psa. 149-150'),
+      ];
 
-    final result = service.buildDueSuggestions(
-      contacts: contactsWith(interactions),
-      now: DateTime(2026, 9, 14, 10),
-      preferences: confirmedPreferences(),
-    );
+      final result = service.buildDueSuggestions(
+        contacts: contactsWith(interactions),
+        now: DateTime(2026, 9, 14, 10),
+        preferences: confirmedPreferences(),
+      );
 
-    expect(result.suggestions, hasLength(1));
-    expect(result.suggestions.first.pill, 'Prov. 1\u20132');
-  });
+      expect(result.suggestions, hasLength(1));
+      expect(result.suggestions.first.pill, 'Prov. 1\u20132');
+    },
+  );
 
   test('does not invent a reference past the end of Revelation', () {
     final service = RecurringLogPatternService();
@@ -219,15 +223,17 @@ void main() {
     final carol = soloContact('carol', 'Carol');
     for (final date in weekdays) {
       for (final contact in [alice, bob, carol]) {
-        contact.interactions
-            .add(groupReading(date, const ['alice', 'bob', 'carol']));
+        contact.interactions.add(
+          groupReading(date, const ['alice', 'bob', 'carol']),
+        );
       }
     }
 
-    final patterns = service.detectPatterns(
-      [alice, bob, carol],
-      now: DateTime(2026, 9, 14),
-    );
+    final patterns = service.detectPatterns([
+      alice,
+      bob,
+      carol,
+    ], now: DateTime(2026, 9, 14));
 
     expect(patterns, hasLength(1));
     expect(patterns.first.identity.participantIds, ['alice', 'bob', 'carol']);
@@ -241,8 +247,9 @@ void main() {
     final carol = soloContact('carol', 'Carol');
     for (final date in weekdays.take(4)) {
       for (final contact in [alice, bob, carol]) {
-        contact.interactions
-            .add(groupReading(date, const ['alice', 'bob', 'carol']));
+        contact.interactions.add(
+          groupReading(date, const ['alice', 'bob', 'carol']),
+        );
       }
     }
     for (final date in weekdays.skip(4)) {
@@ -250,10 +257,11 @@ void main() {
       bob.interactions.add(groupReading(date, const ['alice', 'bob']));
     }
 
-    final patterns = service.detectPatterns(
-      [alice, bob, carol],
-      now: DateTime(2026, 9, 14),
-    );
+    final patterns = service.detectPatterns([
+      alice,
+      bob,
+      carol,
+    ], now: DateTime(2026, 9, 14));
 
     expect(patterns, hasLength(1));
     expect(
@@ -263,44 +271,48 @@ void main() {
     expect(patterns.first.occurrenceCount, 6);
   });
 
-  test('recording a partial-attendance occurrence satisfies the cadence day',
-      () {
-    final service = RecurringLogPatternService();
-    final alice = soloContact('alice', 'Alice');
-    final bob = soloContact('bob', 'Bob');
-    final carol = soloContact('carol', 'Carol');
-    for (final date in weekdays) {
-      for (final contact in [alice, bob, carol]) {
-        contact.interactions
-            .add(groupReading(date, const ['alice', 'bob', 'carol']));
+  test(
+    'recording a partial-attendance occurrence satisfies the cadence day',
+    () {
+      final service = RecurringLogPatternService();
+      final alice = soloContact('alice', 'Alice');
+      final bob = soloContact('bob', 'Bob');
+      final carol = soloContact('carol', 'Carol');
+      for (final date in weekdays) {
+        for (final contact in [alice, bob, carol]) {
+          contact.interactions.add(
+            groupReading(date, const ['alice', 'bob', 'carol']),
+          );
+        }
       }
-    }
-    final contacts = [alice, bob, carol];
-    final now = DateTime(2026, 9, 14, 10);
+      final contacts = [alice, bob, carol];
+      final now = DateTime(2026, 9, 14, 10);
 
-    final detected = service.detectPatterns(contacts, now: now);
-    final key = detected.first.key;
-    final preferences = RecurringLogPreferences(
-        {key: const RecurringLogPreference(confirmed: true)});
+      final detected = service.detectPatterns(contacts, now: now);
+      final key = detected.first.key;
+      final preferences = RecurringLogPreferences({
+        key: const RecurringLogPreference(confirmed: true),
+      });
 
-    var result = service.buildDueSuggestions(
-      contacts: contacts,
-      now: now,
-      preferences: preferences,
-    );
-    expect(result.suggestions, hasLength(1));
+      var result = service.buildDueSuggestions(
+        contacts: contacts,
+        now: now,
+        preferences: preferences,
+      );
+      expect(result.suggestions, hasLength(1));
 
-    alice.interactions.add(
-      groupReading(DateTime(2026, 9, 14, 9), const ['alice', 'bob']),
-    );
+      alice.interactions.add(
+        groupReading(DateTime(2026, 9, 14, 9), const ['alice', 'bob']),
+      );
 
-    result = service.buildDueSuggestions(
-      contacts: contacts,
-      now: now,
-      preferences: preferences,
-    );
-    expect(result.suggestions, isEmpty);
-  });
+      result = service.buildDueSuggestions(
+        contacts: contacts,
+        now: now,
+        preferences: preferences,
+      );
+      expect(result.suggestions, isEmpty);
+    },
+  );
 
   test('a single-participant pattern resolves the legacy preference key', () {
     final service = RecurringLogPatternService();
@@ -310,8 +322,9 @@ void main() {
     }
 
     final preferences = RecurringLogPreferences({
-      'alice@@bible reading@@coffee':
-          const RecurringLogPreference(confirmed: true),
+      'alice@@bible reading@@coffee': const RecurringLogPreference(
+        confirmed: true,
+      ),
     });
 
     final result = service.buildDueSuggestions(
@@ -415,10 +428,7 @@ void main() {
       RecurringLogPreferences(),
       detected.first.key,
       newIdentity,
-      RecurringLogPreference(
-        confirmed: true,
-        canonicalIdentity: newIdentity,
-      ),
+      RecurringLogPreference(confirmed: true, canonicalIdentity: newIdentity),
     );
 
     final resolved = service.resolvePatterns(detected, preferences);

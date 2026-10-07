@@ -235,8 +235,10 @@ class _MacOSPrayerDiaryViewState extends State<MacOSPrayerDiaryView> {
                   borderRadius: BorderRadius.circular(11),
                   onTap: _openLogPrayerRequestSheet,
                   child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 15, vertical: 9),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 15,
+                      vertical: 9,
+                    ),
                     decoration: BoxDecoration(
                       color: colorScheme.primary,
                       borderRadius: BorderRadius.circular(11),
@@ -280,8 +282,10 @@ class _MacOSPrayerDiaryViewState extends State<MacOSPrayerDiaryView> {
                       hintText: 'Search prayer requests…',
                       hintStyle: TextStyle(color: colorScheme.placeholder),
                     ),
-                    style:
-                        TextStyle(fontSize: 14, color: colorScheme.onSurface),
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: colorScheme.onSurface,
+                    ),
                   ),
                 ),
               ],
@@ -295,8 +299,9 @@ class _MacOSPrayerDiaryViewState extends State<MacOSPrayerDiaryView> {
   Widget _buildContent(ColorScheme colorScheme) {
     final filteredRequests = _requests.where((req) {
       if (_searchQuery.isEmpty) return true;
-      final matchDescription =
-          req.description.toLowerCase().contains(_searchQuery);
+      final matchDescription = req.description.toLowerCase().contains(
+            _searchQuery,
+          );
       final matchContacts = req.participantIds.any(
         (id) => _displayNameForContact(id).toLowerCase().contains(_searchQuery),
       );
@@ -357,7 +362,10 @@ class _MacOSPrayerDiaryViewState extends State<MacOSPrayerDiaryView> {
   }
 
   Widget _buildDateHeader(
-      ColorScheme colorScheme, String title, DateTime date) {
+    ColorScheme colorScheme,
+    String title,
+    DateTime date,
+  ) {
     final dateStr = title == 'Older' ? '' : _monthDayYearFormat.format(date);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 11),
@@ -409,8 +417,9 @@ class _MacOSPrayerDiaryViewState extends State<MacOSPrayerDiaryView> {
       if (!mounted) return;
       setState(() {
         _editingRequestId = null;
-        final index =
-            _requests.indexWhere((r) => r.syncId == updatedRequest.syncId);
+        final index = _requests.indexWhere(
+          (r) => r.syncId == updatedRequest.syncId,
+        );
         if (index != -1) {
           _requests[index] = updatedRequest;
           _sortRequests(_requests);
@@ -469,8 +478,11 @@ class _MacOSPrayerDiaryViewState extends State<MacOSPrayerDiaryView> {
                   child: InkWell(
                     borderRadius: BorderRadius.circular(9),
                     onTap: _openContactPicker,
-                    child:
-                        Icon(Icons.add, size: 20, color: colorScheme.primary),
+                    child: Icon(
+                      Icons.add,
+                      size: 20,
+                      color: colorScheme.primary,
+                    ),
                   ),
                 ),
               ],
@@ -481,8 +493,10 @@ class _MacOSPrayerDiaryViewState extends State<MacOSPrayerDiaryView> {
                 ? Center(
                     child: Text(
                       'No one on your list yet.',
-                      style:
-                          TextStyle(fontSize: 13, color: colorScheme.outline),
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: colorScheme.outline,
+                      ),
                     ),
                   )
                 : ListView(
@@ -529,7 +543,9 @@ class _MacOSPrayerDiaryViewState extends State<MacOSPrayerDiaryView> {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                            fontSize: 12.5, color: colorScheme.outline),
+                          fontSize: 12.5,
+                          color: colorScheme.outline,
+                        ),
                       ),
                   ],
                 ),

@@ -1,4 +1,5 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
@@ -13,6 +14,7 @@ import 'package:bnpb/services/google_drive_service.dart';
 import 'package:bnpb/services/reminder_service.dart';
 import 'package:bnpb/services/security_service.dart';
 import 'package:bnpb/services/backup_service.dart';
+
 import '../../test/repositories/mock_db_helper.dart';
 
 class MockGoogleDriveService extends Mock implements GoogleDriveService {}
@@ -96,42 +98,46 @@ void main() {
   });
 
   testWidgets(
-      'HomePage return from details does not show skeleton and anchors scroll',
-      (WidgetTester tester) async {
-    final contact = Contact(
-      id: 'test-contact-id',
-      firstName: 'Anchor',
-      lastName: 'Contact',
-      location: 'New York',
-      updatedAt: DateTime.now(),
-    );
-    fakeDbHelper.contacts.add(contact);
+    'HomePage return from details does not show skeleton and anchors scroll',
+    (WidgetTester tester) async {
+      final contact = Contact(
+        id: 'test-contact-id',
+        firstName: 'Anchor',
+        lastName: 'Contact',
+        location: 'New York',
+        updatedAt: DateTime.now(),
+      );
+      fakeDbHelper.contacts.add(contact);
 
-    await tester.pumpWidget(const MaterialApp(home: HomePage()));
-    await tester.pumpAndSettle();
+      await tester.pumpWidget(const MaterialApp(home: HomePage()));
+      await tester.pumpAndSettle();
 
-    // Verify location group New York and contact name are rendered
-    expect(find.text('New York'), findsOneWidget);
-    expect(find.text('Anchor Contact'), findsOneWidget);
+      // Verify location group New York and contact name are rendered
+      expect(find.text('New York'), findsOneWidget);
+      expect(find.text('Anchor Contact'), findsOneWidget);
 
-    // Tap on contact card to navigate
-    await tester.tap(find.text('Anchor Contact'));
-    await tester.pump();
-    await tester
-        .pump(const Duration(seconds: 1)); // let push animation complete
+      // Tap on contact card to navigate
+      await tester.tap(find.text('Anchor Contact'));
+      await tester.pump();
+      await tester.pump(
+        const Duration(seconds: 1),
+      ); // let push animation complete
 
-    // Verify details page or navigator active
-    expect(find.byType(Navigator), findsOneWidget);
+      // Verify details page or navigator active
+      expect(find.byType(Navigator), findsOneWidget);
 
-    // Pop back simulating return
-    final navigator = tester.state<NavigatorState>(find.byType(Navigator));
-    navigator.pop(contact); // Pop back returning the contact
+      // Pop back simulating return
+      final navigator = tester.state<NavigatorState>(find.byType(Navigator));
+      navigator.pop(contact); // Pop back returning the contact
 
-    await tester.pump();
-    await tester.pump(const Duration(seconds: 1)); // let pop animation complete
-    await tester.pump(const Duration(milliseconds: 400));
+      await tester.pump();
+      await tester.pump(
+        const Duration(seconds: 1),
+      ); // let pop animation complete
+      await tester.pump(const Duration(milliseconds: 400));
 
-    // Verify no skeleton is displayed (meaning we returned to normal screen directly)
-    expect(find.byKey(const ValueKey('home_skeleton')), findsNothing);
-  });
+      // Verify no skeleton is displayed (meaning we returned to normal screen directly)
+      expect(find.byKey(const ValueKey('home_skeleton')), findsNothing);
+    },
+  );
 }

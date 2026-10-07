@@ -1,5 +1,7 @@
 import 'dart:convert';
+
 import 'package:http/http.dart' as http;
+
 import 'ai_feature_gate.dart';
 import 'model_manager.dart';
 
@@ -38,8 +40,10 @@ class DynamicModelCatalog {
       : _client = client ?? http.Client();
 
   /// Fetches available models for [backend] using the user's [apiKey].
-  Future<List<AiModelInfo>> getModels(AiBackend backend,
-      {String? apiKey}) async {
+  Future<List<AiModelInfo>> getModels(
+    AiBackend backend, {
+    String? apiKey,
+  }) async {
     switch (backend) {
       case AiBackend.local:
         return _getLocalModels();
@@ -164,10 +168,7 @@ class DynamicModelCatalog {
       final uri = Uri.parse('https://api.anthropic.com/v1/models');
       final res = await _client.get(
         uri,
-        headers: {
-          'x-api-key': apiKey,
-          'anthropic-version': '2023-06-01',
-        },
+        headers: {'x-api-key': apiKey, 'anthropic-version': '2023-06-01'},
       );
       if (res.statusCode == 200) {
         final data = jsonDecode(res.body) as Map<String, dynamic>;

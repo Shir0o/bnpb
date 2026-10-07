@@ -1,4 +1,5 @@
 import 'dart:convert';
+
 import 'package:crypto/crypto.dart';
 import 'package:csv/csv.dart';
 import 'package:bnpb/models/candidate_interaction.dart';
@@ -123,10 +124,7 @@ class TimeTrackerParser {
     required List<String> markers,
   }) {
     if (comment.isEmpty) {
-      return _ExtractionResult(
-        summary: activityName,
-        contactIds: [],
-      );
+      return _ExtractionResult(summary: activityName, contactIds: []);
     }
 
     // 1. Marker-respected first. If a configured marker is present, only the
@@ -145,10 +143,7 @@ class TimeTrackerParser {
         summary = '$activityName $comment';
       }
 
-      return _ExtractionResult(
-        summary: summary,
-        contactIds: matchedIds,
-      );
+      return _ExtractionResult(summary: summary, contactIds: matchedIds);
     }
 
     // 2. No marker present: strict whole-comment scan. Only a strong name
@@ -180,10 +175,7 @@ class TimeTrackerParser {
   /// Returns the first (leftmost) configured marker occurrence in [comment],
   /// as `(prefix, namesPart)` where [prefix] is the text before the marker and
   /// [namesPart] is the text after it. `null` when no marker is present.
-  static (String?, String)? _matchMarker(
-    String comment,
-    List<String> markers,
-  ) {
+  static (String?, String)? _matchMarker(String comment, List<String> markers) {
     (String?, String)? best;
     int? bestIndex;
 
@@ -269,8 +261,10 @@ class TimeTrackerParser {
       for (final contact in contacts) {
         final fullName = contact.fullName.trim();
         if (fullName.isNotEmpty) {
-          final regex = RegExp(r'\b' + RegExp.escape(fullName) + r'\b',
-              caseSensitive: false);
+          final regex = RegExp(
+            r'\b' + RegExp.escape(fullName) + r'\b',
+            caseSensitive: false,
+          );
           if (regex.hasMatch(token)) {
             bestMatch = contact;
             break;
@@ -314,8 +308,5 @@ class _ExtractionResult {
   final String summary;
   final List<String> contactIds;
 
-  _ExtractionResult({
-    required this.summary,
-    required this.contactIds,
-  });
+  _ExtractionResult({required this.summary, required this.contactIds});
 }

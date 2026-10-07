@@ -67,45 +67,43 @@ void main() {
     );
 
     test(
-      'skips a prayer request whose contact is unknown but still imports '
-      'the rest of the file',
-      () async {
-        await dbHelper.insertContact(Contact(id: 'known', firstName: 'Alice'));
+        'skips a prayer request whose contact is unknown but still imports '
+        'the rest of the file', () async {
+      await dbHelper.insertContact(Contact(id: 'known', firstName: 'Alice'));
 
-        final skippedPrayer = PrayerRequest(
-          participantIds: const ['unknown-contact'],
-          description: 'Pray for travel safety',
-          status: PrayerRequestStatus.pending,
-          requestedAt: DateTime.now().toUtc(),
-        );
-        final validPrayer = PrayerRequest(
-          participantIds: const ['known'],
-          description: 'Pray for healing',
-          status: PrayerRequestStatus.pending,
-          requestedAt: DateTime.now().toUtc(),
-        );
+      final skippedPrayer = PrayerRequest(
+        participantIds: const ['unknown-contact'],
+        description: 'Pray for travel safety',
+        status: PrayerRequestStatus.pending,
+        requestedAt: DateTime.now().toUtc(),
+      );
+      final validPrayer = PrayerRequest(
+        participantIds: const ['known'],
+        description: 'Pray for healing',
+        status: PrayerRequestStatus.pending,
+        requestedAt: DateTime.now().toUtc(),
+      );
 
-        final payload = {
-          'version': 2,
-          'deviceId': 'remote-device',
-          'timestamp': DateTime.now().toUtc().toIso8601String(),
-          'integrityCheck': 'valid',
-          'contacts': [],
-          'interactions': [],
-          'prayerRequests': [
-            skippedPrayer.toMap(includeId: false),
-            validPrayer.toMap(includeId: false),
-          ],
-          'prayerLists': [],
-          'relationships': [],
-        };
+      final payload = {
+        'version': 2,
+        'deviceId': 'remote-device',
+        'timestamp': DateTime.now().toUtc().toIso8601String(),
+        'integrityCheck': 'valid',
+        'contacts': [],
+        'interactions': [],
+        'prayerRequests': [
+          skippedPrayer.toMap(includeId: false),
+          validPrayer.toMap(includeId: false),
+        ],
+        'prayerLists': [],
+        'relationships': [],
+      };
 
-        await SyncCoordinator(dbHelper).importSyncData(payload);
+      await SyncCoordinator(dbHelper).importSyncData(payload);
 
-        final imported = await dbHelper.getPrayerRequests(includeDeleted: true);
-        expect(imported, hasLength(1));
-        expect(imported.first.description, 'Pray for healing');
-      },
-    );
+      final imported = await dbHelper.getPrayerRequests(includeDeleted: true);
+      expect(imported, hasLength(1));
+      expect(imported.first.description, 'Pray for healing');
+    });
   });
 }

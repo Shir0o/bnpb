@@ -360,8 +360,10 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
                       padding: const EdgeInsets.only(top: 2),
                       child: Text(
                         subtitle,
-                        style:
-                            TextStyle(fontSize: 12, color: colorScheme.outline),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: colorScheme.outline,
+                        ),
                       ),
                     ),
                 ],
@@ -417,67 +419,76 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _tabTitle(colorScheme, 'Appearance'),
-        _card(colorScheme, rows: [
-          ValueListenableBuilder<ThemeMode>(
-            valueListenable: themeModeNotifier,
-            builder: (context, mode, _) {
-              final isDark = mode == ThemeMode.dark;
-              return _row(
-                colorScheme,
-                icon: Icons.dark_mode_outlined,
-                title: 'Dark mode',
-                subtitle: isDark ? 'On' : 'Off',
-                trailing: CrispSwitch(
-                  value: isDark,
-                  onChanged: (v) =>
-                      updateThemeMode(v ? ThemeMode.dark : ThemeMode.light),
-                ),
-              );
-            },
-          ),
-          _cardDivider(colorScheme),
-          ValueListenableBuilder<double>(
-            valueListenable: fontSizeNotifier,
-            builder: (context, size, _) {
-              return Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                child: Row(
-                  children: [
-                    Icon(Icons.format_size_outlined,
-                        size: 20, color: colorScheme.iconColor),
-                    const SizedBox(width: 14),
-                    Text(
-                      'Font size',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 14.5,
-                        color: colorScheme.onSurface,
+        _card(
+          colorScheme,
+          rows: [
+            ValueListenableBuilder<ThemeMode>(
+              valueListenable: themeModeNotifier,
+              builder: (context, mode, _) {
+                final isDark = mode == ThemeMode.dark;
+                return _row(
+                  colorScheme,
+                  icon: Icons.dark_mode_outlined,
+                  title: 'Dark mode',
+                  subtitle: isDark ? 'On' : 'Off',
+                  trailing: CrispSwitch(
+                    value: isDark,
+                    onChanged: (v) =>
+                        updateThemeMode(v ? ThemeMode.dark : ThemeMode.light),
+                  ),
+                );
+              },
+            ),
+            _cardDivider(colorScheme),
+            ValueListenableBuilder<double>(
+              valueListenable: fontSizeNotifier,
+              builder: (context, size, _) {
+                return Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.format_size_outlined,
+                        size: 20,
+                        color: colorScheme.iconColor,
                       ),
-                    ),
-                    Expanded(
-                      child: Slider(
-                        value: size,
-                        min: 11,
-                        max: 18,
-                        divisions: 7,
-                        activeColor: colorScheme.primary,
-                        inactiveColor: colorScheme.hairline,
-                        onChanged: updateFontSize,
-                      ),
-                    ),
-                    Text(
-                      '${size.toStringAsFixed(0)} px',
-                      style: TextStyle(
+                      const SizedBox(width: 14),
+                      Text(
+                        'Font size',
+                        style: TextStyle(
                           fontWeight: FontWeight.w700,
-                          color: colorScheme.primary),
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
-        ]),
+                          fontSize: 14.5,
+                          color: colorScheme.onSurface,
+                        ),
+                      ),
+                      Expanded(
+                        child: Slider(
+                          value: size,
+                          min: 11,
+                          max: 18,
+                          divisions: 7,
+                          activeColor: colorScheme.primary,
+                          inactiveColor: colorScheme.hairline,
+                          onChanged: updateFontSize,
+                        ),
+                      ),
+                      Text(
+                        '${size.toStringAsFixed(0)} px',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          color: colorScheme.primary,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
       ],
     );
   }
@@ -606,27 +617,30 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _tabTitle(colorScheme, 'Security'),
-        _card(colorScheme, rows: [
-          _row(
-            colorScheme,
-            icon: Icons.lock_outline,
-            title: _hasPasscode ? 'Change passcode' : 'Enable passcode',
-            onTap: _promptForPasscode,
-            trailing: Icon(Icons.chevron_right, color: colorScheme.outline),
-          ),
-          if (_hasPasscode) ...[
-            _cardDivider(colorScheme),
+        _card(
+          colorScheme,
+          rows: [
             _row(
               colorScheme,
-              icon: Icons.fingerprint,
-              title: 'Biometric unlock',
-              trailing: CrispSwitch(
-                value: _biometricEnabled,
-                onChanged: _biometricAvailable ? _toggleBiometrics : null,
-              ),
+              icon: Icons.lock_outline,
+              title: _hasPasscode ? 'Change passcode' : 'Enable passcode',
+              onTap: _promptForPasscode,
+              trailing: Icon(Icons.chevron_right, color: colorScheme.outline),
             ),
+            if (_hasPasscode) ...[
+              _cardDivider(colorScheme),
+              _row(
+                colorScheme,
+                icon: Icons.fingerprint,
+                title: 'Biometric unlock',
+                trailing: CrispSwitch(
+                  value: _biometricEnabled,
+                  onChanged: _biometricAvailable ? _toggleBiometrics : null,
+                ),
+              ),
+            ],
           ],
-        ]),
+        ),
       ],
     );
   }
@@ -642,11 +656,14 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Set passcode',
-                style: TextStyle(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 18,
-                    color: Theme.of(context).colorScheme.onSurface)),
+            Text(
+              'Set passcode',
+              style: TextStyle(
+                fontWeight: FontWeight.w800,
+                fontSize: 18,
+                color: Theme.of(context).colorScheme.onSurface,
+              ),
+            ),
             const SizedBox(height: 14),
             TextField(
               controller: controller,
@@ -660,8 +677,9 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text('Cancel')),
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancel'),
+                ),
                 const SizedBox(width: 8),
                 FilledButton(
                   onPressed: () => Navigator.pop(context, controller.text),
@@ -700,33 +718,36 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
             style: TextStyle(fontSize: 13.5, color: colorScheme.outline),
           ),
         ),
-        _card(colorScheme, rows: [
-          _row(
-            colorScheme,
-            icon: Icons.auto_awesome_outlined,
-            title: 'AI features',
-            subtitle: _aiEnabled
-                ? (_hasGeminiKey
-                    ? 'On — using Google Gemini (cloud)'
-                    : 'On — add an API key below')
-                : 'Off',
-            trailing: CrispSwitch(
-              value: _aiEnabled,
-              onChanged: _aiBusy ? null : _setAiEnabled,
-            ),
-          ),
-          if (_aiEnabled) ...[
-            _cardDivider(colorScheme),
+        _card(
+          colorScheme,
+          rows: [
             _row(
               colorScheme,
-              icon: Icons.vpn_key_outlined,
-              title: 'Gemini API key',
-              subtitle: _hasGeminiKey ? 'Configured' : 'Not set',
-              onTap: _aiBusy ? null : _promptForGeminiApiKey,
-              trailing: Icon(Icons.chevron_right, color: colorScheme.outline),
+              icon: Icons.auto_awesome_outlined,
+              title: 'AI features',
+              subtitle: _aiEnabled
+                  ? (_hasGeminiKey
+                      ? 'On — using Google Gemini (cloud)'
+                      : 'On — add an API key below')
+                  : 'Off',
+              trailing: CrispSwitch(
+                value: _aiEnabled,
+                onChanged: _aiBusy ? null : _setAiEnabled,
+              ),
             ),
+            if (_aiEnabled) ...[
+              _cardDivider(colorScheme),
+              _row(
+                colorScheme,
+                icon: Icons.vpn_key_outlined,
+                title: 'Gemini API key',
+                subtitle: _hasGeminiKey ? 'Configured' : 'Not set',
+                onTap: _aiBusy ? null : _promptForGeminiApiKey,
+                trailing: Icon(Icons.chevron_right, color: colorScheme.outline),
+              ),
+            ],
           ],
-        ]),
+        ),
         const SizedBox(height: 20),
         Text(
           'Ask (semantic search) uses an on-device embedder that downloads the '
@@ -769,13 +790,17 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Google Gemini API key',
-                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18)),
+            const Text(
+              'Google Gemini API key',
+              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
+            ),
             const SizedBox(height: 8),
             Text(
               'Stored securely on this device and sent only to Google\'s API.',
               style: TextStyle(
-                  fontSize: 12.5, color: Theme.of(context).colorScheme.outline),
+                fontSize: 12.5,
+                color: Theme.of(context).colorScheme.outline,
+              ),
             ),
             const SizedBox(height: 14),
             TextField(
@@ -835,7 +860,8 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
                   : TextStyle(
                       fontSize: 14,
                       height: 1.5,
-                      color: colorScheme.secondaryText),
+                      color: colorScheme.secondaryText,
+                    ),
             ),
           ),
       ],
@@ -849,39 +875,43 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _tabTitle(colorScheme, 'Data'),
-        _card(colorScheme, rows: [
-          _row(
-            colorScheme,
-            icon: Icons.ios_share_outlined,
-            title: 'Export data',
-            subtitle: 'CSV, PDF, JSON, or encrypted archive',
-            onTap: _exportData,
-            trailing: Icon(Icons.chevron_right, color: colorScheme.outline),
-          ),
-          _cardDivider(colorScheme),
-          _row(
-            colorScheme,
-            icon: Icons.file_upload_outlined,
-            title: 'Import data',
-            subtitle: 'Restore from a backup or migrate from another device',
-            onTap: _importData,
-            trailing: Icon(Icons.chevron_right, color: colorScheme.outline),
-          ),
-          _cardDivider(colorScheme),
-          _row(
-            colorScheme,
-            icon: Icons.cleaning_services_outlined,
-            title: 'De-duplicate interactions',
-            subtitle: 'Find and merge duplicate interaction entries',
-            onTap: _isDeduping ? null : _confirmDeDuplicate,
-            trailing: _isDeduping
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2))
-                : Icon(Icons.chevron_right, color: colorScheme.outline),
-          ),
-        ]),
+        _card(
+          colorScheme,
+          rows: [
+            _row(
+              colorScheme,
+              icon: Icons.ios_share_outlined,
+              title: 'Export data',
+              subtitle: 'CSV, PDF, JSON, or encrypted archive',
+              onTap: _exportData,
+              trailing: Icon(Icons.chevron_right, color: colorScheme.outline),
+            ),
+            _cardDivider(colorScheme),
+            _row(
+              colorScheme,
+              icon: Icons.file_upload_outlined,
+              title: 'Import data',
+              subtitle: 'Restore from a backup or migrate from another device',
+              onTap: _importData,
+              trailing: Icon(Icons.chevron_right, color: colorScheme.outline),
+            ),
+            _cardDivider(colorScheme),
+            _row(
+              colorScheme,
+              icon: Icons.cleaning_services_outlined,
+              title: 'De-duplicate interactions',
+              subtitle: 'Find and merge duplicate interaction entries',
+              onTap: _isDeduping ? null : _confirmDeDuplicate,
+              trailing: _isDeduping
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : Icon(Icons.chevron_right, color: colorScheme.outline),
+            ),
+          ],
+        ),
         const SizedBox(height: 24),
         Text(
           'DANGER ZONE',
@@ -910,7 +940,8 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
                 ? const SizedBox(
                     width: 18,
                     height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2))
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
                 : Icon(Icons.chevron_right, color: colorScheme.error),
           ),
         ),
@@ -927,8 +958,10 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
         CrispToast.show(context, 'No duplicate interactions found.');
         return;
       }
-      final totalDuplicatesCount =
-          duplicates.fold<int>(0, (sum, g) => sum + g.duplicates.length);
+      final totalDuplicatesCount = duplicates.fold<int>(
+        0,
+        (sum, g) => sum + g.duplicates.length,
+      );
 
       final confirmed = await showMacModal<bool>(
         context,
@@ -939,15 +972,18 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Merge duplicate interactions?',
-                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18)),
+              const Text(
+                'Merge duplicate interactions?',
+                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
+              ),
               const SizedBox(height: 10),
               Text(
                 'Found ${duplicates.length} duplicate groups containing '
                 '$totalDuplicatesCount entries to merge. This cannot be undone.',
                 style: TextStyle(
-                    fontSize: 13.5,
-                    color: Theme.of(context).colorScheme.secondaryText),
+                  fontSize: 13.5,
+                  color: Theme.of(context).colorScheme.secondaryText,
+                ),
               ),
               const SizedBox(height: 18),
               Row(
@@ -1090,8 +1126,9 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
                   'Importing this backup will delete all your current contacts, '
                   'interactions, and prayer requests. This cannot be undone.',
                   style: TextStyle(
-                      fontSize: 13.5,
-                      color: Theme.of(context).colorScheme.secondaryText),
+                    fontSize: 13.5,
+                    color: Theme.of(context).colorScheme.secondaryText,
+                  ),
                 ),
                 const SizedBox(height: 18),
                 Row(
@@ -1163,8 +1200,9 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
               Text(
                 'This will overwrite your current data with the selected backup:\n\n${p.basename(path)}',
                 style: TextStyle(
-                    fontSize: 13.5,
-                    color: Theme.of(context).colorScheme.secondaryText),
+                  fontSize: 13.5,
+                  color: Theme.of(context).colorScheme.secondaryText,
+                ),
               ),
               const SizedBox(height: 18),
               Row(
@@ -1192,8 +1230,10 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
       if (confirmed == true) {
         if (!mounted) return;
         await _showLoading(
-          () => _backupService.restoreBackup(snapshot,
-              overlay: Overlay.of(context)),
+          () => _backupService.restoreBackup(
+            snapshot,
+            overlay: Overlay.of(context),
+          ),
           'Restoring backup…',
         );
         await _loadAll();
@@ -1333,54 +1373,79 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
           child: Row(
             children: [
               Expanded(
-                child: _syncTypeTab(colorScheme, SyncType.local,
-                    Icons.folder_outlined, 'Local'),
+                child: _syncTypeTab(
+                  colorScheme,
+                  SyncType.local,
+                  Icons.folder_outlined,
+                  'Local',
+                ),
               ),
               Expanded(
-                child: _syncTypeTab(colorScheme, SyncType.googleDrive,
-                    Icons.cloud_outlined, 'Google Drive'),
+                child: _syncTypeTab(
+                  colorScheme,
+                  SyncType.googleDrive,
+                  Icons.cloud_outlined,
+                  'Google Drive',
+                ),
               ),
             ],
           ),
         ),
-        _card(colorScheme, rows: [
-          if (_syncType == SyncType.local)
-            _row(
-              colorScheme,
-              icon: Icons.folder_outlined,
-              title: 'Sync folder',
-              subtitle: needsSetup
-                  ? (_configurationStatus?.detail ??
-                      'Choose a folder shared with your mobile device.')
-                  : (_syncPath ?? 'Not configured'),
-              onTap: _setSyncLocation,
-              trailing: _pillButton(
-                  colorScheme, needsSetup ? 'Fix path' : 'Change',
-                  destructive: needsSetup, onTap: _setSyncLocation),
-            )
-          else
-            _row(
-              colorScheme,
-              icon: Icons.account_circle_outlined,
-              title: 'Google account',
-              subtitle: _googleUser?.email ??
-                  'Sign in to sync your data across devices.',
-              trailing: _googleUser != null
-                  ? _pillButton(colorScheme, 'Sign out',
-                      destructive: true, onTap: _signOutGoogle)
-                  : _pillButton(colorScheme, 'Sign in',
-                      filled: true, onTap: _signInWithGoogle),
-            ),
-        ]),
+        _card(
+          colorScheme,
+          rows: [
+            if (_syncType == SyncType.local)
+              _row(
+                colorScheme,
+                icon: Icons.folder_outlined,
+                title: 'Sync folder',
+                subtitle: needsSetup
+                    ? (_configurationStatus?.detail ??
+                        'Choose a folder shared with your mobile device.')
+                    : (_syncPath ?? 'Not configured'),
+                onTap: _setSyncLocation,
+                trailing: _pillButton(
+                  colorScheme,
+                  needsSetup ? 'Fix path' : 'Change',
+                  destructive: needsSetup,
+                  onTap: _setSyncLocation,
+                ),
+              )
+            else
+              _row(
+                colorScheme,
+                icon: Icons.account_circle_outlined,
+                title: 'Google account',
+                subtitle: _googleUser?.email ??
+                    'Sign in to sync your data across devices.',
+                trailing: _googleUser != null
+                    ? _pillButton(
+                        colorScheme,
+                        'Sign out',
+                        destructive: true,
+                        onTap: _signOutGoogle,
+                      )
+                    : _pillButton(
+                        colorScheme,
+                        'Sign in',
+                        filled: true,
+                        onTap: _signInWithGoogle,
+                      ),
+              ),
+          ],
+        ),
         const SizedBox(height: 20),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text('Activity',
-                style: TextStyle(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 16,
-                    color: colorScheme.onSurface)),
+            Text(
+              'Activity',
+              style: TextStyle(
+                fontWeight: FontWeight.w800,
+                fontSize: 16,
+                color: colorScheme.onSurface,
+              ),
+            ),
             _pillButton(
               colorScheme,
               _isSyncing ? 'Syncing…' : 'Sync now',
@@ -1399,8 +1464,10 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
               border: Border.all(color: colorScheme.dangerBorder),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Text(_syncError!,
-                style: TextStyle(color: colorScheme.error, fontSize: 13)),
+            child: Text(
+              _syncError!,
+              style: TextStyle(color: colorScheme.error, fontSize: 13),
+            ),
           ),
         Container(
           padding: const EdgeInsets.all(16),
@@ -1432,7 +1499,11 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
   }
 
   Widget _syncTypeTab(
-      ColorScheme colorScheme, SyncType type, IconData icon, String label) {
+    ColorScheme colorScheme,
+    SyncType type,
+    IconData icon,
+    String label,
+  ) {
     final selected = _syncType == type;
     return Material(
       color: Colors.transparent,
@@ -1448,11 +1519,13 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon,
-                  size: 15,
-                  color: selected
-                      ? colorScheme.onSurface
-                      : colorScheme.secondaryText),
+              Icon(
+                icon,
+                size: 15,
+                color: selected
+                    ? colorScheme.onSurface
+                    : colorScheme.secondaryText,
+              ),
               const SizedBox(width: 6),
               Text(
                 label,
@@ -1493,9 +1566,14 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
         color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(20),
       ),
-      child: Text(label,
-          style: TextStyle(
-              fontSize: 11.5, fontWeight: FontWeight.w700, color: color)),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 11.5,
+          fontWeight: FontWeight.w700,
+          color: color,
+        ),
+      ),
     );
   }
 }

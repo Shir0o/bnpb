@@ -259,8 +259,10 @@ class _MacOSContactsViewState extends State<MacOSContactsView> {
                 ),
                 const SizedBox(height: 14),
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 11,
+                  ),
                   decoration: BoxDecoration(
                     color: colorScheme.surfaceTint,
                     borderRadius: BorderRadius.circular(12),
@@ -274,8 +276,9 @@ class _MacOSContactsViewState extends State<MacOSContactsView> {
                           controller: _searchController,
                           decoration: InputDecoration.collapsed(
                             hintText: 'Search contacts…',
-                            hintStyle:
-                                TextStyle(color: colorScheme.placeholder),
+                            hintStyle: TextStyle(
+                              color: colorScheme.placeholder,
+                            ),
                           ),
                           style: TextStyle(
                             fontSize: 15,
@@ -457,8 +460,11 @@ class _MacOSContactsViewState extends State<MacOSContactsView> {
                 borderRadius: BorderRadius.circular(18),
               ),
               alignment: Alignment.center,
-              child: Icon(Icons.people_outline,
-                  size: 28, color: colorScheme.faint),
+              child: Icon(
+                Icons.people_outline,
+                size: 28,
+                color: colorScheme.faint,
+              ),
             ),
             const SizedBox(height: 16),
             Text(
@@ -532,8 +538,11 @@ class _MacOSContactsViewState extends State<MacOSContactsView> {
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(Icons.check,
-                                  size: 12, color: colorScheme.primary),
+                              Icon(
+                                Icons.check,
+                                size: 12,
+                                color: colorScheme.primary,
+                              ),
                               const SizedBox(width: 6),
                               Text(
                                 'On your prayer list',
@@ -602,7 +611,8 @@ class _MacOSContactsViewState extends State<MacOSContactsView> {
               ),
               const SizedBox(width: 10),
               Expanded(
-                  child: _statCard(colorScheme, stats.firstMet, 'First met')),
+                child: _statCard(colorScheme, stats.firstMet, 'First met'),
+              ),
             ],
           ),
           const SizedBox(height: 26),
@@ -724,8 +734,10 @@ class _MacOSContactsViewState extends State<MacOSContactsView> {
                 if (suffix.isNotEmpty)
                   TextSpan(
                     text: suffix,
-                    style:
-                        TextStyle(fontSize: 14, color: colorScheme.onSurface),
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: colorScheme.onSurface,
+                    ),
                   ),
               ],
             ),
@@ -796,8 +808,11 @@ class _MacOSContactsViewState extends State<MacOSContactsView> {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.schedule,
-                          size: 12, color: colorScheme.outline),
+                      Icon(
+                        Icons.schedule,
+                        size: 12,
+                        color: colorScheme.outline,
+                      ),
                       const SizedBox(width: 5),
                       Text(
                         '${interaction.durationMinutes} min',
@@ -843,8 +858,10 @@ class _MacOSContactsViewState extends State<MacOSContactsView> {
               borderRadius: BorderRadius.circular(11),
               onTap: () => _openLogInteraction(contact),
               child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 18, vertical: 9),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 18,
+                  vertical: 9,
+                ),
                 decoration: BoxDecoration(
                   color: colorScheme.primary,
                   borderRadius: BorderRadius.circular(11),

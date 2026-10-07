@@ -35,8 +35,10 @@ class FollowUpSuggestionService {
   static const int _maxActionLength = 80;
   static const int _maxReasonLength = 100;
 
-  Future<List<FollowUpSuggestion>> suggest(Interaction interaction,
-      {DateTime? now}) async {
+  Future<List<FollowUpSuggestion>> suggest(
+    Interaction interaction, {
+    DateTime? now,
+  }) async {
     final hasContent = interaction.summary.trim().isNotEmpty ||
         (interaction.notes?.trim().isNotEmpty ?? false);
     if (!hasContent) return const [];
@@ -63,7 +65,9 @@ class FollowUpSuggestionService {
 
   /// Generates rule-based smart follow-up suggestions locally without using the LLM.
   List<FollowUpSuggestion> suggestHeuristic(
-      Interaction interaction, DateTime now) {
+    Interaction interaction,
+    DateTime now,
+  ) {
     final summaryLower = interaction.summary.toLowerCase();
     final notesLower = (interaction.notes ?? '').toLowerCase();
     final text = '$summaryLower $notesLower';
@@ -82,11 +86,13 @@ class FollowUpSuggestionService {
         text.contains('hurt') ||
         text.contains('pain') ||
         text.contains('medical')) {
-      suggestions.add(const FollowUpSuggestion(
-        action: 'Ask how they are feeling / recovery update',
-        daysFromNow: 3,
-        reason: 'Mentioned health/medical issue',
-      ));
+      suggestions.add(
+        const FollowUpSuggestion(
+          action: 'Ask how they are feeling / recovery update',
+          daysFromNow: 3,
+          reason: 'Mentioned health/medical issue',
+        ),
+      );
     }
 
     // Job
@@ -97,11 +103,13 @@ class FollowUpSuggestionService {
         text.contains('promotion') ||
         text.contains('interviewing') ||
         text.contains('resume')) {
-      suggestions.add(const FollowUpSuggestion(
-        action: 'Check in on their job/interview status',
-        daysFromNow: 7,
-        reason: 'Mentioned job or career updates',
-      ));
+      suggestions.add(
+        const FollowUpSuggestion(
+          action: 'Check in on their job/interview status',
+          daysFromNow: 7,
+          reason: 'Mentioned job or career updates',
+        ),
+      );
     }
 
     // Relocation
@@ -112,11 +120,13 @@ class FollowUpSuggestionService {
         text.contains('apartment') ||
         text.contains('packing') ||
         text.contains('new home')) {
-      suggestions.add(const FollowUpSuggestion(
-        action: 'Check in on their move and relocation',
-        daysFromNow: 14,
-        reason: 'Mentioned moving / new home',
-      ));
+      suggestions.add(
+        const FollowUpSuggestion(
+          action: 'Check in on their move and relocation',
+          daysFromNow: 14,
+          reason: 'Mentioned moving / new home',
+        ),
+      );
     }
 
     // Birthday
@@ -125,11 +135,13 @@ class FollowUpSuggestionService {
         text.contains('anniversary') ||
         text.contains('celebrate') ||
         text.contains('celebration')) {
-      suggestions.add(const FollowUpSuggestion(
-        action: 'Send congratulatory note / birthday wishes',
-        daysFromNow: 1,
-        reason: 'Mentioned birthday/celebration',
-      ));
+      suggestions.add(
+        const FollowUpSuggestion(
+          action: 'Send congratulatory note / birthday wishes',
+          daysFromNow: 1,
+          reason: 'Mentioned birthday/celebration',
+        ),
+      );
     }
 
     // Travel
@@ -138,11 +150,13 @@ class FollowUpSuggestionService {
         text.contains('vacation') ||
         text.contains('flight') ||
         text.contains('holiday')) {
-      suggestions.add(const FollowUpSuggestion(
-        action: 'Ask how their trip/vacation went',
-        daysFromNow: 7,
-        reason: 'Mentioned upcoming travel',
-      ));
+      suggestions.add(
+        const FollowUpSuggestion(
+          action: 'Ask how their trip/vacation went',
+          daysFromNow: 7,
+          reason: 'Mentioned upcoming travel',
+        ),
+      );
     }
 
     // Prayer
@@ -151,11 +165,13 @@ class FollowUpSuggestionService {
         text.contains('praying') ||
         text.contains('spiritual') ||
         text.contains('church')) {
-      suggestions.add(const FollowUpSuggestion(
-        action: 'Check in on their prayer request status',
-        daysFromNow: 7,
-        reason: 'Mentioned prayer/spiritual request',
-      ));
+      suggestions.add(
+        const FollowUpSuggestion(
+          action: 'Check in on their prayer request status',
+          daysFromNow: 7,
+          reason: 'Mentioned prayer/spiritual request',
+        ),
+      );
     }
 
     // Family
@@ -169,56 +185,70 @@ class FollowUpSuggestionService {
         text.contains('baby') ||
         text.contains('son') ||
         text.contains('daughter')) {
-      suggestions.add(const FollowUpSuggestion(
-        action: 'Check in on how the family is doing',
-        daysFromNow: 14,
-        reason: 'Mentioned family/personal life',
-      ));
+      suggestions.add(
+        const FollowUpSuggestion(
+          action: 'Check in on how the family is doing',
+          daysFromNow: 14,
+          reason: 'Mentioned family/personal life',
+        ),
+      );
     }
 
     // Medium-specific suggestions if there is room
     final medium = interaction.medium.toLowerCase();
     if (suggestions.length < 3) {
       if (medium == 'call' || medium == 'phone' || medium == 'video_call') {
-        suggestions.add(const FollowUpSuggestion(
-          action: 'Schedule another call to catch up',
-          daysFromNow: 7,
-          reason: 'Stay in touch after phone call',
-        ));
-        suggestions.add(const FollowUpSuggestion(
-          action: 'Send a follow-up text summarizing your call',
-          daysFromNow: 1,
-          reason: 'Keep lines of communication open',
-        ));
+        suggestions.add(
+          const FollowUpSuggestion(
+            action: 'Schedule another call to catch up',
+            daysFromNow: 7,
+            reason: 'Stay in touch after phone call',
+          ),
+        );
+        suggestions.add(
+          const FollowUpSuggestion(
+            action: 'Send a follow-up text summarizing your call',
+            daysFromNow: 1,
+            reason: 'Keep lines of communication open',
+          ),
+        );
       } else if (medium == 'in_person' ||
           medium == 'coffee' ||
           medium == 'lunch' ||
           medium == 'dinner') {
-        suggestions.add(const FollowUpSuggestion(
-          action: 'Plan another meetup / coffee',
-          daysFromNow: 14,
-          reason: 'Maintain regular in-person connection',
-        ));
-        suggestions.add(const FollowUpSuggestion(
-          action: 'Send a quick thank you text for the meetup',
-          daysFromNow: 1,
-          reason: 'Polite follow-up',
-        ));
+        suggestions.add(
+          const FollowUpSuggestion(
+            action: 'Plan another meetup / coffee',
+            daysFromNow: 14,
+            reason: 'Maintain regular in-person connection',
+          ),
+        );
+        suggestions.add(
+          const FollowUpSuggestion(
+            action: 'Send a quick thank you text for the meetup',
+            daysFromNow: 1,
+            reason: 'Polite follow-up',
+          ),
+        );
       }
     }
 
     // General fallbacks if suggestions are still fewer than 2
     if (suggestions.length < 2) {
-      suggestions.add(const FollowUpSuggestion(
-        action: 'Send a quick check-in message',
-        daysFromNow: 7,
-        reason: 'Regular touchpoint',
-      ));
-      suggestions.add(const FollowUpSuggestion(
-        action: 'Reach out to say hello',
-        daysFromNow: 3,
-        reason: 'Casual check-in',
-      ));
+      suggestions.add(
+        const FollowUpSuggestion(
+          action: 'Send a quick check-in message',
+          daysFromNow: 7,
+          reason: 'Regular touchpoint',
+        ),
+      );
+      suggestions.add(
+        const FollowUpSuggestion(
+          action: 'Reach out to say hello',
+          daysFromNow: 3,
+          reason: 'Casual check-in',
+        ),
+      );
     }
 
     // Ensure suggestions are unique and capped
@@ -245,7 +275,7 @@ class FollowUpSuggestionService {
       'Thursday',
       'Friday',
       'Saturday',
-      'Sunday'
+      'Sunday',
     ];
     String formatDate(DateTime dt) =>
         "${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}";
