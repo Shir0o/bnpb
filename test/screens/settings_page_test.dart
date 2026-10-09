@@ -249,19 +249,18 @@ void main() {
     (WidgetTester tester) async {
       await tester.pumpWidget(const MaterialApp(home: SettingsPage()));
 
-      // Yield control to let ensureDefaults / load complete
-      await tester.pump(const Duration(milliseconds: 400));
+      await tester.pump(const Duration(milliseconds: 500));
       await tester.pumpAndSettle();
-
-      // Find Slider widget
-      final sliderFinder = find.byType(Slider, skipOffstage: false);
-      expect(sliderFinder, findsOneWidget);
+      // Scroll to Display section / Slider
+      final sliderFinder = find.byType(Slider);
+      final scrollableFinder = find.byType(Scrollable).first;
       await tester.scrollUntilVisible(
         sliderFinder,
-        100.0,
-        scrollable: find.byType(Scrollable).first,
+        300.0,
+        scrollable: scrollableFinder,
       );
       await tester.pumpAndSettle();
+      expect(sliderFinder, findsOneWidget);
 
       // Perform a drag on the Slider to update the value
       await tester.drag(sliderFinder, const Offset(50.0, 0.0));
@@ -284,20 +283,21 @@ void main() {
       await tester.pump(const Duration(milliseconds: 400));
       await tester.pumpAndSettle();
 
-      // Find Dark Mode tile specifically (may be offstage initially)
-      final darkModeTile = find.text('Dark mode', skipOffstage: false);
+      // Find Dark Mode tile specifically by scrolling until visible
+      final darkModeTile = find.text('Dark mode');
+      final scrollableFinder = find.byType(Scrollable).first;
+      await tester.scrollUntilVisible(
+        darkModeTile,
+        300.0,
+        scrollable: scrollableFinder,
+      );
+      await tester.pumpAndSettle();
       expect(darkModeTile, findsOneWidget);
 
       final tileFinder = find.ancestor(
         of: darkModeTile,
         matching: find.byType(ListTile),
       );
-      await tester.scrollUntilVisible(
-        tileFinder,
-        100.0,
-        scrollable: find.byType(Scrollable).first,
-      );
-      await tester.pumpAndSettle();
 
       // Find CrispSwitch by type
       final switchFinder = find.descendant(
@@ -357,6 +357,42 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.textContaining('Folder: Custom Folder'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'SettingsPage displays CISA Tracker Sync tile and can save token',
+    (WidgetTester tester) async {
+      await tester.pumpWidget(const MaterialApp(home: SettingsPage()));
+      await tester.pump(const Duration(milliseconds: 500));
+      await tester.pumpAndSettle();
+
+      final cisaTile = find.text('CISA Tracker Sync');
+      final scrollableFinder = find.byType(Scrollable).first;
+      await tester.scrollUntilVisible(
+        cisaTile,
+        300.0,
+        scrollable: scrollableFinder,
+      );
+      await tester.pumpAndSettle();
+
+      expect(cisaTile, findsOneWidget);
+      expect(
+        find.textContaining('Not connected • Paste Personal Sync Token'),
+        findsOneWidget,
+      );
+
+      // Tap key button or tile to open dialog
+      await tester.tap(find.byIcon(Icons.key_outlined));
+      await tester.pumpAndSettle();
+
+      expect(find.text('CISA Tracker Token'), findsOneWidget);
+      await tester.enterText(find.byType(TextField), 'test_sync_token_abc');
+      await tester.tap(find.text('Save'));
+      await tester.pumpAndSettle();
+
+      // Should now show connected status
+      expect(find.textContaining('Connected'), findsOneWidget);
     },
   );
 }

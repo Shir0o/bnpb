@@ -16,6 +16,7 @@ import 'screens/home_page.dart';
 import 'screens/macos/macos_shell.dart';
 import 'screens/settings_page.dart';
 import 'services/sync_service.dart';
+import 'services/cisa_tracker_sync_service.dart';
 import 'services/google_drive_service.dart';
 import 'repositories/notification_preferences_repository.dart';
 import 'services/ai/ai_services.dart';
@@ -454,6 +455,7 @@ class _MainPageState extends State<MainPage> with WidgetsBindingObserver {
     try {
       await SyncService().performSync();
       await ReminderCoordinator().refreshAllContacts();
+      await CisaTrackerSyncService().pushInteractions();
     } catch (e) {
       debugPrint('Background initialization error: $e');
     }
