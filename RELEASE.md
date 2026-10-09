@@ -2,6 +2,18 @@
 
 All notable changes to the BNPB project are documented here.
 
+## [1.10.0](https://github.com/Shir0o/bnpb/compare/v1.9.0...v1.10.0) (2026-10-09)
+
+
+### Features
+
+* **sync:** push interactions to CISA Tracker ([#309](https://github.com/Shir0o/bnpb/issues/309)) ([#310](https://github.com/Shir0o/bnpb/issues/310)) ([df2cc1c](https://github.com/Shir0o/bnpb/commit/df2cc1c0e40e29495bd15e0de492620d021a8779))
+
+
+### Bug Fixes
+
+* **ci:** format Play Store release notes without leading spaces or excess blank lines ([#306](https://github.com/Shir0o/bnpb/issues/306)) ([344ac06](https://github.com/Shir0o/bnpb/commit/344ac064d63311e12c8280dec761bbc8d416ad99))
+
 ## [1.9.0](https://github.com/Shir0o/bnpb/compare/v1.8.0...v1.9.0) (2026-09-25)
 
 
