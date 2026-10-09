@@ -29,6 +29,7 @@ import '../../services/reminder_coordinator.dart';
 import '../../services/reminder_service.dart';
 import '../../services/security_service.dart';
 import '../../services/sync_service.dart';
+import '../../services/cisa_tracker_sync_service.dart';
 import '../../widgets/crisp_switch.dart';
 import '../../widgets/crisp_toast.dart';
 import '../../widgets/export_options_sheet.dart';
@@ -109,6 +110,13 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
   bool _isSyncing = false;
   String? _syncError;
 
+  // CISA Tracker
+  final _cisaTrackerService = CisaTrackerSyncService();
+  bool _cisaHasToken = false;
+  DateTime? _cisaLastSuccess;
+  String? _cisaLastError;
+  bool _isCisaPushing = false;
+
   // Reminders
   Map<ReminderChannel, NotificationPreference> _globalDefaults = {};
 
@@ -166,6 +174,10 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
     final aiEnabled = await AiServices().gate.isEnabled();
     final hasGeminiKey = await _securityService.hasGeminiApiKey();
 
+    final cisaHasToken = await _cisaTrackerService.hasToken();
+    final cisaLastSuccess = await _cisaTrackerService.getLastPushSuccess();
+    final cisaLastError = await _cisaTrackerService.getLastPushError();
+
     if (!mounted) return;
     setState(() {
       _syncPath = syncPath;
@@ -178,6 +190,9 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
       _biometricEnabled = biometricEnabled;
       _aiEnabled = aiEnabled;
       _hasGeminiKey = hasGeminiKey;
+      _cisaHasToken = cisaHasToken;
+      _cisaLastSuccess = cisaLastSuccess;
+      _cisaLastError = cisaLastError;
       _isLoading = false;
     });
   }
@@ -1349,6 +1364,163 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
     await _loadAll();
   }
 
+  Future<void> _pushCisaTracker() async {
+    if (_isCisaPushing) return;
+    setState(() => _isCisaPushing = true);
+    try {
+      final result = await _cisaTrackerService.pushInteractions();
+      if (!mounted) return;
+      _cisaLastSuccess = await _cisaTrackerService.getLastPushSuccess();
+      _cisaLastError = await _cisaTrackerService.getLastPushError();
+      if (!mounted) return;
+      if (result.status == CisaSyncStatus.success) {
+        CrispToast.show(
+          context,
+          result.pushedCount > 0
+              ? 'Pushed ${result.pushedCount} interaction(s) to CISA Tracker'
+              : 'CISA Tracker is up to date',
+        );
+      } else if (result.status == CisaSyncStatus.unauthorized) {
+        CrispToast.show(context, 'CISA Tracker token invalid or revoked');
+      } else if (result.errorMessage != null) {
+        CrispToast.show(context, 'Push failed: ${result.errorMessage}');
+      }
+    } finally {
+      if (mounted) setState(() => _isCisaPushing = false);
+    }
+  }
+
+  Future<void> _showSetCisaTokenDialog() async {
+    final currentToken = await _cisaTrackerService.getToken() ?? '';
+    final controller = TextEditingController(text: currentToken);
+
+    if (!mounted) return;
+    final result = await showMacModal<String>(
+      context,
+      width: 380,
+      builder: (context) => Padding(
+        padding: const EdgeInsets.all(22),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'CISA Personal Sync Token',
+              style: TextStyle(
+                fontWeight: FontWeight.w800,
+                fontSize: 18,
+                color: Theme.of(context).colorScheme.onSurface,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              'Paste your Personal Sync Token generated in CISA Tracker Settings:',
+              style: TextStyle(
+                fontSize: 13,
+                color: Theme.of(context).colorScheme.outline,
+              ),
+            ),
+            const SizedBox(height: 14),
+            TextField(
+              controller: controller,
+              obscureText: true,
+              autofocus: true,
+              decoration: const InputDecoration(
+                hintText: 'Paste token here',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancel'),
+                ),
+                const SizedBox(width: 8),
+                FilledButton(
+                  onPressed: () => Navigator.pop(context, controller.text),
+                  child: const Text('Save'),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (result != null) {
+      final trimmed = result.trim();
+      await _cisaTrackerService.setToken(trimmed);
+      if (mounted) {
+        setState(() {
+          _cisaHasToken = trimmed.isNotEmpty;
+          _cisaLastError = null;
+        });
+        if (trimmed.isNotEmpty) {
+          await _pushCisaTracker();
+        }
+      }
+    }
+  }
+
+  Future<void> _confirmClearCisaToken() async {
+    final confirmed = await showMacModal<bool>(
+      context,
+      width: 360,
+      builder: (context) => Padding(
+        padding: const EdgeInsets.all(22),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Disconnect CISA Tracker',
+              style: TextStyle(
+                fontWeight: FontWeight.w800,
+                fontSize: 18,
+                color: Theme.of(context).colorScheme.onSurface,
+              ),
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Are you sure you want to remove your Personal Sync Token? BNPB will stop sending interactions.',
+              style: TextStyle(fontSize: 13.5),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  child: const Text('Cancel'),
+                ),
+                const SizedBox(width: 8),
+                FilledButton(
+                  onPressed: () => Navigator.pop(context, true),
+                  child: const Text('Disconnect'),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (confirmed == true) {
+      await _cisaTrackerService.clearToken();
+      if (mounted) {
+        setState(() {
+          _cisaHasToken = false;
+          _cisaLastSuccess = null;
+          _cisaLastError = null;
+        });
+        CrispToast.show(context, 'CISA Tracker disconnected');
+      }
+    }
+  }
+
   Widget _buildSyncTab(ColorScheme colorScheme) {
     final needsSetup =
         _configurationStatus != null && !_configurationStatus!.canSync;
@@ -1434,6 +1606,72 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
               ),
           ],
         ),
+        const SizedBox(height: 20),
+        Text(
+          'CISA Tracker Sync',
+          style: TextStyle(
+            fontWeight: FontWeight.w800,
+            fontSize: 16,
+            color: colorScheme.onSurface,
+          ),
+        ),
+        const SizedBox(height: 10),
+        _card(
+          colorScheme,
+          rows: [
+            _row(
+              colorScheme,
+              icon: Icons.hub_outlined,
+              title: 'CISA Personal Sync Token',
+              subtitle: _cisaHasToken
+                  ? (_cisaLastSuccess != null
+                      ? 'Connected • Last push: ${_cisaLastSuccess!.toLocal()}'
+                      : 'Connected • No push yet')
+                  : 'Not connected • Paste token from tracker Settings',
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (_cisaHasToken) ...[
+                    _pillButton(
+                      colorScheme,
+                      _isCisaPushing ? 'Pushing…' : 'Push now',
+                      filled: true,
+                      onTap: _isCisaPushing ? null : _pushCisaTracker,
+                    ),
+                    const SizedBox(width: 8),
+                    _pillButton(
+                      colorScheme,
+                      'Disconnect',
+                      destructive: true,
+                      onTap: _confirmClearCisaToken,
+                    ),
+                  ] else
+                    _pillButton(
+                      colorScheme,
+                      'Set token',
+                      filled: true,
+                      onTap: _showSetCisaTokenDialog,
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        if (_cisaLastError != null) ...[
+          const SizedBox(height: 10),
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: colorScheme.dangerTint2,
+              border: Border.all(color: colorScheme.dangerBorder),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              'CISA Sync Error: $_cisaLastError',
+              style: TextStyle(color: colorScheme.error, fontSize: 13),
+            ),
+          ),
+        ],
         const SizedBox(height: 20),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,

@@ -8,6 +8,7 @@ import '../../main.dart';
 import '../../models/prayer_request.dart';
 import '../../services/follow_up_recommendation_service.dart';
 import '../../services/sync_service.dart';
+import '../../services/cisa_tracker_sync_service.dart';
 import '../../widgets/contact_avatar.dart';
 import '../../widgets/crisp_switch.dart';
 import '../../widgets/crisp_toast.dart';
@@ -48,6 +49,7 @@ class _MacOSShellState extends State<MacOSShell> {
     super.initState();
     _pageController = PageController(initialPage: _selectedIndex);
     _loadSidebarData();
+    CisaTrackerSyncService().pushInteractions();
     _syncSubscription = SyncService().onSyncComplete.listen((_) {
       if (mounted) _loadSidebarData();
     });
