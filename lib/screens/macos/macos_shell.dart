@@ -43,20 +43,33 @@ class _MacOSShellState extends State<MacOSShell> {
   int _needsPrayerCount = 0;
   List<FollowUpRecommendation> _followUps = [];
   StreamSubscription<void>? _syncSubscription;
+  late final AppLifecycleListener _lifecycleListener;
 
   @override
   void initState() {
     super.initState();
     _pageController = PageController(initialPage: _selectedIndex);
     _loadSidebarData();
-    CisaTrackerSyncService().pushInteractions();
+    // The shell only mounts once SecurityGate unlocks; push on open and
+    // whenever the app becomes active again (throttled in the service).
+    _pushToCisaTracker();
+    _lifecycleListener = AppLifecycleListener(onResume: _pushToCisaTracker);
     _syncSubscription = SyncService().onSyncComplete.listen((_) {
       if (mounted) _loadSidebarData();
     });
   }
 
+  Future<void> _pushToCisaTracker() async {
+    try {
+      await CisaTrackerSyncService().pushInteractionsIfDue();
+    } catch (e) {
+      debugPrint('CISA Tracker push error: $e');
+    }
+  }
+
   @override
   void dispose() {
+    _lifecycleListener.dispose();
     _syncSubscription?.cancel();
     _pageController.dispose();
     super.dispose();

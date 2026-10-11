@@ -292,17 +292,31 @@ class InteractionDao extends BaseDao {
       whereArgs.add(end.toIso8601String());
     }
 
+    // Stored updatedAt strings are mixed: UTC with "Z" (current writers),
+    // offsetless local time (older builds, Drive-merged rows), and SQLite's
+    // "YYYY-MM-DD HH:MM:SS" column default. Comparing them as text against
+    // one cursor string skips rows, so SQL only narrows by calendar date
+    // (a day of slack covers any UTC offset) and the exact cut compares
+    // parsed instants below.
     if (updatedSince != null) {
-      where.add('updatedAt > ?');
-      whereArgs.add(updatedSince.toIso8601String());
+      final dayBefore = updatedSince.toUtc().subtract(const Duration(days: 1));
+      where.add('substr(updatedAt, 1, 10) >= ?');
+      whereArgs.add(dayBefore.toIso8601String().substring(0, 10));
     }
 
-    final rows = await dbInstance.query(
+    var rows = await dbInstance.query(
       'interactions',
       where: where.join(' AND '),
       whereArgs: whereArgs,
       orderBy: 'occurredAt DESC',
     );
+
+    if (updatedSince != null) {
+      rows = rows
+          .where((row) =>
+              DateTime.parse(row['updatedAt'] as String).isAfter(updatedSince))
+          .toList();
+    }
 
     if (rows.isEmpty) return [];
 

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
@@ -32,12 +33,20 @@ class CisaTrackerSyncService {
     DBHelper? dbHelper,
     FlutterSecureStorage? secureStorage,
     http.Client? httpClient,
+    Duration? requestTimeout,
+    DateTime Function()? clock,
   }) {
-    if (dbHelper != null || secureStorage != null || httpClient != null) {
+    if (dbHelper != null ||
+        secureStorage != null ||
+        httpClient != null ||
+        requestTimeout != null ||
+        clock != null) {
       return CisaTrackerSyncService._internal(
         dbHelper: dbHelper,
         secureStorage: secureStorage,
         httpClient: httpClient,
+        requestTimeout: requestTimeout,
+        clock: clock,
       );
     }
     return _instance;
@@ -47,16 +56,27 @@ class CisaTrackerSyncService {
     DBHelper? dbHelper,
     FlutterSecureStorage? secureStorage,
     http.Client? httpClient,
+    Duration? requestTimeout,
+    DateTime Function()? clock,
   })  : _dbHelper = dbHelper ?? DBHelper(),
         _secureStorage = secureStorage ?? const FlutterSecureStorage(),
-        _httpClient = httpClient ?? http.Client();
+        _httpClient = httpClient ?? http.Client(),
+        _requestTimeout = requestTimeout ?? const Duration(seconds: 60),
+        _clock = clock ?? DateTime.now;
 
   static const String defaultTrackerHost = 'cisa-campus-work-tracker.pages.dev';
   static const int perRequestCap = 200;
 
+  /// Minimum gap between automatic (open/resume) pushes.
+  static const Duration autoPushInterval = Duration(minutes: 5);
+
   static const String _secureTokenKey = 'cisa_tracker_personal_sync_token';
   static const String _prefHostKey = 'cisa_tracker_host';
-  static const String _prefCursorKey = 'cisa_tracker_last_push_cursor';
+  // v2: cursors saved under the old key came from a build whose text
+  // comparison could skip edits, so that key is ignored and the first push
+  // after upgrading re-sends everything once.
+  static const String _prefCursorKey = 'cisa_tracker_push_cursor_v2';
+  static const String _legacyPrefCursorKey = 'cisa_tracker_last_push_cursor';
   static const String _prefLastSuccessKey = 'cisa_tracker_last_push_success';
   static const String _prefLastErrorKey = 'cisa_tracker_last_push_error';
 
@@ -64,7 +84,12 @@ class CisaTrackerSyncService {
   final FlutterSecureStorage _secureStorage;
   final http.Client _httpClient;
 
+  /// How long one page's request may take before the run ends as an error.
+  final Duration _requestTimeout;
+  final DateTime Function() _clock;
+
   bool _isSyncing = false;
+  DateTime? _lastAutoPushAt;
 
   Future<String?> getToken() => _secureStorage.read(key: _secureTokenKey);
 
@@ -81,6 +106,7 @@ class CisaTrackerSyncService {
     await _secureStorage.delete(key: _secureTokenKey);
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_prefCursorKey);
+    await prefs.remove(_legacyPrefCursorKey);
     await prefs.remove(_prefLastSuccessKey);
     await prefs.remove(_prefLastErrorKey);
   }
@@ -124,6 +150,17 @@ class CisaTrackerSyncService {
     return prefs.getString(_prefLastErrorKey);
   }
 
+  /// Pushes like [pushInteractions], for app open and resume: returns null
+  /// without pushing when the last automatic push started less than
+  /// [autoPushInterval] ago.
+  Future<CisaSyncResult?> pushInteractionsIfDue() async {
+    final now = _clock();
+    final last = _lastAutoPushAt;
+    if (last != null && now.difference(last) < autoPushInterval) return null;
+    _lastAutoPushAt = now;
+    return pushInteractions();
+  }
+
   /// Pushes changed interactions to CISA Tracker.
   Future<CisaSyncResult> pushInteractions() async {
     if (_isSyncing) {
@@ -142,11 +179,17 @@ class CisaTrackerSyncService {
     try {
       final host = await getTrackerHost();
       final cursor = await getLastPushCursor();
+      // Deletions only matter to a tracker that may have seen the live
+      // Interaction, so a first-ever push skips them. A legacy cursor means
+      // earlier pushes happened, so the one-time re-send keeps them.
+      final hasPushedBefore = cursor != null ||
+          (await SharedPreferences.getInstance())
+              .containsKey(_legacyPrefCursorKey);
 
       // Retrieve interactions changed since cursor
       final interactions = await _dbHelper.getInteractions(
         updatedSince: cursor,
-        includeDeleted: true,
+        includeDeleted: hasPushedBefore,
       );
 
       // We sort ascending by updatedAt so that paging advances the cursor chronologically
@@ -240,14 +283,16 @@ class CisaTrackerSyncService {
           return item;
         }).toList();
 
-        final response = await _httpClient.post(
-          uri,
-          headers: {
-            'Content-Type': 'application/json',
-            'x-sync-token': token,
-          },
-          body: jsonEncode({'interactions': payloadInteractions}),
-        );
+        final response = await _httpClient
+            .post(
+              uri,
+              headers: {
+                'Content-Type': 'application/json',
+                'x-sync-token': token,
+              },
+              body: jsonEncode({'interactions': payloadInteractions}),
+            )
+            .timeout(_requestTimeout);
 
         if (response.statusCode == 200) {
           // Advance cursor to newest updatedAt of this page
@@ -293,6 +338,15 @@ class CisaTrackerSyncService {
       return CisaSyncResult(
         status: CisaSyncStatus.success,
         pushedCount: totalPushed,
+      );
+    } on TimeoutException {
+      final errMsg = 'CISA Tracker did not respond within '
+          '${_requestTimeout.inSeconds} s. Will retry next time.';
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_prefLastErrorKey, errMsg);
+      return CisaSyncResult(
+        status: CisaSyncStatus.error,
+        errorMessage: errMsg,
       );
     } catch (e) {
       final errMsg = e.toString().replaceAll('Exception: ', '');

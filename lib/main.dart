@@ -455,10 +455,31 @@ class _MainPageState extends State<MainPage> with WidgetsBindingObserver {
     try {
       await SyncService().performSync();
       await ReminderCoordinator().refreshAllContacts();
-      await CisaTrackerSyncService().pushInteractions();
     } catch (e) {
       debugPrint('Background initialization error: $e');
     }
+    // After Drive sync so merged Interactions go out too, but not skipped
+    // when it fails. MainPage only mounts once SecurityGate unlocks.
+    await _pushToCisaTracker();
+  }
+
+  /// Automatic CISA Tracker push for app open and resume (throttled).
+  Future<void> _pushToCisaTracker() async {
+    try {
+      await CisaTrackerSyncService().pushInteractionsIfDue();
+    } catch (e) {
+      debugPrint('CISA Tracker push error: $e');
+    }
+  }
+
+  Future<void> _syncOnResume() async {
+    try {
+      // Sync on resume - use cooldown to avoid "Google logging in" flashes.
+      await SyncService().performSync();
+    } catch (e) {
+      debugPrint('Resume sync error: $e');
+    }
+    await _pushToCisaTracker();
   }
 
   Future<AppExitResponse> _onExitRequested() async {
@@ -583,8 +604,7 @@ class _MainPageState extends State<MainPage> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      // Sync on resume - use cooldown to avoid "Google logging in" flashes.
-      SyncService().performSync();
+      unawaited(_syncOnResume());
     } else if (state == AppLifecycleState.detached) {
       // Release the vector-store DB handle so Android's CloseGuard doesn't
       // log `flutter_gemma_vectors.db was leaked` at process teardown.
