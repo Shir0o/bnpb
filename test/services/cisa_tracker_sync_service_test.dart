@@ -435,6 +435,47 @@ void main() {
       expect(await service.getLastPushCursor(), time);
     });
 
+    test('automatic pushes run at most once per interval', () async {
+      var now = DateTime.utc(2026, 10, 11, 9, 0);
+      service = CisaTrackerSyncService(
+        dbHelper: fakeDb,
+        httpClient: MockClient((request) async {
+          capturedRequests.add(request);
+          return http.Response('{"success":true}', 200);
+        }),
+        clock: () => now,
+      );
+      await service.setToken('secret-123');
+
+      Future<void> addInteraction(String syncId) async {
+        fakeDb.interactions.add(
+          Interaction(
+            syncId: syncId,
+            occurredAt: now,
+            summary: 'Call',
+            medium: 'call',
+            updatedAt: now,
+          ),
+        );
+      }
+
+      await addInteraction('cold-start');
+      expect((await service.pushInteractionsIfDue())?.pushedCount, 1);
+
+      // Resumed 2 minutes later: throttled, nothing sent.
+      now = now.add(const Duration(minutes: 2));
+      await addInteraction('soon-after');
+      expect(await service.pushInteractionsIfDue(), isNull);
+      expect(capturedRequests.length, 1);
+
+      // Resumed once the interval has passed: pushes what changed.
+      now = now.add(CisaTrackerSyncService.autoPushInterval);
+      final result = await service.pushInteractionsIfDue();
+      expect(result?.status, CisaSyncStatus.success);
+      expect(result?.pushedCount, 1);
+      expect(capturedRequests.length, 2);
+    });
+
     test('does not advance cursor on failure and retries on next push',
         () async {
       var callCount = 0;

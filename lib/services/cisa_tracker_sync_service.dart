@@ -34,16 +34,19 @@ class CisaTrackerSyncService {
     FlutterSecureStorage? secureStorage,
     http.Client? httpClient,
     Duration? requestTimeout,
+    DateTime Function()? clock,
   }) {
     if (dbHelper != null ||
         secureStorage != null ||
         httpClient != null ||
-        requestTimeout != null) {
+        requestTimeout != null ||
+        clock != null) {
       return CisaTrackerSyncService._internal(
         dbHelper: dbHelper,
         secureStorage: secureStorage,
         httpClient: httpClient,
         requestTimeout: requestTimeout,
+        clock: clock,
       );
     }
     return _instance;
@@ -54,13 +57,18 @@ class CisaTrackerSyncService {
     FlutterSecureStorage? secureStorage,
     http.Client? httpClient,
     Duration? requestTimeout,
+    DateTime Function()? clock,
   })  : _dbHelper = dbHelper ?? DBHelper(),
         _secureStorage = secureStorage ?? const FlutterSecureStorage(),
         _httpClient = httpClient ?? http.Client(),
-        _requestTimeout = requestTimeout ?? const Duration(seconds: 60);
+        _requestTimeout = requestTimeout ?? const Duration(seconds: 60),
+        _clock = clock ?? DateTime.now;
 
   static const String defaultTrackerHost = 'cisa-campus-work-tracker.pages.dev';
   static const int perRequestCap = 200;
+
+  /// Minimum gap between automatic (open/resume) pushes.
+  static const Duration autoPushInterval = Duration(minutes: 5);
 
   static const String _secureTokenKey = 'cisa_tracker_personal_sync_token';
   static const String _prefHostKey = 'cisa_tracker_host';
@@ -78,8 +86,10 @@ class CisaTrackerSyncService {
 
   /// How long one page's request may take before the run ends as an error.
   final Duration _requestTimeout;
+  final DateTime Function() _clock;
 
   bool _isSyncing = false;
+  DateTime? _lastAutoPushAt;
 
   Future<String?> getToken() => _secureStorage.read(key: _secureTokenKey);
 
@@ -138,6 +148,17 @@ class CisaTrackerSyncService {
   Future<String?> getLastPushError() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString(_prefLastErrorKey);
+  }
+
+  /// Pushes like [pushInteractions], for app open and resume: returns null
+  /// without pushing when the last automatic push started less than
+  /// [autoPushInterval] ago.
+  Future<CisaSyncResult?> pushInteractionsIfDue() async {
+    final now = _clock();
+    final last = _lastAutoPushAt;
+    if (last != null && now.difference(last) < autoPushInterval) return null;
+    _lastAutoPushAt = now;
+    return pushInteractions();
   }
 
   /// Pushes changed interactions to CISA Tracker.
