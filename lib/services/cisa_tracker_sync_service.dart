@@ -147,11 +147,17 @@ class CisaTrackerSyncService {
     try {
       final host = await getTrackerHost();
       final cursor = await getLastPushCursor();
+      // Deletions only matter to a tracker that may have seen the live
+      // Interaction, so a first-ever push skips them. A legacy cursor means
+      // earlier pushes happened, so the one-time re-send keeps them.
+      final hasPushedBefore = cursor != null ||
+          (await SharedPreferences.getInstance())
+              .containsKey(_legacyPrefCursorKey);
 
       // Retrieve interactions changed since cursor
       final interactions = await _dbHelper.getInteractions(
         updatedSince: cursor,
-        includeDeleted: true,
+        includeDeleted: hasPushedBefore,
       );
 
       // We sort ascending by updatedAt so that paging advances the cursor chronologically

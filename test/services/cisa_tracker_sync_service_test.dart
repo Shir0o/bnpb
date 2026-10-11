@@ -269,20 +269,60 @@ void main() {
       expect(await service.getLastPushCursor(), time2);
     });
 
-    test('sends deleted interactions with deleted=true tombstone', () async {
+    test('first push (no cursor) skips deleted interactions', () async {
+      service = makeService();
+      await service.setToken('secret-123');
+
+      final time = DateTime.utc(2026, 9, 10, 10, 0);
+      fakeDb.interactions.addAll([
+        Interaction(
+          syncId: 'sync-live',
+          occurredAt: time,
+          summary: 'Live meeting',
+          medium: 'meeting',
+          updatedAt: time,
+        ),
+        Interaction(
+          syncId: 'sync-deleted',
+          occurredAt: time,
+          summary: 'Deleted meeting',
+          medium: 'meeting',
+          updatedAt: time.add(const Duration(minutes: 1)),
+          deletedAt: time,
+        ),
+      ]);
+
+      final result = await service.pushInteractions();
+      expect(result.status, CisaSyncStatus.success);
+      expect(result.pushedCount, 1);
+
+      final interactions =
+          jsonDecode(capturedRequests.single.body)['interactions'] as List;
+      expect(interactions.map((i) => i['syncId']), ['sync-live']);
+    });
+
+    test('later pushes send deleted interactions with deleted=true tombstone',
+        () async {
       service = makeService();
       await service.setToken('secret-123');
 
       final time = DateTime.utc(2026, 9, 10, 10, 0);
       fakeDb.interactions.add(
         Interaction(
-          syncId: 'sync-deleted',
+          syncId: 'sync-1',
           occurredAt: time,
-          summary: 'Deleted meeting',
+          summary: 'Meeting',
           medium: 'meeting',
           updatedAt: time,
-          deletedAt: time,
         ),
+      );
+      await service.pushInteractions();
+      capturedRequests.clear();
+
+      final deletedAt = time.add(const Duration(hours: 1));
+      fakeDb.interactions[0] = fakeDb.interactions[0].copyWith(
+        updatedAt: deletedAt,
+        deletedAt: deletedAt,
       );
 
       final result = await service.pushInteractions();
@@ -292,7 +332,8 @@ void main() {
       final body =
           jsonDecode(capturedRequests.first.body) as Map<String, dynamic>;
       final interactions = body['interactions'] as List;
-      expect(interactions.first['deleted'], isTrue);
+      expect(interactions.single['syncId'], 'sync-1');
+      expect(interactions.single['deleted'], isTrue);
     });
 
     test('pages pushes when exceeding per-request cap of 200', () async {
