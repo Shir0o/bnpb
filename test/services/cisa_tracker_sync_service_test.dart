@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:ffi';
 import 'dart:io';
@@ -394,6 +395,44 @@ void main() {
       expect(await service.getLastPushCursor(), isNull);
       expect(await service.getLastPushError(),
           contains('Invalid or revoked token'));
+    });
+
+    test('a request that never answers times out as an error', () async {
+      var calls = 0;
+      final hanging = Completer<http.Response>();
+      final client = MockClient((request) {
+        calls++;
+        if (calls == 1) return hanging.future; // never completes
+        return Future.value(http.Response('{"success":true}', 200));
+      });
+      service = CisaTrackerSyncService(
+        dbHelper: fakeDb,
+        httpClient: client,
+        requestTimeout: const Duration(milliseconds: 50),
+      );
+      await service.setToken('secret-123');
+
+      final time = DateTime.utc(2026, 9, 10, 10, 0);
+      fakeDb.interactions.add(
+        Interaction(
+          syncId: 'sync-1',
+          occurredAt: time,
+          summary: 'Call',
+          medium: 'call',
+          updatedAt: time,
+        ),
+      );
+
+      final result = await service.pushInteractions();
+      expect(result.status, CisaSyncStatus.error);
+      expect(result.errorMessage, contains('did not respond'));
+      expect(await service.getLastPushCursor(), isNull);
+      expect(await service.getLastPushError(), contains('did not respond'));
+
+      // The hung request no longer blocks later pushes in this session.
+      final retry = await service.pushInteractions();
+      expect(retry.status, CisaSyncStatus.success);
+      expect(await service.getLastPushCursor(), time);
     });
 
     test('does not advance cursor on failure and retries on next push',

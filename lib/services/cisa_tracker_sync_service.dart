@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
@@ -32,12 +33,17 @@ class CisaTrackerSyncService {
     DBHelper? dbHelper,
     FlutterSecureStorage? secureStorage,
     http.Client? httpClient,
+    Duration? requestTimeout,
   }) {
-    if (dbHelper != null || secureStorage != null || httpClient != null) {
+    if (dbHelper != null ||
+        secureStorage != null ||
+        httpClient != null ||
+        requestTimeout != null) {
       return CisaTrackerSyncService._internal(
         dbHelper: dbHelper,
         secureStorage: secureStorage,
         httpClient: httpClient,
+        requestTimeout: requestTimeout,
       );
     }
     return _instance;
@@ -47,9 +53,11 @@ class CisaTrackerSyncService {
     DBHelper? dbHelper,
     FlutterSecureStorage? secureStorage,
     http.Client? httpClient,
+    Duration? requestTimeout,
   })  : _dbHelper = dbHelper ?? DBHelper(),
         _secureStorage = secureStorage ?? const FlutterSecureStorage(),
-        _httpClient = httpClient ?? http.Client();
+        _httpClient = httpClient ?? http.Client(),
+        _requestTimeout = requestTimeout ?? const Duration(seconds: 60);
 
   static const String defaultTrackerHost = 'cisa-campus-work-tracker.pages.dev';
   static const int perRequestCap = 200;
@@ -67,6 +75,9 @@ class CisaTrackerSyncService {
   final DBHelper _dbHelper;
   final FlutterSecureStorage _secureStorage;
   final http.Client _httpClient;
+
+  /// How long one page's request may take before the run ends as an error.
+  final Duration _requestTimeout;
 
   bool _isSyncing = false;
 
@@ -251,14 +262,16 @@ class CisaTrackerSyncService {
           return item;
         }).toList();
 
-        final response = await _httpClient.post(
-          uri,
-          headers: {
-            'Content-Type': 'application/json',
-            'x-sync-token': token,
-          },
-          body: jsonEncode({'interactions': payloadInteractions}),
-        );
+        final response = await _httpClient
+            .post(
+              uri,
+              headers: {
+                'Content-Type': 'application/json',
+                'x-sync-token': token,
+              },
+              body: jsonEncode({'interactions': payloadInteractions}),
+            )
+            .timeout(_requestTimeout);
 
         if (response.statusCode == 200) {
           // Advance cursor to newest updatedAt of this page
@@ -304,6 +317,15 @@ class CisaTrackerSyncService {
       return CisaSyncResult(
         status: CisaSyncStatus.success,
         pushedCount: totalPushed,
+      );
+    } on TimeoutException {
+      final errMsg = 'CISA Tracker did not respond within '
+          '${_requestTimeout.inSeconds} s. Will retry next time.';
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_prefLastErrorKey, errMsg);
+      return CisaSyncResult(
+        status: CisaSyncStatus.error,
+        errorMessage: errMsg,
       );
     } catch (e) {
       final errMsg = e.toString().replaceAll('Exception: ', '');
