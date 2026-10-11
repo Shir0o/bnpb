@@ -1,5 +1,9 @@
 import 'dart:convert';
+import 'dart:ffi';
+import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+import 'package:bnpb/db/db_helper.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -40,6 +44,32 @@ class FakeDBHelperForCisa extends MockDBHelper {
   }) async {
     return contactsById.values.toList();
   }
+}
+
+typedef _SetenvC = Int32 Function(Pointer<Uint8>, Pointer<Uint8>, Int32);
+typedef _SetenvD = int Function(Pointer<Uint8>, Pointer<Uint8>, int);
+typedef _MallocC = Pointer<Uint8> Function(IntPtr);
+typedef _MallocD = Pointer<Uint8> Function(int);
+
+/// Switches this test process's local time zone (setenv + tzset), so the
+/// timezone tests bite on a UTC CI runner too. Each test file runs in its own
+/// process, so this does not leak into other files.
+void _setProcessTimeZone(String tz) {
+  final libc = DynamicLibrary.process();
+  final malloc = libc.lookupFunction<_MallocC, _MallocD>('malloc');
+  Pointer<Uint8> cString(String s) {
+    final units = utf8.encode(s);
+    final p = malloc(units.length + 1);
+    for (var i = 0; i < units.length; i++) {
+      p[i] = units[i];
+    }
+    p[units.length] = 0;
+    return p;
+  }
+
+  libc.lookupFunction<_SetenvC, _SetenvD>('setenv')(
+      cString('TZ'), cString(tz), 1);
+  libc.lookupFunction<Void Function(), void Function()>('tzset')();
 }
 
 void main() {
@@ -362,6 +392,141 @@ void main() {
       expect(result2.status, CisaSyncStatus.success);
       expect(await service.getLastPushCursor(), time);
       expect(await service.getLastPushError(), isNull);
+    });
+  });
+  group('against the real interactions query (non-UTC time zone)', () {
+    late Database db;
+    late DBHelper realDb;
+
+    setUpAll(() {
+      sqfliteFfiInit();
+      databaseFactory = databaseFactoryFfi;
+      _setProcessTimeZone('America/Los_Angeles');
+    });
+
+    tearDownAll(() {
+      _setProcessTimeZone(Platform.environment['TZ'] ?? 'UTC');
+    });
+
+    setUp(() async {
+      db = await databaseFactory.openDatabase(inMemoryDatabasePath);
+      realDb = DBHelper();
+      DBHelper.setDatabaseForTest(db);
+      await realDb.createSchemaForTest(db);
+      await db.insert('contacts', {
+        'id': 'c1',
+        'firstName': 'Alex',
+        'updatedAt': '2026-10-01T00:00:00.000Z',
+      });
+    });
+
+    tearDown(() async {
+      await db.close();
+    });
+
+    Future<void> insertRow(String syncId, String updatedAt,
+        {String? deletedAt}) async {
+      final id = await db.insert('interactions', {
+        'syncId': syncId,
+        'occurredAt': '2026-10-11T08:00:00.000',
+        'summary': 'Talk $syncId',
+        'medium': 'call',
+        'updatedAt': updatedAt,
+        'deletedAt': deletedAt,
+      });
+      await db.insert('interaction_participants', {
+        'interactionId': id,
+        'contactId': 'c1',
+      });
+    }
+
+    List<String> pushedSyncIds(http.Request request) =>
+        ((jsonDecode(request.body) as Map)['interactions'] as List)
+            .map((i) => (i as Map)['syncId'] as String)
+            .toList();
+
+    test('runs in a time zone behind UTC', () {
+      expect(DateTime(2026, 10, 11).timeZoneOffset, const Duration(hours: -7));
+    });
+
+    test('getInteractions(updatedSince) compares instants, not stored text',
+        () async {
+      // Cursor: 15:55 UTC == 08:55 Pacific.
+      final cursor = DateTime.utc(2026, 10, 11, 15, 55);
+      await insertRow('before-utc', '2026-10-11T15:54:59.000Z');
+      await insertRow('before-local', '2026-10-11T08:54:59.000');
+      // Three hours after the cursor, stored as offsetless local time (the
+      // shape pre-Feb-2026 builds and Drive-merged rows can carry). As text
+      // it reads "11:55" < "15:55Z", so a text comparison drops it.
+      await insertRow('after-local', '2026-10-11T11:55:00.000');
+      await insertRow('after-utc', '2026-10-11T18:55:00.000Z');
+      // Same millisecond as the cursor, but later microseconds.
+      await insertRow('after-micro', '2026-10-11T15:55:00.000500Z');
+
+      final found = await realDb.getInteractions(
+        updatedSince: cursor,
+        includeDeleted: true,
+      );
+      expect(found.map((i) => i.syncId).toSet(),
+          {'after-local', 'after-utc', 'after-micro'});
+    });
+
+    test('a local-time edit a few hours after the cursor is pushed next time',
+        () async {
+      SharedPreferences.setMockInitialValues({});
+      final requests = <http.Request>[];
+      final service = CisaTrackerSyncService(
+        dbHelper: realDb,
+        httpClient: MockClient((request) async {
+          requests.add(request);
+          return http.Response('{"success":true}', 200);
+        }),
+      );
+      await service.setToken('secret-123');
+
+      await insertRow('first', '2026-10-11T15:55:00.123Z');
+      expect((await service.pushInteractions()).pushedCount, 1);
+
+      // Edited 3 hours later, stored as local wall-clock time.
+      await insertRow('edited-later', '2026-10-11T11:55:00.000');
+      final result = await service.pushInteractions();
+
+      expect(result.status, CisaSyncStatus.success);
+      expect(requests.length, 2);
+      expect(pushedSyncIds(requests.last), ['edited-later']);
+    });
+
+    test('a cursor saved by an earlier build is ignored once: full re-send',
+        () async {
+      SharedPreferences.setMockInitialValues({
+        // Written by the buggy build; may have skipped edits after it.
+        'cisa_tracker_last_push_cursor': '2026-10-11T15:55:00.123Z',
+      });
+      final requests = <http.Request>[];
+      final service = CisaTrackerSyncService(
+        dbHelper: realDb,
+        httpClient: MockClient((request) async {
+          requests.add(request);
+          return http.Response('{"success":true}', 200);
+        }),
+      );
+      await service.setToken('secret-123');
+
+      await insertRow('pushed-before', '2026-10-11T15:55:00.123Z');
+      await insertRow('skipped-by-bug', '2026-10-11T11:55:00.000');
+      await insertRow('deleted-in-gap', '2026-10-11T12:00:00.000',
+          deletedAt: '2026-10-11T12:00:00.000');
+
+      final result = await service.pushInteractions();
+      expect(result.status, CisaSyncStatus.success);
+      expect(pushedSyncIds(requests.single).toSet(),
+          {'pushed-before', 'skipped-by-bug', 'deleted-in-gap'});
+
+      // The next push starts from the new cursor, not the legacy one.
+      requests.clear();
+      final again = await service.pushInteractions();
+      expect(again.pushedCount, 0);
+      expect(requests, isEmpty);
     });
   });
 }

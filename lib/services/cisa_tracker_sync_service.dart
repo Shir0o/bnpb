@@ -56,7 +56,11 @@ class CisaTrackerSyncService {
 
   static const String _secureTokenKey = 'cisa_tracker_personal_sync_token';
   static const String _prefHostKey = 'cisa_tracker_host';
-  static const String _prefCursorKey = 'cisa_tracker_last_push_cursor';
+  // v2: cursors saved under the old key came from a build whose text
+  // comparison could skip edits, so that key is ignored and the first push
+  // after upgrading re-sends everything once.
+  static const String _prefCursorKey = 'cisa_tracker_push_cursor_v2';
+  static const String _legacyPrefCursorKey = 'cisa_tracker_last_push_cursor';
   static const String _prefLastSuccessKey = 'cisa_tracker_last_push_success';
   static const String _prefLastErrorKey = 'cisa_tracker_last_push_error';
 
@@ -81,6 +85,7 @@ class CisaTrackerSyncService {
     await _secureStorage.delete(key: _secureTokenKey);
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_prefCursorKey);
+    await prefs.remove(_legacyPrefCursorKey);
     await prefs.remove(_prefLastSuccessKey);
     await prefs.remove(_prefLastErrorKey);
   }
