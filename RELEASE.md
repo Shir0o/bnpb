@@ -2,6 +2,14 @@
 
 All notable changes to the BNPB project are documented here.
 
+## [1.10.1](https://github.com/Shir0o/bnpb/compare/v1.10.0...v1.10.1) (2026-10-13)
+
+
+### Bug Fixes
+
+* **sync:** keep all names from Time Tracker comments and backfill imports ([#314](https://github.com/Shir0o/bnpb/issues/314)) ([c453ebf](https://github.com/Shir0o/bnpb/commit/c453ebffa4f72eda602a4a37acf92ea9d38ce233))
+* **sync:** review fixes for the CISA Tracker push ([#311](https://github.com/Shir0o/bnpb/issues/311)) ([c8c8f23](https://github.com/Shir0o/bnpb/commit/c8c8f2300e620b33a23d901584e7c38fb2445905))
+
 ## [1.10.0](https://github.com/Shir0o/bnpb/compare/v1.9.0...v1.10.0) (2026-10-09)
 
 
