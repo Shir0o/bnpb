@@ -107,7 +107,7 @@ activity name,time started,time ended,comment,categories,record tags,duration,du
       expect(candidates.length, 1);
       final candidate = candidates.first;
       expect(candidate.matchedContactIds, ['c7']);
-      expect(candidate.summary, 'Appointment - piano');
+      expect(candidate.summary, 'Appointment - Matthew V piano');
     });
 
     test('computes deterministic fingerprint for deduplication', () {
@@ -198,7 +198,7 @@ activity name,time started,time ended,comment,categories,record tags,duration,du
         contacts: contacts,
       );
       expect(candidates.first.matchedContactIds, ['c1']);
-      expect(candidates.first.summary, 'Meeting - casually');
+      expect(candidates.first.summary, 'Meeting - met Abel Smith casually');
     });
 
     test('marker-respected first: names only after the marker', () {
@@ -272,6 +272,122 @@ activity name,time started,time ended,comment,categories,record tags,duration,du
         contacts: contacts,
       );
       expect(candidates.first.selected, isFalse);
+    });
+    group('strict scan with several names (no marker)', () {
+      final crew = [
+        Contact(id: 'c_noe', firstName: 'Noe'),
+        Contact(id: 'c_sammy', firstName: 'Sammy', lastName: 'Ortiz'),
+        Contact(id: 'c_fernando', firstName: 'Fernando', lastName: 'Perez'),
+      ];
+
+      test('keeps every name in the title and links all contacts', () {
+        const csvData = '''
+activity name,time started,time ended,comment,categories,record tags,duration,duration minutes
+"Hangout",2025-09-21 14:00:00,2025-09-21 14:30:00,"noe sammy fernando","Essentials","Contact",0:30:0,30
+''';
+
+        final candidates = TimeTrackerParser.parseCsv(
+          csvData,
+          contacts: crew,
+        );
+        expect(candidates.first.summary, 'Hangout - noe sammy fernando');
+        expect(
+          candidates.first.matchedContactIds,
+          unorderedEquals(['c_noe', 'c_sammy', 'c_fernando']),
+        );
+      });
+    });
+
+    group('repairLegacyImport', () {
+      final crew = [
+        Contact(id: 'c_noe', firstName: 'Noe'),
+        Contact(id: 'c_sammy', firstName: 'Sammy', lastName: 'Ortiz'),
+        Contact(id: 'c_fernando', firstName: 'Fernando', lastName: 'Perez'),
+      ];
+      const markers = ['w/', 'with '];
+
+      test('restores the names the old parser cut from the title', () {
+        final repaired = TimeTrackerParser.repairLegacyImport(
+          summary: 'Hangout - sammy fernando',
+          notes: 'noe sammy fernando',
+          contacts: crew,
+          markers: markers,
+        );
+        expect(repaired, isNotNull);
+        expect(repaired!.summary, 'Hangout - noe sammy fernando');
+        expect(
+          repaired.contactIds,
+          unorderedEquals(['c_noe', 'c_sammy', 'c_fernando']),
+        );
+      });
+
+      test('leaves a hand-edited title alone', () {
+        expect(
+          TimeTrackerParser.repairLegacyImport(
+            summary: 'Game night',
+            notes: 'noe sammy fernando',
+            contacts: crew,
+            markers: markers,
+          ),
+          isNull,
+        );
+      });
+
+      test('re-links every name after a marker, keeping the title', () {
+        final withPrefix = TimeTrackerParser.repairLegacyImport(
+          summary: 'Dinner - Boba',
+          notes: 'Boba w/ noe sammy fernando',
+          contacts: crew,
+          markers: markers,
+        );
+        expect(withPrefix!.summary, 'Dinner - Boba');
+        expect(
+          withPrefix.contactIds,
+          unorderedEquals(['c_noe', 'c_sammy', 'c_fernando']),
+        );
+
+        final noPrefix = TimeTrackerParser.repairLegacyImport(
+          summary: 'Lunch w/ noe sammy',
+          notes: 'w/ noe sammy',
+          contacts: crew,
+          markers: markers,
+        );
+        expect(noPrefix!.summary, 'Lunch w/ noe sammy');
+        expect(noPrefix.contactIds, unorderedEquals(['c_noe', 'c_sammy']));
+      });
+
+      test('leaves marker comments alone when the title was edited', () {
+        expect(
+          TimeTrackerParser.repairLegacyImport(
+            summary: 'Game night',
+            notes: 'Boba w/ noe sammy',
+            contacts: crew,
+            markers: markers,
+          ),
+          isNull,
+        );
+      });
+
+      test('ignores empty notes and already-full titles', () {
+        expect(
+          TimeTrackerParser.repairLegacyImport(
+            summary: 'Hangout - sammy',
+            notes: null,
+            contacts: crew,
+            markers: markers,
+          ),
+          isNull,
+        );
+        expect(
+          TimeTrackerParser.repairLegacyImport(
+            summary: 'Hangout - sammy noe',
+            notes: 'sammy noe',
+            contacts: crew,
+            markers: markers,
+          ),
+          isNull,
+        );
+      });
     });
   });
 }

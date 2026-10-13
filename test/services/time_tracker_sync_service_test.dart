@@ -3,6 +3,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:bnpb/models/candidate_interaction.dart';
 import 'package:bnpb/models/contact.dart';
+import 'package:bnpb/models/interaction.dart';
 import 'package:bnpb/services/google_drive_service.dart';
 import 'package:bnpb/services/time_tracker_sync_service.dart';
 import 'package:googleapis/drive/v3.dart' as drive;
@@ -231,5 +232,99 @@ activity name,time started,time ended,comment,categories,record tags,duration,du
         expect(candidates2.length, 2);
       },
     );
+    group('backfillImportedTitles', () {
+      final crew = [
+        Contact(id: 'c_noe', firstName: 'Noe'),
+        Contact(id: 'c_sammy', firstName: 'Sammy', lastName: 'Ortiz'),
+        Contact(id: 'c_fernando', firstName: 'Fernando', lastName: 'Perez'),
+      ];
+
+      Interaction legacy() => Interaction(
+            id: 1,
+            occurredAt: DateTime(2025, 9, 21),
+            summary: 'Hangout - sammy fernando',
+            medium: 'In Person',
+            notes: 'noe sammy fernando',
+            participantIds: const ['c_noe', 'c_other'],
+          );
+
+      test('fixes legacy titles once and adds missing participants', () async {
+        final saved = <Interaction>[];
+        Future<int> run() => syncService.backfillImportedTitles(
+              contacts: crew,
+              loadInteractions: () async => [
+                legacy(),
+                Interaction(
+                  id: 2,
+                  occurredAt: DateTime(2025, 9, 22),
+                  summary: 'Game night',
+                  medium: 'In Person',
+                  notes: 'noe sammy fernando',
+                ),
+              ],
+              saveInteraction: (i) async => saved.add(i),
+            );
+
+        expect(await run(), 1);
+        expect(saved.single.id, 1);
+        expect(saved.single.summary, 'Hangout - noe sammy fernando');
+        expect(
+          saved.single.participantIds,
+          unorderedEquals(['c_noe', 'c_other', 'c_sammy', 'c_fernando']),
+        );
+
+        expect(await run(), 0);
+        expect(saved, hasLength(1));
+      });
+
+      test('re-links marker imports only when participants are missing',
+          () async {
+        final saved = <Interaction>[];
+        Interaction markerImport(int id, List<String> participants) =>
+            Interaction(
+              id: id,
+              occurredAt: DateTime(2025, 9, 23),
+              summary: 'Dinner - Boba',
+              medium: 'In Person',
+              notes: 'Boba w/ noe sammy',
+              participantIds: participants,
+            );
+
+        final fixed = await syncService.backfillImportedTitles(
+          contacts: crew,
+          loadInteractions: () async => [
+            markerImport(3, const ['c_noe']),
+            markerImport(4, const ['c_noe', 'c_sammy']),
+          ],
+          saveInteraction: (i) async => saved.add(i),
+        );
+
+        expect(fixed, 1);
+        expect(saved.single.id, 3);
+        expect(saved.single.summary, 'Dinner - Boba');
+        expect(
+            saved.single.participantIds, unorderedEquals(['c_noe', 'c_sammy']));
+      });
+
+      test('waits for contacts before marking the backfill done', () async {
+        final saved = <Interaction>[];
+        expect(
+          await syncService.backfillImportedTitles(
+            contacts: const [],
+            loadInteractions: () async => [legacy()],
+            saveInteraction: (i) async => saved.add(i),
+          ),
+          0,
+        );
+        expect(
+          await syncService.backfillImportedTitles(
+            contacts: crew,
+            loadInteractions: () async => [legacy()],
+            saveInteraction: (i) async => saved.add(i),
+          ),
+          1,
+        );
+      });
+    });
   });
 }

@@ -19,6 +19,7 @@ class TimeTrackerSyncService extends ChangeNotifier {
   static const String _prefKeyStagedCandidates = 'stt_staged_candidates';
   static const String _prefKeyDriveFolder = 'stt_drive_folder_name';
   static const String _prefKeyNameMarkers = 'stt_name_markers';
+  static const String _prefKeyTitleBackfillDone = 'stt_title_backfill_v1';
   static const String defaultDriveFolderName = 'Time track';
   static const List<String> defaultNameMarkers = ['w/', 'with '];
 
@@ -243,6 +244,57 @@ class TimeTrackerSyncService extends ChangeNotifier {
       _isSyncing = false;
       notifyListeners();
     }
+  }
+
+  /// One-time repair of interactions imported before the parser kept every
+  /// name in the title and linked every named contact (see
+  /// [TimeTrackerParser.repairLegacyImport]). Participants are only added,
+  /// never removed.
+  ///
+  /// Returns how many interactions were changed. Skipped until [contacts] are
+  /// loaded, since nothing can be matched without them.
+  Future<int> backfillImportedTitles({
+    required List<Contact> contacts,
+    required Future<List<Interaction>> Function() loadInteractions,
+    required Future<void> Function(Interaction interaction) saveInteraction,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (contacts.isEmpty ||
+        (prefs.getBool(_prefKeyTitleBackfillDone) ?? false)) {
+      return 0;
+    }
+
+    final markers = await getNameMarkers();
+    var fixed = 0;
+    for (final interaction in await loadInteractions()) {
+      final repaired = TimeTrackerParser.repairLegacyImport(
+        summary: interaction.summary,
+        notes: interaction.notes,
+        contacts: contacts,
+        markers: markers,
+      );
+      if (repaired == null) continue;
+
+      final participantIds = {
+        ...interaction.participantIds,
+        ...repaired.contactIds,
+      };
+      if (repaired.summary == interaction.summary &&
+          participantIds.length == interaction.participantIds.toSet().length) {
+        continue;
+      }
+
+      await saveInteraction(
+        interaction.copyWith(
+          summary: repaired.summary,
+          participantIds: participantIds.toList(),
+        ),
+      );
+      fixed++;
+    }
+
+    await prefs.setBool(_prefKeyTitleBackfillDone, true);
+    return fixed;
   }
 
   /// Commits confirmed [CandidateInteraction]s to the database and marks their fingerprints as imported.

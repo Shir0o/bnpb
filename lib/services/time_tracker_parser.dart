@@ -106,6 +106,59 @@ class TimeTrackerParser {
     return candidates;
   }
 
+  /// Repairs an interaction imported by the parser before two fixes:
+  /// - Comments without a marker were titled with only the text after the
+  ///   matched name (`noe sammy fernando` → `<Activity> - sammy fernando`).
+  /// - A one-word full name (e.g. `Noe`) stopped the names after it from
+  ///   being linked, including after a marker (`w/ noe sammy fernando`).
+  ///
+  /// [notes] is the raw comment stored at import. Returns the corrected
+  /// summary and the contacts named in the comment, or `null` when [summary]
+  /// isn't what the old parser produced (e.g. the user edited it).
+  static ({String summary, List<String> contactIds})? repairLegacyImport({
+    required String summary,
+    required String? notes,
+    required List<Contact> contacts,
+    required List<String> markers,
+  }) {
+    final comment = notes?.trim() ?? '';
+    if (comment.isEmpty) return null;
+
+    // Marker comments kept the right title; only participants need re-linking.
+    final marker = _matchMarker(comment, markers);
+    if (marker != null) {
+      final prefix = marker.$1?.trim() ?? '';
+      final importedSuffix = prefix.isEmpty ? ' $comment' : ' - $prefix';
+      if (summary.length <= importedSuffix.length ||
+          !summary.endsWith(importedSuffix)) {
+        return null;
+      }
+      return (
+        summary: summary,
+        contactIds: _resolveNames(marker.$2.trim(), contacts),
+      );
+    }
+
+    final strictMatch = _matchStrongName(comment, contacts);
+    if (strictMatch == null) return null;
+
+    final remainder = comment.substring(strictMatch.$2).trim();
+    final legacySuffix = ' - $remainder';
+    if (remainder.isEmpty || !summary.endsWith(legacySuffix)) return null;
+
+    final activityName =
+        summary.substring(0, summary.length - legacySuffix.length);
+    if (activityName.isEmpty) return null;
+
+    return (
+      summary: '$activityName - $comment',
+      contactIds: {
+        strictMatch.$1.id,
+        ..._resolveNames(comment, contacts),
+      }.toList(),
+    );
+  }
+
   static String _generateFingerprint({
     required String timeStartedStr,
     required int? durationMinutes,
@@ -148,20 +201,17 @@ class TimeTrackerParser {
 
     // 2. No marker present: strict whole-comment scan. Only a strong name
     // signature (full name, first+last, or nickname) counts — a bare first
-    // name is treated as ambiguous to avoid false auto-associations.
+    // name is treated as ambiguous to avoid false auto-associations. Once one
+    // strong match confirms the comment names people, the rest of the names
+    // in it are linked too, and the full comment is kept in the title.
     final strictMatch = _matchStrongName(comment, contacts);
     if (strictMatch != null) {
-      final remainder = comment.substring(strictMatch.$2).trim();
-      String summary;
-      if (remainder.isNotEmpty) {
-        summary = '$activityName - $remainder';
-      } else {
-        summary = '$activityName - $comment';
-      }
-
       return _ExtractionResult(
-        summary: summary,
-        contactIds: [strictMatch.$1.id],
+        summary: '$activityName - $comment',
+        contactIds: {
+          strictMatch.$1.id,
+          ..._resolveNames(comment, contacts),
+        }.toList(),
       );
     }
 
@@ -256,8 +306,10 @@ class TimeTrackerParser {
         .toList();
 
     for (final token in rawTokens) {
-      // 1. Try matching full name first
-      Contact? bestMatch;
+      // 1. Try matching full name first, then drop it from the token so the
+      // remaining words (e.g. "sammy fernando" in "noe sammy fernando") are
+      // still matched below.
+      var remaining = token;
       for (final contact in contacts) {
         final fullName = contact.fullName.trim();
         if (fullName.isNotEmpty) {
@@ -266,19 +318,15 @@ class TimeTrackerParser {
             caseSensitive: false,
           );
           if (regex.hasMatch(token)) {
-            bestMatch = contact;
+            matchedIds.add(contact.id);
+            remaining = token.replaceFirst(regex, ' ');
             break;
           }
         }
       }
 
-      if (bestMatch != null) {
-        matchedIds.add(bestMatch.id);
-        continue;
-      }
-
       // 2. Try matching first names or nicknames word by word in token
-      final words = token.split(RegExp(r'\s+')).where((w) => w.isNotEmpty);
+      final words = remaining.split(RegExp(r'\s+')).where((w) => w.isNotEmpty);
       for (final word in words) {
         final cleanWord = word.replaceAll(RegExp(r'[^\w]'), '');
         if (cleanWord.isEmpty) continue;
