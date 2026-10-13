@@ -202,7 +202,24 @@ class _HomePageState extends State<HomePage>
       if (mounted) setState(() {});
     };
     _timeTrackerSyncService.addListener(_timeTrackerListener!);
+    _backfillImportedTitles();
     _checkTimeTrackerUpdates();
+  }
+
+  Future<void> _backfillImportedTitles() async {
+    try {
+      final fixed = await _timeTrackerSyncService.backfillImportedTitles(
+        contacts: _contacts,
+        loadInteractions: () => DBHelper().getInteractions(),
+        saveInteraction: DBHelper().updateInteraction,
+      );
+      if (fixed > 0 && mounted) {
+        _fetchContacts(forceRefresh: true);
+        CrispToast.show(context, 'Repaired $fixed imported interactions');
+      }
+    } catch (e) {
+      debugPrint('Time Tracker title backfill skipped: $e');
+    }
   }
 
   Future<void> _checkTimeTrackerUpdates() async {
