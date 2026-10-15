@@ -2,6 +2,7 @@ import 'package:sqflite_sqlcipher/sqflite.dart';
 
 import '../../models/contact.dart';
 import '../base_dao.dart';
+import '../updated_since.dart';
 
 class ContactDao extends BaseDao {
   ContactDao(super.dbHelper);
@@ -127,15 +128,19 @@ class ContactDao extends BaseDao {
     }
 
     if (updatedSince != null) {
-      where += ' AND updatedAt > ?';
-      whereArgs.add(updatedSince.toIso8601String());
+      where += ' AND $updatedSinceDateClause';
+      whereArgs.add(updatedSinceDateArg(updatedSince));
     }
 
-    final contactRows = await db.query(
+    var contactRows = await db.query(
       'contacts',
       where: where,
       whereArgs: whereArgs,
     );
+
+    if (updatedSince != null) {
+      contactRows = rowsUpdatedAfter(contactRows, updatedSince);
+    }
 
     if (contactRows.isEmpty) return [];
 

@@ -14,6 +14,10 @@ import 'package:uuid/uuid.dart';
 
 class SyncCoordinator {
   static const _lastExportKey = 'sync_last_export_time';
+  // Set once an export has run with the instant-based updatedSince queries
+  // (#313). Cursors saved before that were applied by text comparison and may
+  // have skipped edits, so the first export after upgrading ignores the cursor.
+  static const _catchUpDoneKey = 'sync_export_catch_up_v1';
   static const _deviceIdKey = 'sync_device_id';
   static const _processedFilesKey = 'sync_processed_files';
 
@@ -59,7 +63,10 @@ class SyncCoordinator {
   }
 
   Future<SyncResult> exportChanges(Directory syncDir) async {
-    final lastExport = await _getLastExportTime();
+    final prefs = await SharedPreferences.getInstance();
+    final lastExport = prefs.getBool(_catchUpDoneKey) == true
+        ? await _getLastExportTime()
+        : null;
     final now = DateTime.now().toUtc();
 
     // Fetch changes
@@ -152,6 +159,7 @@ class SyncCoordinator {
     await tempFile.rename(finalFile.path);
 
     await _updateLastExportTime(now);
+    await prefs.setBool(_catchUpDoneKey, true);
 
     return SyncResult(
       exportedCount: contacts.length +

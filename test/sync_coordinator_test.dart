@@ -173,4 +173,55 @@ void main() {
         .toList();
     expect(filesAfter, isEmpty);
   });
+
+  group('one-time catch-up for edits skipped by the text-compared cursor', () {
+    Future<List<FileSystemEntity>> exportFiles() => tempDir
+        .list()
+        .where((e) =>
+            e.path.endsWith('_data.json') &&
+            !e.path.endsWith('processed_files.json'))
+        .toList();
+
+    test('an existing cursor is ignored once: rows before it are re-exported',
+        () async {
+      final cursor = DateTime.utc(2026, 10, 11, 15, 55);
+      // Saved by an earlier build; rows edited after it may have been skipped.
+      SharedPreferences.setMockInitialValues({
+        'sync_last_export_time': cursor.toIso8601String(),
+      });
+      fakeDb.contacts.add(Contact(
+        id: 'skipped',
+        firstName: 'Skipped',
+        lastName: 'Earlier',
+        updatedAt: cursor.subtract(const Duration(hours: 1)),
+      ));
+
+      final result = await coordinator.exportChanges(tempDir);
+
+      expect(result.exportedCount, 1);
+      expect(await exportFiles(), hasLength(1));
+    });
+
+    test('the next export is incremental again', () async {
+      final cursor = DateTime.utc(2026, 10, 11, 15, 55);
+      SharedPreferences.setMockInitialValues({
+        'sync_last_export_time': cursor.toIso8601String(),
+      });
+      fakeDb.contacts.add(Contact(
+        id: 'skipped',
+        firstName: 'Skipped',
+        lastName: 'Earlier',
+        updatedAt: cursor.subtract(const Duration(hours: 1)),
+      ));
+      await coordinator.exportChanges(tempDir);
+      for (final f in await exportFiles()) {
+        await f.delete();
+      }
+
+      final result = await coordinator.exportChanges(tempDir);
+
+      expect(result.exportedCount, 0);
+      expect(await exportFiles(), isEmpty);
+    });
+  });
 }
