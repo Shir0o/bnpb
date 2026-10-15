@@ -1,9 +1,8 @@
 name: Release
 
 # Triggered when release-please pushes a version tag (e.g. v1.2.0).
-# Builds a signed APK + AAB (each carrying the derived versionCode from
-# the tag), attaches both to the GitHub Release, and uploads the AAB
-# to the Play Console internal testing track via fastlane supply.
+# Builds Android APK + AAB (uploaded to Play Console internal track and attached
+# to the GitHub Release) and macOS DMG + ZIP (attached to the GitHub Release).
 # Production promotion stays a manual Play Console click.
 on:
   push:
@@ -263,3 +262,86 @@ jobs:
           rm -f android/key.properties
           rm -f android/app/google-services.json
           rm -rf "$HOME/.keystores"
+
+  build-and-publish-macos:
+    name: Build and attach macOS release
+    runs-on: macos-latest
+    timeout-minutes: 60
+    environment: production
+    env:
+      TAG: ${{ github.ref_name }}
+    steps:
+      - name: Checkout repository at tag
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Derive versionCode from tag
+        run: |
+          set -euo pipefail
+          code=$(dart run tool/derive_version_code.dart "$TAG")
+          echo "VERSION_CODE=$code" >> "$GITHUB_ENV"
+          echo "Derived versionCode=$code from tag $TAG"
+
+      - name: Build release macOS app
+        run: flutter build macos --release --no-tree-shake-icons --build-number="$VERSION_CODE"
+
+      - name: Package macOS artifacts (DMG and ZIP)
+        run: |
+          set -euo pipefail
+          app_path="build/macos/Build/Products/Release/bnpb.app"
+          if [ ! -d "$app_path" ]; then
+            echo "::error::macOS app bundle not found at $app_path"
+            exit 1
+          fi
+          mkdir -p dmg_staging
+          cp -R "$app_path" dmg_staging/
+          ln -s /Applications dmg_staging/Applications
+          hdiutil create -volname "BNPB" -srcfolder dmg_staging -ov -format UDZO "bnpb-macos.dmg"
+          rm -rf dmg_staging
+          ditto -c -k --sequesterRsrc --keepParent "$app_path" "bnpb-macos.zip"
+          echo "Packaged bnpb-macos.dmg and bnpb-macos.zip."
+
+      - name: Check if macOS release artifacts are already attached (idempotency)
+        id: check-existing
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          existing_dmg=$(gh release view "$TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --json assets \
+            --jq '.assets[] | select(.name == "bnpb-macos.dmg") | .name' \
+            2>/dev/null || echo "")
+          existing_zip=$(gh release view "$TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --json assets \
+            --jq '.assets[] | select(.name == "bnpb-macos.zip") | .name' \
+            2>/dev/null || echo "")
+          if [ -n "$existing_dmg" ] && [ -n "$existing_zip" ]; then
+            echo "skip_attach=true" >> "$GITHUB_OUTPUT"
+            echo "macOS release artifacts already attached; skipping re-upload."
+          else
+            echo "skip_attach=false" >> "$GITHUB_OUTPUT"
+            echo "macOS release artifacts not yet attached; will upload."
+          fi
+
+      - name: Attach macOS artifacts to GitHub Release
+        if: steps.check-existing.outputs.skip_attach != 'true'
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3
+        with:
+          tag_name: ${{ github.ref_name }}
+          generate_release_notes: false
+          token: ${{ secrets.GITHUB_TOKEN }}
+          files: |
+            bnpb-macos.dmg
+            bnpb-macos.zip

@@ -199,12 +199,17 @@ void main() {
       }
     });
 
-    test('the release job waits behind the production environment', () {
+    test('the release jobs wait behind the production environment', () {
       final workflow = _loadWorkflow(_workflowFile('release.yml'));
-      final job = Map<String, dynamic>.from(
-        _jobs(workflow)['build-and-publish'] as Map,
+      final jobs = _jobs(workflow);
+      final androidJob = Map<String, dynamic>.from(
+        jobs['build-and-publish'] as Map,
       );
-      expect(job['environment'], 'production');
+      final macosJob = Map<String, dynamic>.from(
+        jobs['build-and-publish-macos'] as Map,
+      );
+      expect(androidJob['environment'], 'production');
+      expect(macosJob['environment'], 'production');
     });
 
     test(
