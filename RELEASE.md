@@ -2,6 +2,19 @@
 
 All notable changes to the BNPB project are documented here.
 
+## [1.11.0](https://github.com/Shir0o/bnpb/compare/v1.10.1...v1.11.0) (2026-10-15)
+
+
+### Features
+
+* **desktop:** init desktop version with design system and audit remediations ([#320](https://github.com/Shir0o/bnpb/issues/320)) ([8f3324b](https://github.com/Shir0o/bnpb/commit/8f3324b03eea83c46a5ef3590aa02bb63e425ef6))
+* **sync:** live Google Drive sync while the app is in the foreground ([#317](https://github.com/Shir0o/bnpb/issues/317)) ([#319](https://github.com/Shir0o/bnpb/issues/319)) ([b4e5909](https://github.com/Shir0o/bnpb/commit/b4e59092897de81dc7632721d4053ab47aeade4d))
+
+
+### Bug Fixes
+
+* **sync:** compare contact and prayer request updatedAt as instants ([#313](https://github.com/Shir0o/bnpb/issues/313)) ([#318](https://github.com/Shir0o/bnpb/issues/318)) ([9189ea0](https://github.com/Shir0o/bnpb/commit/9189ea050508250166636e0a067d0b4c58ab4718))
+
 ## [1.10.1](https://github.com/Shir0o/bnpb/compare/v1.10.0...v1.10.1) (2026-10-13)
 
 
