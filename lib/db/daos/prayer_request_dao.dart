@@ -3,6 +3,7 @@ import 'package:sqflite_sqlcipher/sqflite.dart';
 import '../../models/contact.dart';
 import '../../models/prayer_request.dart';
 import '../base_dao.dart';
+import '../updated_since.dart';
 
 class PrayerRequestDao extends BaseDao {
   PrayerRequestDao(super.dbHelper);
@@ -254,17 +255,23 @@ class PrayerRequestDao extends BaseDao {
     }
 
     if (updatedSince != null) {
-      where += ' AND updatedAt > ?';
-      whereArgs.add(updatedSince.toIso8601String());
+      where += ' AND $updatedSinceDateClause';
+      whereArgs.add(updatedSinceDateArg(updatedSince));
     }
 
-    final rows = await db.query(
+    // With updatedSince the exact cut runs in Dart, so the limit must too.
+    var rows = await db.query(
       'prayer_requests',
       where: where,
       whereArgs: whereArgs,
       orderBy: orderBy,
-      limit: limit,
+      limit: updatedSince == null ? limit : null,
     );
+
+    if (updatedSince != null) {
+      rows = rowsUpdatedAfter(rows, updatedSince);
+      if (limit != null) rows = rows.take(limit).toList();
+    }
 
     final requests = rows.map((row) => Map<String, dynamic>.from(row)).toList();
     final ids = requests.map((r) => r['id'] as int).toList();

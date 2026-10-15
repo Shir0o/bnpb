@@ -3,6 +3,7 @@ import 'package:sqflite_sqlcipher/sqflite.dart';
 import '../../models/contact.dart';
 import '../../models/interaction.dart';
 import '../base_dao.dart';
+import '../updated_since.dart';
 
 class InteractionDao extends BaseDao {
   InteractionDao(super.dbHelper);
@@ -292,16 +293,10 @@ class InteractionDao extends BaseDao {
       whereArgs.add(end.toIso8601String());
     }
 
-    // Stored updatedAt strings are mixed: UTC with "Z" (current writers),
-    // offsetless local time (older builds, Drive-merged rows), and SQLite's
-    // "YYYY-MM-DD HH:MM:SS" column default. Comparing them as text against
-    // one cursor string skips rows, so SQL only narrows by calendar date
-    // (a day of slack covers any UTC offset) and the exact cut compares
-    // parsed instants below.
+    // updatedAt is compared as instants; see updated_since.dart.
     if (updatedSince != null) {
-      final dayBefore = updatedSince.toUtc().subtract(const Duration(days: 1));
-      where.add('substr(updatedAt, 1, 10) >= ?');
-      whereArgs.add(dayBefore.toIso8601String().substring(0, 10));
+      where.add(updatedSinceDateClause);
+      whereArgs.add(updatedSinceDateArg(updatedSince));
     }
 
     var rows = await dbInstance.query(
@@ -312,10 +307,7 @@ class InteractionDao extends BaseDao {
     );
 
     if (updatedSince != null) {
-      rows = rows
-          .where((row) =>
-              DateTime.parse(row['updatedAt'] as String).isAfter(updatedSince))
-          .toList();
+      rows = rowsUpdatedAfter(rows, updatedSince);
     }
 
     if (rows.isEmpty) return [];
