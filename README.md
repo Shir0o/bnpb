@@ -18,6 +18,9 @@ while offering analytics and export tooling.
   are **off by default** and run entirely on the device using a locally
   stored Gemma model. When enabled, only the active note/interaction is sent
   to the model; no contact data leaves the device.
+- With Google Drive sync on, BNPB checks and uploads to your Drive sync folder
+  about every 10 seconds while the app is open in the foreground, and never in
+  the background. Data goes only to your own Google Drive.
 - See the [Privacy Policy & Personal Usage Guidelines](docs/privacy_policy.md)
   for a detailed breakdown of how the app handles sensitive information.
 

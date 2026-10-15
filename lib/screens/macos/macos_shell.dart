@@ -53,7 +53,15 @@ class _MacOSShellState extends State<MacOSShell> {
     // The shell only mounts once SecurityGate unlocks; push on open and
     // whenever the app becomes active again (throttled in the service).
     _pushToCisaTracker();
-    _lifecycleListener = AppLifecycleListener(onResume: _pushToCisaTracker);
+    // MainPage isn't mounted on macOS, so the shell drives live Drive sync.
+    _lifecycleListener = AppLifecycleListener(
+      onResume: _pushToCisaTracker,
+      onStateChange: SyncService().handleLifecycleState,
+    );
+    final lifecycleState = WidgetsBinding.instance.lifecycleState;
+    if (lifecycleState != null) {
+      unawaited(SyncService().handleLifecycleState(lifecycleState));
+    }
     _syncSubscription = SyncService().onSyncComplete.listen((_) {
       if (mounted) _loadSidebarData();
     });
