@@ -2,6 +2,13 @@
 
 All notable changes to the BNPB project are documented here.
 
+## [1.12.0](https://github.com/Shir0o/bnpb/compare/v1.11.0...v1.12.0) (2026-10-15)
+
+
+### Features
+
+* **desktop:** release macOS app via GitHub Actions CI ([#323](https://github.com/Shir0o/bnpb/issues/323)) ([54b99c4](https://github.com/Shir0o/bnpb/commit/54b99c4d218398b2deaa84f494c9692fcc5fd545))
+
 ## [1.11.0](https://github.com/Shir0o/bnpb/compare/v1.10.1...v1.11.0) (2026-10-15)
 
 
