@@ -27,6 +27,10 @@ BNPB provides options to keep your data safe across devices:
   database. This uses the "App Data Folder" scope, meaning the files are 
   invisible to you in the standard Drive interface and are only accessible by 
   BNPB. 
+  While the app is open in the foreground, BNPB checks your Drive sync folder
+  and uploads your changes about every 10 seconds so your devices stay in step.
+  It never syncs in the background and sends nothing anywhere except your own
+  Google Drive.
 - **Google Identity:** When signing in for Google Drive sync, BNPB only uses your 
   identity to facilitate the connection to your storage. We do not store your 
   profile information or track your Google account activity.

@@ -299,4 +299,181 @@ void main() {
       },
     );
   });
+
+  group('GoogleDriveService incremental listing and folder cache', () {
+    late StreamController<GoogleSignInAuthenticationEvent> authEvents;
+    late int folderLookups;
+    late List<Map<String, String>> listRequests;
+
+    http.Response jsonResponse(Map<String, dynamic> body, [int status = 200]) =>
+        http.Response(
+          jsonEncode(body),
+          status,
+          headers: {'content-type': 'application/json; charset=utf-8'},
+        );
+
+    http.Response notFound() => jsonResponse({
+          'error': {'code': 404, 'message': 'File not found.'},
+        }, 404);
+
+    /// Serves the BNPB-Sync folder as [folderId] and one page of files per
+    /// entry in [pages]; [onList] may replace a listing response.
+    MockClient driveClient({
+      String Function()? folderId,
+      List<List<Map<String, String>>> pages = const [[]],
+      http.Response? Function(Map<String, String> params)? onList,
+    }) {
+      return MockClient((request) async {
+        final params = request.url.queryParameters;
+        final query = params['q'] ?? '';
+        if (query.contains('mimeType')) {
+          folderLookups++;
+          return jsonResponse({
+            'files': [
+              {'id': folderId?.call() ?? 'folder1', 'name': 'BNPB-Sync'},
+            ],
+          });
+        }
+
+        listRequests.add(params);
+        final replaced = onList?.call(params);
+        if (replaced != null) return replaced;
+        final pageIndex = int.tryParse(params['pageToken'] ?? '0')!;
+        final isLast = pageIndex == pages.length - 1;
+        return jsonResponse({
+          if (!isLast) 'nextPageToken': '${pageIndex + 1}',
+          'files': pages[pageIndex],
+        });
+      });
+    }
+
+    setUp(() async {
+      folderLookups = 0;
+      listRequests = [];
+      authEvents = StreamController.broadcast();
+      when(() => mockGoogleSignIn.authenticationEvents)
+          .thenAnswer((_) => authEvents.stream);
+      when(() => mockGoogleSignIn.signOut()).thenAnswer((_) async {});
+      when(() => mockGoogleSignIn.attemptLightweightAuthentication())
+          .thenAnswer((_) async => mockAccount as GoogleSignInAccount?);
+      SharedPreferences.setMockInitialValues({'google_has_signed_in': true});
+      service = GoogleDriveService.testHarness(googleSignIn: mockGoogleSignIn);
+      await service.currentUser;
+    });
+
+    tearDown(() => authEvents.close());
+
+    test(
+      'lists sync folder files created after the given instant, across pages',
+      () async {
+        service.setDriveApiForTest(
+          drive.DriveApi(
+            driveClient(
+              pages: [
+                [
+                  {'id': '1', 'name': 'phone_1000_data.json'},
+                ],
+                [
+                  {
+                    'id': '2',
+                    'name': 'phone_2000_data.json',
+                    'createdTime': '2026-10-15T12:01:00.000Z',
+                  },
+                ],
+              ],
+            ),
+          ),
+        );
+
+        final files = await service.listSyncFilesCreatedSince(
+          DateTime.utc(2026, 10, 15, 12),
+        );
+
+        expect(files.map((f) => f.name), [
+          'phone_1000_data.json',
+          'phone_2000_data.json',
+        ]);
+        expect(files.last.createdTime, DateTime.utc(2026, 10, 15, 12, 1));
+        expect(listRequests, hasLength(2));
+        for (final params in listRequests) {
+          expect(
+            params['q'],
+            "'folder1' in parents and trashed = false"
+            " and createdTime > '2026-10-15T12:00:00.000Z'",
+          );
+          expect(params['fields'], contains('createdTime'));
+        }
+        expect(listRequests.last['pageToken'], '1');
+      },
+    );
+
+    test('sends the instant in UTC', () async {
+      service.setDriveApiForTest(drive.DriveApi(driveClient()));
+
+      final instant = DateTime.utc(2026, 10, 15, 12);
+      await service.listSyncFilesCreatedSince(instant.toLocal());
+
+      expect(
+        listRequests.single['q'],
+        endsWith("createdTime > '2026-10-15T12:00:00.000Z'"),
+      );
+    });
+
+    test('the full listing requests createdTime', () async {
+      service.setDriveApiForTest(drive.DriveApi(driveClient()));
+
+      await service.listSyncFiles();
+
+      expect(listRequests.single['fields'], contains('createdTime'));
+    });
+
+    test('looks up the sync folder once per session', () async {
+      service.setDriveApiForTest(drive.DriveApi(driveClient()));
+
+      await service.listSyncFiles();
+      await service.listSyncFilesCreatedSince(DateTime.utc(2026));
+      await service.listSyncFiles();
+
+      expect(folderLookups, 1);
+    });
+
+    test('looks up the sync folder again after sign-out', () async {
+      service.setDriveApiForTest(drive.DriveApi(driveClient()));
+      await service.listSyncFiles();
+
+      await service.signOut();
+      authEvents.add(GoogleSignInAuthenticationEventSignIn(user: mockAccount));
+      await Future<void>.delayed(Duration.zero);
+      service.setDriveApiForTest(
+        drive.DriveApi(driveClient(folderId: () => 'folder2')),
+      );
+      await service.listSyncFiles();
+
+      expect(folderLookups, 2);
+      expect(listRequests.last['q'], startsWith("'folder2' in parents"));
+    });
+
+    test('looks up the sync folder again after a 404 for it', () async {
+      var folderId = 'folder1';
+      service.setDriveApiForTest(
+        drive.DriveApi(
+          driveClient(
+            folderId: () => folderId,
+            onList: (params) =>
+                params['q']!.startsWith("'folder1'") ? notFound() : null,
+          ),
+        ),
+      );
+
+      await expectLater(
+        service.listSyncFiles(),
+        throwsA(isA<drive.DetailedApiRequestError>()),
+      );
+      folderId = 'folder2';
+      await service.listSyncFiles();
+
+      expect(folderLookups, 2);
+      expect(listRequests.last['q'], startsWith("'folder2' in parents"));
+    });
+  });
 }

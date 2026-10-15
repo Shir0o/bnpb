@@ -81,6 +81,9 @@ class GoogleDriveService {
   GoogleSignInAccount? _currentUser;
   drive.DriveApi? _driveApi;
   String? _lastSignInError;
+  // Folder IDs resolved this session, by name. Cleared on sign-out and when
+  // Drive reports a cached folder as not found.
+  final Map<String, String> _folderIds = {};
 
   @visibleForTesting
   void setDriveApiForTest(drive.DriveApi api) {
@@ -98,6 +101,7 @@ class GoogleDriveService {
       } else if (event is GoogleSignInAuthenticationEventSignOut) {
         _currentUser = null;
         _driveApi = null;
+        _folderIds.clear();
         _userController.add(null);
       }
     });
@@ -237,6 +241,7 @@ class GoogleDriveService {
     await _googleSignIn.signOut();
     _currentUser = null;
     _driveApi = null;
+    _folderIds.clear();
 
     _hasPreviouslySignedIn = false;
     final prefs = await SharedPreferences.getInstance();
@@ -359,7 +364,10 @@ class GoogleDriveService {
 
   /// Finds a folder by name, or creates it if it doesn't exist.
   Future<String?> _getOrCreateFolder(String folderName) async {
-    return await _executeWithRetry(() async {
+    final cached = _folderIds[folderName];
+    if (cached != null) return cached;
+
+    final folderId = await _executeWithRetry(() async {
       final query =
           "name = '$folderName' and mimeType = 'application/vnd.google-apps.folder' and trashed = false";
       final folderList = await _driveApi!.files
@@ -379,6 +387,23 @@ class GoogleDriveService {
           .timeout(const Duration(seconds: 15));
       return createdFolder.id;
     });
+    if (folderId != null) _folderIds[folderName] = folderId;
+    return folderId;
+  }
+
+  /// Runs [action] against the folder ID for [folderName], dropping the cached
+  /// ID if Drive no longer finds it so the next call looks it up again.
+  Future<T> _withFolder<T>(
+    String folderName,
+    Future<T> Function(String? folderId) action,
+  ) async {
+    final folderId = await _getOrCreateFolder(folderName);
+    try {
+      return await action(folderId);
+    } on drive.DetailedApiRequestError catch (e) {
+      if (e.status == 404) _folderIds.remove(folderName);
+      rethrow;
+    }
   }
 
   Future<void> uploadFile(
@@ -386,78 +411,97 @@ class GoogleDriveService {
     String remoteName, {
     String folderName = 'BNPB-Sync',
   }) async {
-    final folderId = await _getOrCreateFolder(folderName);
+    await _withFolder(folderName, (folderId) async {
+      await _executeWithRetry(() async {
+        final query =
+            "name = '$remoteName' and '$folderId' in parents and trashed = false";
+        final existingFiles = await _driveApi!.files
+            .list(q: query)
+            .timeout(const Duration(seconds: 10));
 
-    await _executeWithRetry(() async {
-      final query =
-          "name = '$remoteName' and '$folderId' in parents and trashed = false";
-      final existingFiles = await _driveApi!.files
-          .list(q: query)
-          .timeout(const Duration(seconds: 10));
+        final driveFile = drive.File()..name = remoteName;
 
-      final driveFile = drive.File()..name = remoteName;
+        final media = drive.Media(localFile.openRead(), localFile.lengthSync());
 
-      final media = drive.Media(localFile.openRead(), localFile.lengthSync());
-
-      if (existingFiles.files != null && existingFiles.files!.isNotEmpty) {
-        // Update existing file
-        await _driveApi!.files
-            .update(
-              driveFile,
-              existingFiles.files!.first.id!,
-              uploadMedia: media,
-            )
-            .timeout(const Duration(seconds: 30));
-      } else {
-        // Create new file
-        if (folderId != null) {
-          driveFile.parents = [folderId];
+        if (existingFiles.files != null && existingFiles.files!.isNotEmpty) {
+          // Update existing file
+          await _driveApi!.files
+              .update(
+                driveFile,
+                existingFiles.files!.first.id!,
+                uploadMedia: media,
+              )
+              .timeout(const Duration(seconds: 30));
+        } else {
+          // Create new file
+          if (folderId != null) {
+            driveFile.parents = [folderId];
+          }
+          await _driveApi!.files
+              .create(driveFile, uploadMedia: media)
+              .timeout(const Duration(seconds: 30));
         }
-        await _driveApi!.files
-            .create(driveFile, uploadMedia: media)
-            .timeout(const Duration(seconds: 30));
-      }
+      });
     });
   }
 
   Future<List<drive.File>> listSyncFiles({
     String folderName = 'BNPB-Sync',
+  }) =>
+      _listSyncFolder(folderName);
+
+  /// Lists files in the sync folder created after [since] (RFC 3339, UTC).
+  Future<List<drive.File>> listSyncFilesCreatedSince(
+    DateTime since, {
+    String folderName = 'BNPB-Sync',
+  }) =>
+      _listSyncFolder(folderName, createdAfter: since);
+
+  Future<List<drive.File>> _listSyncFolder(
+    String folderName, {
+    DateTime? createdAfter,
   }) async {
-    final folderId = await _getOrCreateFolder(folderName);
-    if (folderId == null) {
-      if (kDebugMode) {
-        print('listSyncFiles: folderId is null, returning empty list');
-      }
-      return [];
-    }
-
-    return await _executeWithRetry(() async {
-      final query = "'$folderId' in parents and trashed = false";
-      final allFiles = <drive.File>[];
-      String? pageToken;
-
-      do {
-        final fileList = await _driveApi!.files
-            .list(
-              q: query,
-              $fields: 'nextPageToken, files(id, name, modifiedTime, size)',
-              pageSize: 1000,
-              pageToken: pageToken,
-            )
-            .timeout(const Duration(seconds: 15));
-
-        allFiles.addAll(fileList.files ?? []);
-        pageToken = fileList.nextPageToken;
-      } while (pageToken != null);
-
-      if (kDebugMode) {
-        debugPrint('listSyncFiles: Found ${allFiles.length} files in Drive');
-        for (final f in allFiles) {
-          debugPrint('  - ${f.name}');
+    return await _withFolder(folderName, (folderId) async {
+      if (folderId == null) {
+        if (kDebugMode) {
+          print('listSyncFiles: folderId is null, returning empty list');
         }
+        return <drive.File>[];
       }
 
-      return allFiles;
+      return await _executeWithRetry(() async {
+        var query = "'$folderId' in parents and trashed = false";
+        if (createdAfter != null) {
+          query +=
+              " and createdTime > '${createdAfter.toUtc().toIso8601String()}'";
+        }
+        final allFiles = <drive.File>[];
+        String? pageToken;
+
+        do {
+          final fileList = await _driveApi!.files
+              .list(
+                q: query,
+                $fields:
+                    'nextPageToken, files(id, name, createdTime, modifiedTime, size)',
+                pageSize: 1000,
+                pageToken: pageToken,
+              )
+              .timeout(const Duration(seconds: 15));
+
+          allFiles.addAll(fileList.files ?? []);
+          pageToken = fileList.nextPageToken;
+        } while (pageToken != null);
+
+        if (kDebugMode) {
+          debugPrint('listSyncFiles: Found ${allFiles.length} files in Drive');
+          for (final f in allFiles) {
+            debugPrint('  - ${f.name}');
+          }
+        }
+
+        return allFiles;
+      });
     });
   }
 

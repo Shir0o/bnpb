@@ -476,6 +476,13 @@ class _MainPageState extends State<MainPage> with WidgetsBindingObserver {
     // Run heavy background initialization after the UI has a chance to mount
     _runBackgroundInitialization();
 
+    // Already resumed at launch, so no change will report it: start live
+    // Drive sync now. Its first tick yields to the launch sync above.
+    final lifecycleState = WidgetsBinding.instance.lifecycleState;
+    if (lifecycleState != null) {
+      unawaited(SyncService().handleLifecycleState(lifecycleState));
+    }
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _maybeShowOnboarding();
     });
@@ -506,6 +513,9 @@ class _MainPageState extends State<MainPage> with WidgetsBindingObserver {
 
   Future<void> _syncOnResume() async {
     try {
+      // With Google Drive sync this starts live sync and syncs right away, so
+      // the cooldown sync below skips; it still covers local folder sync.
+      await SyncService().handleLifecycleState(AppLifecycleState.resumed);
       // Sync on resume - use cooldown to avoid "Google logging in" flashes.
       await SyncService().performSync();
     } catch (e) {
@@ -636,8 +646,12 @@ class _MainPageState extends State<MainPage> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
+      // Forwards the resumed state to SyncService itself.
       unawaited(_syncOnResume());
-    } else if (state == AppLifecycleState.detached) {
+    } else {
+      unawaited(SyncService().handleLifecycleState(state));
+    }
+    if (state == AppLifecycleState.detached) {
       // Release the vector-store DB handle so Android's CloseGuard doesn't
       // log `flutter_gemma_vectors.db was leaked` at process teardown.
       unawaited(AiServices().shutdown());
