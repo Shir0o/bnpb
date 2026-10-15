@@ -1,9 +1,10 @@
 # Releasing BNPB
 
-This document describes the automated release pipeline that ships Android APK + AAB
-artifacts to GitHub Releases and to the Google Play Console **internal testing** track.
-Production promotion remains a manual step in the Play Console UI. The pipeline mirrors
-the pattern in [`Shir0o/bible-read`](https://github.com/Shir0o/bible-read/blob/main/RELEASING.md)
+This document describes the automated release pipeline that ships Android (APK + AAB)
+and macOS (DMG + ZIP) artifacts to GitHub Releases and uploads the Android AAB to
+the Google Play Console **internal testing** track. Production promotion remains a manual
+step in the Play Console UI. The pipeline mirrors the pattern in
+[`Shir0o/bible-read`](https://github.com/Shir0o/bible-read/blob/main/RELEASING.md)
 and [`Shir0o/attd`](https://github.com/Shir0o/attd/blob/main/RELEASING.md).
 
 For the rationale behind each choice (release-please vs. alternatives, internal-track-first,
@@ -16,19 +17,15 @@ Play App Signing, etc.) see [`docs/adr/0002-release-automation.md`](docs/adr/000
    reads **PR titles**, not individual commit messages.
 2. The `.github/workflows/release-please.yml` workflow opens or updates a
    **release PR**. The PR bumps `pubspec.yaml` (bare semver, e.g. `1.2.0`)
-   and appends formatted release notes to `RELEASE.md`. The Android `versionCode`
+   and appends formatted release notes to `RELEASE.md`. The build number / `versionCode`
    is derived from the git tag by the `release.yml` workflow at build time
    (`major*10000 + minor*100 + patch`, e.g. `v1.2.0` → `10200`). This replaces
    the old manually-managed `+buildNumber` in `pubspec.yaml`.
 3. You review the release PR (check the changelog draft in `RELEASE.md` and the
    version bump in `pubspec.yaml`), then squash and merge it.
 4. The merge pushes a tag (e.g. `v1.2.0`). The `.github/workflows/release.yml` workflow fires:
-   - Assembles `android/key.properties` from GitHub secrets.
-   - Derives the `versionCode` from the tag.
-   - Builds a signed AAB and a signed APK with `--build-number=$vc`.
-   - Attaches both to the GitHub Release for the tag.
-   - Extracts release notes from `RELEASE.md` and saves them to `fastlane/metadata/android/en-US/changelogs/<versionCode>.txt`.
-   - Uploads the AAB to the Play Console internal testing track via `fastlane play_upload` as a **draft** (testers are not auto-notified).
+   - **Android**: Assembles `android/key.properties` from GitHub secrets, derives the `versionCode` from the tag, builds signed AAB + APK with `--build-number=$vc`, attaches both to the GitHub Release, extracts release notes from `RELEASE.md`, and uploads the AAB to the Play Console internal testing track via `fastlane play_upload` as a draft.
+   - **macOS**: Derives `versionCode` from the tag, builds universal macOS app with `--build-number=$vc`, packages `bnpb-macos.dmg` (with an `/Applications` shortcut) and `bnpb-macos.zip`, and attaches both to the GitHub Release.
 5. **You** open the Play Console, verify the AAB on the internal testing track, and click **Promote release → Production** when ready.
 
 That's the whole flow. There is no manual version bump, no manual tag, and no manual upload.
@@ -133,6 +130,10 @@ A tag matching `*-rc*` or `*-beta*` (e.g. `v1.2.0-rc1`) builds APK + AAB and att
 To create a release build locally:
 
 ```bash
+# Android
 flutter build appbundle --release
 flutter build apk --release
+
+# macOS
+flutter build macos --release
 ```
