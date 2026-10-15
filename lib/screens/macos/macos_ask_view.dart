@@ -9,6 +9,7 @@ import '../../models/contact.dart';
 import '../../services/ai/ai_services.dart';
 import '../../services/ai/semantic_search_service.dart';
 import '../../services/contact_service.dart';
+import '../../widgets/macos_modal.dart';
 import 'macos_contact_details_page.dart';
 
 /// Desktop "Ask" section: centered semantic search over interactions and
@@ -133,10 +134,10 @@ class _MacOSAskViewState extends State<MacOSAskView> {
   }
 
   Future<void> _openContact(Contact contact) async {
-    await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => MacOSContactDetailsPage(contact: contact),
-      ),
+    await showMacModal(
+      context,
+      width: 800,
+      builder: (_) => MacOSContactDetailsPage(contact: contact),
     );
     ContactService().invalidateContacts();
     if (mounted) await _loadContactsLookup();
@@ -235,12 +236,29 @@ class _MacOSAskViewState extends State<MacOSAskView> {
                           ),
                         )
                       else if (_controller.text.isNotEmpty)
-                        InkWell(
-                          onTap: _clearQuery,
-                          child: const Icon(
-                            Icons.close,
-                            size: 18,
-                            color: Color(0xFF94A49B),
+                        Semantics(
+                          button: true,
+                          label: 'Clear search query',
+                          child: Tooltip(
+                            message: 'Clear search query',
+                            child: SizedBox(
+                              width: 44,
+                              height: 44,
+                              child: MouseRegion(
+                                cursor: SystemMouseCursors.click,
+                                child: InkWell(
+                                  borderRadius: BorderRadius.circular(22),
+                                  onTap: _clearQuery,
+                                  child: const Center(
+                                    child: Icon(
+                                      Icons.close,
+                                      size: 18,
+                                      color: Color(0xFF94A49B),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
                           ),
                         ),
                     ],
@@ -263,7 +281,7 @@ class _MacOSAskViewState extends State<MacOSAskView> {
           padding: const EdgeInsets.symmetric(vertical: 24),
           child: Text(
             'Type a question and press enter.',
-            style: TextStyle(fontSize: 14, color: colorScheme.outline),
+            style: TextStyle(fontSize: 14, color: colorScheme.secondaryText),
           ),
         );
       }
@@ -281,14 +299,28 @@ class _MacOSAskViewState extends State<MacOSAskView> {
                   color: colorScheme.onSurface,
                 ),
               ),
-              InkWell(
-                onTap: _clearHistory,
-                child: Text(
-                  'Clear',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: colorScheme.primary,
+              Semantics(
+                button: true,
+                label: 'Clear search history',
+                child: MouseRegion(
+                  cursor: SystemMouseCursors.click,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(6),
+                    onTap: _clearHistory,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 6,
+                      ),
+                      child: Text(
+                        'Clear',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: colorScheme.primary,
+                        ),
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -313,7 +345,11 @@ class _MacOSAskViewState extends State<MacOSAskView> {
                   ),
                   child: Row(
                     children: [
-                      Icon(Icons.history, size: 18, color: colorScheme.outline),
+                      Icon(
+                        Icons.history,
+                        size: 18,
+                        color: colorScheme.secondaryText,
+                      ),
                       const SizedBox(width: 14),
                       Expanded(
                         child: Text(
@@ -350,7 +386,7 @@ class _MacOSAskViewState extends State<MacOSAskView> {
         padding: const EdgeInsets.symmetric(vertical: 24),
         child: Text(
           'No matches on this device',
-          style: TextStyle(fontSize: 14, color: colorScheme.outline),
+          style: TextStyle(fontSize: 14, color: colorScheme.secondaryText),
         ),
       );
     }
@@ -363,7 +399,7 @@ class _MacOSAskViewState extends State<MacOSAskView> {
           style: TextStyle(
             fontSize: 13.5,
             fontWeight: FontWeight.w600,
-            color: colorScheme.outline,
+            color: colorScheme.secondaryText,
           ),
         ),
         const SizedBox(height: 12),

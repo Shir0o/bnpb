@@ -390,9 +390,14 @@ class MyApp extends StatelessWidget {
               darkTheme: darkTheme,
               themeMode: themeMode,
               builder: (context, child) {
+                final systemScaler = MediaQuery.textScalerOf(context);
+                final factor = baseFontSize / 14.0;
+                final textScaler = factor == 1.0
+                    ? systemScaler
+                    : ComposedTextScaler(systemScaler, factor);
                 return MediaQuery(
                   data: MediaQuery.of(context).copyWith(
-                    textScaler: TextScaler.linear(baseFontSize / 14.0),
+                    textScaler: textScaler,
                   ),
                   child: child!,
                 );
@@ -406,6 +411,33 @@ class MyApp extends StatelessWidget {
       },
     );
   }
+}
+
+/// Composes an existing [TextScaler] with an additional scaling [factor] to preserve
+/// operating system accessibility text scaling preferences.
+class ComposedTextScaler extends TextScaler {
+  const ComposedTextScaler(this.parent, this.factor);
+
+  final TextScaler parent;
+  final double factor;
+
+  @override
+  double scale(double fontSize) => parent.scale(fontSize) * factor;
+
+  @override
+  @Deprecated('Use scale instead.')
+  double get textScaleFactor => parent.textScaleFactor * factor;
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is ComposedTextScaler &&
+        other.parent == parent &&
+        other.factor == factor;
+  }
+
+  @override
+  int get hashCode => Object.hash(parent, factor);
 }
 
 /// Main page with bottom navigation

@@ -110,8 +110,28 @@ class _MacOSShellState extends State<MacOSShell> {
 
     return CallbackShortcuts(
       bindings: {
+        const SingleActivator(LogicalKeyboardKey.keyS, meta: true):
+            _handleSyncShortcut,
         const SingleActivator(LogicalKeyboardKey.keyR, meta: true):
             _handleSyncShortcut,
+        const SingleActivator(LogicalKeyboardKey.keyK, meta: true): () =>
+            _selectSection(3),
+        const SingleActivator(LogicalKeyboardKey.keyN, meta: true): () =>
+            _selectSection(4),
+        const SingleActivator(LogicalKeyboardKey.comma, meta: true): () =>
+            _selectSection(5),
+        const SingleActivator(LogicalKeyboardKey.digit1, meta: true): () =>
+            _selectSection(0),
+        const SingleActivator(LogicalKeyboardKey.digit2, meta: true): () =>
+            _selectSection(1),
+        const SingleActivator(LogicalKeyboardKey.digit3, meta: true): () =>
+            _selectSection(2),
+        const SingleActivator(LogicalKeyboardKey.digit4, meta: true): () =>
+            _selectSection(3),
+        const SingleActivator(LogicalKeyboardKey.digit5, meta: true): () =>
+            _selectSection(4),
+        const SingleActivator(LogicalKeyboardKey.digit6, meta: true): () =>
+            _selectSection(5),
       },
       child: Scaffold(
         body: Column(
@@ -381,10 +401,10 @@ class _MacOSShellState extends State<MacOSShell> {
         children: [
           Row(
             children: [
-              const Icon(
+              Icon(
                 Icons.auto_awesome,
                 size: 15,
-                color: Color(0xFF5FE0A0),
+                color: colorScheme.primary,
               ),
               const SizedBox(width: 7),
               const Text(
@@ -399,15 +419,15 @@ class _MacOSShellState extends State<MacOSShell> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF3A1F1F),
+                  color: colorScheme.dangerTint,
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Text(
                   '${_followUps.length}',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
-                    color: Color(0xFFFF8C7A),
+                    color: colorScheme.error,
                   ),
                 ),
               ),
@@ -429,10 +449,10 @@ class _MacOSShellState extends State<MacOSShell> {
                         f.contact.displayName,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 12.5,
                           fontWeight: FontWeight.w600,
-                          color: Color(0xFFE8EDE9),
+                          color: colorScheme.onSurface,
                         ),
                       ),
                     ),

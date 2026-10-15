@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../db/db_helper.dart';
+import '../../main.dart' show CrispColorScheme;
 import '../../models/contact.dart';
 import '../../models/interaction.dart';
 import '../../models/relationship.dart';
@@ -43,6 +44,7 @@ class _MacOSContactDetailsPageState extends State<MacOSContactDetailsPage> {
 
   // State
   List<Relationship> _relationships = [];
+  Map<String, String> _relatedContactNames = {};
   List<Interaction> _interactions = [];
   bool _isSaving = false;
 
@@ -77,14 +79,22 @@ class _MacOSContactDetailsPageState extends State<MacOSContactDetailsPage> {
     if (widget.contact == null) return;
     try {
       final dbHelper = DBHelper();
-      // Reload relationships to ensure fresh data if needed, though widget.contact passes them.
-      // But if we want to be sure about relationships from DB:
       final relationships = await dbHelper.getRelationshipsForContact(
         widget.contact!.id,
       );
+      final relatedNames = <String, String>{};
+      for (final rel in relationships) {
+        final isOutgoing = rel.sourceContactId == widget.contact!.id;
+        final otherId = isOutgoing ? rel.targetContactId : rel.sourceContactId;
+        if (!relatedNames.containsKey(otherId)) {
+          final c = await dbHelper.getContactById(otherId);
+          relatedNames[otherId] = c?.displayName ?? 'Unknown Contact';
+        }
+      }
       if (mounted) {
         setState(() {
           _relationships = relationships;
+          _relatedContactNames = relatedNames;
         });
       }
     } catch (e) {
@@ -177,18 +187,18 @@ class _MacOSContactDetailsPageState extends State<MacOSContactDetailsPage> {
         return AlertDialog(
           title: Text(
             'Delete Contact',
-            style: GoogleFonts.googleSans(fontWeight: FontWeight.bold),
+            style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.bold),
           ),
           content: Text(
             'Are you sure you want to delete this contact? This action cannot be undone.',
-            style: GoogleFonts.googleSans(fontSize: 14),
+            style: GoogleFonts.plusJakartaSans(fontSize: 14),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context, false),
               child: Text(
                 'Cancel',
-                style: GoogleFonts.googleSans(
+                style: GoogleFonts.plusJakartaSans(
                   color: colorScheme.onSurfaceVariant,
                 ),
               ),
@@ -197,7 +207,7 @@ class _MacOSContactDetailsPageState extends State<MacOSContactDetailsPage> {
               onPressed: () => Navigator.pop(context, true),
               child: Text(
                 'Delete',
-                style: GoogleFonts.googleSans(
+                style: GoogleFonts.plusJakartaSans(
                   color: colorScheme.error,
                   fontWeight: FontWeight.bold,
                 ),
@@ -352,25 +362,35 @@ class _MacOSContactDetailsPageState extends State<MacOSContactDetailsPage> {
           // Back Button / Title
           Row(
             children: [
-              TextButton.icon(
-                onPressed: () => Navigator.pop(context),
-                icon: Icon(
-                  Icons.arrow_back_ios_new,
-                  size: 16,
-                  color: colorScheme.primary,
-                ),
-                label: Text(
-                  'Contacts',
-                  style: GoogleFonts.googleSans(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w500,
-                    color: colorScheme.primary,
+              Semantics(
+                button: true,
+                label: 'Back to contacts',
+                child: MouseRegion(
+                  cursor: SystemMouseCursors.click,
+                  child: TextButton.icon(
+                    onPressed: () => Navigator.pop(context),
+                    icon: Icon(
+                      Icons.arrow_back_ios_new,
+                      size: 16,
+                      color: colorScheme.primary,
+                    ),
+                    label: Text(
+                      'Contacts',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w500,
+                        color: colorScheme.primary,
+                      ),
+                    ),
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 8,
+                      ),
+                      minimumSize: const Size(44, 44),
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
                   ),
-                ),
-                style: TextButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  minimumSize: Size.zero,
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
               ),
             ],
@@ -404,44 +424,55 @@ class _MacOSContactDetailsPageState extends State<MacOSContactDetailsPage> {
     bool isLoading = false,
   }) {
     final colorScheme = Theme.of(context).colorScheme;
-    return SizedBox(
-      height: 28,
-      child: ElevatedButton(
-        onPressed: onPressed,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: isPrimary
-              ? colorScheme.primary
-              : colorScheme.surfaceContainerLowest,
-          foregroundColor:
-              isPrimary ? colorScheme.onPrimary : colorScheme.onSurface,
-          disabledBackgroundColor:
-              isPrimary ? colorScheme.primary.withValues(alpha: 0.5) : null,
-          elevation: 0,
-          shadowColor: Colors.transparent,
-          side:
-              isPrimary ? null : BorderSide(color: colorScheme.outlineVariant),
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(4), // slightly rounded
+    return Semantics(
+      button: true,
+      label: label,
+      child: MouseRegion(
+        cursor: onPressed != null
+            ? SystemMouseCursors.click
+            : SystemMouseCursors.basic,
+        child: SizedBox(
+          height: 28,
+          child: ElevatedButton(
+            onPressed: onPressed,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: isPrimary
+                  ? colorScheme.primary
+                  : colorScheme.surfaceContainerLowest,
+              foregroundColor:
+                  isPrimary ? colorScheme.onPrimary : colorScheme.onSurface,
+              disabledBackgroundColor:
+                  isPrimary ? colorScheme.primary.withValues(alpha: 0.5) : null,
+              elevation: 0,
+              shadowColor: Colors.transparent,
+              side: isPrimary
+                  ? null
+                  : BorderSide(color: colorScheme.outlineVariant),
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(4), // slightly rounded
+              ),
+            ),
+            child: isLoading
+                ? SizedBox(
+                    width: 14,
+                    height: 14,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: isPrimary
+                          ? colorScheme.onPrimary
+                          : colorScheme.primary,
+                    ),
+                  )
+                : Text(
+                    label,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
           ),
         ),
-        child: isLoading
-            ? SizedBox(
-                width: 14,
-                height: 14,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color:
-                      isPrimary ? colorScheme.onPrimary : colorScheme.primary,
-                ),
-              )
-            : Text(
-                label,
-                style: GoogleFonts.googleSans(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
       ),
     );
   }
@@ -455,13 +486,6 @@ class _MacOSContactDetailsPageState extends State<MacOSContactDetailsPage> {
         color: colorScheme.surfaceContainerHigh,
         shape: BoxShape.circle,
         border: Border.all(color: colorScheme.outlineVariant),
-        boxShadow: [
-          BoxShadow(
-            color: colorScheme.shadow.withValues(alpha: 0.1),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
       ),
       child: Icon(Icons.person, size: 64, color: colorScheme.onSurfaceVariant),
     );
@@ -519,7 +543,7 @@ class _MacOSContactDetailsPageState extends State<MacOSContactDetailsPage> {
                 child: Text(
                   'Relationships',
                   textAlign: TextAlign.right,
-                  style: GoogleFonts.googleSans(
+                  style: GoogleFonts.plusJakartaSans(
                     fontSize: 12,
                     fontWeight: FontWeight.w500,
                     color: colorScheme.onSurfaceVariant,
@@ -536,33 +560,42 @@ class _MacOSContactDetailsPageState extends State<MacOSContactDetailsPage> {
                       padding: const EdgeInsets.symmetric(vertical: 8.0),
                       child: Text(
                         'No relationships added',
-                        style: GoogleFonts.googleSans(
+                        style: GoogleFonts.plusJakartaSans(
                           fontSize: 13,
-                          color: colorScheme.outline,
+                          color: colorScheme.secondaryText,
                         ),
                       ),
                     ),
                   ..._relationships.map((rel) => _buildRelationshipItem(rel)),
                   const SizedBox(height: 4),
-                  TextButton.icon(
-                    onPressed: _addRelationship,
-                    icon: Icon(
-                      Icons.add_circle,
-                      size: 16,
-                      color: colorScheme.primary,
-                    ),
-                    label: Text(
-                      'add relationship',
-                      style: GoogleFonts.googleSans(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                        color: colorScheme.primary,
+                  Semantics(
+                    button: true,
+                    label: 'Add relationship',
+                    child: MouseRegion(
+                      cursor: SystemMouseCursors.click,
+                      child: TextButton.icon(
+                        onPressed: _addRelationship,
+                        icon: Icon(
+                          Icons.add_circle,
+                          size: 16,
+                          color: colorScheme.primary,
+                        ),
+                        label: Text(
+                          'add relationship',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                            color: colorScheme.primary,
+                          ),
+                        ),
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 10,
+                          ),
+                          minimumSize: const Size(44, 44),
+                        ),
                       ),
-                    ),
-                    style: TextButton.styleFrom(
-                      padding: EdgeInsets.zero,
-                      minimumSize: Size.zero,
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     ),
                   ),
                 ],
@@ -578,79 +611,67 @@ class _MacOSContactDetailsPageState extends State<MacOSContactDetailsPage> {
     final colorScheme = Theme.of(context).colorScheme;
     final isOutgoing = rel.sourceContactId == widget.contact?.id;
     final otherId = isOutgoing ? rel.targetContactId : rel.sourceContactId;
-    // We need to resolve name. For now, showing ID or we need to fetch name.
-    // Ideally we have a cache or fetch them.
-    // For simplicity, let's fetch name asynchronously or assume we can display something.
-    // We'll use FutureBuilder for name resolution if needed, or better, pass a map.
-    // But refetching every time is bad.
-    // Let's just show "Contact ..." placeholder or handle it better later.
-    // Wait, DB helper can give us the name if we fetch it.
-    // For now, I'll use a FutureBuilder wrapper for the name.
+    final otherName = _relatedContactNames[otherId] ?? 'Unknown Contact';
 
-    return FutureBuilder<Contact?>(
-      future: DBHelper().getContactById(otherId),
-      builder: (context, snapshot) {
-        final otherName = snapshot.data?.displayName ?? 'Unknown Contact';
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 8.0),
-          child: Row(
-            children: [
-              Expanded(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: colorScheme.surfaceContainerLowest,
-                    border: Border.all(color: colorScheme.outlineVariant),
-                    borderRadius: BorderRadius.circular(6),
-                    boxShadow: [
-                      BoxShadow(
-                        color: colorScheme.shadow.withValues(alpha: 0.05),
-                        blurRadius: 2,
-                        offset: const Offset(0, 1),
-                      ),
-                    ],
-                  ),
-                  child: RichText(
-                    text: TextSpan(
-                      style: GoogleFonts.googleSans(fontSize: 13),
-                      children: [
-                        TextSpan(
-                          text: '${rel.type}: ',
-                          style: TextStyle(color: colorScheme.onSurfaceVariant),
-                        ),
-                        TextSpan(
-                          text: otherName,
-                          style: TextStyle(
-                            color: colorScheme.primary,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8.0),
+      child: Row(
+        children: [
+          Expanded(
+            child: Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 8,
+                vertical: 6,
+              ),
+              decoration: BoxDecoration(
+                color: colorScheme.surfaceContainerLowest,
+                border: Border.all(color: colorScheme.outlineVariant),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: RichText(
+                text: TextSpan(
+                  style: GoogleFonts.plusJakartaSans(fontSize: 13),
+                  children: [
+                    TextSpan(
+                      text: '${rel.type}: ',
+                      style: TextStyle(color: colorScheme.onSurfaceVariant),
                     ),
-                  ),
+                    TextSpan(
+                      text: otherName,
+                      style: TextStyle(
+                        color: colorScheme.primary,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(width: 8),
-              IconButton(
+            ),
+          ),
+          const SizedBox(width: 8),
+          Semantics(
+            button: true,
+            label: 'Remove relationship with $otherName',
+            child: SizedBox(
+              width: 44,
+              height: 44,
+              child: IconButton(
                 icon: Icon(
                   Icons.remove_circle,
                   size: 18,
                   color: colorScheme.outline,
                 ),
+                mouseCursor: SystemMouseCursors.click,
                 hoverColor: Colors.transparent,
                 highlightColor: Colors.transparent,
                 padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
                 onPressed: () => _deleteRelationship(rel),
-                tooltip: 'Remove',
+                tooltip: 'Remove relationship',
               ),
-            ],
+            ),
           ),
-        );
-      },
+        ],
+      ),
     );
   }
 
@@ -666,7 +687,7 @@ class _MacOSContactDetailsPageState extends State<MacOSContactDetailsPage> {
             child: Text(
               'Notes',
               textAlign: TextAlign.right,
-              style: GoogleFonts.googleSans(
+              style: GoogleFonts.plusJakartaSans(
                 fontSize: 12,
                 fontWeight: FontWeight.w500,
                 color: colorScheme.onSurfaceVariant,
@@ -675,36 +696,40 @@ class _MacOSContactDetailsPageState extends State<MacOSContactDetailsPage> {
           ),
         ),
         Expanded(
-          child: TextField(
-            controller: _notesController,
-            maxLines: 6,
-            style: GoogleFonts.googleSans(
-              fontSize: 13,
-              color: colorScheme.onSurface,
-            ),
-            decoration: InputDecoration(
-              hintText: 'Add notes about this contact...',
-              hintStyle: GoogleFonts.googleSans(
+          child: Semantics(
+            label: 'Notes',
+            child: TextField(
+              controller: _notesController,
+              maxLines: 6,
+              style: GoogleFonts.plusJakartaSans(
                 fontSize: 13,
-                color: colorScheme.outline,
+                color: colorScheme.onSurface,
               ),
-              filled: true,
-              fillColor: colorScheme.tertiaryContainer.withValues(alpha: 0.28),
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 12,
-                vertical: 8,
-              ),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(6),
-                borderSide: BorderSide(color: colorScheme.outlineVariant),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(6),
-                borderSide: BorderSide(color: colorScheme.outlineVariant),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(6),
-                borderSide: BorderSide(color: colorScheme.primary, width: 2),
+              decoration: InputDecoration(
+                hintText: 'Add notes about this contact...',
+                hintStyle: GoogleFonts.plusJakartaSans(
+                  fontSize: 13,
+                  color: colorScheme.outline,
+                ),
+                filled: true,
+                fillColor:
+                    colorScheme.tertiaryContainer.withValues(alpha: 0.28),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(6),
+                  borderSide: BorderSide(color: colorScheme.outlineVariant),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(6),
+                  borderSide: BorderSide(color: colorScheme.outlineVariant),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(6),
+                  borderSide: BorderSide(color: colorScheme.primary, width: 2),
+                ),
               ),
             ),
           ),
@@ -725,7 +750,7 @@ class _MacOSContactDetailsPageState extends State<MacOSContactDetailsPage> {
             child: Text(
               'Interactions',
               textAlign: TextAlign.right,
-              style: GoogleFonts.googleSans(
+              style: GoogleFonts.plusJakartaSans(
                 fontSize: 12,
                 fontWeight: FontWeight.w500,
                 color: colorScheme.onSurfaceVariant,
@@ -739,12 +764,6 @@ class _MacOSContactDetailsPageState extends State<MacOSContactDetailsPage> {
               color: colorScheme.surfaceContainerLowest,
               border: Border.all(color: colorScheme.outlineVariant),
               borderRadius: BorderRadius.circular(6),
-              boxShadow: [
-                BoxShadow(
-                  color: colorScheme.shadow.withValues(alpha: 0.05),
-                  blurRadius: 2,
-                ),
-              ],
             ),
             child: Column(
               children: [
@@ -782,9 +801,9 @@ class _MacOSContactDetailsPageState extends State<MacOSContactDetailsPage> {
                     padding: const EdgeInsets.all(16.0),
                     child: Text(
                       'No interactions yet',
-                      style: GoogleFonts.googleSans(
+                      style: GoogleFonts.plusJakartaSans(
                         fontSize: 12,
-                        color: colorScheme.outline,
+                        color: colorScheme.secondaryText,
                       ),
                     ),
                   )
@@ -806,7 +825,7 @@ class _MacOSContactDetailsPageState extends State<MacOSContactDetailsPage> {
                             flex: 2,
                             child: Text(
                               _dateFormat.format(interaction.occurredAt),
-                              style: GoogleFonts.googleSans(
+                              style: GoogleFonts.plusJakartaSans(
                                 fontSize: 12,
                                 color: colorScheme.onSurface,
                               ),
@@ -824,7 +843,7 @@ class _MacOSContactDetailsPageState extends State<MacOSContactDetailsPage> {
                                 const SizedBox(width: 4),
                                 Text(
                                   _capitalize(interaction.medium),
-                                  style: GoogleFonts.googleSans(
+                                  style: GoogleFonts.plusJakartaSans(
                                     fontSize: 12,
                                     color: colorScheme.onSurfaceVariant,
                                   ),
@@ -839,7 +858,7 @@ class _MacOSContactDetailsPageState extends State<MacOSContactDetailsPage> {
                                   ? '${interaction.durationMinutes}m'
                                   : '-',
                               textAlign: TextAlign.right,
-                              style: GoogleFonts.googleSans(
+                              style: GoogleFonts.plusJakartaSans(
                                 fontSize: 12,
                                 color: colorScheme.onSurfaceVariant,
                               ),
@@ -865,7 +884,7 @@ class _MacOSContactDetailsPageState extends State<MacOSContactDetailsPage> {
                     alignment: Alignment.centerLeft,
                     child: Text(
                       'View all history',
-                      style: GoogleFonts.googleSans(
+                      style: GoogleFonts.plusJakartaSans(
                         fontSize: 12,
                         fontWeight: FontWeight.w500,
                         color: colorScheme.primary,
@@ -882,7 +901,7 @@ class _MacOSContactDetailsPageState extends State<MacOSContactDetailsPage> {
 
   TextStyle _tableHeaderStyle() {
     final colorScheme = Theme.of(context).colorScheme;
-    return GoogleFonts.googleSans(
+    return GoogleFonts.plusJakartaSans(
       fontSize: 11,
       fontWeight: FontWeight.w500,
       color: colorScheme.onSurfaceVariant,
@@ -911,7 +930,7 @@ class _MacOSContactDetailsPageState extends State<MacOSContactDetailsPage> {
             child: Text(
               label,
               textAlign: TextAlign.right,
-              style: GoogleFonts.googleSans(
+              style: GoogleFonts.plusJakartaSans(
                 fontSize: 12,
                 fontWeight: FontWeight.w500,
                 color: colorScheme.onSurfaceVariant,
@@ -920,61 +939,64 @@ class _MacOSContactDetailsPageState extends State<MacOSContactDetailsPage> {
           ),
         ),
         Expanded(
-          child: Stack(
-            alignment: Alignment.centerRight,
-            children: [
-              TextFormField(
-                controller: controller,
-                keyboardType: inputType,
-                style: GoogleFonts.googleSans(
-                  fontSize: 13,
-                  color: colorScheme.onSurface,
-                ),
-                decoration: InputDecoration(
-                  hintText: placeholder,
-                  hintStyle: GoogleFonts.googleSans(
+          child: Semantics(
+            label: label,
+            child: Stack(
+              alignment: Alignment.centerRight,
+              children: [
+                TextFormField(
+                  controller: controller,
+                  keyboardType: inputType,
+                  style: GoogleFonts.plusJakartaSans(
                     fontSize: 13,
-                    color: colorScheme.outline,
+                    color: colorScheme.onSurface,
                   ),
-                  contentPadding: EdgeInsets.fromLTRB(
-                    8,
-                    8,
-                    icon != null ? 32 : 8,
-                    8,
-                  ),
-                  isDense: true,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(6),
-                    borderSide: BorderSide(color: colorScheme.outlineVariant),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(6),
-                    borderSide: BorderSide(color: colorScheme.outlineVariant),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(6),
-                    borderSide: BorderSide(
-                      color: colorScheme.primary,
-                      width: 2,
+                  decoration: InputDecoration(
+                    hintText: placeholder,
+                    hintStyle: GoogleFonts.plusJakartaSans(
+                      fontSize: 13,
+                      color: colorScheme.outline,
                     ),
+                    contentPadding: EdgeInsets.fromLTRB(
+                      8,
+                      8,
+                      icon != null ? 32 : 8,
+                      8,
+                    ),
+                    isDense: true,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(6),
+                      borderSide: BorderSide(color: colorScheme.outlineVariant),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(6),
+                      borderSide: BorderSide(color: colorScheme.outlineVariant),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(6),
+                      borderSide: BorderSide(
+                        color: colorScheme.primary,
+                        width: 2,
+                      ),
+                    ),
+                    filled: true,
+                    fillColor: colorScheme.surfaceContainerLowest,
                   ),
-                  filled: true,
-                  fillColor: colorScheme.surfaceContainerLowest,
+                  validator: (value) {
+                    if (label == 'First' &&
+                        (value == null || value.trim().isEmpty)) {
+                      return 'Required';
+                    }
+                    return null;
+                  },
                 ),
-                validator: (value) {
-                  if (label == 'First' &&
-                      (value == null || value.trim().isEmpty)) {
-                    return 'Required';
-                  }
-                  return null;
-                },
-              ),
-              if (icon != null)
-                Padding(
-                  padding: const EdgeInsets.only(right: 8.0),
-                  child: Icon(icon, size: 16, color: colorScheme.outline),
-                ),
-            ],
+                if (icon != null)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8.0),
+                    child: Icon(icon, size: 16, color: colorScheme.outline),
+                  ),
+              ],
+            ),
           ),
         ),
       ],
@@ -984,20 +1006,33 @@ class _MacOSContactDetailsPageState extends State<MacOSContactDetailsPage> {
   Widget _buildDeleteSection() {
     final colorScheme = Theme.of(context).colorScheme;
     return Center(
-      child: TextButton.icon(
-        onPressed: _isSaving ? null : _deleteContact,
-        icon: Icon(Icons.delete_outline, size: 18, color: colorScheme.error),
-        label: Text(
-          'Delete Contact',
-          style: GoogleFonts.googleSans(
-            color: colorScheme.error,
-            fontWeight: FontWeight.w500,
+      child: Semantics(
+        button: true,
+        label: 'Delete Contact',
+        child: MouseRegion(
+          cursor:
+              !_isSaving ? SystemMouseCursors.click : SystemMouseCursors.basic,
+          child: TextButton.icon(
+            onPressed: _isSaving ? null : _deleteContact,
+            icon:
+                Icon(Icons.delete_outline, size: 18, color: colorScheme.error),
+            label: Text(
+              'Delete Contact',
+              style: GoogleFonts.plusJakartaSans(
+                color: colorScheme.error,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              minimumSize: const Size(44, 44),
+              backgroundColor:
+                  colorScheme.errorContainer.withValues(alpha: 0.32),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
           ),
-        ),
-        style: TextButton.styleFrom(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          backgroundColor: colorScheme.errorContainer.withValues(alpha: 0.32),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         ),
       ),
     );

@@ -327,34 +327,38 @@ class _MacOSAddViewState extends State<MacOSAddView> {
 
   Widget _modeTab(ColorScheme colorScheme, _AddMode mode, String label) {
     final selected = _mode == mode;
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(9),
-        onTap: () => setState(() => _mode = mode),
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 10),
-          decoration: BoxDecoration(
-            color: selected ? colorScheme.surface : Colors.transparent,
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: label,
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
             borderRadius: BorderRadius.circular(9),
-            boxShadow: selected
-                ? [
-                    BoxShadow(
-                      color: colorScheme.shadow.withValues(alpha: 0.06),
-                      blurRadius: 4,
-                      offset: const Offset(0, 1),
-                    ),
-                  ]
-                : null,
-          ),
-          alignment: Alignment.center,
-          child: Text(
-            label,
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w700,
-              color:
-                  selected ? colorScheme.onSurface : colorScheme.secondaryText,
+            onTap: () => setState(() => _mode = mode),
+            child: Container(
+              constraints: const BoxConstraints(minHeight: 44),
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              decoration: BoxDecoration(
+                color: selected ? colorScheme.surface : Colors.transparent,
+                borderRadius: BorderRadius.circular(9),
+                border: selected
+                    ? Border.all(color: colorScheme.cardBorder)
+                    : Border.all(color: Colors.transparent),
+              ),
+              alignment: Alignment.center,
+              child: Text(
+                label,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: selected
+                      ? colorScheme.onSurface
+                      : colorScheme.secondaryText,
+                ),
+              ),
             ),
           ),
         ),
@@ -520,7 +524,10 @@ class _MacOSAddViewState extends State<MacOSAddView> {
                   alignment: Alignment.centerLeft,
                   child: Text(
                     'Used as default location for family members',
-                    style: TextStyle(fontSize: 12, color: colorScheme.outline),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: colorScheme.secondaryText,
+                    ),
                   ),
                 ),
               ],
@@ -540,31 +547,42 @@ class _MacOSAddViewState extends State<MacOSAddView> {
             _memberCard(colorScheme, i),
             const SizedBox(height: 12),
           ],
-          Material(
-            color: Colors.transparent,
-            child: InkWell(
-              onTap: _addMember,
-              borderRadius: BorderRadius.circular(8),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 2),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.person_add_alt_1_outlined,
-                      size: 20,
-                      color: colorScheme.primary,
+          Semantics(
+            button: true,
+            label: 'Add member',
+            child: MouseRegion(
+              cursor: SystemMouseCursors.click,
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: _addMember,
+                  borderRadius: BorderRadius.circular(8),
+                  child: Container(
+                    constraints: const BoxConstraints(minHeight: 44),
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 10,
+                      horizontal: 2,
                     ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Add member',
-                      style: TextStyle(
-                        color: colorScheme.primary,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 15,
-                      ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.person_add_alt_1_outlined,
+                          size: 20,
+                          color: colorScheme.primary,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Add member',
+                          style: TextStyle(
+                            color: colorScheme.primary,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 15,
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
               ),
             ),
@@ -603,11 +621,30 @@ class _MacOSAddViewState extends State<MacOSAddView> {
                   hint: 'Last name',
                 ),
               ),
-              IconButton(
-                tooltip: 'Remove',
-                icon: Icon(Icons.close, size: 18, color: colorScheme.outline),
-                onPressed:
-                    _members.length > 1 ? () => _removeMember(index) : null,
+              Semantics(
+                button: true,
+                label:
+                    'Remove member ${m.firstName.text.isNotEmpty ? m.firstName.text : (index + 1).toString()}',
+                child: SizedBox(
+                  width: 44,
+                  height: 44,
+                  child: MouseRegion(
+                    cursor: _members.length > 1
+                        ? SystemMouseCursors.click
+                        : SystemMouseCursors.basic,
+                    child: IconButton(
+                      tooltip: 'Remove',
+                      icon: Icon(
+                        Icons.close,
+                        size: 18,
+                        color: colorScheme.outline,
+                      ),
+                      onPressed: _members.length > 1
+                          ? () => _removeMember(index)
+                          : null,
+                    ),
+                  ),
+                ),
               ),
             ],
           ),
@@ -639,24 +676,36 @@ class _MacOSAddViewState extends State<MacOSAddView> {
 
   Widget _roleChip(ColorScheme colorScheme, _MemberDraft m, String role) {
     final isSelected = m.role == role;
-    return InkWell(
-      onTap: () => setState(() => m.role = role),
-      borderRadius: BorderRadius.circular(20),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-        decoration: BoxDecoration(
-          color: isSelected ? colorScheme.greenTint : Colors.transparent,
+    return Semantics(
+      button: true,
+      selected: isSelected,
+      label: role,
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        child: InkWell(
+          onTap: () => setState(() => m.role = role),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: isSelected ? colorScheme.primary : colorScheme.cardBorder,
-          ),
-        ),
-        child: Text(
-          role,
-          style: TextStyle(
-            color: isSelected ? colorScheme.primary : colorScheme.secondaryText,
-            fontWeight: FontWeight.w600,
-            fontSize: 13,
+          child: Container(
+            constraints: const BoxConstraints(minHeight: 44),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              color: isSelected ? colorScheme.greenTint : Colors.transparent,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color:
+                    isSelected ? colorScheme.primary : colorScheme.cardBorder,
+              ),
+            ),
+            child: Text(
+              role,
+              style: TextStyle(
+                color: isSelected
+                    ? colorScheme.primary
+                    : colorScheme.secondaryText,
+                fontWeight: FontWeight.w600,
+                fontSize: 13,
+              ),
+            ),
           ),
         ),
       ),
@@ -669,7 +718,7 @@ class _MacOSAddViewState extends State<MacOSAddView> {
       style: TextStyle(
         fontSize: 12,
         letterSpacing: 1.0,
-        color: colorScheme.outline,
+        color: colorScheme.secondaryText,
         fontWeight: FontWeight.w700,
       ),
     );
@@ -684,46 +733,63 @@ class _MacOSAddViewState extends State<MacOSAddView> {
     String? Function(String?)? validator,
     bool filled = false,
   }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 13),
-      decoration: BoxDecoration(
-        color: filled ? colorScheme.surface : Colors.transparent,
-        border: Border.all(color: colorScheme.cardBorder),
-        borderRadius: BorderRadius.circular(13),
-      ),
-      child: Row(
-        crossAxisAlignment:
-            maxLines > 1 ? CrossAxisAlignment.start : CrossAxisAlignment.center,
-        children: [
-          if (icon != null) ...[
-            Padding(
-              padding: EdgeInsets.only(top: maxLines > 1 ? 2 : 0),
-              child: Icon(icon, size: 19, color: colorScheme.placeholder),
-            ),
-            const SizedBox(width: 11),
-          ],
-          Expanded(
-            child: TextFormField(
-              controller: controller,
-              maxLines: maxLines,
-              textCapitalization: TextCapitalization.sentences,
-              validator: validator,
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-                color: colorScheme.onSurface,
-              ),
-              decoration: InputDecoration(
-                hintText: hint,
-                hintStyle: TextStyle(color: colorScheme.placeholder),
-                border: InputBorder.none,
-                isDense: true,
-                contentPadding: EdgeInsets.zero,
-                filled: false,
-              ),
-            ),
+    return Semantics(
+      label: hint,
+      child: TextFormField(
+        controller: controller,
+        maxLines: maxLines,
+        textCapitalization: TextCapitalization.sentences,
+        validator: validator,
+        style: TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.w500,
+          color: colorScheme.onSurface,
+        ),
+        decoration: InputDecoration(
+          hintText: hint,
+          hintStyle: TextStyle(color: colorScheme.placeholder),
+          prefixIcon: icon != null
+              ? Padding(
+                  padding: EdgeInsets.only(
+                    left: 14,
+                    right: 10,
+                    top: maxLines > 1 ? 12 : 0,
+                  ),
+                  child: Icon(icon, size: 19, color: colorScheme.placeholder),
+                )
+              : null,
+          prefixIconConstraints: icon != null
+              ? const BoxConstraints(minWidth: 44, minHeight: 24)
+              : null,
+          filled: true,
+          fillColor: filled
+              ? colorScheme.surface
+              : colorScheme.cardBorder.withValues(alpha: 0.3),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 15,
+            vertical: 13,
           ),
-        ],
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(13),
+            borderSide: BorderSide(color: colorScheme.cardBorder),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(13),
+            borderSide: BorderSide(color: colorScheme.cardBorder),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(13),
+            borderSide: BorderSide(color: colorScheme.primary, width: 1.5),
+          ),
+          errorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(13),
+            borderSide: BorderSide(color: colorScheme.error),
+          ),
+          focusedErrorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(13),
+            borderSide: BorderSide(color: colorScheme.error, width: 1.5),
+          ),
+        ),
       ),
     );
   }
@@ -734,34 +800,42 @@ class _MacOSAddViewState extends State<MacOSAddView> {
     required bool isSaving,
     required VoidCallback onTap,
   }) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(11),
-        onTap: isSaving ? null : onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 9),
-          decoration: BoxDecoration(
-            color: colorScheme.primary,
+    return Semantics(
+      button: true,
+      label: label,
+      child: MouseRegion(
+        cursor: isSaving ? SystemMouseCursors.basic : SystemMouseCursors.click,
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
             borderRadius: BorderRadius.circular(11),
+            onTap: isSaving ? null : onTap,
+            child: Container(
+              constraints: const BoxConstraints(minHeight: 44),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              decoration: BoxDecoration(
+                color: colorScheme.primary,
+                borderRadius: BorderRadius.circular(11),
+              ),
+              child: isSaving
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation(Colors.white),
+                      ),
+                    )
+                  : Text(
+                      label,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+            ),
           ),
-          child: isSaving
-              ? const SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    valueColor: AlwaysStoppedAnimation(Colors.white),
-                  ),
-                )
-              : Text(
-                  label,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
         ),
       ),
     );

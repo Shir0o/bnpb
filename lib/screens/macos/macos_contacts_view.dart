@@ -50,6 +50,20 @@ _ContactStats _statsFor(Contact contact) {
   return _ContactStats(contact.interactions.length, minutesThisMonth, firstMet);
 }
 
+sealed class _ContactListItem {}
+
+class _LocationHeaderItem extends _ContactListItem {
+  final String location;
+  final int count;
+  final bool isExpanded;
+  _LocationHeaderItem(this.location, this.count, this.isExpanded);
+}
+
+class _ContactRowItem extends _ContactListItem {
+  final Contact contact;
+  _ContactRowItem(this.contact);
+}
+
 /// The "Contacts" section: a searchable, location-grouped directory (middle
 /// column) with a detail pane (right) that fills in place when a row is
 /// selected — no push navigation. Absorbs the old separate "prayer list"
@@ -192,11 +206,10 @@ class _MacOSContactsViewState extends State<MacOSContactsView> {
   }
 
   Future<void> _openEdit(Contact? contact) async {
-    await Navigator.push(
+    await showMacModal(
       context,
-      MaterialPageRoute(
-        builder: (_) => MacOSContactDetailsPage(contact: contact),
-      ),
+      width: 800,
+      builder: (_) => MacOSContactDetailsPage(contact: contact),
     );
     _load();
   }
@@ -294,95 +307,120 @@ class _MacOSContactsViewState extends State<MacOSContactsView> {
             ),
           ),
           Expanded(
-            child: ListView(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
-              children: grouped.entries
-                  .map((e) => _buildLocationGroup(colorScheme, e.key, e.value))
-                  .toList(),
-            ),
+            child: () {
+              final items = <_ContactListItem>[];
+              for (final entry in grouped.entries) {
+                final isExpanded = _expandedLocations.contains(entry.key);
+                items.add(
+                  _LocationHeaderItem(
+                    entry.key,
+                    entry.value.length,
+                    isExpanded,
+                  ),
+                );
+                if (isExpanded) {
+                  for (final contact in entry.value) {
+                    items.add(_ContactRowItem(contact));
+                  }
+                }
+              }
+              return ListView.builder(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+                itemCount: items.length,
+                itemBuilder: (context, index) {
+                  final item = items[index];
+                  if (item is _LocationHeaderItem) {
+                    return _buildLocationHeader(
+                      colorScheme,
+                      item.location,
+                      item.count,
+                      item.isExpanded,
+                    );
+                  } else if (item is _ContactRowItem) {
+                    return _buildContactRow(colorScheme, item.contact);
+                  }
+                  return const SizedBox.shrink();
+                },
+              );
+            }(),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildLocationGroup(
+  Widget _buildLocationHeader(
     ColorScheme colorScheme,
     String location,
-    List<Contact> contacts,
+    int count,
+    bool expanded,
   ) {
-    final expanded = _expandedLocations.contains(location);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        InkWell(
-          onTap: () => setState(() {
-            if (expanded) {
-              _expandedLocations.remove(location);
-            } else {
-              _expandedLocations.add(location);
-            }
-          }),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(6, 11, 6, 8),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  children: [
-                    Text(
-                      location.toUpperCase(),
+    return Semantics(
+      button: true,
+      label:
+          '$location, $count contacts, ${expanded ? "expanded" : "collapsed"}',
+      child: InkWell(
+        mouseCursor: SystemMouseCursors.click,
+        borderRadius: BorderRadius.circular(8),
+        onTap: () => setState(() {
+          if (expanded) {
+            _expandedLocations.remove(location);
+          } else {
+            _expandedLocations.add(location);
+          }
+        }),
+        child: Container(
+          constraints: const BoxConstraints(minHeight: 44),
+          padding: const EdgeInsets.fromLTRB(6, 11, 6, 8),
+          alignment: Alignment.centerLeft,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Text(
+                    location.toUpperCase(),
+                    style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 13,
+                      letterSpacing: 0.4,
+                      color: colorScheme.secondaryText,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 7,
+                      vertical: 1,
+                    ),
+                    decoration: BoxDecoration(
+                      color: colorScheme.surfaceTint,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      '$count',
                       style: TextStyle(
-                        fontWeight: FontWeight.w800,
-                        fontSize: 13,
-                        letterSpacing: 0.4,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
                         color: colorScheme.secondaryText,
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 7,
-                        vertical: 1,
-                      ),
-                      decoration: BoxDecoration(
-                        color: colorScheme.surfaceTint,
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Text(
-                        '${contacts.length}',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: colorScheme.secondaryText,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                AnimatedRotation(
-                  turns: expanded ? 0.5 : 0,
-                  duration: const Duration(milliseconds: 180),
-                  child: Icon(
-                    Icons.keyboard_arrow_down,
-                    size: 18,
-                    color: colorScheme.secondaryText,
                   ),
+                ],
+              ),
+              AnimatedRotation(
+                turns: expanded ? 0.5 : 0,
+                duration: const Duration(milliseconds: 180),
+                child: Icon(
+                  Icons.keyboard_arrow_down,
+                  size: 18,
+                  color: colorScheme.secondaryText,
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
-        if (expanded)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 6),
-            child: Column(
-              children: contacts
-                  .map((c) => _buildContactRow(colorScheme, c))
-                  .toList(),
-            ),
-          ),
-      ],
+      ),
     );
   }
 
@@ -396,9 +434,11 @@ class _MacOSContactsViewState extends State<MacOSContactsView> {
     return Material(
       color: Colors.transparent,
       child: InkWell(
+        mouseCursor: SystemMouseCursors.click,
         borderRadius: BorderRadius.circular(12),
         onTap: () => setState(() => _selectedContact = contact),
         child: Container(
+          constraints: const BoxConstraints(minHeight: 44),
           margin: const EdgeInsets.only(bottom: 2),
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
@@ -478,7 +518,8 @@ class _MacOSContactsViewState extends State<MacOSContactsView> {
             const SizedBox(height: 4),
             Text(
               "Choose someone to see their timeline and prayer history.",
-              style: TextStyle(fontSize: 13.5, color: colorScheme.outline),
+              style:
+                  TextStyle(fontSize: 13.5, color: colorScheme.secondaryText),
             ),
           ],
         ),
@@ -520,7 +561,7 @@ class _MacOSContactsViewState extends State<MacOSContactsView> {
                             contact.location!,
                             style: TextStyle(
                               fontSize: 14.5,
-                              color: colorScheme.outline,
+                              color: colorScheme.secondaryText,
                             ),
                           ),
                         ),
@@ -581,6 +622,9 @@ class _MacOSContactsViewState extends State<MacOSContactsView> {
                     colorScheme,
                     icon: onList ? Icons.favorite : Icons.favorite_border,
                     active: onList,
+                    tooltip: onList
+                        ? 'Remove from prayer list'
+                        : 'Add to prayer list',
                     onTap: () => _togglePrayerList(contact),
                   ),
                   const SizedBox(width: 8),
@@ -588,6 +632,7 @@ class _MacOSContactsViewState extends State<MacOSContactsView> {
                     colorScheme,
                     icon: Icons.edit_outlined,
                     active: false,
+                    tooltip: 'Edit contact',
                     onTap: () => _openEdit(contact),
                   ),
                 ],
@@ -644,9 +689,11 @@ class _MacOSContactsViewState extends State<MacOSContactsView> {
     return Material(
       color: Colors.transparent,
       child: InkWell(
+        mouseCursor: SystemMouseCursors.click,
         borderRadius: BorderRadius.circular(11),
         onTap: onTap,
         child: Container(
+          constraints: const BoxConstraints(minHeight: 44),
           padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
           decoration: BoxDecoration(
             color: filled ? colorScheme.primary : colorScheme.surfaceTint,
@@ -680,25 +727,35 @@ class _MacOSContactsViewState extends State<MacOSContactsView> {
     ColorScheme colorScheme, {
     required IconData icon,
     required bool active,
+    required String tooltip,
     required VoidCallback onTap,
   }) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(11),
-        onTap: onTap,
-        child: Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-            color: active ? colorScheme.dangerTint : colorScheme.surfaceTint,
+    return Semantics(
+      button: true,
+      label: tooltip,
+      child: Tooltip(
+        message: tooltip,
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            mouseCursor: SystemMouseCursors.click,
             borderRadius: BorderRadius.circular(11),
-          ),
-          alignment: Alignment.center,
-          child: Icon(
-            icon,
-            size: 18,
-            color: active ? colorScheme.error : colorScheme.iconColor,
+            onTap: onTap,
+            child: Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color:
+                    active ? colorScheme.dangerTint : colorScheme.surfaceTint,
+                borderRadius: BorderRadius.circular(11),
+              ),
+              alignment: Alignment.center,
+              child: Icon(
+                icon,
+                size: 18,
+                color: active ? colorScheme.error : colorScheme.iconColor,
+              ),
+            ),
           ),
         ),
       ),
@@ -748,7 +805,7 @@ class _MacOSContactsViewState extends State<MacOSContactsView> {
             style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w600,
-              color: colorScheme.outline,
+              color: colorScheme.secondaryText,
             ),
           ),
         ],
@@ -788,18 +845,21 @@ class _MacOSContactsViewState extends State<MacOSContactsView> {
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
-                      color: colorScheme.outline,
+                      color: colorScheme.secondaryText,
                     ),
                   ),
                 ],
               ),
               const SizedBox(height: 4),
-              Text(
-                interaction.summary,
-                style: TextStyle(
-                  fontSize: 13.5,
-                  color: colorScheme.secondaryText,
-                  height: 1.5,
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 580),
+                child: Text(
+                  interaction.summary,
+                  style: TextStyle(
+                    fontSize: 13.5,
+                    color: colorScheme.secondaryText,
+                    height: 1.5,
+                  ),
                 ),
               ),
               if (interaction.durationMinutes != null)
@@ -811,7 +871,7 @@ class _MacOSContactsViewState extends State<MacOSContactsView> {
                       Icon(
                         Icons.schedule,
                         size: 12,
-                        color: colorScheme.outline,
+                        color: colorScheme.secondaryText,
                       ),
                       const SizedBox(width: 5),
                       Text(
@@ -819,7 +879,7 @@ class _MacOSContactsViewState extends State<MacOSContactsView> {
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
-                          color: colorScheme.outline,
+                          color: colorScheme.secondaryText,
                         ),
                       ),
                     ],
@@ -848,16 +908,18 @@ class _MacOSContactsViewState extends State<MacOSContactsView> {
             style: TextStyle(
               fontSize: 14.5,
               fontWeight: FontWeight.w600,
-              color: colorScheme.outline,
+              color: colorScheme.secondaryText,
             ),
           ),
           const SizedBox(height: 12),
           Material(
             color: Colors.transparent,
             child: InkWell(
+              mouseCursor: SystemMouseCursors.click,
               borderRadius: BorderRadius.circular(11),
               onTap: () => _openLogInteraction(contact),
               child: Container(
+                constraints: const BoxConstraints(minHeight: 44),
                 padding: const EdgeInsets.symmetric(
                   horizontal: 18,
                   vertical: 9,
@@ -866,6 +928,7 @@ class _MacOSContactsViewState extends State<MacOSContactsView> {
                   color: colorScheme.primary,
                   borderRadius: BorderRadius.circular(11),
                 ),
+                alignment: Alignment.center,
                 child: Text(
                   'Log first interaction',
                   style: TextStyle(

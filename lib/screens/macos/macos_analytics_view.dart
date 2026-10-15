@@ -200,27 +200,27 @@ class _MacOSAnalyticsViewState extends State<MacOSAnalyticsView> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        GridView.count(
+        GridView(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          crossAxisCount: 2,
-          mainAxisSpacing: 16,
-          crossAxisSpacing: 16,
-          childAspectRatio: 1.7,
+          gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+            maxCrossAxisExtent: 420,
+            mainAxisSpacing: 16,
+            crossAxisSpacing: 16,
+            childAspectRatio: 1.7,
+          ),
           children: [
             _headlineCard(
               colorScheme,
               icon: Icons.forum_outlined,
               value: '${summary.totalInteractions}',
               label: 'Interactions logged',
-              dark: true,
             ),
             _headlineCard(
               colorScheme,
               icon: Icons.timer_outlined,
               value: '${summary.totalMinutes}',
               label: 'Minutes invested',
-              dark: false,
             ),
             _topContactsCard(colorScheme, summary),
             _timelineCard(colorScheme, summary),
@@ -237,13 +237,15 @@ class _MacOSAnalyticsViewState extends State<MacOSAnalyticsView> {
             ),
           ),
           const SizedBox(height: 12),
-          GridView.count(
+          GridView(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            crossAxisCount: 2,
-            mainAxisSpacing: 10,
-            crossAxisSpacing: 10,
-            childAspectRatio: 3.6,
+            gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+              maxCrossAxisExtent: 420,
+              mainAxisSpacing: 10,
+              crossAxisSpacing: 10,
+              childAspectRatio: 3.6,
+            ),
             children: visibleInsights
                 .map((i) => _insightCard(colorScheme, i))
                 .toList(),
@@ -258,12 +260,12 @@ class _MacOSAnalyticsViewState extends State<MacOSAnalyticsView> {
     required IconData icon,
     required String value,
     required String label,
-    required bool dark,
   }) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: dark ? colorScheme.aiCardBg : colorScheme.primary,
+        color: colorScheme.surface,
+        border: Border.all(color: colorScheme.cardBorder),
         borderRadius: BorderRadius.circular(18),
       ),
       child: Column(
@@ -272,15 +274,15 @@ class _MacOSAnalyticsViewState extends State<MacOSAnalyticsView> {
           Icon(
             icon,
             size: 24,
-            color: dark ? const Color(0xFF5FE0A0) : Colors.white,
+            color: colorScheme.primary,
           ),
           const Spacer(),
           Text(
             value,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 34,
               fontWeight: FontWeight.w800,
-              color: Colors.white,
+              color: colorScheme.onSurface,
               height: 1,
             ),
           ),
@@ -290,7 +292,7 @@ class _MacOSAnalyticsViewState extends State<MacOSAnalyticsView> {
             style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w600,
-              color: dark ? const Color(0xFF94A49B) : const Color(0xFFBFE6D1),
+              color: colorScheme.secondaryText,
             ),
           ),
         ],
@@ -316,8 +318,12 @@ class _MacOSAnalyticsViewState extends State<MacOSAnalyticsView> {
       const Color(0xFF2AA06E),
       const Color(0xFF7FC7A6),
       const Color(0xFFA9DCC4),
-      const Color(0xFFCDEADD),
+      const Color(0xFF4C8B6E),
     ];
+    final topContactsSummary = entries
+        .map((e) =>
+            '${e.contactName}: ${e.totalMinutes > 0 ? '${e.totalMinutes} minutes' : '${e.interactionCount} logs'}')
+        .join(', ');
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -339,38 +345,42 @@ class _MacOSAnalyticsViewState extends State<MacOSAnalyticsView> {
           const SizedBox(height: 12),
           Expanded(
             child: RepaintBoundary(
-              child: BarChart(
-                BarChartData(
-                  maxY: maxY == 0 ? 1 : maxY * 1.1,
-                  gridData: const FlGridData(show: false),
-                  borderData: FlBorderData(show: false),
-                  barGroups: entries.asMap().entries.map((e) {
-                    return BarChartGroupData(
-                      x: e.key,
-                      barRods: [
-                        BarChartRodData(
-                          toY: values[e.key],
-                          width: 14,
-                          borderRadius: const BorderRadius.vertical(
-                            top: Radius.circular(6),
+              child: Semantics(
+                container: true,
+                label: 'Top contacts chart: $topContactsSummary',
+                child: BarChart(
+                  BarChartData(
+                    maxY: maxY == 0 ? 1 : maxY * 1.1,
+                    gridData: const FlGridData(show: false),
+                    borderData: FlBorderData(show: false),
+                    barGroups: entries.asMap().entries.map((e) {
+                      return BarChartGroupData(
+                        x: e.key,
+                        barRods: [
+                          BarChartRodData(
+                            toY: values[e.key],
+                            width: 14,
+                            borderRadius: const BorderRadius.vertical(
+                              top: Radius.circular(6),
+                            ),
+                            color: barColors[e.key % barColors.length],
                           ),
-                          color: barColors[e.key % barColors.length],
-                        ),
-                      ],
-                    );
-                  }).toList(),
-                  titlesData: const FlTitlesData(
-                    leftTitles: AxisTitles(
-                      sideTitles: SideTitles(showTitles: false),
-                    ),
-                    rightTitles: AxisTitles(
-                      sideTitles: SideTitles(showTitles: false),
-                    ),
-                    topTitles: AxisTitles(
-                      sideTitles: SideTitles(showTitles: false),
-                    ),
-                    bottomTitles: AxisTitles(
-                      sideTitles: SideTitles(showTitles: false),
+                        ],
+                      );
+                    }).toList(),
+                    titlesData: const FlTitlesData(
+                      leftTitles: AxisTitles(
+                        sideTitles: SideTitles(showTitles: false),
+                      ),
+                      rightTitles: AxisTitles(
+                        sideTitles: SideTitles(showTitles: false),
+                      ),
+                      topTitles: AxisTitles(
+                        sideTitles: SideTitles(showTitles: false),
+                      ),
+                      bottomTitles: AxisTitles(
+                        sideTitles: SideTitles(showTitles: false),
+                      ),
                     ),
                   ),
                 ),
@@ -409,7 +419,10 @@ class _MacOSAnalyticsViewState extends State<MacOSAnalyticsView> {
                     c.totalMinutes > 0
                         ? '${c.totalMinutes} min'
                         : '${c.interactionCount} logs',
-                    style: TextStyle(fontSize: 12, color: colorScheme.outline),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: colorScheme.secondaryText,
+                    ),
                   ),
                 ],
               ),
@@ -433,6 +446,8 @@ class _MacOSAnalyticsViewState extends State<MacOSAnalyticsView> {
         .map((e) => _resolveValue(e.totalMinutes, e.interactionCount))
         .toList();
     final maxY = values.reduce(math.max);
+    final timelineSummary =
+        'Activity trend from ${_timelineLabelFormatter.format(timeline.first.date)} to ${_timelineLabelFormatter.format(timeline.last.date)} across ${timeline.length} periods';
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -454,46 +469,50 @@ class _MacOSAnalyticsViewState extends State<MacOSAnalyticsView> {
           const SizedBox(height: 12),
           Expanded(
             child: RepaintBoundary(
-              child: LineChart(
-                LineChartData(
-                  minY: 0,
-                  maxY: maxY == 0 ? 1 : maxY * 1.1,
-                  gridData: const FlGridData(show: false),
-                  borderData: FlBorderData(show: false),
-                  lineBarsData: [
-                    LineChartBarData(
-                      isCurved: true,
-                      color: colorScheme.primary,
-                      barWidth: 2.5,
-                      dotData: const FlDotData(show: false),
-                      belowBarData: BarAreaData(
-                        show: true,
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            colorScheme.primary.withValues(alpha: 0.18),
-                            colorScheme.primary.withValues(alpha: 0.0),
-                          ],
+              child: Semantics(
+                container: true,
+                label: 'Activity trend chart: $timelineSummary',
+                child: LineChart(
+                  LineChartData(
+                    minY: 0,
+                    maxY: maxY == 0 ? 1 : maxY * 1.1,
+                    gridData: const FlGridData(show: false),
+                    borderData: FlBorderData(show: false),
+                    lineBarsData: [
+                      LineChartBarData(
+                        isCurved: true,
+                        color: colorScheme.primary,
+                        barWidth: 2.5,
+                        dotData: const FlDotData(show: false),
+                        belowBarData: BarAreaData(
+                          show: true,
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              colorScheme.primary.withValues(alpha: 0.18),
+                              colorScheme.primary.withValues(alpha: 0.0),
+                            ],
+                          ),
                         ),
+                        spots: timeline.asMap().entries.map((e) {
+                          return FlSpot(e.key.toDouble(), values[e.key]);
+                        }).toList(),
                       ),
-                      spots: timeline.asMap().entries.map((e) {
-                        return FlSpot(e.key.toDouble(), values[e.key]);
-                      }).toList(),
-                    ),
-                  ],
-                  titlesData: const FlTitlesData(
-                    leftTitles: AxisTitles(
-                      sideTitles: SideTitles(showTitles: false),
-                    ),
-                    rightTitles: AxisTitles(
-                      sideTitles: SideTitles(showTitles: false),
-                    ),
-                    topTitles: AxisTitles(
-                      sideTitles: SideTitles(showTitles: false),
-                    ),
-                    bottomTitles: AxisTitles(
-                      sideTitles: SideTitles(showTitles: false),
+                    ],
+                    titlesData: const FlTitlesData(
+                      leftTitles: AxisTitles(
+                        sideTitles: SideTitles(showTitles: false),
+                      ),
+                      rightTitles: AxisTitles(
+                        sideTitles: SideTitles(showTitles: false),
+                      ),
+                      topTitles: AxisTitles(
+                        sideTitles: SideTitles(showTitles: false),
+                      ),
+                      bottomTitles: AxisTitles(
+                        sideTitles: SideTitles(showTitles: false),
+                      ),
                     ),
                   ),
                 ),
@@ -509,7 +528,7 @@ class _MacOSAnalyticsViewState extends State<MacOSAnalyticsView> {
                 style: TextStyle(
                   fontSize: 11.5,
                   fontWeight: FontWeight.w600,
-                  color: colorScheme.outline,
+                  color: colorScheme.secondaryText,
                 ),
               ),
               Text(
@@ -517,7 +536,7 @@ class _MacOSAnalyticsViewState extends State<MacOSAnalyticsView> {
                 style: TextStyle(
                   fontSize: 11.5,
                   fontWeight: FontWeight.w600,
-                  color: colorScheme.outline,
+                  color: colorScheme.secondaryText,
                 ),
               ),
             ],
@@ -564,12 +583,29 @@ class _MacOSAnalyticsViewState extends State<MacOSAnalyticsView> {
               ],
             ),
           ),
-          InkWell(
-            onTap: () => _dismissInsight(insight.id),
-            child: Icon(
-              Icons.close,
-              size: 16,
-              color: colorScheme.error.withValues(alpha: 0.6),
+          Semantics(
+            button: true,
+            label: 'Dismiss insight: ${insight.title}',
+            child: Tooltip(
+              message: 'Dismiss insight',
+              child: SizedBox(
+                width: 44,
+                height: 44,
+                child: MouseRegion(
+                  cursor: SystemMouseCursors.click,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(22),
+                    onTap: () => _dismissInsight(insight.id),
+                    child: Center(
+                      child: Icon(
+                        Icons.close,
+                        size: 16,
+                        color: colorScheme.error.withValues(alpha: 0.6),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
             ),
           ),
         ],
@@ -598,7 +634,7 @@ class _MacOSAnalyticsViewState extends State<MacOSAnalyticsView> {
           const SizedBox(height: 8),
           Text(
             message,
-            style: TextStyle(fontSize: 13, color: colorScheme.outline),
+            style: TextStyle(fontSize: 13, color: colorScheme.secondaryText),
           ),
         ],
       ),

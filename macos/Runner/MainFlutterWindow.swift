@@ -16,6 +16,7 @@ class MainFlutterWindow: NSWindow {
     self.titlebarAppearsTransparent = true
     self.titleVisibility = .hidden
     self.styleMask.insert(.fullSizeContentView)
+    self.isMovableByWindowBackground = true
     self.minSize = NSSize(width: 1180, height: 760)
 
     super.awakeFromNib()
