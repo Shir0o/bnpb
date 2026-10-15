@@ -1,0 +1,192 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-15T11:42:50Z",
+  "title": "Design System: BNPB",
+  "extensions": {
+    "colorMeta": {
+      "primary": {
+        "role": "primary",
+        "displayName": "Forest Emerald",
+        "canonical": "#0D7A4F",
+        "tonalRamp": ["#05281A", "#08472E", "#0B6642", "#0D7A4F", "#22A36D", "#5FE0A0", "#BFE6D1", "#EAF6EF"]
+      },
+      "secondary": {
+        "role": "secondary",
+        "displayName": "Cypress Teal",
+        "canonical": "#127A6B",
+        "tonalRamp": ["#072E28", "#0B4B42", "#0F6659", "#127A6B", "#2EA08F", "#64C5B6", "#A8E1D8", "#E6F6F4"]
+      },
+      "danger": {
+        "role": "tertiary",
+        "displayName": "Terracotta Ember",
+        "canonical": "#C25A3F",
+        "tonalRamp": ["#421A11", "#6E2D1F", "#9B412B", "#C25A3F", "#E07A5F", "#F2A28C", "#F8CFC4", "#FBEEE9"]
+      },
+      "surface": {
+        "role": "neutral",
+        "displayName": "Chalk White",
+        "canonical": "#FFFFFF",
+        "tonalRamp": ["#151A17", "#242C26", "#37413B", "#57635C", "#8A988F", "#C3CCC6", "#E6EBE7", "#FFFFFF"]
+      },
+      "surface-tint": {
+        "role": "neutral",
+        "displayName": "Sage Linen",
+        "canonical": "#F1F5F2",
+        "tonalRamp": ["#101512", "#1F2621", "#2D3730", "#4B564F", "#78877E", "#B0BCB4", "#DDE4E0", "#F1F5F2"]
+      },
+      "card-border": {
+        "role": "neutral",
+        "displayName": "Card Border",
+        "canonical": "#E6EBE7",
+        "tonalRamp": ["#181D1A", "#2B332D", "#455048", "#68756D", "#93A098", "#C1CBC4", "#E6EBE7", "#F8FAF8"]
+      },
+      "hairline": {
+        "role": "neutral",
+        "displayName": "Hairline Divider",
+        "canonical": "#EEF2EF",
+        "tonalRamp": ["#151A17", "#242C26", "#3E4942", "#637168", "#94A198", "#C8D1CA", "#EEF2EF", "#FAFCFB"]
+      },
+      "ai-card-bg": {
+        "role": "signature",
+        "displayName": "AI Card Obsidian",
+        "canonical": "#0F1512",
+        "tonalRamp": ["#050806", "#0C1712", "#0F1512", "#1D2721", "#303F36", "#506256", "#7D9284", "#B8C7BD"]
+      }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "Screen headers and top-level page titles." },
+      "title": { "displayName": "Title", "purpose": "Section headers, sidebar brand identity, and modal titles." },
+      "headline": { "displayName": "Headline", "purpose": "Contact names, card titles, and group headings." },
+      "body": { "displayName": "Body", "purpose": "Contact notes, prayer journal entries, and interaction details." },
+      "label": { "displayName": "Label", "purpose": "Navigation labels, status tags, table headers, and date badges." }
+    },
+    "shadows": [
+      {
+        "name": "window-frame",
+        "value": "0 20px 50px rgba(0,0,0,0.15), 0 0 0 1px rgba(0,0,0,0.1)",
+        "purpose": "Ambient window lift on macOS desktop shell only."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-switch",
+        "value": "cubic-bezier(0.2, 0.8, 0.2, 1.0)",
+        "purpose": "Tactile toggle switch spring transition (180ms)."
+      },
+      {
+        "name": "ease-modal",
+        "value": "cubic-bezier(0.16, 1.0, 0.3, 1.0)",
+        "purpose": "Desktop modal scale-in and fade transition (200ms)."
+      }
+    ],
+    "breakpoints": [
+      { "name": "mobile", "value": "600px" },
+      { "name": "tablet", "value": "900px" },
+      { "name": "desktop", "value": "1180px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Primary action button with Forest Emerald background and white text.",
+      "html": "<button class=\"ds-btn-primary\">Save Contact</button>",
+      "css": ".ds-btn-primary { background: #0D7A4F; color: #FFFFFF; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 13px; font-weight: 700; padding: 10px 18px; border: none; border-radius: 13px; cursor: pointer; transition: background 0.15s ease; } .ds-btn-primary:hover { background: #127A6B; }"
+    },
+    {
+      "name": "Crisp Switch",
+      "kind": "custom",
+      "refersTo": "crisp-switch",
+      "description": "Custom mechanical-feeling toggle switch with smooth spring action.",
+      "html": "<div class=\"ds-switch ds-switch-active\"><div class=\"ds-switch-knob\"></div></div>",
+      "css": ".ds-switch { width: 44px; height: 26px; border-radius: 13px; background: #D5DBD7; position: relative; cursor: pointer; transition: background 0.18s cubic-bezier(0.2, 0.8, 0.2, 1.0); } .ds-switch-active { background: #0D7A4F; } .ds-switch-knob { width: 22px; height: 22px; border-radius: 11px; background: #FFFFFF; position: absolute; top: 2px; left: 2px; box-shadow: 0 1px 3px rgba(0,0,0,0.15); transition: transform 0.18s cubic-bezier(0.2, 0.8, 0.2, 1.0); } .ds-switch-active .ds-switch-knob { transform: translateX(18px); }"
+    },
+    {
+      "name": "Content Card",
+      "kind": "card",
+      "refersTo": "card-default",
+      "description": "Flat content card with 1px hairline border containment and 16px radius.",
+      "html": "<div class=\"ds-card\"><h4 class=\"ds-card-title\">Recent Interaction</h4><p class=\"ds-card-body\">Shared coffee and discussed ministry updates.</p></div>",
+      "css": ".ds-card { background: #FFFFFF; border: 1px solid #E6EBE7; border-radius: 16px; padding: 16px; font-family: 'Plus Jakarta Sans', sans-serif; } .ds-card-title { margin: 0 0 6px 0; font-size: 15px; font-weight: 700; color: #0F1512; } .ds-card-body { margin: 0; font-size: 13px; color: #57635C; line-height: 1.45; }"
+    },
+    {
+      "name": "AI Sanctuary Card",
+      "kind": "card",
+      "refersTo": "ai-card",
+      "description": "Theme-static obsidian card reserved exclusively for AI recommendations and search.",
+      "html": "<div class=\"ds-ai-card\"><div class=\"ds-ai-header\"><span class=\"ds-ai-tag\">On-Device AI</span></div><p class=\"ds-ai-text\">Follow-up suggested: Check in with Marcus about prayer request from last week.</p></div>",
+      "css": ".ds-ai-card { background: #0F1512; border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; padding: 14px; color: #E8EDE9; font-family: 'Plus Jakarta Sans', sans-serif; } .ds-ai-header { display: flex; align-items: center; margin-bottom: 8px; } .ds-ai-tag { font-size: 11px; font-weight: 700; color: #5FE0A0; background: rgba(95,224,160,0.12); padding: 2px 8px; border-radius: 6px; text-transform: uppercase; letter-spacing: 0.04em; } .ds-ai-text { margin: 0; font-size: 12.5px; line-height: 1.45; color: #94A49B; }"
+    },
+    {
+      "name": "Search Input",
+      "kind": "input",
+      "refersTo": "input-search",
+      "description": "Search input with 13px radius and focused green perimeter border.",
+      "html": "<input type=\"text\" class=\"ds-input\" placeholder=\"Search contacts and prayers...\" />",
+      "css": ".ds-input { width: 100%; box-sizing: border-box; background: rgba(230,235,231,0.3); border: 1.5px solid transparent; border-radius: 13px; padding: 11px 14px; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 13px; color: #0F1512; outline: none; transition: border-color 0.15s ease, background 0.15s ease; } .ds-input:focus { border-color: #0D7A4F; background: #FFFFFF; } .ds-input::placeholder { color: #A9B3AD; }"
+    },
+    {
+      "name": "Filter Chip",
+      "kind": "chip",
+      "refersTo": "chip-filter",
+      "description": "Pill-shaped filter toggle chip with green tint when active.",
+      "html": "<div class=\"ds-chip ds-chip-active\">Needs Prayer (4)</div>",
+      "css": ".ds-chip { display: inline-flex; align-items: center; padding: 6px 12px; border-radius: 9999px; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 12px; font-weight: 600; cursor: pointer; border: 1px solid #E6EBE7; background: #FFFFFF; color: #57635C; transition: all 0.15s ease; } .ds-chip-active { background: #EAF6EF; border-color: #0D7A4F; color: #0D7A4F; }"
+    },
+    {
+      "name": "Toast Notification",
+      "kind": "custom",
+      "refersTo": "toast-pill",
+      "description": "Compact floating dark pill notification (CrispToast).",
+      "html": "<div class=\"ds-toast\"><span class=\"ds-toast-icon\">✓</span><span>Database synced successfully</span></div>",
+      "css": ".ds-toast { display: inline-flex; align-items: center; gap: 8px; background: #0F1512; color: #FFFFFF; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 12.5px; font-weight: 500; padding: 8px 16px; border-radius: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.25); } .ds-toast-icon { color: #5FE0A0; font-weight: 700; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Cloistered Ledger",
+    "overview": "BNPB's visual world embodies a tranquil, dignified, and tactile utility crafted for intentional relationships and quiet prayer reflection. Free from notification clamor, commercial CRM bloat, and gamified pressure, the interface treats relational context and prayer requests as confidential and sacred records. Every surface balances serene clarity with precise physical craft.\n\nThe aesthetic marries botanical emerald greens and warm sage linen tints with crisp structural dividers and high-contrast dark accent cards. Typography is disciplined and human, set in Plus Jakarta Sans with a calibrated 13px base measure and snug letter-spacing. Surfaces remain completely flat at rest, establishing structure through 1px hairline borders rather than artificial drop shadows.",
+    "keyCharacteristics": [
+      "Calm Botanical Contrast: Deep Forest Emerald accents set against chalk, sage linen, or dark slate surfaces.",
+      "Tactile Precision: Mechanical-feeling toggle switches (CrispSwitch), pill-shaped chips, and 13–16px rounded containers.",
+      "High-Contrast Focal Surfaces: Fixed dark cards (#0F1512 / #0C1712) reserved exclusively for AI recommendations, on-device semantic search, and key metrics.",
+      "Hairline Containment: Pure flat tonal layering where 1px borders (#E6EBE7 / #2B332D) organize dense information without visual noise."
+    ],
+    "rules": [
+      {
+        "name": "The Rarity of Emerald Rule",
+        "body": "Primary emerald is an intentional beacon. It is reserved for active states, key interactive commitments, and focused confirmation buttons. Less than 8% of any screen surface is emerald.",
+        "section": "colors"
+      },
+      {
+        "name": "The Sanctuary Card Rule",
+        "body": "The fixed dark container (#0F1512 / #0C1712) is strictly reserved for AI synthesis, semantic search (\"Ask\"), and top-level insight banners. It must never be repurposed as a general card background.",
+        "section": "colors"
+      },
+      {
+        "name": "The Scalable Measure Rule",
+        "body": "All interface type scales proportionally with the user's chosen fontSizeNotifier preference (defaulting to 13px base). Line lengths for prayer diary and interaction notes are capped at 72ch to maintain comfortable reading cadence.",
+        "section": "typography"
+      },
+      {
+        "name": "The Hairline Containment Rule",
+        "body": "Never add drop shadows to cards, chips, or search inputs. Structural separation must rely on cardBorder (#E6EBE7 / #2B332D) or hairline (#EEF2EF / #242C26) borders against the surface or surfaceTint background.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do reference semantic Theme.of(context).colorScheme roles (primary, surface, cardBorder, hairline) rather than hardcoding hex codes.",
+      "Do keep cards and dialogs flat (0 elevation) with 1px border containment.",
+      "Do preserve the fixed dark container (aiCardBg) for AI recommendations and search prompts across both light and dark themes.",
+      "Do use CrispSwitch for all settings toggles and CrispToast for snack/status notifications.",
+      "Do maintain responsive layout parity between mobile bottom sheets and desktop side-by-side split views."
+    ],
+    "donts": [
+      "Don't use standard material drop shadows or elevated floating cards on desktop or mobile.",
+      "Don't use generic Flutter SnackBar notifications (use CrispToast.show).",
+      "Don't hardcode raw hex values outside the centralized theme definition in lib/main.dart.",
+      "Don't stretch mobile full-width lists across widescreen desktop monitors; use structured multi-column split views or centered constrained cards.",
+      "Don't clutter screens with gamification badges, streaks, or aggressive push prompts."
+    ]
+  }
+}

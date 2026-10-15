@@ -18,6 +18,19 @@ import '../../widgets/macos_modal.dart';
 import 'macos_contact_details_page.dart';
 import 'prayer_diary_entry.dart';
 
+sealed class _PrayerListItem {}
+
+class _PrayerDateHeaderItem extends _PrayerListItem {
+  final String title;
+  final DateTime date;
+  _PrayerDateHeaderItem(this.title, this.date);
+}
+
+class _PrayerEntryItem extends _PrayerListItem {
+  final PrayerRequest request;
+  _PrayerEntryItem(this.request);
+}
+
 /// Desktop "Prayer" section: the prayer diary (left column) and "My prayer
 /// list" (right column) shown side by side in one pane, matching the Crisp
 /// Utility desktop design. The right column absorbs the old dedicated
@@ -171,10 +184,10 @@ class _MacOSPrayerDiaryViewState extends State<MacOSPrayerDiaryView> {
   }
 
   Future<void> _openContact(Contact contact) async {
-    await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => MacOSContactDetailsPage(contact: contact),
-      ),
+    await showMacModal(
+      context,
+      width: 800,
+      builder: (_) => MacOSContactDetailsPage(contact: contact),
     );
     _loadData();
   }
@@ -232,9 +245,11 @@ class _MacOSPrayerDiaryViewState extends State<MacOSPrayerDiaryView> {
               Material(
                 color: Colors.transparent,
                 child: InkWell(
+                  mouseCursor: SystemMouseCursors.click,
                   borderRadius: BorderRadius.circular(11),
                   onTap: _openLogPrayerRequestSheet,
                   child: Container(
+                    constraints: const BoxConstraints(minHeight: 44),
                     padding: const EdgeInsets.symmetric(
                       horizontal: 15,
                       vertical: 9,
@@ -317,7 +332,7 @@ class _MacOSPrayerDiaryViewState extends State<MacOSPrayerDiaryView> {
             const SizedBox(height: 14),
             Text(
               'No prayer entries found',
-              style: TextStyle(fontSize: 14, color: colorScheme.outline),
+              style: TextStyle(fontSize: 14, color: colorScheme.secondaryText),
             ),
           ],
         ),
@@ -330,23 +345,30 @@ class _MacOSPrayerDiaryViewState extends State<MacOSPrayerDiaryView> {
       grouped.putIfAbsent(_getDateGroupKey(date), () => []).add(req);
     }
 
+    final items = <_PrayerListItem>[];
+    for (final entry in grouped.entries) {
+      items.add(
+        _PrayerDateHeaderItem(
+          entry.key,
+          entry.value.first.answeredAt ?? entry.value.first.requestedAt,
+        ),
+      );
+      for (final req in entry.value) {
+        items.add(_PrayerEntryItem(req));
+      }
+    }
+
     return ListView.builder(
       padding: const EdgeInsets.fromLTRB(26, 0, 26, 24),
-      itemCount: grouped.length,
+      itemCount: items.length,
       itemBuilder: (context, index) {
-        final key = grouped.keys.elementAt(index);
-        final requests = grouped[key]!;
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildDateHeader(
-              colorScheme,
-              key,
-              requests.first.answeredAt ?? requests.first.requestedAt,
-            ),
-            ...requests.map((req) => _buildEntry(req)),
-          ],
-        );
+        final item = items[index];
+        if (item is _PrayerDateHeaderItem) {
+          return _buildDateHeader(colorScheme, item.title, item.date);
+        } else if (item is _PrayerEntryItem) {
+          return _buildEntry(item.request);
+        }
+        return const SizedBox.shrink();
       },
     );
   }
@@ -384,7 +406,8 @@ class _MacOSPrayerDiaryViewState extends State<MacOSPrayerDiaryView> {
           if (dateStr.isNotEmpty)
             Text(
               dateStr,
-              style: TextStyle(fontSize: 11.5, color: colorScheme.outline),
+              style:
+                  TextStyle(fontSize: 11.5, color: colorScheme.secondaryText),
             ),
         ],
       ),
@@ -467,21 +490,35 @@ class _MacOSPrayerDiaryViewState extends State<MacOSPrayerDiaryView> {
                         style: TextStyle(
                           fontSize: 12.5,
                           fontWeight: FontWeight.w600,
-                          color: colorScheme.outline,
+                          color: colorScheme.secondaryText,
                         ),
                       ),
                     ],
                   ),
                 ),
-                Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(9),
-                    onTap: _openContactPicker,
-                    child: Icon(
-                      Icons.add,
-                      size: 20,
-                      color: colorScheme.primary,
+                Semantics(
+                  button: true,
+                  label: 'Add to prayer list',
+                  child: Tooltip(
+                    message: 'Add to prayer list',
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        mouseCursor: SystemMouseCursors.click,
+                        borderRadius: BorderRadius.circular(9),
+                        onTap: _openContactPicker,
+                        child: SizedBox(
+                          width: 44,
+                          height: 44,
+                          child: Center(
+                            child: Icon(
+                              Icons.add,
+                              size: 20,
+                              color: colorScheme.primary,
+                            ),
+                          ),
+                        ),
+                      ),
                     ),
                   ),
                 ),
@@ -495,15 +532,17 @@ class _MacOSPrayerDiaryViewState extends State<MacOSPrayerDiaryView> {
                       'No one on your list yet.',
                       style: TextStyle(
                         fontSize: 13,
-                        color: colorScheme.outline,
+                        color: colorScheme.secondaryText,
                       ),
                     ),
                   )
-                : ListView(
+                : ListView.builder(
                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
-                    children: _prayerListContacts
-                        .map((c) => _buildPrayerListRow(colorScheme, c))
-                        .toList(),
+                    itemCount: _prayerListContacts.length,
+                    itemBuilder: (context, index) => _buildPrayerListRow(
+                      colorScheme,
+                      _prayerListContacts[index],
+                    ),
                   ),
           ),
         ],
@@ -515,9 +554,11 @@ class _MacOSPrayerDiaryViewState extends State<MacOSPrayerDiaryView> {
     return Material(
       color: Colors.transparent,
       child: InkWell(
+        mouseCursor: SystemMouseCursors.click,
         borderRadius: BorderRadius.circular(12),
         onTap: () => _openContact(contact),
-        child: Padding(
+        child: Container(
+          constraints: const BoxConstraints(minHeight: 44),
           padding: const EdgeInsets.all(10),
           child: Row(
             children: [
@@ -544,7 +585,7 @@ class _MacOSPrayerDiaryViewState extends State<MacOSPrayerDiaryView> {
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           fontSize: 12.5,
-                          color: colorScheme.outline,
+                          color: colorScheme.secondaryText,
                         ),
                       ),
                   ],

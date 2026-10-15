@@ -662,50 +662,55 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
 
   Future<void> _promptForPasscode() async {
     final controller = TextEditingController();
-    final result = await showMacModal<String>(
-      context,
-      width: 360,
-      builder: (context) => Padding(
-        padding: const EdgeInsets.all(22),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Set passcode',
-              style: TextStyle(
-                fontWeight: FontWeight.w800,
-                fontSize: 18,
-                color: Theme.of(context).colorScheme.onSurface,
+    String? result;
+    try {
+      result = await showMacModal<String>(
+        context,
+        width: 360,
+        builder: (context) => Padding(
+          padding: const EdgeInsets.all(22),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Set passcode',
+                style: TextStyle(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 18,
+                  color: Theme.of(context).colorScheme.onSurface,
+                ),
               ),
-            ),
-            const SizedBox(height: 14),
-            TextField(
-              controller: controller,
-              obscureText: true,
-              keyboardType: TextInputType.number,
-              autofocus: true,
-              decoration: const InputDecoration(hintText: '4+ digits'),
-            ),
-            const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('Cancel'),
-                ),
-                const SizedBox(width: 8),
-                FilledButton(
-                  onPressed: () => Navigator.pop(context, controller.text),
-                  child: const Text('Save'),
-                ),
-              ],
-            ),
-          ],
+              const SizedBox(height: 14),
+              TextField(
+                controller: controller,
+                obscureText: true,
+                keyboardType: TextInputType.number,
+                autofocus: true,
+                decoration: const InputDecoration(hintText: '4+ digits'),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('Cancel'),
+                  ),
+                  const SizedBox(width: 8),
+                  FilledButton(
+                    onPressed: () => Navigator.pop(context, controller.text),
+                    child: const Text('Save'),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
-      ),
-    );
+      );
+    } finally {
+      controller.dispose();
+    }
     if (result != null && result.length >= 4) {
       await _securityService.setPasscode(result);
       await _loadAll();
@@ -795,54 +800,62 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
   Future<void> _promptForGeminiApiKey() async {
     final existing = await _securityService.getGeminiApiKey();
     final controller = TextEditingController(text: existing ?? '');
-    if (!mounted) return;
-    final result = await showMacModal<String>(
-      context,
-      width: 420,
-      builder: (context) => Padding(
-        padding: const EdgeInsets.all(22),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Google Gemini API key',
-              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Stored securely on this device and sent only to Google\'s API.',
-              style: TextStyle(
-                fontSize: 12.5,
-                color: Theme.of(context).colorScheme.outline,
+    if (!mounted) {
+      controller.dispose();
+      return;
+    }
+    String? result;
+    try {
+      result = await showMacModal<String>(
+        context,
+        width: 420,
+        builder: (context) => Padding(
+          padding: const EdgeInsets.all(22),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Google Gemini API key',
+                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
               ),
-            ),
-            const SizedBox(height: 14),
-            TextField(
-              controller: controller,
-              autofocus: true,
-              decoration: const InputDecoration(hintText: 'AIza…'),
-            ),
-            const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context, ''),
-                  child: const Text('Clear'),
+              const SizedBox(height: 8),
+              Text(
+                'Stored securely on this device and sent only to Google\'s API.',
+                style: TextStyle(
+                  fontSize: 12.5,
+                  color: Theme.of(context).colorScheme.secondaryText,
                 ),
-                const SizedBox(width: 8),
-                FilledButton(
-                  onPressed: () =>
-                      Navigator.pop(context, controller.text.trim()),
-                  child: const Text('Save'),
-                ),
-              ],
-            ),
-          ],
+              ),
+              const SizedBox(height: 14),
+              TextField(
+                controller: controller,
+                autofocus: true,
+                decoration: const InputDecoration(hintText: 'AIza…'),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context, ''),
+                    child: const Text('Clear'),
+                  ),
+                  const SizedBox(width: 8),
+                  FilledButton(
+                    onPressed: () =>
+                        Navigator.pop(context, controller.text.trim()),
+                    child: const Text('Save'),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
-      ),
-    );
+      );
+    } finally {
+      controller.dispose();
+    }
     if (result == null) return;
     await _securityService.setGeminiApiKey(result.isEmpty ? null : result);
     await AiServices().refreshBackend();
@@ -1394,61 +1407,69 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
     final currentToken = await _cisaTrackerService.getToken() ?? '';
     final controller = TextEditingController(text: currentToken);
 
-    if (!mounted) return;
-    final result = await showMacModal<String>(
-      context,
-      width: 380,
-      builder: (context) => Padding(
-        padding: const EdgeInsets.all(22),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'CISA Personal Sync Token',
-              style: TextStyle(
-                fontWeight: FontWeight.w800,
-                fontSize: 18,
-                color: Theme.of(context).colorScheme.onSurface,
-              ),
-            ),
-            const SizedBox(height: 10),
-            Text(
-              'Paste your Personal Sync Token generated in CISA Tracker Settings:',
-              style: TextStyle(
-                fontSize: 13,
-                color: Theme.of(context).colorScheme.outline,
-              ),
-            ),
-            const SizedBox(height: 14),
-            TextField(
-              controller: controller,
-              obscureText: true,
-              autofocus: true,
-              decoration: const InputDecoration(
-                hintText: 'Paste token here',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('Cancel'),
+    if (!mounted) {
+      controller.dispose();
+      return;
+    }
+    String? result;
+    try {
+      result = await showMacModal<String>(
+        context,
+        width: 380,
+        builder: (context) => Padding(
+          padding: const EdgeInsets.all(22),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'CISA Personal Sync Token',
+                style: TextStyle(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 18,
+                  color: Theme.of(context).colorScheme.onSurface,
                 ),
-                const SizedBox(width: 8),
-                FilledButton(
-                  onPressed: () => Navigator.pop(context, controller.text),
-                  child: const Text('Save'),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                'Paste your Personal Sync Token generated in CISA Tracker Settings:',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: Theme.of(context).colorScheme.secondaryText,
                 ),
-              ],
-            ),
-          ],
+              ),
+              const SizedBox(height: 14),
+              TextField(
+                controller: controller,
+                obscureText: true,
+                autofocus: true,
+                decoration: const InputDecoration(
+                  hintText: 'Paste token here',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('Cancel'),
+                  ),
+                  const SizedBox(width: 8),
+                  FilledButton(
+                    onPressed: () => Navigator.pop(context, controller.text),
+                    child: const Text('Save'),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
-      ),
-    );
+      );
+    } finally {
+      controller.dispose();
+    }
 
     if (result != null) {
       final trimmed = result.trim();
@@ -1710,22 +1731,23 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: colorScheme.aiCardBg,
+            color: colorScheme.surfaceTint,
+            border: Border.all(color: colorScheme.cardBorder),
             borderRadius: BorderRadius.circular(14),
           ),
           child: Row(
             children: [
-              const Icon(Icons.terminal, size: 16, color: Color(0xFF94A49B)),
+              Icon(Icons.terminal, size: 16, color: colorScheme.secondaryText),
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
                   _isSyncing
                       ? 'Sync in progress…'
                       : 'Ready. Last check complete.',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontFamily: 'monospace',
                     fontSize: 12.5,
-                    color: Color(0xFFE8EDE9),
+                    color: colorScheme.onSurface,
                   ),
                 ),
               ),

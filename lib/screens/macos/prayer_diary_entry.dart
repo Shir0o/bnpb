@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import '../../main.dart' show CrispColorScheme;
 import '../../models/contact.dart';
 import '../../models/prayer_request.dart';
 
@@ -35,6 +36,7 @@ class _PrayerDiaryEntryState extends State<PrayerDiaryEntry> {
   // Duration? _duration; // Future feature: track duration
 
   bool _isHovering = false;
+  bool _isEditFocused = false;
 
   @override
   void initState() {
@@ -123,7 +125,7 @@ class _PrayerDiaryEntryState extends State<PrayerDiaryEntry> {
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w500,
-                    color: colorScheme.outline,
+                    color: colorScheme.secondaryText,
                   ),
                 ),
               ),
@@ -203,24 +205,36 @@ class _PrayerDiaryEntryState extends State<PrayerDiaryEntry> {
                 const SizedBox(width: 8),
               ],
 
-              // Edit Button (Show on hover)
+              // Edit Button (Accessible via hover, focus, and VoiceOver)
               AnimatedOpacity(
-                opacity: _isHovering ? 1.0 : 0.0,
-                duration: const Duration(milliseconds: 200),
-                child: InkWell(
+                opacity: (_isHovering || _isEditFocused) ? 1.0 : 0.0,
+                alwaysIncludeSemantics: true,
+                duration: MediaQuery.disableAnimationsOf(context)
+                    ? Duration.zero
+                    : const Duration(milliseconds: 200),
+                child: Semantics(
+                  label: 'Edit prayer request',
+                  button: true,
+                  container: true,
                   onTap: widget.onEditStart,
-                  borderRadius: BorderRadius.circular(4),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 2,
-                    ),
-                    child: Text(
-                      'Edit',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w500,
-                        color: colorScheme.primary,
+                  child: InkWell(
+                    onTap: widget.onEditStart,
+                    onFocusChange: (focused) {
+                      setState(() => _isEditFocused = focused);
+                    },
+                    borderRadius: BorderRadius.circular(4),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 2,
+                      ),
+                      child: Text(
+                        'Edit',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                          color: colorScheme.primary,
+                        ),
                       ),
                     ),
                   ),
@@ -240,12 +254,15 @@ class _PrayerDiaryEntryState extends State<PrayerDiaryEntry> {
                 ),
               ),
               padding: const EdgeInsets.only(left: 16),
-              child: Text(
-                widget.request.description,
-                style: TextStyle(
-                  fontSize: 14,
-                  height: 1.5,
-                  color: colorScheme.onSurface,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 580),
+                child: Text(
+                  widget.request.description,
+                  style: TextStyle(
+                    fontSize: 14,
+                    height: 1.5,
+                    color: colorScheme.onSurface,
+                  ),
                 ),
               ),
             ),
@@ -268,22 +285,7 @@ class _PrayerDiaryEntryState extends State<PrayerDiaryEntry> {
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
       decoration: BoxDecoration(
         color: colorScheme.surfaceContainerLowest,
-        border: Border(bottom: BorderSide(color: colorScheme.outlineVariant)),
-        // Active edit shadow
-        boxShadow: [
-          BoxShadow(
-            color: colorScheme.primary.withValues(alpha: 0.1),
-            spreadRadius: 0,
-            blurRadius: 0,
-            offset: const Offset(0, 0),
-          ),
-          // Simulate the "ring" effect
-          BoxShadow(
-            color: colorScheme.primary.withValues(alpha: 0.15),
-            spreadRadius: 2, // approximation
-            blurRadius: 0,
-          ),
-        ],
+        border: Border.all(color: colorScheme.primary, width: 1.5),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -298,7 +300,7 @@ class _PrayerDiaryEntryState extends State<PrayerDiaryEntry> {
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w500,
-                    color: colorScheme.outline,
+                    color: colorScheme.secondaryText,
                   ),
                 ),
               ),
@@ -346,37 +348,42 @@ class _PrayerDiaryEntryState extends State<PrayerDiaryEntry> {
                   child: Column(
                     children: [
                       // Text Area
-                      TextField(
-                        controller: _descriptionController,
-                        autofocus: true,
-                        maxLines: null,
-                        minLines: 3,
-                        style: TextStyle(
-                          fontSize: 14,
-                          height: 1.5,
-                          color: colorScheme.onSurface,
-                        ),
-                        decoration: InputDecoration(
-                          filled: true,
-                          fillColor: colorScheme.surfaceContainerLowest,
-                          contentPadding: const EdgeInsets.all(12),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(6),
-                            borderSide: BorderSide(
-                              color: colorScheme.primary.withValues(alpha: 0),
-                            ),
+                      ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 580),
+                        child: TextField(
+                          controller: _descriptionController,
+                          autofocus: true,
+                          maxLines: null,
+                          minLines: 3,
+                          style: TextStyle(
+                            fontSize: 14,
+                            height: 1.5,
+                            color: colorScheme.onSurface,
                           ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(6),
-                            borderSide: BorderSide(
-                              color: colorScheme.primary.withValues(alpha: 0.4),
+                          decoration: InputDecoration(
+                            filled: true,
+                            fillColor: colorScheme.surfaceContainerLowest,
+                            contentPadding: const EdgeInsets.all(12),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(6),
+                              borderSide: BorderSide(
+                                color: colorScheme.primary.withValues(alpha: 0),
+                              ),
                             ),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(6),
-                            borderSide: BorderSide(
-                              color: colorScheme.primary.withValues(alpha: 0.6),
-                              width: 2,
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(6),
+                              borderSide: BorderSide(
+                                color:
+                                    colorScheme.primary.withValues(alpha: 0.4),
+                              ),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(6),
+                              borderSide: BorderSide(
+                                color:
+                                    colorScheme.primary.withValues(alpha: 0.6),
+                                width: 2,
+                              ),
                             ),
                           ),
                         ),
@@ -492,15 +499,9 @@ class _PrayerDiaryEntryState extends State<PrayerDiaryEntry> {
               ? colorScheme.surfaceContainerLowest
               : Colors.transparent,
           borderRadius: BorderRadius.circular(4),
-          boxShadow: isSelected
-              ? [
-                  BoxShadow(
-                    color: colorScheme.shadow.withValues(alpha: 0.05),
-                    blurRadius: 2,
-                    offset: const Offset(0, 1),
-                  ),
-                ]
-              : null,
+          border: isSelected
+              ? Border.all(color: colorScheme.outlineVariant)
+              : Border.all(color: Colors.transparent),
         ),
         child: Row(
           children: [

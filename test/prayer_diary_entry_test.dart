@@ -117,5 +117,38 @@ void main() {
       expect(savedRequest, isNotNull);
       expect(savedRequest!.description, 'Updated prayer request');
     });
+
+    testWidgets('edit button has accessible semantics in view mode',
+        (tester) async {
+      final semantics = tester.ensureSemantics();
+      bool editStarted = false;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: PrayerDiaryEntry(
+              request: request,
+              contacts: [contact],
+              isEditing: false,
+              onEditStart: () => editStarted = true,
+              onEditSave: (_) {},
+              onEditCancel: () {},
+            ),
+          ),
+        ),
+      );
+
+      // Verify semantics label exists, is a button, and is actionable even when not hovered
+      final editSemantics =
+          find.bySemanticsLabel(RegExp(r'Edit prayer request'));
+      expect(editSemantics, findsOneWidget);
+
+      tester.semantics
+          .tap(find.semantics.byLabel(RegExp(r'Edit prayer request')));
+      await tester.pumpAndSettle();
+      expect(editStarted, isTrue);
+
+      semantics.dispose();
+    });
   });
 }
