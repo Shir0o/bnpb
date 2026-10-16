@@ -227,6 +227,8 @@ class GoogleDriveService {
             'Google Sign-In failed (Status 10). This usually means the SHA-1 fingerprint '
             'is not registered in the Google Cloud/Firebase console, or the package '
             'name/config is incorrect.';
+      } else {
+        errorMessage = 'Google Sign-In failed: $e';
       }
 
       _lastSignInError = errorMessage;
