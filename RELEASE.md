@@ -2,6 +2,13 @@
 
 All notable changes to the BNPB project are documented here.
 
+## [1.12.1](https://github.com/Shir0o/bnpb/compare/v1.12.0...v1.12.1) (2026-10-16)
+
+
+### Bug Fixes
+
+* **macos:** add keychain entitlement and client ID for Google Sign-In ([#326](https://github.com/Shir0o/bnpb/issues/326)) ([50f9e57](https://github.com/Shir0o/bnpb/commit/50f9e57330f4686e57bc919fd526a68524981846))
+
 ## [1.12.0](https://github.com/Shir0o/bnpb/compare/v1.11.0...v1.12.0) (2026-10-15)
 
 
