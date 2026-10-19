@@ -80,7 +80,7 @@ class ExportService {
       );
     }
 
-    final csvContent = const ListToCsvConverter().convert(rows);
+    final csvContent = Csv().encode(rows);
     final file = await _createTempFile('contacts_export', 'csv');
     await file.writeAsString(csvContent);
     return file;

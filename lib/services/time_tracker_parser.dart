@@ -22,10 +22,7 @@ class TimeTrackerParser {
   }) {
     if (csvContent.trim().isEmpty) return [];
 
-    final rows = const CsvToListConverter(
-      eol: '\n',
-      shouldParseNumbers: false,
-    ).convert(csvContent);
+    final rows = Csv(autoDetect: false).decode(csvContent);
 
     if (rows.isEmpty) return [];
 

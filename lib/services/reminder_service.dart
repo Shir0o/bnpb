@@ -85,7 +85,7 @@ class ReminderService {
         macOS: iosSettings,
       );
 
-      await _plugin.initialize(settings);
+      await _plugin.initialize(settings: settings);
       await _configureLocalTimeZone();
 
       _initialized = true;
@@ -200,11 +200,11 @@ class ReminderService {
 
       try {
         await _plugin.zonedSchedule(
-          id,
-          title,
-          body,
-          tzTime,
-          NotificationDetails(
+          id: id,
+          title: title,
+          body: body,
+          scheduledDate: tzTime,
+          notificationDetails: NotificationDetails(
             android: androidDetails,
             iOS: darwinDetails,
             macOS: darwinDetails,
@@ -218,11 +218,11 @@ class ReminderService {
             'Exact alarm failed, falling back to inexact scheduling: $e',
           );
           await _plugin.zonedSchedule(
-            id,
-            title,
-            body,
-            tzTime,
-            NotificationDetails(
+            id: id,
+            title: title,
+            body: body,
+            scheduledDate: tzTime,
+            notificationDetails: NotificationDetails(
               android: androidDetails,
               iOS: darwinDetails,
               macOS: darwinDetails,
@@ -252,7 +252,7 @@ class ReminderService {
         try {
           final decoded = jsonDecode(payload) as Map<String, dynamic>;
           if (decoded['channel'] == channel.name) {
-            futures.add(_plugin.cancel(request.id));
+            futures.add(_plugin.cancel(id: request.id));
           }
         } catch (_) {
           continue;
@@ -268,7 +268,7 @@ class ReminderService {
     await initialize();
     await _guardOperation('cancelReminder(${channel.name}, $key)', () async {
       final id = _notificationId(channel, key);
-      await _plugin.cancel(id);
+      await _plugin.cancel(id: id);
     });
   }
 
@@ -292,7 +292,7 @@ class ReminderService {
             final decoded = jsonDecode(payload) as Map<String, dynamic>;
             if (decoded['channel'] == channel.name &&
                 decoded['contactId'] == contactId) {
-              futures.add(_plugin.cancel(request.id));
+              futures.add(_plugin.cancel(id: request.id));
             }
           } catch (_) {
             continue;
@@ -317,7 +317,7 @@ class ReminderService {
         try {
           final decoded = jsonDecode(payload) as Map<String, dynamic>;
           if (decoded['contactId'] == contactId) {
-            futures.add(_plugin.cancel(request.id));
+            futures.add(_plugin.cancel(id: request.id));
           }
         } catch (_) {
           continue;

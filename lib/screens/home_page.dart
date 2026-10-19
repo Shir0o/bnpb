@@ -1453,7 +1453,7 @@ class _HomePageState extends State<HomePage>
 
   Future<void> _importLegacyJson() async {
     try {
-      final result = await FilePicker.platform.pickFiles(
+      final result = await FilePicker.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['json'],
       );
