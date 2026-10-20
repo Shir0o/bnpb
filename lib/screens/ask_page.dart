@@ -31,6 +31,11 @@ class _AskPageState extends State<AskPage> {
   final FocusNode _focusNode = FocusNode();
 
   bool _busy = false;
+  // Manual re-index state. Kept separate from [_busy] so the results area
+  // isn't replaced by skeletons while the index rebuilds.
+  bool _reindexing = false;
+  int _reindexDone = 0;
+  int _reindexTotal = 0;
   String? _error;
   String? _lastQuery;
   List<SemanticMatch> _results = const [];
@@ -139,6 +144,40 @@ class _AskPageState extends State<AskPage> {
     }
   }
 
+  Future<void> _reindex() async {
+    _focusNode.unfocus();
+    setState(() {
+      _reindexing = true;
+      _reindexDone = 0;
+      _reindexTotal = 0;
+    });
+    try {
+      // Pull a fresh snapshot so contacts / interactions added since the
+      // page opened make it into the index.
+      ContactService().invalidateContacts();
+      _contactsLoadFuture = _loadContactsLookup();
+      await _contactsLoadFuture;
+      await AiServices().reindexSemantic(
+        _contactsById.values.toList(),
+        onProgress: (done, total) {
+          if (!mounted) return;
+          setState(() {
+            _reindexDone = done;
+            _reindexTotal = total;
+          });
+        },
+      );
+      if (!mounted) return;
+      CrispToast.show(context, 'Ask index rebuilt.');
+    } catch (e, st) {
+      debugPrint('Ask re-index failed: $e\n$st');
+      if (!mounted) return;
+      CrispToast.show(context, "Couldn't rebuild the Ask index. Try again.");
+    } finally {
+      if (mounted) setState(() => _reindexing = false);
+    }
+  }
+
   void _runHistoryQuery(String query) {
     _controller.text = query;
     _controller.selection = TextSelection.collapsed(offset: query.length);
@@ -188,7 +227,17 @@ class _AskPageState extends State<AskPage> {
     final theme = Theme.of(context);
     final embedderReady = AiServices().embedding.isReady;
     return HideOnScrollScaffold(
-      appBar: AppBar(title: const Text('Ask')),
+      appBar: AppBar(
+        title: const Text('Ask'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            tooltip: 'Re-index',
+            onPressed:
+                embedderReady && !_busy && !_reindexing ? _reindex : null,
+          ),
+        ],
+      ),
       body: SafeArea(
         child: Column(
           children: [
@@ -217,7 +266,7 @@ class _AskPageState extends State<AskPage> {
                   TextField(
                     controller: _controller,
                     focusNode: _focusNode,
-                    enabled: embedderReady && !_busy,
+                    enabled: embedderReady && !_busy && !_reindexing,
                     textInputAction: TextInputAction.search,
                     onSubmitted: (_) => _submit(),
                     decoration: InputDecoration(
@@ -251,7 +300,19 @@ class _AskPageState extends State<AskPage> {
                     ),
                     onChanged: (_) => setState(() {}),
                   ),
-                  if (_lastQuery != null && !_busy)
+                  if (_reindexing)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: Text(
+                        _reindexTotal == 0
+                            ? 'Re-indexing…'
+                            : 'Re-indexing… $_reindexDone of $_reindexTotal',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    )
+                  else if (_lastQuery != null && !_busy)
                     Padding(
                       padding: const EdgeInsets.only(top: 8),
                       child: Text(

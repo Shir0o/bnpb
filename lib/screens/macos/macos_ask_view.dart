@@ -9,6 +9,7 @@ import '../../models/contact.dart';
 import '../../services/ai/ai_services.dart';
 import '../../services/ai/semantic_search_service.dart';
 import '../../services/contact_service.dart';
+import '../../widgets/crisp_toast.dart';
 import '../../widgets/macos_modal.dart';
 import 'macos_contact_details_page.dart';
 
@@ -30,6 +31,9 @@ class _MacOSAskViewState extends State<MacOSAskView> {
   final FocusNode _focusNode = FocusNode();
 
   bool _busy = false;
+  bool _reindexing = false;
+  int _reindexDone = 0;
+  int _reindexTotal = 0;
   String? _error;
   String? _lastQuery;
   List<SemanticMatch> _results = const [];
@@ -118,6 +122,38 @@ class _MacOSAskViewState extends State<MacOSAskView> {
     }
   }
 
+  Future<void> _reindex() async {
+    _focusNode.unfocus();
+    setState(() {
+      _reindexing = true;
+      _reindexDone = 0;
+      _reindexTotal = 0;
+    });
+    try {
+      ContactService().invalidateContacts();
+      _contactsLoadFuture = _loadContactsLookup();
+      await _contactsLoadFuture;
+      await AiServices().reindexSemantic(
+        _contactsById.values.toList(),
+        onProgress: (done, total) {
+          if (!mounted) return;
+          setState(() {
+            _reindexDone = done;
+            _reindexTotal = total;
+          });
+        },
+      );
+      if (!mounted) return;
+      CrispToast.show(context, 'Ask index rebuilt.');
+    } catch (e, st) {
+      debugPrint('Ask re-index failed: $e\n$st');
+      if (!mounted) return;
+      CrispToast.show(context, "Couldn't rebuild the Ask index. Try again.");
+    } finally {
+      if (mounted) setState(() => _reindexing = false);
+    }
+  }
+
   void _runHistoryQuery(String query) {
     _controller.text = query;
     _controller.selection = TextSelection.collapsed(offset: query.length);
@@ -158,19 +194,36 @@ class _MacOSAskViewState extends State<MacOSAskView> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'Ask',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 27,
-                    color: colorScheme.onSurface,
-                    letterSpacing: -0.3,
-                  ),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'Ask',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 27,
+                          color: colorScheme.onSurface,
+                          letterSpacing: -0.3,
+                        ),
+                      ),
+                    ),
+                    TextButton.icon(
+                      onPressed: embedderReady && !_busy && !_reindexing
+                          ? _reindex
+                          : null,
+                      icon: const Icon(Icons.refresh, size: 18),
+                      label: const Text('Re-index'),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  'Semantic search across every interaction and prayer — '
-                  'embedded and matched fully on this device.',
+                  _reindexing
+                      ? (_reindexTotal == 0
+                          ? 'Re-indexing…'
+                          : 'Re-indexing… $_reindexDone of $_reindexTotal')
+                      : 'Semantic search across every interaction and prayer — '
+                          'embedded and matched fully on this device.',
                   style: TextStyle(fontSize: 14, color: colorScheme.outline),
                 ),
                 const SizedBox(height: 18),
@@ -209,7 +262,7 @@ class _MacOSAskViewState extends State<MacOSAskView> {
                         child: TextField(
                           controller: _controller,
                           focusNode: _focusNode,
-                          enabled: embedderReady && !_busy,
+                          enabled: embedderReady && !_busy && !_reindexing,
                           onSubmitted: (_) => _submit(),
                           decoration: const InputDecoration(
                             hintText: 'Ask a question…',

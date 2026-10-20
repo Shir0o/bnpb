@@ -71,6 +71,18 @@ class AiServices {
     }();
   }
 
+  /// Wipes and rebuilds the semantic index from [contacts]. Backs the
+  /// manual "Re-index" action on Ask: CRUD doesn't rebuild the index
+  /// (#197), so new contacts and interactions only become searchable
+  /// after this runs.
+  Future<void> reindexSemantic(
+    List<Contact> contacts, {
+    void Function(int done, int total)? onProgress,
+  }) async {
+    await ensureSemanticIndex(contacts);
+    await semanticSearch.rebuildIndex(contacts, onProgress: onProgress);
+  }
+
   Future<void>? _modelLoadInFlight;
 
   Future<void> _ensureModelLoaded() async {
