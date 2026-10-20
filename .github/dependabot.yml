@@ -9,6 +9,21 @@ updates:
       flutter-dependencies:
         patterns:
           - "*"
+    # Held back in #328; each needs its own migration before it can land.
+    ignore:
+      # sqlite3 3.x drops sqlcipher_flutter_libs, so desktop builds would lose SQLCipher.
+      - dependency-name: sqlite3
+        versions: [">= 3.0.0"]
+      - dependency-name: sqflite_common_ffi
+        versions: [">= 2.4.0"]
+      - dependency-name: sqlcipher_flutter_libs
+        versions: [">= 0.7.0"]
+      # google_fonts 9 returns material_ui's TextTheme, which ThemeData does not accept.
+      - dependency-name: google_fonts
+        versions: [">= 9.0.0"]
+      # file_picker 11 needs built-in Kotlin, which this app turns off.
+      - dependency-name: file_picker
+        versions: [">= 11.0.0"]
 
   - package-ecosystem: github-actions
     directory: /
