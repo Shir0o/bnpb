@@ -2,6 +2,18 @@
 
 All notable changes to the BNPB project are documented here.
 
+## [1.13.0](https://github.com/Shir0o/bnpb/compare/v1.12.1...v1.13.0) (2026-10-30)
+
+
+### Features
+
+* **ai:** add manual Re-index button to Ask ([#329](https://github.com/Shir0o/bnpb/issues/329)) ([67edea5](https://github.com/Shir0o/bnpb/commit/67edea5e2ce002135088270380b211690d0bfcf9)), closes [#177](https://github.com/Shir0o/bnpb/issues/177)
+
+
+### Bug Fixes
+
+* **ci:** set explicit read permissions on workflow (alert [#1](https://github.com/Shir0o/bnpb/issues/1)) ([#337](https://github.com/Shir0o/bnpb/issues/337)) ([b996425](https://github.com/Shir0o/bnpb/commit/b9964253978245c3aa8c650ff9558917661f1180))
+
 ## [1.12.1](https://github.com/Shir0o/bnpb/compare/v1.12.0...v1.12.1) (2026-10-16)
 
 
