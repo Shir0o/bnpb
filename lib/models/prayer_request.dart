@@ -51,6 +51,7 @@ class PrayerRequest {
     required this.status,
     required this.requestedAt,
     this.answeredAt,
+    this.archivedAt,
     this.category,
     this.reflectionNotes,
     DateTime? updatedAt,
@@ -85,6 +86,9 @@ class PrayerRequest {
   /// When the request was answered, if available.
   final DateTime? answeredAt;
 
+  /// When the request was archived, if available.
+  final DateTime? archivedAt;
+
   /// Optional category to group similar requests.
   final String? category;
 
@@ -108,6 +112,8 @@ class PrayerRequest {
     DateTime? requestedAt,
     DateTime? answeredAt,
     bool clearAnsweredAt = false,
+    DateTime? archivedAt,
+    bool clearArchivedAt = false,
     String? category,
     String? reflectionNotes,
     DateTime? updatedAt,
@@ -122,6 +128,7 @@ class PrayerRequest {
       status: status ?? this.status,
       requestedAt: requestedAt ?? this.requestedAt,
       answeredAt: clearAnsweredAt ? null : (answeredAt ?? this.answeredAt),
+      archivedAt: clearArchivedAt ? null : (archivedAt ?? this.archivedAt),
       category: category ?? this.category,
       reflectionNotes: reflectionNotes ?? this.reflectionNotes,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -140,6 +147,7 @@ class PrayerRequest {
       'status': status.name,
       'requestedAt': requestedAt.toIso8601String(),
       'answeredAt': answeredAt?.toIso8601String(),
+      'archivedAt': archivedAt?.toIso8601String(),
       'category': category,
       'reflectionNotes': reflectionNotes,
       'updatedAt': updatedAt.toIso8601String(),
@@ -167,6 +175,9 @@ class PrayerRequest {
       requestedAt: DateTime.parse(map['requestedAt'] as String),
       answeredAt: map['answeredAt'] != null
           ? DateTime.tryParse(map['answeredAt'] as String)
+          : null,
+      archivedAt: map['archivedAt'] != null
+          ? DateTime.tryParse(map['archivedAt'] as String)
           : null,
       category: map['category'] as String?,
       reflectionNotes: map['reflectionNotes'] as String?,

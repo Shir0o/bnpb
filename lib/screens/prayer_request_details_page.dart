@@ -1,15 +1,22 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../db/db_helper.dart';
+import '../main.dart'; // To access CrispColorScheme extension on ColorScheme
 import '../models/contact.dart';
 import '../models/prayer_request.dart';
+import '../services/reminder_coordinator.dart';
 import '../widgets/contact_avatar.dart';
 import '../widgets/crisp_toast.dart';
-import '../widgets/log_prayer_request_sheet.dart';
-import '../widgets/hide_on_scroll_scaffold.dart';
+import 'select_prayer_people_page.dart';
 
-/// Displays details for a single [PrayerRequest] and supports editing it.
+/// Shows a single [PrayerRequest] and edits it in place.
+///
+/// Changes save automatically: status, dates and category right away, text
+/// after a short pause and on leaving. Pops with `true` when anything was
+/// saved or the request was deleted.
 class PrayerRequestDetailsPage extends StatefulWidget {
   const PrayerRequestDetailsPage({
     super.key,
@@ -29,321 +36,698 @@ class PrayerRequestDetailsPage extends StatefulWidget {
 }
 
 class _PrayerRequestDetailsPageState extends State<PrayerRequestDetailsPage> {
-  final DBHelper _dbHelper = DBHelper();
+  static final _dayFormat = DateFormat.MMMd();
+  static final _weekdayFormat = DateFormat('EEE, MMM d');
+  static final _fullDateFormat = DateFormat.yMMMd();
+  static const _collapsedHistoryCount = 6;
 
+  /// Last persisted state.
   late PrayerRequest _request;
+  late final TextEditingController _textController;
+  late final TextEditingController _notesController;
+  late PrayerRequestStatus _status;
+  late DateTime _requestedAt;
+  // Kept while switching status so a mis-tap does not lose the dates; only
+  // written when the status uses them.
+  DateTime? _answeredAt;
+  DateTime? _archivedAt;
+  String? _category;
   List<Contact> _contacts = [];
-  List<Contact> _availableContacts = [];
-  bool _isLoadingContacts = false;
-  bool _didUpdate = false;
+  List<DateTime> _prayedDates = [];
+  bool _showAllHistory = false;
 
-  late final DateFormat _dateFormat;
+  Timer? _saveTimer;
+  Future<void> _saveChain = Future.value();
+  int _writesInFlight = 0;
+  bool _didUpdate = false;
+  bool _isDeleting = false;
+
+  bool get _isSaving => _saveTimer != null || _writesInFlight > 0;
 
   @override
   void initState() {
     super.initState();
-    _dateFormat = DateFormat.yMMMd();
-    _request = widget.request;
-    _contacts = List.from(widget.initialContacts);
+    final request = widget.request;
+    _request = request;
+    _textController = TextEditingController(text: request.description);
+    _notesController = TextEditingController(
+      text: request.reflectionNotes ?? '',
+    );
+    _status = request.status;
+    _requestedAt = request.requestedAt;
+    _answeredAt = request.answeredAt;
+    _archivedAt = request.archivedAt;
+    _category = request.category;
+    _contacts = List.of(widget.initialContacts);
+    _textController.addListener(_scheduleSave);
+    _notesController.addListener(_scheduleSave);
     _loadContacts();
+    _loadPrayedDates();
+  }
+
+  @override
+  void dispose() {
+    if (_saveTimer != null) _saveNow(notify: false);
+    _textController.dispose();
+    _notesController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadContacts() async {
+    final contacts = await DBHelper().getContacts();
+    if (!mounted) return;
+    final lookup = {for (final c in contacts) c.id: c};
     setState(() {
-      _isLoadingContacts = true;
-    });
-
-    final contacts = await _dbHelper.getContacts();
-
-    if (!mounted) {
-      return;
-    }
-
-    contacts.sort(
-      (a, b) => a.fullName.toLowerCase().compareTo(b.fullName.toLowerCase()),
-    );
-
-    setState(() {
-      _availableContacts = contacts;
-      final contactLookup = {for (final c in contacts) c.id: c};
       _contacts = _request.participantIds
-          .map((id) => contactLookup[id])
+          .map((id) => lookup[id])
           .whereType<Contact>()
           .toList();
-      _isLoadingContacts = false;
     });
   }
 
-  Future<void> _openEditSheet() async {
-    if (_availableContacts.isEmpty && !_isLoadingContacts) {
-      await _loadContacts();
-      if (!mounted) {
-        return;
-      }
-    }
+  Future<void> _loadPrayedDates() async {
+    final id = _request.id;
+    if (id == null) return;
+    final dates = await DBHelper().prayerRequestDao.getPrayedDates([id]);
+    if (!mounted) return;
+    setState(() => _prayedDates = dates[id] ?? []);
+  }
 
-    bool didSave = false;
-    PrayerRequest? savedRequest;
-
-    final result = await showModalBottomSheet<String>(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      builder: (context) {
-        return LogPrayerRequestSheet(
-          initialRequest: _request,
-          availableContacts: List<Contact>.from(_availableContacts),
-          onSaved: (updated) {
-            didSave = true;
-            savedRequest = updated;
-          },
-        );
-      },
+  PrayerRequest _draft() {
+    final text = _textController.text.trim();
+    final notes = _notesController.text.trim();
+    return PrayerRequest(
+      id: _request.id,
+      syncId: _request.syncId,
+      participantIds: _request.participantIds,
+      interactionId: _request.interactionId,
+      // An emptied text field keeps the last saved description.
+      description: text.isEmpty ? _request.description : text,
+      status: _status,
+      requestedAt: _requestedAt,
+      answeredAt: _status == PrayerRequestStatus.pending ? null : _answeredAt,
+      archivedAt: _status == PrayerRequestStatus.archived ? _archivedAt : null,
+      category: _category,
+      reflectionNotes: notes.isEmpty ? null : notes,
     );
+  }
 
-    if (!mounted || !didSave || savedRequest == null) {
-      return;
+  bool _isUnchanged(PrayerRequest draft) {
+    final saved = _request;
+    return draft.description == saved.description &&
+        draft.status == saved.status &&
+        draft.requestedAt == saved.requestedAt &&
+        draft.answeredAt == saved.answeredAt &&
+        draft.archivedAt == saved.archivedAt &&
+        draft.category == saved.category &&
+        draft.reflectionNotes == saved.reflectionNotes;
+  }
+
+  void _scheduleSave() {
+    // Controllers also notify on cursor moves; only edits need a save.
+    if (_isDeleting || (_saveTimer == null && _isUnchanged(_draft()))) return;
+    _saveTimer?.cancel();
+    _saveTimer = Timer(const Duration(milliseconds: 600), _saveNow);
+    setState(() {});
+  }
+
+  Future<void> _saveNow({bool notify = true}) {
+    _saveTimer?.cancel();
+    _saveTimer = null;
+    final draft = _draft();
+    if (_isDeleting || _isUnchanged(draft)) {
+      if (notify && mounted) setState(() {});
+      return _saveChain;
     }
+    _writesInFlight++;
+    _saveChain = _saveChain.then((_) => _write(draft));
+    return _saveChain;
+  }
 
-    setState(() {
-      _request = savedRequest!;
-      final contactLookup = {for (final c in _availableContacts) c.id: c};
-      _contacts = _request.participantIds
-          .map((id) => contactLookup[id])
-          .whereType<Contact>()
-          .toList();
+  Future<void> _write(PrayerRequest draft) async {
+    try {
+      await DBHelper().updatePrayerRequest(draft);
+      _request = draft;
       _didUpdate = true;
+      for (final contact in _contacts) {
+        await ReminderCoordinator().syncPrayerRequestReminder(contact, draft);
+      }
+    } catch (error) {
+      if (mounted) CrispToast.show(context, 'Could not save changes: $error');
+    } finally {
+      _writesInFlight--;
+      if (mounted) setState(() {});
+    }
+  }
+
+  void _setStatus(PrayerRequestStatus status) {
+    if (status == _status) return;
+    final today = _today();
+    setState(() {
+      _status = status;
+      if (status == PrayerRequestStatus.answered) _answeredAt ??= today;
+      if (status == PrayerRequestStatus.archived) _archivedAt ??= today;
     });
-
-    if (result != null) {
-      final message = result == 'updated'
-          ? 'Prayer request updated.'
-          : 'Prayer request saved.';
-      CrispToast.show(context, message);
-    }
+    _saveNow();
   }
 
-  String _formatDate(DateTime date) {
-    return _dateFormat.format(date);
+  DateTime _today() {
+    final now = DateTime.now();
+    return DateTime(now.year, now.month, now.day);
   }
 
-  List<Widget> _buildParticipantBadges() {
-    if (_contacts.isEmpty) {
-      return const [];
-    }
-
-    final theme = Theme.of(context);
-    return _contacts.map((contact) {
-      final name = contact.fullName.isNotEmpty
-          ? contact.fullName
-          : (contact.nickname?.isNotEmpty == true
-              ? contact.nickname!
-              : 'Unnamed');
-
-      return Chip(
-        avatar: ContactAvatar(contact: contact, radius: 12),
-        label: Text(name),
-        labelStyle: theme.textTheme.labelMedium,
-        visualDensity: VisualDensity.compact,
-        side: BorderSide(color: theme.colorScheme.outlineVariant),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      );
-    }).toList();
-  }
-
-  Widget _buildCard({required List<Widget> children, Color? color}) {
-    final theme = Theme.of(context);
-    return Card(
-      elevation: 0,
-      color: color ?? theme.colorScheme.surfaceContainerLow,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: color == null
-            ? BorderSide(color: theme.colorScheme.outlineVariant, width: 0.5)
-            : BorderSide.none,
-      ),
-      child: Column(children: children),
+  Future<DateTime?> _pickDate(DateTime initial, String helpText) async {
+    final selected = await showDatePicker(
+      context: context,
+      initialDate: initial,
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2100),
+      helpText: helpText,
     );
+    if (selected == null || !mounted) return null;
+    return DateTime(selected.year, selected.month, selected.day);
   }
 
-  Widget _buildDetailTile({
-    required IconData icon,
-    required String title,
-    String? value,
-  }) {
-    if (value == null || value.trim().isEmpty) {
-      return const SizedBox.shrink();
-    }
+  Future<void> _pickRequestedDate() async {
+    final date = await _pickDate(_requestedAt, 'Requested on');
+    if (date == null) return;
+    setState(() => _requestedAt = date);
+    _saveNow();
+  }
 
-    final theme = Theme.of(context);
-    return ListTile(
-      leading: Icon(icon, color: theme.colorScheme.primary),
-      title: Text(
-        title,
-        style: theme.textTheme.labelMedium?.copyWith(
-          color: theme.colorScheme.onSurfaceVariant,
+  Future<void> _pickAnsweredDate() async {
+    final date = await _pickDate(_answeredAt ?? _today(), 'Answered on');
+    if (date == null) return;
+    setState(() => _answeredAt = date);
+    _saveNow();
+  }
+
+  Future<void> _pickArchivedDate() async {
+    final date = await _pickDate(_archivedAt ?? _today(), 'Archived on');
+    if (date == null) return;
+    setState(() => _archivedAt = date);
+    _saveNow();
+  }
+
+  Future<void> _editCategory() async {
+    final controller = TextEditingController(text: _category ?? '');
+    final result = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Category'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          textCapitalization: TextCapitalization.words,
+          decoration: const InputDecoration(hintText: 'e.g. Health, Family'),
+          onSubmitted: (value) => Navigator.of(context).pop(value),
         ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(controller.text),
+            child: const Text('Save'),
+          ),
+        ],
       ),
-      subtitle: Text(
-        value,
-        style: theme.textTheme.bodyLarge?.copyWith(
-          color: theme.colorScheme.onSurface,
-        ),
-      ),
-      dense: true,
     );
+    controller.dispose();
+    if (result == null || !mounted) return;
+    final cleaned = result.trim();
+    setState(() => _category = cleaned.isEmpty ? null : cleaned);
+    _saveNow();
   }
 
-  void _handleBack() {
+  Future<void> _confirmDelete() async {
+    final colors = Theme.of(context).colorScheme;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete this request?'),
+        content: const Text(
+          'It will be removed from your prayer diary, along with its history.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: TextButton.styleFrom(foregroundColor: colors.error),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    final id = _request.id;
+    if (id == null) return;
+
+    _saveTimer?.cancel();
+    _saveTimer = null;
+    setState(() => _isDeleting = true);
+    try {
+      await _saveChain;
+      await DBHelper().deletePrayerRequest(id);
+      await ReminderCoordinator().cancelPrayerRequestReminder(_request);
+      if (!mounted) return;
+      Navigator.of(context).pop(true);
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _isDeleting = false);
+      CrispToast.show(context, 'Could not delete request: $error');
+    }
+  }
+
+  Future<void> _handlePop() async {
+    await _saveNow();
+    if (!mounted) return;
     Navigator.of(context).pop(_didUpdate);
+  }
+
+  String _formatDay(DateTime date) {
+    return date.year == DateTime.now().year
+        ? _dayFormat.format(date)
+        : _fullDateFormat.format(date);
+  }
+
+  List<_HistoryEvent> _historyEvents() {
+    final draft = _draft();
+    final events = [
+      if (draft.answeredAt != null)
+        _HistoryEvent('Marked answered', draft.answeredAt!, emphasis: true),
+      if (draft.archivedAt != null)
+        _HistoryEvent('Archived', draft.archivedAt!, emphasis: true),
+      for (final date in _prayedDates) _HistoryEvent('Prayed', date),
+      _HistoryEvent('Requested', draft.requestedAt),
+    ]..sort((a, b) => b.at.compareTo(a.at));
+    return events;
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final participantBadges = _buildParticipantBadges();
+    final colors = theme.colorScheme;
+    final sectionLabel = theme.textTheme.labelSmall?.copyWith(
+      fontSize: 11.5,
+      fontWeight: FontWeight.w700,
+      letterSpacing: 0.6,
+      color: colors.secondaryText,
+    );
+    final events = _historyEvents();
+    final visibleEvents =
+        _showAllHistory ? events : events.take(_collapsedHistoryCount).toList();
 
-    return HideOnScrollScaffold(
-      appBar: AppBar(
-        title: const Text('Prayer request details'),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: _handleBack,
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.edit_outlined),
-            tooltip: 'Edit prayer request',
-            onPressed: _openEditSheet,
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _handlePop();
+      },
+      child: Scaffold(
+        backgroundColor: colors.surface,
+        appBar: AppBar(
+          backgroundColor: colors.surface,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            tooltip: 'Back',
+            onPressed: _handlePop,
           ),
-        ],
-      ),
-      body: RefreshIndicator(
-        onRefresh: _loadContacts,
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          physics: const AlwaysScrollableScrollPhysics(),
+          actions: [
+            Padding(
+              padding: const EdgeInsets.only(right: 20),
+              child: Center(
+                child: Text(
+                  _isSaving ? 'Saving…' : 'Saved automatically',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: colors.secondaryText,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+        body: ListView(
+          padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
           children: [
-            // Header Section
-            Text(
-              _request.description,
+            _buildHeader(theme),
+            const SizedBox(height: 10),
+            TextField(
+              controller: _textController,
+              minLines: 1,
+              maxLines: null,
+              textCapitalization: TextCapitalization.sentences,
               style: theme.textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: theme.colorScheme.onSurface,
+                fontSize: 22,
+                fontWeight: FontWeight.w600,
+                height: 1.3,
+                letterSpacing: -0.2,
+                color: colors.onSurface,
+              ),
+              decoration: const InputDecoration.collapsed(
+                hintText: 'Prayer request',
               ),
             ),
             const SizedBox(height: 8),
-            Row(
+            Wrap(
+              crossAxisAlignment: WrapCrossAlignment.center,
               children: [
-                Icon(
-                  Icons.calendar_today_outlined,
-                  size: 16,
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  _formatDate(_request.requestedAt),
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
-
-            // Participants Section
-            if (participantBadges.isNotEmpty) ...[
-              Text(
-                'Participants',
-                style: theme.textTheme.titleSmall?.copyWith(
-                  color: theme.colorScheme.primary,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 12),
-              Wrap(spacing: 8, runSpacing: 8, children: participantBadges),
-              const SizedBox(height: 24),
-            ],
-
-            // Details Card
-            Text(
-              'Details',
-              style: theme.textTheme.titleSmall?.copyWith(
-                color: theme.colorScheme.primary,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 12),
-            _buildCard(
-              children: [
-                _buildDetailTile(
-                  icon: _request.status == PrayerRequestStatus.answered
-                      ? Icons.volunteer_activism_outlined
-                      : Icons.hourglass_top_outlined,
-                  title: 'Status',
-                  value: _request.status.label,
-                ),
-                if (_request.answeredAt != null)
-                  _buildDetailTile(
-                    icon: Icons.celebration_outlined,
-                    title: 'Answered on',
-                    value: _formatDate(_request.answeredAt!),
-                  ),
-                _buildDetailTile(
-                  icon: Icons.label_outline,
-                  title: 'Category',
-                  value: _request.category,
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
-
-            // Reflection Notes Section
-            if (_request.reflectionNotes != null &&
-                _request.reflectionNotes!.trim().isNotEmpty) ...[
-              Text(
-                'Reflection notes',
-                style: theme.textTheme.titleSmall?.copyWith(
-                  color: theme.colorScheme.primary,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 12),
-              _buildCard(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.all(16.0),
+                InkWell(
+                  onTap: _pickRequestedDate,
+                  borderRadius: BorderRadius.circular(6),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 6),
                     child: Text(
-                      _request.reflectionNotes!,
-                      style: theme.textTheme.bodyLarge?.copyWith(height: 1.5),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
-            ],
-
-            // Answered styling
-            if (_request.status == PrayerRequestStatus.answered)
-              _buildCard(
-                color: theme.colorScheme.secondaryContainer,
-                children: [
-                  ListTile(
-                    leading: Icon(
-                      Icons.celebration_outlined,
-                      color: theme.colorScheme.onSecondaryContainer,
-                    ),
-                    title: Text(
-                      'Praise report - Answered!',
-                      style: theme.textTheme.labelLarge?.copyWith(
-                        color: theme.colorScheme.onSecondaryContainer,
-                        fontWeight: FontWeight.bold,
+                      'Requested ${_formatDay(_requestedAt)}',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: colors.secondaryText,
+                        decoration: TextDecoration.underline,
+                        decorationColor: colors.faint,
                       ),
                     ),
                   ),
+                ),
+                Text(
+                  ' · Tap text to edit',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: colors.secondaryText,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            Text('STATUS', style: sectionLabel),
+            const SizedBox(height: 8),
+            Semantics(
+              label: 'Status',
+              child: Row(
+                children: [
+                  for (final (index, option) in _statusOptions.indexed) ...[
+                    if (index > 0) const SizedBox(width: 8),
+                    Expanded(
+                      child: _StatusCard(
+                        icon: option.icon,
+                        label: option.label,
+                        selected: _status == option.status,
+                        onTap: () => _setStatus(option.status),
+                      ),
+                    ),
+                  ],
                 ],
               ),
+            ),
+            const SizedBox(height: 20),
+            _buildStatusPanel(theme),
+            const SizedBox(height: 20),
+            Text('HISTORY', style: sectionLabel),
+            const SizedBox(height: 10),
+            for (final event in visibleEvents)
+              Padding(
+                padding: const EdgeInsets.only(left: 4, bottom: 10),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: event.emphasis ? colors.primary : colors.faint,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        event.label,
+                        style: TextStyle(fontSize: 13, color: colors.onSurface),
+                      ),
+                    ),
+                    Text(
+                      _formatDay(event.at),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: colors.secondaryText,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            if (events.length > visibleEvents.length)
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton(
+                  onPressed: () => setState(() => _showAllHistory = true),
+                  child: Text('Show all ${events.length}'),
+                ),
+              ),
+            const SizedBox(height: 24),
+            SizedBox(
+              height: 46,
+              child: OutlinedButton(
+                onPressed: _isDeleting ? null : _confirmDelete,
+                style: OutlinedButton.styleFrom(
+                  backgroundColor: colors.dangerTint,
+                  foregroundColor: colors.error,
+                  side: BorderSide(color: colors.dangerBorder),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(13),
+                  ),
+                  textStyle: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                child: const Text('Delete request'),
+              ),
+            ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeader(ThemeData theme) {
+    final colors = theme.colorScheme;
+    final metaStyle = TextStyle(
+      fontSize: 12,
+      fontWeight: FontWeight.w600,
+      color: colors.secondaryText,
+    );
+    return Wrap(
+      crossAxisAlignment: WrapCrossAlignment.center,
+      spacing: 8,
+      runSpacing: 6,
+      children: [
+        for (final contact in _contacts)
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ContactAvatar(contact: contact, radius: 13),
+              const SizedBox(width: 8),
+              Text(
+                prayerPersonName(contact),
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: colors.onSurface,
+                ),
+              ),
+            ],
+          ),
+        InkWell(
+          onTap: _editCategory,
+          borderRadius: BorderRadius.circular(6),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 2),
+            child: Text(
+              _category == null ? '· Add category' : '· $_category',
+              style: metaStyle,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStatusPanel(ThemeData theme) {
+    final colors = theme.colorScheme;
+    final (String? dateLabel, DateTime? date, VoidCallback? onPickDate) =
+        switch (_status) {
+      PrayerRequestStatus.answered => (
+          'Answered on',
+          _answeredAt,
+          _pickAnsweredDate,
+        ),
+      PrayerRequestStatus.archived => (
+          'Archived on',
+          _archivedAt,
+          _pickArchivedDate,
+        ),
+      PrayerRequestStatus.pending => (null, null, null),
+    };
+    final notesLabel = switch (_status) {
+      PrayerRequestStatus.answered => 'How was it answered?',
+      PrayerRequestStatus.archived => 'Why was it archived?',
+      PrayerRequestStatus.pending => 'Notes',
+    };
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: colors.surfaceTint,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: colors.cardBorder),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (dateLabel != null) ...[
+            InkWell(
+              onTap: onPickDate,
+              borderRadius: BorderRadius.circular(8),
+              child: SizedBox(
+                height: 40,
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        dateLabel,
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: colors.onSurface,
+                        ),
+                      ),
+                    ),
+                    Text(
+                      date == null ? 'Set date' : _weekdayFormat.format(date),
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: colors.primary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
+          Text(
+            notesLabel,
+            style: TextStyle(
+              fontSize: 12.5,
+              fontWeight: FontWeight.w700,
+              color: colors.onSurface,
+            ),
+          ),
+          const SizedBox(height: 6),
+          TextField(
+            controller: _notesController,
+            minLines: 3,
+            maxLines: 6,
+            textCapitalization: TextCapitalization.sentences,
+            style: const TextStyle(fontSize: 15, height: 1.45),
+            decoration: InputDecoration(
+              fillColor: colors.surface,
+              contentPadding: const EdgeInsets.all(12),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: colors.cardBorder),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+const _statusOptions = [
+  (
+    status: PrayerRequestStatus.pending,
+    label: 'Praying',
+    icon: Icons.volunteer_activism_outlined,
+  ),
+  (
+    status: PrayerRequestStatus.answered,
+    label: 'Answered',
+    icon: Icons.check_circle_outline,
+  ),
+  (
+    status: PrayerRequestStatus.archived,
+    label: 'Archived',
+    icon: Icons.inventory_2_outlined,
+  ),
+];
+
+class _HistoryEvent {
+  _HistoryEvent(this.label, this.at, {this.emphasis = false});
+
+  final String label;
+  final DateTime at;
+  final bool emphasis;
+}
+
+class _StatusCard extends StatelessWidget {
+  const _StatusCard({
+    required this.icon,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final foreground = selected ? colors.onPrimaryContainer : colors.onSurface;
+    return Semantics(
+      inMutuallyExclusiveGroup: true,
+      checked: selected,
+      button: true,
+      child: Material(
+        color: selected ? colors.greenTint : colors.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+          side: selected
+              ? BorderSide(color: colors.primary, width: 2)
+              : BorderSide(color: colors.cardBorder),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: SizedBox(
+            height: 64,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(icon, size: 20, color: foreground),
+                const SizedBox(height: 4),
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: selected ? FontWeight.w800 : FontWeight.w700,
+                    color: foreground,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );

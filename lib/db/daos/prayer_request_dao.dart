@@ -1,4 +1,5 @@
 import 'package:sqflite_sqlcipher/sqflite.dart';
+import 'package:uuid/uuid.dart';
 
 import '../../models/contact.dart';
 import '../../models/prayer_request.dart';
@@ -49,6 +50,173 @@ class PrayerRequestDao extends BaseDao {
         request.participantIds,
       );
     });
+  }
+
+  /// Inserts one request per contact from [template], each with its own
+  /// syncId and [contactIds] entry as its only participant. Returns the new
+  /// row ids in the order of [contactIds].
+  Future<List<int>> createForEachContact(
+    PrayerRequest template,
+    List<String> contactIds,
+  ) async {
+    final db = await database;
+    final now = DateTime.now().toUtc().toIso8601String();
+    final ids = <int>[];
+
+    await db.transaction((txn) async {
+      for (final contactId in contactIds) {
+        final request = template.copyWith(
+          syncId: const Uuid().v4(),
+          participantIds: [contactId],
+        );
+        final reqMap = request.toMap(includeId: false);
+        reqMap.remove('participantIds');
+        reqMap['updatedAt'] = now;
+        reqMap['deletedAt'] = null;
+
+        final id = await txn.insert('prayer_requests', reqMap);
+        await replacePrayerRequestParticipants(txn, id, [contactId]);
+        ids.add(id);
+      }
+    });
+
+    return ids;
+  }
+
+  /// Moves a request to [status] in one step.
+  ///
+  /// - answered: answeredAt = [now], reflectionNotes = [comment].
+  /// - archived: archivedAt = [now]; [comment] replaces reflectionNotes only
+  ///   when given, so an answered request's notes survive archiving.
+  /// - pending: clears answeredAt, archivedAt and reflectionNotes.
+  Future<void> setStatus(
+    int requestId,
+    PrayerRequestStatus status, {
+    String? comment,
+    DateTime? now,
+  }) async {
+    final at = (now ?? DateTime.now()).toIso8601String();
+    final note = comment?.trim();
+    final values = <String, Object?>{
+      'status': status.name,
+      'updatedAt': DateTime.now().toUtc().toIso8601String(),
+    };
+    switch (status) {
+      case PrayerRequestStatus.pending:
+        values['answeredAt'] = null;
+        values['archivedAt'] = null;
+        values['reflectionNotes'] = null;
+      case PrayerRequestStatus.answered:
+        values['answeredAt'] = at;
+        values['archivedAt'] = null;
+        values['reflectionNotes'] = (note?.isEmpty ?? true) ? null : note;
+      case PrayerRequestStatus.archived:
+        values['archivedAt'] = at;
+        if (note != null && note.isNotEmpty) values['reflectionNotes'] = note;
+    }
+
+    final db = await database;
+    await db.update(
+      'prayer_requests',
+      values,
+      where: 'id = ?',
+      whereArgs: [requestId],
+    );
+  }
+
+  /// Days each request was prayed for, ascending, as the earliest log time on
+  /// each local calendar day (entries synced from two devices for the same day
+  /// count once). Requests never prayed for are absent from the map.
+  Future<Map<int, List<DateTime>>> getPrayedDates(List<int> requestIds) async {
+    final rows = await chunkedQuery(
+      table: 'prayer_request_prayed_log',
+      inColumn: 'prayerRequestId',
+      values: requestIds,
+      where: 'deletedAt IS NULL',
+    );
+
+    final byRequest = <int, Map<DateTime, DateTime>>{};
+    for (final row in rows) {
+      final prayedAt = DateTime.parse(row['prayedAt'] as String).toLocal();
+      final day = DateTime(prayedAt.year, prayedAt.month, prayedAt.day);
+      final days = byRequest.putIfAbsent(
+        row['prayerRequestId'] as int,
+        () => {},
+      );
+      final earliest = days[day];
+      if (earliest == null || prayedAt.isBefore(earliest)) {
+        days[day] = prayedAt;
+      }
+    }
+
+    return {
+      for (final entry in byRequest.entries)
+        entry.key: entry.value.values.toList()..sort(),
+    };
+  }
+
+  /// Marks [requestId] as prayed for on the local calendar day of [now], or
+  /// tombstones that day's entries if already marked. Returns whether the day
+  /// is now marked.
+  Future<bool> togglePrayedToday(int requestId, {DateTime? now}) async {
+    final at = (now ?? DateTime.now()).toLocal();
+    final stamp = DateTime.now().toUtc().toIso8601String();
+    final db = await database;
+
+    return db.transaction((txn) async {
+      final rows = await txn.query(
+        'prayer_request_prayed_log',
+        columns: ['id', 'prayedAt'],
+        where: 'prayerRequestId = ? AND deletedAt IS NULL',
+        whereArgs: [requestId],
+      );
+      final todayIds = rows.where((row) {
+        final prayedAt = DateTime.parse(row['prayedAt'] as String).toLocal();
+        return prayedAt.year == at.year &&
+            prayedAt.month == at.month &&
+            prayedAt.day == at.day;
+      }).map((row) => row['id'] as int);
+
+      if (todayIds.isNotEmpty) {
+        final ids = todayIds.toList();
+        final placeholders = List.filled(ids.length, '?').join(',');
+        await txn.update(
+          'prayer_request_prayed_log',
+          {'deletedAt': stamp, 'updatedAt': stamp},
+          where: 'id IN ($placeholders)',
+          whereArgs: ids,
+        );
+        return false;
+      }
+
+      await txn.insert('prayer_request_prayed_log', {
+        'syncId': const Uuid().v4(),
+        'prayerRequestId': requestId,
+        'prayedAt': at.toUtc().toIso8601String(),
+        'updatedAt': stamp,
+      });
+      return true;
+    });
+  }
+
+  /// Prayed-log rows, tombstones included, keyed by their request's syncId
+  /// (local ids differ across devices) for sync and export payloads.
+  Future<List<Map<String, Object?>>> getPrayedLogForSync({
+    DateTime? updatedSince,
+  }) async {
+    final db = await database;
+    var rows = await db.rawQuery('''
+      SELECT * FROM (
+        SELECT l.syncId, pr.syncId AS prayerRequestSyncId, l.prayedAt,
+          l.updatedAt, l.deletedAt
+        FROM prayer_request_prayed_log l
+        JOIN prayer_requests pr ON pr.id = l.prayerRequestId
+      )
+      ${updatedSince != null ? 'WHERE $updatedSinceDateClause' : ''}
+    ''', [if (updatedSince != null) updatedSinceDateArg(updatedSince)]);
+
+    if (updatedSince != null) rows = rowsUpdatedAfter(rows, updatedSince);
+    return rows;
   }
 
   Future<void> deletePrayerRequest(int id) async {

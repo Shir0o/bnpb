@@ -8,6 +8,9 @@ while offering analytics and export tooling.
 
 - Contact data is stored in an encrypted SQLCipher database. The encryption key
   is generated on-device and saved via the platform key store.
+- When you mark a prayer request as prayed for, the date is kept in that
+  encrypted database and included in Google Drive sync and JSON/encrypted
+  backups along with the request.
 - Optional passcode and biometric gating prevents casual access to the app. The
   lock screen appears on launch whenever a passcode is configured.
 - CSV, PDF, JSON, and encrypted archive exports allow selective field inclusion. AES

@@ -11,6 +11,9 @@ developers have no access to your information.
 ## Data storage & encryption
 - All contact details, interaction history, prayer requests, and notification
   preferences are written to an encrypted SQLCipher database.
+- When you mark a prayer request as prayed for, BNPB records the date in the
+  same encrypted database. This log travels with your prayer requests in sync
+  and backups, and nowhere else.
 - The encryption key is generated locally and saved in the device key store via
   Flutter Secure Storage (e.g., Keychain on iOS/macOS, Keystore on Android). 
   This key never leaves your device.

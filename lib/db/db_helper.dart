@@ -25,7 +25,7 @@ import '../models/relationship.dart';
 import '../models/stage_move.dart';
 
 class DBHelper {
-  static const _dbVersion = 21;
+  static const _dbVersion = 22;
 
   static final DBHelper _instance = DBHelper._();
   static DBHelper? _testOverride;
@@ -195,6 +195,7 @@ class DBHelper {
         reflectionNotes TEXT,
         updatedAt TEXT NOT NULL DEFAULT (datetime('now')),
         deletedAt TEXT,
+        archivedAt TEXT,
         FOREIGN KEY(contactId) REFERENCES contacts(id) ON DELETE CASCADE,
         FOREIGN KEY(interactionId) REFERENCES interactions(id) ON DELETE SET NULL
       )
@@ -244,6 +245,27 @@ class DBHelper {
         FOREIGN KEY(prayerRequestId) REFERENCES prayer_requests(id) ON DELETE CASCADE,
         FOREIGN KEY(contactId) REFERENCES contacts(id) ON DELETE CASCADE
       )
+    ''');
+
+    await _createPrayedLog(db);
+  }
+
+  // No foreign key on prayerRequestId: contact saves re-insert prayer_requests
+  // rows with INSERT OR REPLACE, which would cascade-delete the log.
+  Future<void> _createPrayedLog(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS prayer_request_prayed_log (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        syncId TEXT NOT NULL UNIQUE,
+        prayerRequestId INTEGER NOT NULL,
+        prayedAt TEXT NOT NULL,
+        updatedAt TEXT NOT NULL DEFAULT (datetime('now')),
+        deletedAt TEXT
+      )
+    ''');
+    await db.execute('''
+      CREATE INDEX IF NOT EXISTS idx_prayed_log_request
+      ON prayer_request_prayed_log(prayerRequestId)
     ''');
   }
 
@@ -603,6 +625,15 @@ class DBHelper {
         )
       ''');
     }
+    if (oldVersion < 22) {
+      final columns = await db.rawQuery('PRAGMA table_info(prayer_requests)');
+      final names = columns.map((c) => c['name'] as String).toSet();
+      if (!names.contains('archivedAt')) {
+        await db
+            .execute('ALTER TABLE prayer_requests ADD COLUMN archivedAt TEXT');
+      }
+      await _createPrayedLog(db);
+    }
   }
 
   Future<Map<String, dynamic>> getGlobalMetadata() async {
@@ -656,6 +687,7 @@ class DBHelper {
       await txn.delete('relationships');
       await txn.delete('stage_moves');
       await txn.delete('prayer_request_participants');
+      await txn.delete('prayer_request_prayed_log');
       await txn.delete('prayer_requests');
       await txn.delete('prayer_list_members');
       await txn.delete('prayer_lists');
@@ -918,6 +950,10 @@ class DBHelper {
         updatedSince: since,
         includeDeleted: true,
       );
+  Future<List<Map<String, Object?>>> getPrayedLogModifiedSince(
+    DateTime? since,
+  ) =>
+      prayerRequestDao.getPrayedLogForSync(updatedSince: since);
   Future<Map<PrayerRequestStatus, int>> getPrayerRequestCounts() =>
       prayerRequestDao.getPrayerRequestCounts();
   Future<List<String>> getPrayerCategories() =>
