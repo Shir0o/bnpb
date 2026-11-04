@@ -281,6 +281,21 @@ class ExportService {
       }
     }
 
+    var prayedLog = <Map<String, Object?>>[];
+    if (seenPrayerSyncIds.isNotEmpty) {
+      try {
+        prayedLog = (await DBHelper().prayerRequestDao.getPrayedLogForSync())
+            .where(
+              (row) =>
+                  row['deletedAt'] == null &&
+                  seenPrayerSyncIds.contains(row['prayerRequestSyncId']),
+            )
+            .toList();
+      } catch (_) {
+        prayedLog = [];
+      }
+    }
+
     // Get Device ID (reuse SyncCoordinator logic)
     final syncCoordinator = SyncCoordinator(DBHelper());
     final deviceId = await syncCoordinator.getDeviceId();
@@ -293,6 +308,7 @@ class ExportService {
       'contacts': contactList,
       'interactions': flatInteractions,
       'prayerRequests': flatPrayerRequests,
+      'prayedLog': prayedLog,
       'relationships': flatRelationships,
       'prayerLists': effectivePrayerLists.map((list) {
         final map = list.toMap();

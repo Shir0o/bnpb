@@ -3,17 +3,18 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../db/db_helper.dart';
+import '../main.dart'; // CrispColorScheme extension on ColorScheme
 import '../models/contact.dart';
-import '../models/prayer_list.dart';
+import '../models/prayer_request.dart';
 import '../services/backup_service.dart';
 import '../services/contact_service.dart';
 import '../services/reminder_coordinator.dart';
-import '../widgets/contact_avatar.dart';
-import '../widgets/contact_selection_sheet.dart';
+import '../widgets/add_people_to_prayer_list_sheet.dart';
 import '../widgets/crisp_toast.dart';
 import '../widgets/skeleton_loader.dart';
 import 'contact_details_page.dart';
 
+/// The single, merged prayer list: every contact on any underlying list.
 class PrayerListPage extends StatefulWidget {
   final DBHelper? dbHelper;
   final void Function(BuildContext context, Contact contact)?
@@ -30,8 +31,10 @@ class PrayerListPage extends StatefulWidget {
 
 class _PrayerListPageState extends State<PrayerListPage> {
   late final DBHelper _dbHelper;
-  PrayerList? _list;
   List<Contact> _contacts = [];
+  final Map<String, String> _latestOpen = {};
+  final Map<String, int> _openCount = {};
+  String _query = '';
   bool _isLoading = true;
   late ScaffoldMessengerState _scaffoldMessenger;
 
@@ -39,7 +42,7 @@ class _PrayerListPageState extends State<PrayerListPage> {
   void initState() {
     super.initState();
     _dbHelper = widget.dbHelper ?? DBHelper();
-    _ensureDefaultList();
+    _load();
   }
 
   @override
@@ -50,114 +53,81 @@ class _PrayerListPageState extends State<PrayerListPage> {
 
   @override
   void dispose() {
-    debugPrint('PRAYER LIST PAGE DISPOSED');
     _scaffoldMessenger.clearSnackBars();
     super.dispose();
   }
 
-  Future<void> _ensureDefaultList() async {
-    setState(() => _isLoading = true);
-    final stopwatch = Stopwatch()..start();
-
-    // Check for existing lists
-    final lists = await _dbHelper.getPrayerLists();
-    PrayerList targetList;
-
-    if (lists.isEmpty) {
-      // Create default list if none exists
-      targetList = PrayerList.create(
-        name: PrayerList.defaultListName,
-        description: 'People I am praying for',
+  Future<void> _load() async {
+    final ids = await _dbHelper.prayerListDao.getAllPrayerListContactIds();
+    var contacts = <Contact>[];
+    final latest = <String, String>{};
+    final counts = <String, int>{};
+    if (ids.isNotEmpty) {
+      contacts = await _dbHelper.getContacts(contactIds: ids);
+      contacts.sort(
+        (a, b) => a.fullName.toLowerCase().compareTo(b.fullName.toLowerCase()),
       );
-      await _dbHelper.insertPrayerList(targetList);
-      unawaited(BackupService().exportBackup());
-    } else {
-      // Use the first available list
-      targetList = lists.first;
-    }
-
-    // Load contacts for this list
-    await _loadListContacts(targetList);
-
-    final elapsed = stopwatch.elapsedMilliseconds;
-    if (elapsed < 300) {
-      await Future.delayed(Duration(milliseconds: 300 - elapsed));
-    }
-    if (mounted) {
-      setState(() => _isLoading = false);
-    }
-  }
-
-  Future<void> _loadListContacts(PrayerList list) async {
-    // Re-fetch list to get up-to-date member IDs if we just grabbed it from a list query
-    // (though getPrayerLists actually returns populates IDs, refreshing specific list is safer)
-    final freshList = await _dbHelper.getPrayerList(list.id);
-    if (freshList == null) return; // Should not happen
-
-    if (freshList.contactIds.isEmpty) {
-      if (mounted) {
-        setState(() {
-          _list = freshList;
-          _contacts = [];
-        });
-      }
-      return;
-    }
-
-    final loadedContacts = await _dbHelper.getContacts(
-      contactIds: freshList.contactIds,
-    );
-
-    // Optimization: Batch fetch all contacts at once instead of N+1 queries.
-    // Re-assemble in the correct order based on the list definition.
-    final contactMap = {for (final c in loadedContacts) c.id: c};
-    final contacts = <Contact>[];
-    for (final id in freshList.contactIds) {
-      final contact = contactMap[id];
-      if (contact != null) {
-        contacts.add(contact);
+      // Newest first, so the first request seen per contact is the latest.
+      final pending = await _dbHelper.getPrayerRequests(
+        status: PrayerRequestStatus.pending,
+      );
+      final idSet = ids.toSet();
+      for (final r in pending) {
+        for (final id in r.participantIds) {
+          if (!idSet.contains(id)) continue;
+          latest.putIfAbsent(id, () => r.description);
+          counts[id] = (counts[id] ?? 0) + 1;
+        }
       }
     }
-
-    if (mounted) {
-      setState(() {
-        _list = freshList;
-        _contacts = contacts;
-      });
-    }
+    if (!mounted) return;
+    setState(() {
+      _contacts = contacts;
+      _latestOpen
+        ..clear()
+        ..addAll(latest);
+      _openCount
+        ..clear()
+        ..addAll(counts);
+      _isLoading = false;
+    });
   }
 
   Future<void> _addContacts() async {
-    if (_list == null) return;
-
-    final currentIds = _list?.contactIds.toSet() ?? {};
-
-    final selectedIds = await showModalBottomSheet<List<String>>(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      sheetAnimationStyle: AnimationStyle(
-        duration: const Duration(milliseconds: 300),
-        reverseDuration: const Duration(milliseconds: 200),
-        curve: Curves.easeOutCubic,
-      ),
-      builder: (context) => ContactSelectionSheet(disabledIds: currentIds),
+    final selectedIds = await AddPeopleToPrayerListSheet.show(
+      context,
+      onListIds: _contacts.map((c) => c.id).toSet(),
+      dbHelper: _dbHelper,
     );
-
-    if (selectedIds != null && selectedIds.isNotEmpty) {
-      for (final id in selectedIds) {
-        await _dbHelper.addContactToPrayerList(_list!.id, id);
-      }
-      await _loadListContacts(_list!);
-      unawaited(BackupService().exportBackup());
-    }
+    if (selectedIds == null || selectedIds.isEmpty) return;
+    await _dbHelper.prayerListDao.addContactsToDefaultList(selectedIds);
+    await _load();
+    unawaited(BackupService().exportBackup());
   }
 
-  Future<void> _removeContact(String contactId) async {
-    if (_list == null) return;
-    await _dbHelper.removeContactFromPrayerList(_list!.id, contactId);
-    await _loadListContacts(_list!);
+  Future<void> _removeContact(Contact contact) async {
+    setState(() => _contacts.removeWhere((c) => c.id == contact.id));
+    await _dbHelper.prayerListDao.removeContactFromAllLists(contact.id);
+    await _load();
     unawaited(BackupService().exportBackup());
+    if (!mounted) return;
+    _scaffoldMessenger.clearSnackBars();
+    _scaffoldMessenger.showSnackBar(
+      SnackBar(
+        content: Text('Removed ${contact.fullName} from list'),
+        action: SnackBarAction(
+          label: 'UNDO',
+          onPressed: () async {
+            _scaffoldMessenger.hideCurrentSnackBar();
+            await _dbHelper.prayerListDao.addContactsToDefaultList([
+              contact.id,
+            ]);
+            await _load();
+            unawaited(BackupService().exportBackup());
+          },
+        ),
+      ),
+    );
   }
 
   Future<void> _deleteContact(String contactId) async {
@@ -168,9 +138,7 @@ class _PrayerListPageState extends State<PrayerListPage> {
         CrispToast.show(context, 'Contact deleted successfully.');
       }
       ContactService().invalidateContacts();
-      if (_list != null) {
-        await _loadListContacts(_list!);
-      }
+      await _load();
     } catch (e) {
       if (mounted) {
         CrispToast.show(context, 'Failed to delete contact: $e');
@@ -186,141 +154,234 @@ class _PrayerListPageState extends State<PrayerListPage> {
     }
     Navigator.of(context)
         .push(
-      MaterialPageRoute(
-        builder: (context) => ContactDetailsPage(
-          contact: contact,
-          onDelete: () => _deleteContact(contact.id),
-        ),
-      ),
-    )
-        .then((_) {
-      // Refresh list in case contact was deleted or changed
-      if (_list != null) {
-        _loadListContacts(_list!);
-      }
-    });
+          MaterialPageRoute(
+            builder: (context) => ContactDetailsPage(
+              contact: contact,
+              onDelete: () => _deleteContact(contact.id),
+            ),
+          ),
+        )
+        .then((_) => _load());
   }
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final n = _contacts.length;
     return Scaffold(
-      appBar: AppBar(title: Text(_list?.name ?? 'Prayer List')),
-      floatingActionButton: _list == null
-          ? null
-          : FloatingActionButton.extended(
-              onPressed: _addContacts,
-              icon: const Icon(Icons.person_add),
-              label: const Text('Add People'),
+      body: SafeArea(
+        child: Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+              decoration: BoxDecoration(
+                border: Border(bottom: BorderSide(color: scheme.cardBorder)),
+              ),
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      Transform.translate(
+                        offset: const Offset(-12, 0),
+                        child: IconButton(
+                          tooltip: 'Back',
+                          constraints: const BoxConstraints.tightFor(
+                            width: 44,
+                            height: 44,
+                          ),
+                          icon: const Icon(Icons.chevron_left, size: 26),
+                          onPressed: () => Navigator.of(context).maybePop(),
+                        ),
+                      ),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Prayer list',
+                              style: TextStyle(
+                                fontSize: 24,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: -0.48,
+                              ),
+                            ),
+                            Text(
+                              n == 1 ? '1 person' : '$n people',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: scheme.secondaryText,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Material(
+                        color: scheme.primary,
+                        shape: const CircleBorder(),
+                        child: IconButton(
+                          tooltip: 'Add people',
+                          constraints: const BoxConstraints.tightFor(
+                            width: 44,
+                            height: 44,
+                          ),
+                          color: scheme.onPrimary,
+                          icon: const Icon(Icons.add, size: 22),
+                          onPressed: _addContacts,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Container(
+                    height: 44,
+                    padding: const EdgeInsets.symmetric(horizontal: 14),
+                    decoration: BoxDecoration(
+                      color: scheme.hairline,
+                      borderRadius: BorderRadius.circular(13),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.search,
+                          size: 17,
+                          color: scheme.secondaryText,
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: TextField(
+                            onChanged: (v) => setState(() => _query = v),
+                            style: const TextStyle(fontSize: 14),
+                            decoration: InputDecoration(
+                              hintText: 'Search people',
+                              hintStyle: TextStyle(
+                                color: scheme.secondaryText,
+                              ),
+                              border: InputBorder.none,
+                              enabledBorder: InputBorder.none,
+                              focusedBorder: InputBorder.none,
+                              filled: false,
+                              isDense: true,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
-      body: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 300),
-        child: _buildBody(),
+            Expanded(
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 300),
+                child: _buildBody(scheme),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildBody() {
+  Widget _buildBody(ColorScheme scheme) {
     if (_isLoading) {
       return const _PrayerListSkeleton(key: ValueKey('loading'));
     }
 
-    if (_list == null) {
-      return const Center(
-        key: ValueKey('error'),
-        child: Text('Unable to load prayer list'),
+    final q = _query.trim().toLowerCase();
+    final visible = q.isEmpty
+        ? _contacts
+        : _contacts.where((c) => c.fullName.toLowerCase().contains(q)).toList();
+
+    if (visible.isEmpty) {
+      return Center(
+        key: const ValueKey('empty'),
+        child: Text(
+          _contacts.isEmpty
+              ? 'No one on your prayer list yet.\nTap + to add people.'
+              : 'No people match.',
+          textAlign: TextAlign.center,
+          style: TextStyle(fontSize: 13.5, color: scheme.secondaryText),
+        ),
       );
     }
 
-    return _contacts.isEmpty
-        ? Center(
-            key: const ValueKey('empty'),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  Icons.playlist_add,
-                  size: 64,
-                  color: Theme.of(context).colorScheme.outline,
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'No contacts in your prayer list yet.',
-                  style: Theme.of(context)
-                      .textTheme
-                      .titleMedium
-                      ?.copyWith(color: Theme.of(context).colorScheme.outline),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Tap "Add People" to get started.',
-                  style: Theme.of(context)
-                      .textTheme
-                      .bodyMedium
-                      ?.copyWith(color: Theme.of(context).colorScheme.outline),
-                ),
-              ],
-            ),
-          )
-        : ListView.builder(
-            key: const ValueKey('list'),
-            itemCount: _contacts.length,
-            itemBuilder: (context, index) {
-              final contact = _contacts[index];
-              return Dismissible(
-                key: ValueKey(contact.id),
-                direction: DismissDirection.endToStart,
-                background: Container(
-                  color: Theme.of(context).colorScheme.error,
-                  alignment: AlignmentDirectional.centerEnd,
-                  padding: const EdgeInsetsDirectional.only(end: 20),
-                  child: Icon(
-                    Icons.delete_outline,
-                    color: Theme.of(context).colorScheme.onError,
-                  ),
-                ),
-                onDismissed: (direction) async {
-                  final contactName = contact.fullName;
-                  final contactId = contact.id;
-                  final listId = _list?.id;
-
-                  setState(() {
-                    _contacts.removeWhere((c) => c.id == contactId);
-                  });
-
-                  await _removeContact(contactId);
-
-                  if (!context.mounted) return;
-                  if (listId != null) {
-                    _scaffoldMessenger.clearSnackBars();
-                    _scaffoldMessenger.showSnackBar(
-                      SnackBar(
-                        content: Text('Removed $contactName from list'),
-                        action: SnackBarAction(
-                          label: 'UNDO',
-                          onPressed: () async {
-                            _scaffoldMessenger.hideCurrentSnackBar();
-                            await _dbHelper.addContactToPrayerList(
-                              listId,
-                              contactId,
-                            );
-                            await _loadListContacts(_list!);
-                            unawaited(BackupService().exportBackup());
-                          },
+    return ListView.builder(
+      key: const ValueKey('list'),
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      itemCount: visible.length,
+      itemBuilder: (context, index) {
+        final contact = visible[index];
+        final open = _openCount[contact.id] ?? 0;
+        return Dismissible(
+          key: ValueKey(contact.id),
+          direction: DismissDirection.endToStart,
+          background: Container(
+            color: scheme.error,
+            alignment: AlignmentDirectional.centerEnd,
+            padding: const EdgeInsetsDirectional.only(end: 20),
+            child: Icon(Icons.delete_outline, color: scheme.onError),
+          ),
+          onDismissed: (_) => _removeContact(contact),
+          child: InkWell(
+            onTap: () => _navigateToContactDetails(contact),
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 13),
+              decoration: BoxDecoration(
+                color: scheme.surface,
+                border: Border(bottom: BorderSide(color: scheme.hairline)),
+              ),
+              child: Row(
+                children: [
+                  CircleInitials(initials: contact.initials),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          contact.fullName,
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
-                      ),
-                    );
-                  }
-                },
-                child: ListTile(
-                  leading: ContactAvatar(contact: contact, radius: 20),
-                  title: Text(contact.fullName),
-                  subtitle:
-                      contact.location != null ? Text(contact.location!) : null,
-                  onTap: () => _navigateToContactDetails(contact),
-                ),
-              );
-            },
-          );
+                        const SizedBox(height: 3),
+                        Text(
+                          _latestOpen[contact.id] ?? 'No requests yet',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 13,
+                            height: 1.45,
+                            color: scheme.secondaryText,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    open == 0 ? '\u2014' : '$open open',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: scheme.secondaryText,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Icon(
+                    Icons.chevron_right,
+                    size: 16,
+                    color: scheme.placeholder,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
   }
 }
 

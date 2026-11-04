@@ -2,13 +2,50 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../db/db_helper.dart';
+import '../main.dart'; // To access CrispColorScheme extension on ColorScheme
 import '../models/contact.dart';
 import '../models/prayer_request.dart';
+import '../screens/select_prayer_people_page.dart';
 import '../services/reminder_coordinator.dart';
-import 'contact_selection_sheet.dart';
+import 'contact_avatar.dart';
 import 'crisp_toast.dart';
 
-/// Shared bottom sheet for creating or editing a [PrayerRequest].
+/// A `#word` category tag in composer text.
+final RegExp prayerHashtagPattern = RegExp(
+  r'(?<!\S)#([\p{L}\p{N}_-]+)',
+  unicode: true,
+);
+
+/// Splits composer [text] into the description to save (tags removed) and
+/// the raw word of its last `#word` tag, if any.
+({String description, String? tag}) parsePrayerRequestText(String text) {
+  final matches = prayerHashtagPattern.allMatches(text).toList();
+  final description = text
+      .replaceAll(prayerHashtagPattern, '')
+      .split('\n')
+      .map((line) => line.replaceAll(RegExp(r'[ \t]+'), ' ').trim())
+      .join('\n')
+      .trim();
+  return (
+    description: description,
+    tag: matches.isEmpty ? null : matches.last.group(1),
+  );
+}
+
+/// Turns a tag word into a category: reuses an existing category that
+/// matches case-insensitively, otherwise capitalises it. `_` reads as a space.
+String categoryFromTag(String tag, Iterable<String> existingCategories) {
+  final name = tag.replaceAll('_', ' ');
+  for (final existing in existingCategories) {
+    if (existing.toLowerCase() == name.toLowerCase()) return existing;
+  }
+  return name[0].toUpperCase() + name.substring(1);
+}
+
+/// Quick-capture composer for creating (or editing) a [PrayerRequest].
+///
+/// New requests may be for several people; one separate request is created
+/// per person. Typing `#word` sets the category.
 class LogPrayerRequestSheet extends StatefulWidget {
   const LogPrayerRequestSheet({
     super.key,
@@ -24,10 +61,10 @@ class LogPrayerRequestSheet extends StatefulWidget {
   /// Contacts the user can associate with the request.
   final List<Contact> availableContacts;
 
-  /// Contact to preselect when launching the sheet.
+  /// Contact to preselect when launching the sheet. It cannot be removed.
   final Contact? initialContact;
 
-  /// Callback triggered after the request is persisted.
+  /// Called once for each request persisted (one per person when creating).
   final ValueChanged<PrayerRequest> onSaved;
 
   @override
@@ -35,54 +72,104 @@ class LogPrayerRequestSheet extends StatefulWidget {
 }
 
 class _LogPrayerRequestSheetState extends State<LogPrayerRequestSheet> {
-  // Optimization: Cache DateFormat to avoid expensive parsing during build loops
-  static final _dateFormat = DateFormat.yMMMd();
+  static final _dayFormat = DateFormat.MMMd();
+  static final _fullDateFormat = DateFormat.yMMMd();
 
-  late final TextEditingController _descriptionController;
-  late final TextEditingController _reflectionController;
+  late final _HashtagController _textController;
   late final TextEditingController _categoryController;
+  late final TextEditingController _notesController;
+  final FocusNode _textFocus = FocusNode();
   late DateTime _requestedAt;
-  DateTime? _answeredAt;
-  late PrayerRequestStatus _status;
-  final Set<String> _selectedParticipantIds = {};
-  Map<String, Contact> _contactLookup = {};
+  final List<String> _selectedIds = [];
+  final Map<String, Contact> _contactLookup = {};
+  PrayerPeopleStats _stats = const PrayerPeopleStats();
+  List<String> _categories = [];
+  String? _lastTag;
+  bool _showDetails = false;
   bool _isSaving = false;
+
+  bool get _isEditing => widget.initialRequest != null;
+
+  Set<String> get _lockedIds => {
+        if (widget.initialContact != null) widget.initialContact!.id,
+      };
 
   @override
   void initState() {
     super.initState();
-    _descriptionController = TextEditingController(
-      text: widget.initialRequest?.description ?? '',
+    final initial = widget.initialRequest;
+    _textController = _HashtagController(text: initial?.description ?? '');
+    _categoryController = TextEditingController(text: initial?.category ?? '');
+    _notesController = TextEditingController(
+      text: initial?.reflectionNotes ?? '',
     );
-    _reflectionController = TextEditingController(
-      text: widget.initialRequest?.reflectionNotes ?? '',
-    );
-    _categoryController = TextEditingController(
-      text: widget.initialRequest?.category ?? '',
-    );
-    _requestedAt = widget.initialRequest?.requestedAt ?? DateTime.now();
-    _answeredAt = widget.initialRequest?.answeredAt;
-    _status = widget.initialRequest?.status ?? PrayerRequestStatus.pending;
+    _requestedAt = initial?.requestedAt ?? DateTime.now();
 
-    _contactLookup = {
-      for (final contact in widget.availableContacts) contact.id: contact,
-    };
-
-    if (widget.initialRequest != null) {
-      _selectedParticipantIds.addAll(widget.initialRequest!.participantIds);
-    } else if (widget.initialContact != null) {
-      _selectedParticipantIds.add(widget.initialContact!.id);
-    } else if (widget.availableContacts.length == 1) {
-      _selectedParticipantIds.add(widget.availableContacts.first.id);
+    for (final contact in widget.availableContacts) {
+      _contactLookup[contact.id] = contact;
     }
+    if (initial != null) {
+      _selectedIds.addAll(initial.participantIds);
+    } else if (widget.initialContact != null) {
+      _contactLookup[widget.initialContact!.id] = widget.initialContact!;
+      _selectedIds.add(widget.initialContact!.id);
+    } else if (widget.availableContacts.length == 1) {
+      _selectedIds.add(widget.availableContacts.first.id);
+    }
+
+    _textController.addListener(_onTextChanged);
+    _loadContext();
+  }
+
+  Future<void> _loadContext() async {
+    final categories = await DBHelper().getPrayerCategories();
+    final stats = _isEditing ? _stats : await PrayerPeopleStats.load();
+    if (!mounted) return;
+    setState(() {
+      _categories = categories;
+      _stats = stats;
+    });
   }
 
   @override
   void dispose() {
-    _descriptionController.dispose();
-    _reflectionController.dispose();
+    _textController.dispose();
     _categoryController.dispose();
+    _notesController.dispose();
+    _textFocus.dispose();
     super.dispose();
+  }
+
+  void _onTextChanged() {
+    final tag = parsePrayerRequestText(_textController.text).tag;
+    if (tag != _lastTag) {
+      if (tag != null) {
+        _categoryController.text = categoryFromTag(tag, _categories);
+      } else if (_lastTag != null &&
+          _categoryController.text == categoryFromTag(_lastTag!, _categories)) {
+        _categoryController.clear();
+      }
+      _lastTag = tag;
+    }
+    setState(() {});
+  }
+
+  void _insertHash() {
+    final value = _textController.value;
+    final selection = value.selection.isValid
+        ? value.selection
+        : TextSelection.collapsed(offset: value.text.length);
+    final before = value.text.substring(0, selection.start);
+    final needsSpace =
+        before.isNotEmpty && !before.endsWith(' ') && !before.endsWith('\n');
+    final insert = needsSpace ? ' #' : '#';
+    _textController.value = TextEditingValue(
+      text: value.text.replaceRange(selection.start, selection.end, insert),
+      selection: TextSelection.collapsed(
+        offset: selection.start + insert.length,
+      ),
+    );
+    _textFocus.requestFocus();
   }
 
   Future<void> _pickRequestedDate() async {
@@ -91,335 +178,721 @@ class _LogPrayerRequestSheetState extends State<LogPrayerRequestSheet> {
       initialDate: _requestedAt,
       firstDate: DateTime(2000),
       lastDate: DateTime(2100),
+      helpText: 'Requested on',
     );
-    if (selected == null) return;
+    if (selected == null || !mounted) return;
     setState(() {
       _requestedAt = DateTime(selected.year, selected.month, selected.day);
     });
   }
 
-  Future<void> _pickAnsweredDate() async {
-    final initial = _answeredAt ?? DateTime.now();
-    final selected = await showDatePicker(
-      context: context,
-      initialDate: initial,
-      firstDate: _requestedAt,
-      lastDate: DateTime(2100),
+  Future<void> _openPeoplePicker() async {
+    final result = await SelectPrayerPeoplePage.open(
+      context,
+      initialSelectedIds: List.of(_selectedIds),
+      lockedIds: _lockedIds,
     );
-    if (selected == null) return;
+    if (result == null || !mounted) return;
     setState(() {
-      _answeredAt = DateTime(selected.year, selected.month, selected.day);
-    });
-  }
-
-  void _updateStatus(PrayerRequestStatus nextStatus) {
-    setState(() {
-      _status = nextStatus;
-      if (_status == PrayerRequestStatus.answered) {
-        _answeredAt ??= DateTime.now();
-      } else if (_status == PrayerRequestStatus.pending) {
-        _answeredAt = null;
+      for (final contact in result) {
+        _contactLookup[contact.id] = contact;
       }
+      _selectedIds
+        ..clear()
+        ..addAll(result.map((c) => c.id));
     });
   }
 
-  Future<void> _showContactSelection() async {
-    final result = await showModalBottomSheet<List<String>>(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      builder: (context) => ContactSelectionSheet(
-        title: 'Select Contacts',
-        initialSelectedIds: _selectedParticipantIds,
-        disabledIds:
-            widget.initialContact != null ? {widget.initialContact!.id} : {},
-      ),
-    );
+  void _addPerson(String id) {
+    setState(() {
+      if (!_selectedIds.contains(id)) _selectedIds.add(id);
+    });
+  }
 
-    if (result != null && mounted) {
-      final updatedContacts = await DBHelper().getContacts();
-      if (!mounted) return;
-      setState(() {
-        _contactLookup = {
-          for (final contact in updatedContacts) contact.id: contact,
-        };
-        _selectedParticipantIds.clear();
-        if (widget.initialContact != null) {
-          _selectedParticipantIds.add(widget.initialContact!.id);
-        }
-        _selectedParticipantIds.addAll(result);
-      });
-    }
+  void _removePerson(String id) {
+    setState(() => _selectedIds.remove(id));
   }
 
   Future<void> _save() async {
-    if (_isSaving) {
-      return;
-    }
-    final description = _descriptionController.text.trim();
+    if (_isSaving) return;
+    final description =
+        parsePrayerRequestText(_textController.text).description;
     if (description.isEmpty) {
-      CrispToast.show(context, 'Write a short prayer description first.');
+      CrispToast.show(context, 'Write a short prayer request first.');
+      return;
+    }
+    if (_selectedIds.isEmpty) {
+      CrispToast.show(context, 'Choose who this request is for.');
       return;
     }
 
-    if (_selectedParticipantIds.isEmpty) {
-      CrispToast.show(
-        context,
-        'Select at least one contact for this prayer request.',
-      );
-      return;
-    }
-
-    setState(() {
-      _isSaving = true;
-    });
-
-    final cleanedCategory = _categoryController.text.trim();
-    final cleanedReflection = _reflectionController.text.trim();
-
-    final payload = PrayerRequest(
-      id: widget.initialRequest?.id,
-      participantIds: _selectedParticipantIds.toList(),
-      description: description,
-      status: _status,
-      requestedAt: _requestedAt,
-      answeredAt: _status == PrayerRequestStatus.answered
-          ? (_answeredAt ?? DateTime.now())
-          : null,
-      category: cleanedCategory.isEmpty ? null : cleanedCategory,
-      reflectionNotes: cleanedReflection.isEmpty ? null : cleanedReflection,
-    );
+    setState(() => _isSaving = true);
+    final category = _categoryController.text.trim();
+    final notes = _notesController.text.trim();
+    final initial = widget.initialRequest;
 
     try {
-      PrayerRequest savedRequest;
-      if (widget.initialRequest == null) {
-        savedRequest = await DBHelper().insertPrayerRequest(payload);
+      final List<PrayerRequest> saved;
+      if (initial == null) {
+        final template = PrayerRequest(
+          participantIds: const [],
+          description: description,
+          status: PrayerRequestStatus.pending,
+          requestedAt: _requestedAt,
+          category: category.isEmpty ? null : category,
+          reflectionNotes: notes.isEmpty ? null : notes,
+        );
+        final contactIds = List.of(_selectedIds);
+        final ids = await DBHelper()
+            .prayerRequestDao
+            .createForEachContact(template, contactIds);
+        saved = [
+          for (var i = 0; i < ids.length; i++)
+            template.copyWith(id: ids[i], participantIds: [contactIds[i]]),
+        ];
       } else {
-        await DBHelper().updatePrayerRequest(payload);
-        savedRequest = payload;
+        final updated = PrayerRequest(
+          id: initial.id,
+          syncId: initial.syncId,
+          participantIds: initial.participantIds,
+          interactionId: initial.interactionId,
+          description: description,
+          status: initial.status,
+          requestedAt: _requestedAt,
+          answeredAt: initial.answeredAt,
+          archivedAt: initial.archivedAt,
+          category: category.isEmpty ? null : category,
+          reflectionNotes: notes.isEmpty ? null : notes,
+        );
+        await DBHelper().updatePrayerRequest(updated);
+        saved = [updated];
       }
 
-      // Sync reminders for all participants
-      for (final contactId in _selectedParticipantIds) {
-        final contact = _contactLookup[contactId];
-        if (contact != null) {
-          await ReminderCoordinator().syncPrayerRequestReminder(
-            contact,
-            savedRequest,
-          );
+      for (final request in saved) {
+        for (final contactId in request.participantIds) {
+          final contact = _contactLookup[contactId];
+          if (contact != null) {
+            await ReminderCoordinator().syncPrayerRequestReminder(
+              contact,
+              request,
+            );
+          }
         }
       }
-
-      widget.onSaved(savedRequest);
+      saved.forEach(widget.onSaved);
 
       if (!mounted) return;
-      Navigator.of(context)
-          .pop(widget.initialRequest == null ? 'created' : 'updated');
+      Navigator.of(context).pop(initial == null ? 'created' : 'updated');
     } catch (error) {
       if (!mounted) return;
       CrispToast.show(context, 'Failed to save prayer request: $error');
     } finally {
-      if (mounted) {
-        setState(() {
-          _isSaving = false;
-        });
-      }
+      if (mounted) setState(() => _isSaving = false);
     }
   }
 
-  String _formatDate(DateTime date) {
-    return _dateFormat.format(date);
+  String _formatDay(DateTime date) {
+    return date.year == DateTime.now().year
+        ? _dayFormat.format(date)
+        : _fullDateFormat.format(date);
   }
 
-  IconData _statusIcon(PrayerRequestStatus status) {
-    switch (status) {
-      case PrayerRequestStatus.pending:
-        return Icons.hourglass_top_outlined;
-      case PrayerRequestStatus.answered:
-        return Icons.volunteer_activism_outlined;
-      case PrayerRequestStatus.archived:
-        return Icons.inventory_2_outlined;
-    }
+  bool get _isRequestedToday {
+    final now = DateTime.now();
+    return _requestedAt.year == now.year &&
+        _requestedAt.month == now.month &&
+        _requestedAt.day == now.day;
+  }
+
+  List<Contact> get _suggestions {
+    if (_isEditing) return const [];
+    final candidates = _contactLookup.values
+        .where((c) => !_selectedIds.contains(c.id) && _stats.isActive(c.id))
+        .toList()
+      ..sort((a, b) {
+        final onList = (_stats.onPrayerList.contains(b.id) ? 1 : 0) -
+            (_stats.onPrayerList.contains(a.id) ? 1 : 0);
+        if (onList != 0) return onList;
+        final open =
+            (_stats.openCounts[b.id] ?? 0) - (_stats.openCounts[a.id] ?? 0);
+        if (open != 0) return open;
+        return prayerPersonName(a)
+            .toLowerCase()
+            .compareTo(prayerPersonName(b).toLowerCase());
+      });
+    return candidates.take(3).toList();
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isEditing = widget.initialRequest != null;
+    final colors = theme.colorScheme;
+    final selected = [
+      for (final id in _selectedIds)
+        if (_contactLookup[id] != null) _contactLookup[id]!,
+    ];
+    final suggestions = _suggestions;
+    final labelStyle = theme.textTheme.labelSmall?.copyWith(
+      fontSize: 11.5,
+      fontWeight: FontWeight.w700,
+      letterSpacing: 0.6,
+      color: colors.secondaryText,
+    );
 
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.close),
-          tooltip: 'Close',
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        centerTitle: true,
-        title: Text(
-          isEditing ? 'Update prayer request' : 'Log a prayer request',
-          style: theme.textTheme.titleMedium,
-        ),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 8.0),
-            child: TextButton(
-              onPressed: _selectedParticipantIds.isNotEmpty && !_isSaving
-                  ? _save
-                  : null,
-              child: _isSaving
-                  ? SizedBox(
-                      height: 16,
-                      width: 16,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(
-                          theme.colorScheme.primary,
+    return Material(
+      type: MaterialType.transparency,
+      child: Padding(
+        padding:
+            EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+        child: SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Flexible(
+                  child: SingleChildScrollView(
+                    keyboardDismissBehavior:
+                        ScrollViewKeyboardDismissBehavior.manual,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                (_isEditing ? 'For' : 'Who is this for?')
+                                    .toUpperCase(),
+                                style: labelStyle,
+                              ),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.close, size: 20),
+                              tooltip: 'Close',
+                              visualDensity: VisualDensity.compact,
+                              color: colors.secondaryText,
+                              onPressed: () => Navigator.of(context).pop(),
+                            ),
+                          ],
+                        ),
+                        Wrap(
+                          spacing: 6,
+                          runSpacing: 6,
+                          children: [
+                            for (final contact in selected)
+                              _PersonChip(
+                                name: prayerPersonName(contact),
+                                onRemove: _isEditing ||
+                                        _lockedIds.contains(contact.id)
+                                    ? null
+                                    : () => _removePerson(contact.id),
+                              ),
+                            if (!_isEditing)
+                              _AddPersonChip(onTap: _openPeoplePicker),
+                          ],
+                        ),
+                        if (selected.length > 1 && !_isEditing) ...[
+                          const SizedBox(height: 6),
+                          Text(
+                            'Saves as ${selected.length} separate requests, '
+                            'one per person.',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              fontSize: 12,
+                              color: colors.secondaryText,
+                            ),
+                          ),
+                        ],
+                        if (suggestions.isNotEmpty) ...[
+                          const SizedBox(height: 4),
+                          for (final contact in suggestions)
+                            _SuggestionRow(
+                              contact: contact,
+                              meta: _stats.subtitleFor(contact.id),
+                              onTap: () => _addPerson(contact.id),
+                            ),
+                        ],
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: _textController,
+                          focusNode: _textFocus,
+                          autofocus: !_isEditing,
+                          minLines: 3,
+                          maxLines: 6,
+                          textCapitalization: TextCapitalization.sentences,
+                          style: theme.textTheme.bodyLarge?.copyWith(
+                            fontSize: 16,
+                            height: 1.5,
+                          ),
+                          decoration: InputDecoration(
+                            hintText: 'What can you pray for? Add a #category',
+                            filled: false,
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 12,
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              borderSide: BorderSide(color: colors.cardBorder),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              borderSide: BorderSide(
+                                color: colors.primary,
+                                width: 2,
+                              ),
+                            ),
+                          ),
+                        ),
+                        if (!_isRequestedToday && !_showDetails)
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: TextButton.icon(
+                              onPressed: _pickRequestedDate,
+                              icon: const Icon(Icons.event_outlined, size: 16),
+                              label: Text(
+                                'Requested ${_formatDay(_requestedAt)}',
+                              ),
+                              style: TextButton.styleFrom(
+                                foregroundColor: colors.secondaryText,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 4,
+                                ),
+                              ),
+                            ),
+                          ),
+                        if (_showDetails) ...[
+                          const SizedBox(height: 12),
+                          TextField(
+                            controller: _categoryController,
+                            textCapitalization: TextCapitalization.words,
+                            decoration: const InputDecoration(
+                              labelText: 'Category (optional)',
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          _DetailRow(
+                            icon: Icons.event_outlined,
+                            label: 'Requested',
+                            value: _isRequestedToday
+                                ? 'Today, ${_formatDay(_requestedAt)}'
+                                : _formatDay(_requestedAt),
+                            onTap: _pickRequestedDate,
+                          ),
+                          const SizedBox(height: 8),
+                          TextField(
+                            controller: _notesController,
+                            minLines: 2,
+                            maxLines: 4,
+                            textCapitalization: TextCapitalization.sentences,
+                            decoration: const InputDecoration(
+                              labelText: 'Notes (optional)',
+                              alignLabelWithHint: true,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    if (!_isEditing) ...[
+                      _ToolButton(
+                        tooltip: 'Choose people',
+                        onPressed: _openPeoplePicker,
+                        child: const Icon(Icons.person_add_alt, size: 20),
+                      ),
+                      const SizedBox(width: 6),
+                    ],
+                    _ToolButton(
+                      tooltip: 'Add a category',
+                      onPressed: _insertHash,
+                      child: const Text(
+                        '#',
+                        style: TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w800,
                         ),
                       ),
-                    )
-                  : Text(
-                      isEditing ? 'Update' : 'Save',
-                      style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
+                    const SizedBox(width: 6),
+                    _ToolButton(
+                      tooltip: 'Set requested date',
+                      onPressed: _pickRequestedDate,
+                      child: const Icon(Icons.event_outlined, size: 20),
+                    ),
+                    Expanded(
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: TextButton(
+                          onPressed: () =>
+                              setState(() => _showDetails = !_showDetails),
+                          style: TextButton.styleFrom(
+                            minimumSize: const Size(0, 44),
+                            padding: const EdgeInsets.symmetric(horizontal: 10),
+                            textStyle: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          child: Text(
+                            _showDetails ? 'Fewer details' : 'More details',
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ),
+                    ),
+                    _SaveButton(
+                      count: _isEditing ? 1 : _selectedIds.length,
+                      isSaving: _isSaving,
+                      onPressed:
+                          _textController.text.trim().isEmpty ? null : _save,
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Highlights `#word` category tags as tokens while typing.
+class _HashtagController extends TextEditingController {
+  _HashtagController({super.text});
+
+  @override
+  TextSpan buildTextSpan({
+    required BuildContext context,
+    TextStyle? style,
+    required bool withComposing,
+  }) {
+    // Leave IME composition styling (e.g. CJK input) to the default.
+    if (withComposing &&
+        value.isComposingRangeValid &&
+        !value.composing.isCollapsed) {
+      return super.buildTextSpan(
+        context: context,
+        style: style,
+        withComposing: withComposing,
+      );
+    }
+    final colors = Theme.of(context).colorScheme;
+    final tagStyle = (style ?? const TextStyle()).copyWith(
+      fontWeight: FontWeight.w700,
+      color: colors.onSurface,
+      backgroundColor: colors.cardBorder,
+    );
+    final children = <TextSpan>[];
+    var cursor = 0;
+    for (final match in prayerHashtagPattern.allMatches(text)) {
+      if (match.start > cursor) {
+        children.add(TextSpan(text: text.substring(cursor, match.start)));
+      }
+      children.add(TextSpan(text: match.group(0), style: tagStyle));
+      cursor = match.end;
+    }
+    if (cursor < text.length) {
+      children.add(TextSpan(text: text.substring(cursor)));
+    }
+    return TextSpan(style: style, children: children);
+  }
+}
+
+class _PersonChip extends StatelessWidget {
+  const _PersonChip({required this.name, this.onRemove});
+
+  final String name;
+  final VoidCallback? onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Container(
+      height: 32,
+      padding: EdgeInsets.only(left: 10, right: onRemove == null ? 10 : 2),
+      decoration: BoxDecoration(
+        color: colors.greenTint,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            name,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: colors.onPrimaryContainer,
+            ),
+          ),
+          if (onRemove != null)
+            IconButton(
+              onPressed: onRemove,
+              tooltip: 'Remove $name',
+              icon: const Icon(Icons.close, size: 16),
+              color: colors.onPrimaryContainer,
+              constraints: const BoxConstraints.tightFor(width: 28, height: 28),
+              padding: EdgeInsets.zero,
+            ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Associated Contacts', style: theme.textTheme.labelLarge),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                ..._selectedParticipantIds.map((id) {
-                  final contact = _contactLookup[id];
-                  final name = contact?.fullName ?? id;
-                  final isInitial = widget.initialContact?.id == id;
+    );
+  }
+}
 
-                  return Chip(
-                    label: Text(name),
-                    onDeleted: isInitial
-                        ? null
-                        : () {
-                            setState(() {
-                              _selectedParticipantIds.remove(id);
-                            });
-                          },
-                    deleteIconColor: theme.colorScheme.error,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    side: BorderSide(color: theme.colorScheme.outlineVariant),
-                  );
-                }),
-                ActionChip(
-                  avatar: const Icon(Icons.add, size: 18),
-                  label: const Text('Add Contact'),
-                  onPressed: _showContactSelection,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  side: BorderSide(
-                    color: theme.colorScheme.primary,
-                    style: BorderStyle.solid,
+class _AddPersonChip extends StatelessWidget {
+  const _AddPersonChip({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Material(
+      color: colors.surface,
+      shape: StadiumBorder(side: BorderSide(color: colors.cardBorder)),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: SizedBox(
+          height: 32,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.add, size: 16, color: colors.primary),
+                const SizedBox(width: 4),
+                Text(
+                  'Add person',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: colors.primary,
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 24),
-            TextField(
-              controller: _descriptionController,
-              decoration: const InputDecoration(
-                labelText: 'Request',
-                alignLabelWithHint: true,
-              ),
-              minLines: 2,
-              maxLines: 4,
-              textCapitalization: TextCapitalization.sentences,
-            ),
-            const SizedBox(height: 16),
-            SegmentedButton<PrayerRequestStatus>(
-              segments: PrayerRequestStatus.values
-                  .map(
-                    (option) => ButtonSegment<PrayerRequestStatus>(
-                      value: option,
-                      label: Text(option.label),
-                      icon: Icon(_statusIcon(option)),
-                    ),
-                  )
-                  .toList(),
-              selected: {_status},
-              onSelectionChanged: (selection) {
-                if (selection.isEmpty) return;
-                _updateStatus(selection.first);
-              },
-            ),
-            const SizedBox(height: 16),
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: const Icon(Icons.calendar_month_outlined),
-              title: const Text('Requested on'),
-              subtitle: Text(_formatDate(_requestedAt)),
-              onTap: _pickRequestedDate,
-            ),
-            if (_status == PrayerRequestStatus.answered) ...[
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.celebration_outlined),
-                title: const Text('Answered on'),
-                subtitle: Text(
-                  _answeredAt != null
-                      ? _formatDate(_answeredAt!)
-                      : 'Set an answer date',
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SuggestionRow extends StatelessWidget {
+  const _SuggestionRow({
+    required this.contact,
+    required this.meta,
+    required this.onTap,
+  });
+
+  final Contact contact;
+  final String meta;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(10),
+      child: SizedBox(
+        height: 48,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          child: Row(
+            children: [
+              ContactAvatar(contact: contact, radius: 16),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  prayerPersonName(contact),
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: colors.onSurface,
+                  ),
                 ),
-                trailing: Wrap(
-                  spacing: 4,
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.today_outlined),
-                      tooltip: 'Use today',
-                      onPressed: () {
-                        setState(() {
-                          _answeredAt = DateTime.now();
-                        });
-                      },
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.edit_outlined),
-                      onPressed: _pickAnsweredDate,
-                    ),
-                  ],
+              ),
+              Text(
+                meta,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: colors.secondaryText,
                 ),
               ),
             ],
-            const SizedBox(height: 12),
-            TextField(
-              controller: _categoryController,
-              decoration: const InputDecoration(
-                labelText: 'Category (optional)',
-              ),
-              textCapitalization: TextCapitalization.words,
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _reflectionController,
-              decoration: const InputDecoration(labelText: 'Notes'),
-              minLines: 2,
-              maxLines: 4,
-              textCapitalization: TextCapitalization.sentences,
-            ),
-            const SizedBox(height: 24),
-          ],
+          ),
         ),
+      ),
+    );
+  }
+}
+
+class _DetailRow extends StatelessWidget {
+  const _DetailRow({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Material(
+      color: colors.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(13),
+        side: BorderSide(color: colors.cardBorder),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: SizedBox(
+          height: 52,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            child: Row(
+              children: [
+                Icon(icon, size: 20, color: colors.iconColor),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: colors.onSurface,
+                    ),
+                  ),
+                ),
+                Text(
+                  value,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: colors.secondaryText,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ToolButton extends StatelessWidget {
+  const _ToolButton({
+    required this.tooltip,
+    required this.onPressed,
+    required this.child,
+  });
+
+  final String tooltip;
+  final VoidCallback onPressed;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Tooltip(
+      message: tooltip,
+      child: Semantics(
+        button: true,
+        label: tooltip,
+        excludeSemantics: true,
+        child: Material(
+          color: colors.hairline,
+          borderRadius: BorderRadius.circular(12),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: onPressed,
+            child: SizedBox(
+              width: 44,
+              height: 44,
+              child: Center(
+                child: IconTheme.merge(
+                  data: IconThemeData(color: colors.iconColor),
+                  child: DefaultTextStyle.merge(
+                    style: TextStyle(color: colors.iconColor),
+                    child: child,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SaveButton extends StatelessWidget {
+  const _SaveButton({
+    required this.count,
+    required this.isSaving,
+    required this.onPressed,
+  });
+
+  final int count;
+  final bool isSaving;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final progress = SizedBox(
+      width: 18,
+      height: 18,
+      child: CircularProgressIndicator(
+        strokeWidth: 2,
+        valueColor: AlwaysStoppedAnimation<Color>(colors.onPrimary),
+      ),
+    );
+    final style = FilledButton.styleFrom(
+      minimumSize: const Size(48, 48),
+      shape: count > 1 ? const StadiumBorder() : const CircleBorder(),
+      padding: count > 1
+          ? const EdgeInsets.symmetric(horizontal: 18)
+          : EdgeInsets.zero,
+      textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+    );
+    final handler = isSaving ? null : onPressed;
+
+    if (count > 1) {
+      return FilledButton(
+        onPressed: handler,
+        style: style,
+        child: isSaving ? progress : Text('Save $count'),
+      );
+    }
+    return Tooltip(
+      message: 'Save request',
+      child: FilledButton(
+        onPressed: handler,
+        style: style,
+        child: isSaving
+            ? progress
+            : const Icon(Icons.check, size: 22, semanticLabel: 'Save request'),
       ),
     );
   }

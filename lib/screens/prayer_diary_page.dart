@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 
 import '../db/db_helper.dart';
 import '../main.dart'; // To access CrispColorScheme extension on ColorScheme
@@ -7,13 +6,12 @@ import '../models/contact.dart';
 import '../models/prayer_request.dart';
 import '../widgets/crisp_toast.dart';
 import '../widgets/log_prayer_request_sheet.dart';
+import '../widgets/prayer_diary_card.dart';
 import 'prayer_request_details_page.dart';
 
-/// Pending requests older than this surface a "still asking" badge.
-const Duration _stillAskingThreshold = Duration(days: 28);
-
-/// Displays a chronological list of recorded prayers.
+/// Displays every prayer request with its prayer record and quick actions.
 class PrayerDiaryPage extends StatefulWidget {
+  /// Initial tab: 'All', 'Pending' (or 'Praying'), 'Answered' or 'Archived'.
   final String initialFilter;
   const PrayerDiaryPage({super.key, this.initialFilter = 'All'});
 
@@ -26,16 +24,28 @@ class _PrayerDiaryPageState extends State<PrayerDiaryPage> {
   final Map<String, Contact> _contactLookup = {};
   List<Contact> _contacts = [];
   List<PrayerRequest> _requests = [];
+  Map<int, List<DateTime>> _prayedDates = {};
   bool _isLoading = false;
-  late String _selectedFilter;
 
-  late final DateFormat _dateFormat;
+  /// Selected tab; null means All.
+  PrayerRequestStatus? _filter;
+
+  static const _tabs = <(String, PrayerRequestStatus?)>[
+    ('All', null),
+    ('Praying', PrayerRequestStatus.pending),
+    ('Answered', PrayerRequestStatus.answered),
+    ('Archived', PrayerRequestStatus.archived),
+  ];
 
   @override
   void initState() {
     super.initState();
-    _selectedFilter = widget.initialFilter;
-    _dateFormat = DateFormat.yMMMd();
+    _filter = switch (widget.initialFilter) {
+      'Pending' || 'Praying' => PrayerRequestStatus.pending,
+      'Answered' => PrayerRequestStatus.answered,
+      'Archived' => PrayerRequestStatus.archived,
+      _ => null,
+    };
     _loadRequests();
   }
 
@@ -56,6 +66,11 @@ class _PrayerDiaryPageState extends State<PrayerDiaryPage> {
 
       final requests = results[0] as List<PrayerRequest>;
       _sortRequests(requests);
+      final prayedDates = await _loadPrayedDates(requests);
+
+      if (!mounted) {
+        return;
+      }
 
       final contacts = List<Contact>.from(results[1] as List<Contact>)
         ..sort(
@@ -65,6 +80,7 @@ class _PrayerDiaryPageState extends State<PrayerDiaryPage> {
 
       setState(() {
         _requests = requests;
+        _prayedDates = prayedDates;
         _contacts = contacts;
         _contactLookup
           ..clear()
@@ -78,6 +94,21 @@ class _PrayerDiaryPageState extends State<PrayerDiaryPage> {
           _isLoading = false;
         });
       }
+    }
+  }
+
+  /// The prayer record decorates the list, so a failure here leaves the
+  /// requests visible with an empty record rather than blanking the page.
+  Future<Map<int, List<DateTime>>> _loadPrayedDates(
+    List<PrayerRequest> requests,
+  ) async {
+    try {
+      return await _dbHelper.prayerRequestDao.getPrayedDates(
+        requests.map((r) => r.id).whereType<int>().toList(),
+      );
+    } catch (error) {
+      debugPrint('Failed to load prayed dates: $error');
+      return {};
     }
   }
 
@@ -146,12 +177,76 @@ class _PrayerDiaryPageState extends State<PrayerDiaryPage> {
     }
   }
 
+  Future<void> _togglePrayed(PrayerRequest request) async {
+    final id = request.id;
+    if (id == null) return;
+    final now = DateTime.now();
+    try {
+      final logged = await _dbHelper.prayerRequestDao.togglePrayedToday(
+        id,
+        now: now,
+      );
+      if (!mounted) return;
+      setState(() {
+        final dates = (_prayedDates[id] ?? const <DateTime>[])
+            .where(
+              (d) =>
+                  d.year != now.year ||
+                  d.month != now.month ||
+                  d.day != now.day,
+            )
+            .toList();
+        if (logged) dates.add(now);
+        _prayedDates = {..._prayedDates, id: dates};
+      });
+    } catch (error) {
+      if (!mounted) return;
+      CrispToast.show(context, 'Failed to update prayer record: $error');
+    }
+  }
+
+  Future<void> _setStatus(
+    PrayerRequest request,
+    PrayerRequestStatus status,
+    String? comment,
+  ) async {
+    final id = request.id;
+    if (id == null) return;
+    try {
+      await _dbHelper.prayerRequestDao.setStatus(id, status, comment: comment);
+      if (!mounted) return;
+      CrispToast.show(context, _statusChangeMessage(status));
+      await _loadRequests();
+    } catch (error) {
+      if (!mounted) return;
+      CrispToast.show(context, 'Failed to update status: $error');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Scaffold(
-      appBar: AppBar(title: const Text('Prayer diary')),
-      floatingActionButton: _PrayerDiaryFab(
-        onPressed: _openLogPrayerRequestSheet,
+      backgroundColor: colorScheme.surfaceTint,
+      appBar: AppBar(
+        centerTitle: false,
+        titleSpacing: 0,
+        title: const Text('Prayer diary'),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 12),
+            child: IconButton.filled(
+              tooltip: 'Log prayer request',
+              onPressed: _openLogPrayerRequestSheet,
+              style: IconButton.styleFrom(
+                backgroundColor: colorScheme.primary,
+                foregroundColor: colorScheme.onPrimary,
+                fixedSize: const Size(44, 44),
+              ),
+              icon: const Icon(Icons.add, size: 20),
+            ),
+          ),
+        ],
       ),
       body: RefreshIndicator(onRefresh: _loadRequests, child: _buildBody()),
     );
@@ -170,7 +265,7 @@ class _PrayerDiaryPageState extends State<PrayerDiaryPage> {
 
     return Column(
       children: [
-        _buildFilterChips(),
+        _buildTabs(),
         Expanded(
           child: _requests.isEmpty ? _buildEmptyState() : _buildPrayerList(),
         ),
@@ -178,54 +273,71 @@ class _PrayerDiaryPageState extends State<PrayerDiaryPage> {
     );
   }
 
-  Widget _buildFilterChips() {
+  Widget _buildTabs() {
     final colorScheme = Theme.of(context).colorScheme;
-    final filters = ['All', 'Pending', 'Answered', 'Archived'];
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-      child: Row(
-        children: filters.map((f) {
-          final isSelected = _selectedFilter == f;
-          return Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: InkWell(
-              onTap: () {
-                setState(() {
-                  _selectedFilter = f;
-                });
-              },
-              borderRadius: BorderRadius.circular(20),
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 8,
-                ),
-                decoration: BoxDecoration(
-                  color:
-                      isSelected ? colorScheme.onSurface : colorScheme.surface,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: isSelected
-                        ? colorScheme.onSurface
-                        : colorScheme.cardBorder,
-                    width: 1,
-                  ),
-                ),
-                child: Text(
-                  f,
-                  style: TextStyle(
-                    color: isSelected
-                        ? colorScheme.surface
-                        : colorScheme.secondaryText,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 13,
-                  ),
-                ),
-              ),
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 14),
+      decoration: BoxDecoration(
+        color: colorScheme.surface,
+        border: Border(bottom: BorderSide(color: colorScheme.cardBorder)),
+      ),
+      child: Container(
+        padding: const EdgeInsets.all(4),
+        decoration: BoxDecoration(
+          color: colorScheme.hairline,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            for (final (label, status) in _tabs)
+              Expanded(child: _buildTab(label, status, colorScheme)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTab(
+    String label,
+    PrayerRequestStatus? status,
+    ColorScheme colorScheme,
+  ) {
+    final selected = _filter == status;
+    final count = status == null
+        ? _requests.length
+        : _requests.where((r) => r.status == status).length;
+    final style = TextStyle(
+      fontSize: 12,
+      fontWeight: FontWeight.w700,
+      color: selected ? colorScheme.onSurface : colorScheme.secondaryText,
+    );
+
+    return Semantics(
+      selected: selected,
+      button: true,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => setState(() => _filter = status),
+        child: Container(
+          height: 36,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: selected ? colorScheme.surface : null,
+            borderRadius: BorderRadius.circular(9),
+            border: selected ? Border.all(color: colorScheme.cardBorder) : null,
+          ),
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(label, style: style),
+                const SizedBox(width: 4),
+                Text('$count', style: style),
+              ],
             ),
-          );
-        }).toList(),
+          ),
+        ),
       ),
     );
   }
@@ -254,256 +366,48 @@ class _PrayerDiaryPageState extends State<PrayerDiaryPage> {
   }
 
   Widget _buildPrayerList() {
-    final filtered = _requests.where((r) {
-      if (_selectedFilter == 'All') return true;
-      if (_selectedFilter == 'Pending') {
-        return r.status == PrayerRequestStatus.pending;
-      }
-      if (_selectedFilter == 'Answered') {
-        return r.status == PrayerRequestStatus.answered;
-      }
-      if (_selectedFilter == 'Archived') {
-        return r.status == PrayerRequestStatus.archived;
-      }
-      return true;
-    }).toList();
+    final filtered = _filter == null
+        ? _requests
+        : _requests.where((r) => r.status == _filter).toList();
 
     if (filtered.isEmpty) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Text(
-            'No $_selectedFilter prayers found.',
-            style: Theme.of(context)
-                .textTheme
-                .bodyMedium
-                ?.copyWith(color: Theme.of(context).colorScheme.outline),
+      return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 24),
+            child: Text(
+              'Nothing here yet.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 13.5,
+                color: Theme.of(context).colorScheme.secondaryText,
+              ),
+            ),
           ),
-        ),
+        ],
       );
     }
 
     return ListView.builder(
       physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
       itemCount: filtered.length,
       itemBuilder: (context, index) {
         final request = filtered[index];
-        return _buildPrayerCard(request);
+        return PrayerDiaryCard(
+          key: ValueKey(request.id ?? request.syncId),
+          request: request,
+          names: _namesFor(request),
+          initials: _initialsFor(request),
+          prayedDates: _prayedDates[request.id] ?? const [],
+          onOpen: () => _openPrayerRequestDetails(request),
+          onTogglePrayed: () => _togglePrayed(request),
+          onSetStatus: (status, comment) =>
+              _setStatus(request, status, comment),
+        );
       },
     );
-  }
-
-  Widget _buildPrayerCard(PrayerRequest request) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final contactNames = request.participantIds
-        .map((id) => _displayNameForContact(id))
-        .where((name) => name != 'Unknown contact')
-        .join(', ');
-
-    final displayNames =
-        contactNames.isEmpty ? 'Unknown contact' : contactNames;
-
-    final details = [
-      _formatDate(request.answeredAt ?? request.requestedAt),
-      displayNames,
-    ].where((value) => value.isNotEmpty).join(' • ');
-
-    final stillAskingWeeks = _stillAskingWeeks(request);
-
-    Color statusBg;
-    Color statusFg;
-    IconData statusIcon;
-
-    switch (request.status) {
-      case PrayerRequestStatus.pending:
-        statusBg = colorScheme.dangerTint;
-        statusFg = colorScheme.error;
-        statusIcon = Icons.hourglass_top_outlined;
-        break;
-      case PrayerRequestStatus.answered:
-        statusBg = colorScheme.greenTint;
-        statusFg = colorScheme.primary;
-        statusIcon = Icons.celebration_outlined;
-        break;
-      case PrayerRequestStatus.archived:
-        statusBg = colorScheme.surfaceTint;
-        statusFg = colorScheme.outline;
-        statusIcon = Icons.archive_outlined;
-        break;
-    }
-
-    final badgeLabel = request.status == PrayerRequestStatus.pending
-        ? (stillAskingWeeks != null
-            ? '${stillAskingWeeks}w · Pending'
-            : 'Pending')
-        : request.status.label;
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      decoration: BoxDecoration(
-        color: colorScheme.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: colorScheme.cardBorder, width: 1),
-      ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(16),
-        onTap: () => _openPrayerRequestDetails(request),
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  color: statusBg,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(statusIcon, color: statusFg, size: 18),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      request.description,
-                      style: TextStyle(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 16,
-                        color: colorScheme.onSurface,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      details,
-                      style: TextStyle(
-                        fontSize: 12.5,
-                        color: colorScheme.outline,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 12),
-              PopupMenuButton<PrayerRequestStatus>(
-                tooltip: 'Change status',
-                padding: EdgeInsets.zero,
-                onSelected: (status) => _updateRequestStatus(request, status),
-                itemBuilder: (context) => [
-                  for (final status in PrayerRequestStatus.values)
-                    PopupMenuItem<PrayerRequestStatus>(
-                      value: status,
-                      child: Row(
-                        children: [
-                          Icon(
-                            _statusIconFor(status),
-                            size: 18,
-                            color: status == request.status
-                                ? colorScheme.primary
-                                : colorScheme.onSurfaceVariant,
-                          ),
-                          const SizedBox(width: 12),
-                          Text(status.label),
-                          if (status == request.status) ...[
-                            const SizedBox(width: 12),
-                            Icon(
-                              Icons.check,
-                              size: 16,
-                              color: colorScheme.primary,
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-                ],
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 11,
-                    vertical: 5,
-                  ),
-                  decoration: BoxDecoration(
-                    color: statusBg,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        badgeLabel,
-                        style: TextStyle(
-                          color: statusFg,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 11,
-                        ),
-                      ),
-                      const SizedBox(width: 2),
-                      Icon(Icons.arrow_drop_down, size: 14, color: statusFg),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Future<void> _updateRequestStatus(
-    PrayerRequest request,
-    PrayerRequestStatus status,
-  ) async {
-    if (request.status == status) {
-      return;
-    }
-
-    DateTime? answeredAt;
-    switch (status) {
-      case PrayerRequestStatus.pending:
-        answeredAt = null;
-        break;
-      case PrayerRequestStatus.answered:
-        answeredAt = request.answeredAt ?? DateTime.now();
-        break;
-      case PrayerRequestStatus.archived:
-        answeredAt = request.answeredAt;
-        break;
-    }
-
-    final updated = request.copyWith(
-      status: status,
-      answeredAt: answeredAt,
-      // copyWith cannot distinguish "leave it" from "clear it", so ask
-      // explicitly when the request leaves the answered state.
-      clearAnsweredAt: status == PrayerRequestStatus.pending,
-    );
-
-    final previousRequests = List<PrayerRequest>.from(_requests);
-    setState(() {
-      _requests = _requests
-          .map((entry) => entry.id == request.id ? updated : entry)
-          .toList();
-      _sortRequests(_requests);
-    });
-
-    try {
-      await _dbHelper.updatePrayerRequest(updated);
-      if (!mounted) {
-        return;
-      }
-      CrispToast.show(context, _statusChangeMessage(status));
-    } catch (error) {
-      if (!mounted) {
-        return;
-      }
-      setState(() {
-        _requests = previousRequests;
-      });
-      CrispToast.show(context, 'Failed to update status: $error');
-    }
   }
 
   void _sortRequests(List<PrayerRequest> requests) {
@@ -523,22 +427,10 @@ class _PrayerDiaryPageState extends State<PrayerDiaryPage> {
     });
   }
 
-  /// Icon for each lifecycle state, shared by the status menu on the list.
-  IconData _statusIconFor(PrayerRequestStatus status) {
-    switch (status) {
-      case PrayerRequestStatus.pending:
-        return Icons.hourglass_top_outlined;
-      case PrayerRequestStatus.answered:
-        return Icons.celebration_outlined;
-      case PrayerRequestStatus.archived:
-        return Icons.archive_outlined;
-    }
-  }
-
   String _statusChangeMessage(PrayerRequestStatus status) {
     switch (status) {
       case PrayerRequestStatus.pending:
-        return 'Prayer request marked as pending.';
+        return 'Prayer request reopened.';
       case PrayerRequestStatus.answered:
         return 'Prayer request marked as answered.';
       case PrayerRequestStatus.archived:
@@ -546,10 +438,26 @@ class _PrayerDiaryPageState extends State<PrayerDiaryPage> {
     }
   }
 
-  String _displayNameForContact(String contactId) {
+  String _namesFor(PrayerRequest request) {
+    final names = request.participantIds
+        .map(_displayNameForContact)
+        .whereType<String>()
+        .join(', ');
+    return names.isEmpty ? 'Unknown contact' : names;
+  }
+
+  String _initialsFor(PrayerRequest request) {
+    for (final id in request.participantIds) {
+      final contact = _contactLookup[id];
+      if (contact != null) return contact.initials;
+    }
+    return '?';
+  }
+
+  String? _displayNameForContact(String contactId) {
     final contact = _contactLookup[contactId];
     if (contact == null) {
-      return 'Unknown contact';
+      return null;
     }
 
     if (contact.fullName.isNotEmpty) {
@@ -557,58 +465,6 @@ class _PrayerDiaryPageState extends State<PrayerDiaryPage> {
     }
 
     final nickname = contact.nickname ?? '';
-    return nickname.isNotEmpty ? nickname : 'Unknown contact';
-  }
-
-  String _formatDate(DateTime date) {
-    return _dateFormat.format(date);
-  }
-
-  int? _stillAskingWeeks(PrayerRequest request) {
-    if (request.status != PrayerRequestStatus.pending) return null;
-    final age = DateTime.now().difference(request.requestedAt);
-    if (age < _stillAskingThreshold) return null;
-    return age.inDays ~/ 7;
-  }
-}
-
-/// 56x56 rounded-square FAB (18px radius, soft green-tinted shadow) matching
-/// the design's prayer-diary "add" button — the one FAB with an explicit
-/// design spec, so it's implemented locally rather than themed globally.
-class _PrayerDiaryFab extends StatelessWidget {
-  const _PrayerDiaryFab({required this.onPressed});
-
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    return Container(
-      width: 56,
-      height: 56,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: [
-          BoxShadow(
-            color: colorScheme.primary.withValues(alpha: 0.6),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-            spreadRadius: -6,
-          ),
-        ],
-      ),
-      child: Material(
-        color: colorScheme.primary,
-        borderRadius: BorderRadius.circular(18),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(18),
-          onTap: onPressed,
-          child: Tooltip(
-            message: 'Log prayer request',
-            child: Icon(Icons.add, color: colorScheme.onPrimary),
-          ),
-        ),
-      ),
-    );
+    return nickname.isNotEmpty ? nickname : null;
   }
 }

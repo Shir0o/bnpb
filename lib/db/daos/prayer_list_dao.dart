@@ -273,6 +273,84 @@ class PrayerListDao extends BaseDao {
     });
   }
 
+  /// Contacts on any active prayer list, de-duplicated, for the single merged
+  /// prayer list the UI shows. Soft-deleted contacts are left out.
+  Future<List<String>> getAllPrayerListContactIds() async {
+    final db = await database;
+    final rows = await db.rawQuery('''
+      SELECT DISTINCT m.contactId
+      FROM prayer_list_members m
+      JOIN prayer_lists l ON l.id = m.listId
+      JOIN contacts c ON c.id = m.contactId
+      WHERE l.deletedAt IS NULL AND c.deletedAt IS NULL
+    ''');
+    return rows.map((row) => row['contactId'] as String).toList();
+  }
+
+  /// Adds [contactIds] to the default list (creating it if needed), skipping
+  /// contacts already on any active list.
+  Future<void> addContactsToDefaultList(List<String> contactIds) async {
+    final defaultList = await ensureDefaultPrayerList();
+    final db = await database;
+    await db.transaction((txn) async {
+      final rows = await txn.rawQuery('''
+        SELECT DISTINCT m.contactId
+        FROM prayer_list_members m
+        JOIN prayer_lists l ON l.id = m.listId
+        WHERE l.deletedAt IS NULL
+      ''');
+      final listed = rows.map((row) => row['contactId'] as String).toSet();
+      final toAdd = contactIds.where((id) => !listed.contains(id)).toSet();
+      if (toAdd.isEmpty) return;
+
+      final batch = txn.batch();
+      for (final contactId in toAdd) {
+        batch.insert(
+            'prayer_list_members',
+            {
+              'listId': defaultList.id,
+              'contactId': contactId,
+            },
+            conflictAlgorithm: ConflictAlgorithm.ignore);
+      }
+      batch.update(
+        'prayer_lists',
+        {'updatedAt': DateTime.now().toUtc().toIso8601String()},
+        where: 'id = ?',
+        whereArgs: [defaultList.id],
+      );
+      await batch.commit(noResult: true);
+    });
+  }
+
+  /// Removes [contactId] from every prayer list it is on.
+  Future<void> removeContactFromAllLists(String contactId) async {
+    final db = await database;
+    await db.transaction((txn) async {
+      final rows = await txn.query(
+        'prayer_list_members',
+        columns: ['listId'],
+        where: 'contactId = ?',
+        whereArgs: [contactId],
+      );
+      if (rows.isEmpty) return;
+
+      final listIds = rows.map((row) => row['listId'] as String).toList();
+      await txn.delete(
+        'prayer_list_members',
+        where: 'contactId = ?',
+        whereArgs: [contactId],
+      );
+      final placeholders = List.filled(listIds.length, '?').join(',');
+      await txn.update(
+        'prayer_lists',
+        {'updatedAt': DateTime.now().toUtc().toIso8601String()},
+        where: 'id IN ($placeholders)',
+        whereArgs: listIds,
+      );
+    });
+  }
+
   Future<void> upsertPrayerListFromSync(
     DatabaseExecutor db,
     PrayerList list,

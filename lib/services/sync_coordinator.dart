@@ -75,12 +75,14 @@ class SyncCoordinator {
     final prayers = await _db.getPrayerRequestsModifiedSince(lastExport);
     final prayerLists = await _db.getPrayerListsModifiedSince(lastExport);
     final relationships = await _db.getRelationshipsModifiedSince(lastExport);
+    final prayedLog = await _db.getPrayedLogModifiedSince(lastExport);
 
     if (contacts.isEmpty &&
         interactions.isEmpty &&
         prayers.isEmpty &&
         prayerLists.isEmpty &&
-        relationships.isEmpty) {
+        relationships.isEmpty &&
+        prayedLog.isEmpty) {
       return const SyncResult(exportedCount: 0, importedCount: 0);
     }
 
@@ -140,6 +142,7 @@ class SyncCoordinator {
       'contacts': contacts.map((c) => c.toMap()).toList(),
       'interactions': interactions.map((i) => i.toMap()).toList(),
       'prayerRequests': enrichedPrayers,
+      'prayedLog': prayedLog,
       'relationships': relationships.map((r) => r.toMap()).toList(),
       'prayerLists': prayerLists.map((l) {
         final map = l.toMap();
@@ -166,7 +169,8 @@ class SyncCoordinator {
           interactions.length +
           prayers.length +
           prayerLists.length +
-          relationships.length,
+          relationships.length +
+          prayedLog.length,
       importedCount: 0,
     );
   }
@@ -244,6 +248,11 @@ class SyncCoordinator {
     // Merge Prayer Requests
     if (data['prayerRequests'] != null) {
       await _mergePrayerRequests(data['prayerRequests'] as List);
+    }
+
+    // Merge Prayed Log (after prayer requests, which it references)
+    if (data['prayedLog'] != null) {
+      await _mergePrayedLog(data['prayedLog'] as List);
     }
 
     // Merge Prayer Lists
@@ -617,6 +626,76 @@ class SyncCoordinator {
       }
 
       await participantBatch.commit(noResult: true);
+    });
+  }
+
+  Future<void> _mergePrayedLog(List<dynamic> remoteList) async {
+    if (remoteList.isEmpty) return;
+
+    final remoteEntries =
+        remoteList.map((item) => Map<String, dynamic>.from(item)).toList();
+
+    // Entries reference their request by syncId; resolve to local ids.
+    final requestRows = await _db.prayerRequestDao.chunkedQuery(
+      table: 'prayer_requests',
+      inColumn: 'syncId',
+      values: {
+        for (final e in remoteEntries) e['prayerRequestSyncId'] as String,
+      }.toList(),
+    );
+    final localRequestIds = {
+      for (final row in requestRows) row['syncId'] as String: row['id'] as int,
+    };
+
+    final localRows = await _db.prayerRequestDao.chunkedQuery(
+      table: 'prayer_request_prayed_log',
+      inColumn: 'syncId',
+      values: [for (final e in remoteEntries) e['syncId'] as String],
+    );
+    final localUpdatedAt = {
+      for (final row in localRows)
+        row['syncId'] as String: DateTime.parse(row['updatedAt'] as String),
+    };
+
+    final db = await _db.database;
+    await db.transaction((txn) async {
+      final batch = txn.batch();
+
+      for (final remote in remoteEntries) {
+        final syncId = remote['syncId'] as String;
+        final requestId = localRequestIds[remote['prayerRequestSyncId']];
+        if (requestId == null) {
+          debugPrint(
+            'Skipping prayed log $syncId: unknown prayer request '
+            '${remote['prayerRequestSyncId']}',
+          );
+          continue;
+        }
+
+        final row = {
+          'syncId': syncId,
+          'prayerRequestId': requestId,
+          'prayedAt': remote['prayedAt'],
+          'updatedAt': remote['updatedAt'],
+          'deletedAt': remote['deletedAt'],
+        };
+
+        final localUpdated = localUpdatedAt[syncId];
+        if (localUpdated == null) {
+          if (remote['deletedAt'] != null) continue;
+          batch.insert('prayer_request_prayed_log', row);
+        } else if (DateTime.parse(remote['updatedAt'] as String)
+            .isAfter(localUpdated)) {
+          batch.update(
+            'prayer_request_prayed_log',
+            row,
+            where: 'syncId = ?',
+            whereArgs: [syncId],
+          );
+        }
+      }
+
+      await batch.commit(noResult: true);
     });
   }
 
