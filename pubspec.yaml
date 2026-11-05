@@ -11,7 +11,7 @@ dependencies:
   graphview: ^1.2.0
   intl: ^0.20.1
   path_provider: ^2.1.6
-  share_plus: ^13.3.1
+  share_plus: ^12.0.2
   file_picker: ^10.3.10
   sqlite3: ^2.9.4
   sqflite_sqlcipher: ^3.4.1
@@ -25,7 +25,7 @@ dependencies:
   flutter_local_notifications: ^22.3.3
   timezone: ^0.11.2
   flutter_timezone: ^5.1.1
-  flutter_secure_storage: ^11.2.0
+  flutter_secure_storage: ^10.3.4
   local_auth: ^3.0.2
   csv: ^8.0.0
   pdf: ^3.13.1
@@ -72,6 +72,3 @@ flutter_launcher_icons:
   web:
     generate: true
     image_path: assets/images/app_icon.png
-
-dependency_overrides:
-  win32: ^6.0.1
