@@ -24,6 +24,7 @@ import '../services/contact_service.dart';
 import '../services/google_drive_service.dart';
 import '../services/reminder_coordinator.dart';
 import '../services/reminder_service.dart';
+import '../services/developer_unlock.dart';
 import '../services/security_service.dart';
 import '../services/sync_service.dart';
 import '../services/time_tracker_sync_service.dart';
@@ -81,6 +82,8 @@ class _SettingsPageState extends State<SettingsPage>
   DateTime? _cisaLastSuccess;
   String? _cisaLastError;
   bool _isCisaPushing = false;
+  bool _devUnlocked = false;
+  final DeveloperUnlock _developerUnlock = DeveloperUnlock();
 
   @override
   void initState() {
@@ -109,6 +112,29 @@ class _SettingsPageState extends State<SettingsPage>
     _load();
   }
 
+  /// Seven taps on the version number unlock the CISA Tracker Sync settings
+  /// for this install.
+  Future<void> _handleVersionTap() async {
+    if (_devUnlocked) return;
+    final remaining = await _developerUnlock.registerTap();
+    if (!mounted) return;
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.hideCurrentSnackBar();
+    if (remaining == 0) {
+      setState(() => _devUnlocked = true);
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Developer options unlocked')),
+      );
+    } else if (remaining <= 3) {
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text('$remaining more…'),
+          duration: const Duration(milliseconds: 900),
+        ),
+      );
+    }
+  }
+
   Future<void> _onTimeTrackerChanged() async {
     if (!mounted) return;
     _dismissedRecordCount =
@@ -131,6 +157,7 @@ class _SettingsPageState extends State<SettingsPage>
     _cisaHasToken = await _cisaTrackerService.hasToken();
     _cisaLastSuccess = await _cisaTrackerService.getLastPushSuccess();
     _cisaLastError = await _cisaTrackerService.getLastPushError();
+    _devUnlocked = await _developerUnlock.isUnlocked();
 
     // Note: We no longer await GoogleDriveService().currentUser here
     // to prevent blocking page load. The listener in initState handles updates.
@@ -351,6 +378,13 @@ class _SettingsPageState extends State<SettingsPage>
                       builder: (_) => const PrivacyPolicyPage(),
                     ),
                   ),
+                ),
+                const Divider(height: 1, indent: 16, endIndent: 16),
+                ListTile(
+                  leading: const Icon(Icons.info_outline),
+                  title: const Text('Version'),
+                  subtitle: const Text('1.12.1'),
+                  onTap: _handleVersionTap,
                 ),
               ],
             ),
@@ -618,9 +652,10 @@ class _SettingsPageState extends State<SettingsPage>
             onTap: _clearDismissedRecords,
           ),
         const Divider(height: 1, indent: 16, endIndent: 16),
-        ListTile(
-          leading: const Icon(Icons.hub_outlined),
-          title: const Text('CISA Tracker Sync'),
+        if (_devUnlocked)
+          ListTile(
+            leading: const Icon(Icons.hub_outlined),
+            title: const Text('CISA Tracker Sync'),
           subtitle: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
