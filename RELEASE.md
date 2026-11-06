@@ -2,6 +2,21 @@
 
 All notable changes to the BNPB project are documented here.
 
+## [1.13.0](https://github.com/Shir0o/bnpb/compare/v1.12.1...v1.13.0) (2026-11-06)
+
+
+### Features
+
+* **ai:** add manual Re-index button to Ask ([#329](https://github.com/Shir0o/bnpb/issues/329)) ([67edea5](https://github.com/Shir0o/bnpb/commit/67edea5e2ce002135088270380b211690d0bfcf9)), closes [#177](https://github.com/Shir0o/bnpb/issues/177)
+* **prayer:** redesign diary, list, and request flows with quick actions ([#340](https://github.com/Shir0o/bnpb/issues/340)) ([62ad441](https://github.com/Shir0o/bnpb/commit/62ad441643d66b9398d2e794559f547e6532e0f6))
+* **settings:** gate the macOS CISA card ([#342](https://github.com/Shir0o/bnpb/issues/342)) ([#343](https://github.com/Shir0o/bnpb/issues/343)) ([f0ee3b9](https://github.com/Shir0o/bnpb/commit/f0ee3b917e205f17e8832947bd734d7d60a1480d))
+* **settings:** hide the CISA integration behind a version tap ([#341](https://github.com/Shir0o/bnpb/issues/341)) ([23c352a](https://github.com/Shir0o/bnpb/commit/23c352aef983da7cbef66cb4b0e6d43be1655e90))
+
+
+### Bug Fixes
+
+* **ci:** set explicit read permissions on workflow (alert [#1](https://github.com/Shir0o/bnpb/issues/1)) ([#337](https://github.com/Shir0o/bnpb/issues/337)) ([b996425](https://github.com/Shir0o/bnpb/commit/b9964253978245c3aa8c650ff9558917661f1180))
+
 ## [1.12.1](https://github.com/Shir0o/bnpb/compare/v1.12.0...v1.12.1) (2026-10-16)
 
 
