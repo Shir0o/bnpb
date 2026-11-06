@@ -12,6 +12,7 @@ import 'package:bnpb/screens/settings_page.dart';
 import 'package:bnpb/models/interaction.dart';
 import 'package:bnpb/models/contact.dart';
 import 'package:bnpb/models/notification_preference.dart';
+import 'package:bnpb/services/developer_unlock.dart';
 import 'package:bnpb/services/google_drive_service.dart';
 import 'package:bnpb/services/reminder_service.dart';
 import 'package:bnpb/services/security_service.dart';
@@ -363,6 +364,9 @@ void main() {
   testWidgets(
     'SettingsPage displays CISA Tracker Sync tile and can save token',
     (WidgetTester tester) async {
+      SharedPreferences.setMockInitialValues({
+        DeveloperUnlock.prefsKey: true,
+      });
       await tester.pumpWidget(const MaterialApp(home: SettingsPage()));
       await tester.pump(const Duration(milliseconds: 500));
       await tester.pumpAndSettle();
@@ -393,6 +397,43 @@ void main() {
 
       // Should now show connected status
       expect(find.textContaining('Connected'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'CISA Tracker Sync stays hidden until the version number is tapped seven times',
+    (WidgetTester tester) async {
+      await tester.pumpWidget(const MaterialApp(home: SettingsPage()));
+      await tester.pump(const Duration(milliseconds: 500));
+      await tester.pumpAndSettle();
+
+      final scrollableFinder = find.byType(Scrollable).first;
+      expect(find.text('CISA Tracker Sync'), findsNothing);
+
+      await tester.scrollUntilVisible(
+        find.text('Version'),
+        300.0,
+        scrollable: scrollableFinder,
+      );
+      await tester.pumpAndSettle();
+
+      for (var tap = 0; tap < 7; tap++) {
+        await tester.tap(find.text('Version'));
+        await tester.pump();
+      }
+      await tester.pumpAndSettle();
+
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getBool(DeveloperUnlock.prefsKey), isTrue);
+      expect(find.text('Developer options unlocked'), findsOneWidget);
+
+      await tester.scrollUntilVisible(
+        find.text('CISA Tracker Sync'),
+        -300.0,
+        scrollable: scrollableFinder,
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('CISA Tracker Sync'), findsOneWidget);
     },
   );
 }
