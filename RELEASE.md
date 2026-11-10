@@ -2,6 +2,13 @@
 
 All notable changes to the BNPB project are documented here.
 
+## [1.13.1](https://github.com/Shir0o/bnpb/compare/v1.13.0...v1.13.1) (2026-11-10)
+
+
+### Bug Fixes
+
+* **ui:** fix small viewport overflow and tap target sizing ([#347](https://github.com/Shir0o/bnpb/issues/347)) ([d864980](https://github.com/Shir0o/bnpb/commit/d864980ea8f5806a5afa5288bcc4050ac55f5284))
+
 ## [1.13.0](https://github.com/Shir0o/bnpb/compare/v1.12.1...v1.13.0) (2026-11-06)
 
 
