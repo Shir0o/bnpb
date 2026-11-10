@@ -1150,14 +1150,13 @@ class _MacOSSettingsViewState extends State<MacOSSettingsView> {
   }
 
   Future<void> _importData() async {
-    final result = await FilePicker.platform.pickFiles(
+    final pickedFile = await FilePicker.pickFile(
       dialogTitle: 'Select Backup File',
       type: FileType.any,
-      allowMultiple: false,
     );
 
-    if (result == null || result.files.isEmpty) return;
-    final path = result.files.single.path;
+    if (pickedFile == null) return;
+    final path = pickedFile.path;
     if (path == null) return;
 
     final file = File(path);

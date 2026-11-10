@@ -1453,18 +1453,18 @@ class _HomePageState extends State<HomePage>
 
   Future<void> _importLegacyJson() async {
     try {
-      final result = await FilePicker.platform.pickFiles(
+      final file = await FilePicker.pickFile(
         type: FileType.custom,
         allowedExtensions: ['json'],
       );
 
-      if (result == null || result.files.isEmpty) {
+      if (file == null) {
         if (!mounted) return;
         CrispToast.show(context, 'No file selected.');
         return;
       }
 
-      final filePath = result.files.single.path;
+      final filePath = file.path;
       if (filePath == null) {
         if (!mounted) return;
         CrispToast.show(context, 'Invalid file.');

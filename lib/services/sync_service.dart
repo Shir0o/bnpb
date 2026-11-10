@@ -153,9 +153,8 @@ class SyncService {
   }
 
   Future<void> setSyncDirectory() async {
-    final result = await FilePicker.platform.getDirectoryPath(
+    final result = await FilePicker.getDirectoryPath(
       dialogTitle: 'Select Sync Folder',
-      lockParentWindow: true,
     );
 
     if (result != null) {
