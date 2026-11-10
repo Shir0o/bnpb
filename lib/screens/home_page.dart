@@ -1165,17 +1165,22 @@ class _HomePageState extends State<HomePage>
                             fontWeight: FontWeight.w700,
                             fontSize: 16,
                           ),
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                      Text(
-                        _aiLabel,
-                        style: const TextStyle(
-                          fontSize: 11,
-                          color: Color(0xFF7D8A82),
-                          fontWeight: FontWeight.w600,
+                      const SizedBox(width: 6),
+                      Flexible(
+                        child: Text(
+                          _aiLabel,
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: Color(0xFF7D8A82),
+                            fontWeight: FontWeight.w600,
+                          ),
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 4),
                       if (_isRefreshingRecommendations)
                         const SizedBox(
                           width: 20,
@@ -1187,9 +1192,6 @@ class _HomePageState extends State<HomePage>
                           icon: const Icon(Icons.refresh, size: 20),
                           onPressed: () =>
                               _loadRecommendations(forceRefresh: true),
-                          visualDensity: VisualDensity.compact,
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(),
                           tooltip: 'Refresh suggestions',
                         ),
                     ],
@@ -1275,28 +1277,35 @@ class _HomePageState extends State<HomePage>
                                               ),
                                             ),
                                             const SizedBox(width: 6),
-                                            Container(
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                horizontal: 6,
-                                                vertical: 2,
-                                              ),
-                                              decoration: BoxDecoration(
-                                                color: tagBg,
-                                                borderRadius:
-                                                    BorderRadius.circular(4),
-                                                border: Border.all(
-                                                  color: tagBorder,
-                                                  width: 0.8,
-                                                ),
-                                              ),
-                                              child: Text(
-                                                priorityLabel,
-                                                style: TextStyle(
-                                                  fontSize: 9,
-                                                  fontWeight: FontWeight.w700,
-                                                  color: tagText,
-                                                  letterSpacing: 0.5,
+                                            Flexible(
+                                              child: FittedBox(
+                                                fit: BoxFit.scaleDown,
+                                                child: Container(
+                                                  padding: const EdgeInsets
+                                                      .symmetric(
+                                                    horizontal: 6,
+                                                    vertical: 2,
+                                                  ),
+                                                  decoration: BoxDecoration(
+                                                    color: tagBg,
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                            4),
+                                                    border: Border.all(
+                                                      color: tagBorder,
+                                                      width: 0.8,
+                                                    ),
+                                                  ),
+                                                  child: Text(
+                                                    priorityLabel,
+                                                    style: TextStyle(
+                                                      fontSize: 9,
+                                                      fontWeight:
+                                                          FontWeight.w700,
+                                                      color: tagText,
+                                                      letterSpacing: 0.5,
+                                                    ),
+                                                  ),
                                                 ),
                                               ),
                                             ),
@@ -1325,39 +1334,48 @@ class _HomePageState extends State<HomePage>
                                           _openLogInteractionForContact(
                                         rec.contact,
                                       ),
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 10,
-                                          vertical: 6,
+                                      child: ConstrainedBox(
+                                        constraints: const BoxConstraints(
+                                          minWidth: 48,
+                                          minHeight: 48,
                                         ),
-                                        decoration: BoxDecoration(
-                                          color: const Color(0x245FE0A0),
-                                          borderRadius: BorderRadius.circular(
-                                            16,
-                                          ),
-                                          border: Border.all(
-                                            color: const Color(0x805FE0A0),
-                                            width: 1,
-                                          ),
-                                        ),
-                                        child: Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: const [
-                                            Icon(
-                                              Icons.add,
-                                              size: 14,
-                                              color: Color(0xFF5FE0A0),
+                                        child: Center(
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 10,
+                                              vertical: 6,
                                             ),
-                                            SizedBox(width: 2),
-                                            Text(
-                                              'Log',
-                                              style: TextStyle(
-                                                color: Color(0xFF5FE0A0),
-                                                fontWeight: FontWeight.w700,
-                                                fontSize: 12,
+                                            decoration: BoxDecoration(
+                                              color: const Color(0x245FE0A0),
+                                              borderRadius:
+                                                  BorderRadius.circular(
+                                                16,
+                                              ),
+                                              border: Border.all(
+                                                color: const Color(0x805FE0A0),
+                                                width: 1,
                                               ),
                                             ),
-                                          ],
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: const [
+                                                Icon(
+                                                  Icons.add,
+                                                  size: 14,
+                                                  color: Color(0xFF5FE0A0),
+                                                ),
+                                                SizedBox(width: 2),
+                                                Text(
+                                                  'Log',
+                                                  style: TextStyle(
+                                                    color: Color(0xFF5FE0A0),
+                                                    fontWeight: FontWeight.w700,
+                                                    fontSize: 12,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
                                         ),
                                       ),
                                     ),
@@ -1803,15 +1821,26 @@ class _HomePageState extends State<HomePage>
     return Tooltip(
       message: tooltip,
       child: Material(
-        color: backgroundColor,
-        borderRadius: BorderRadius.circular(10),
-        clipBehavior: Clip.antiAlias,
+        color: Colors.transparent,
         child: InkWell(
           onTap: onTap,
-          child: SizedBox(
-            width: containerSize,
-            height: containerSize,
-            child: Icon(icon, size: iconSize, color: iconColor),
+          borderRadius: BorderRadius.circular(10),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(
+              minWidth: 48,
+              minHeight: 48,
+            ),
+            child: Center(
+              child: Container(
+                width: containerSize,
+                height: containerSize,
+                decoration: BoxDecoration(
+                  color: backgroundColor,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(icon, size: iconSize, color: iconColor),
+              ),
+            ),
           ),
         ),
       ),
@@ -1903,13 +1932,17 @@ class _HomePageState extends State<HomePage>
               ],
             )
           : AppBar(
-              title: Text(
-                'Contacts',
-                style: TextStyle(
-                  fontSize: titleSize,
-                  fontWeight: FontWeight.w800,
-                  color: Theme.of(context).colorScheme.onSurface,
-                  letterSpacing: -0.6,
+              title: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'Contacts',
+                  style: TextStyle(
+                    fontSize: titleSize,
+                    fontWeight: FontWeight.w800,
+                    color: Theme.of(context).colorScheme.onSurface,
+                    letterSpacing: -0.6,
+                  ),
                 ),
               ),
               titleSpacing: 22,
