@@ -16,6 +16,10 @@ analyzer:
     - windows/**
     - macos/**
     - linux/**
+  errors:
+    # Ignore deprecation infos so `flutter analyze` stays clean when the
+    # framework or dependencies deprecate APIs we have not migrated yet.
+    deprecated_member_use: ignore
 include: package:flutter_lints/flutter.yaml
 
 linter:

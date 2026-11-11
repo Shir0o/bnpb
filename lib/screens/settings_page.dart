@@ -656,60 +656,60 @@ class _SettingsPageState extends State<SettingsPage>
           ListTile(
             leading: const Icon(Icons.hub_outlined),
             title: const Text('CISA Tracker Sync'),
-          subtitle: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                _cisaHasToken
-                    ? (_cisaLastSuccess != null
-                        ? 'Connected • Last push: ${DateFormat.yMMMd().add_jm().format(_cisaLastSuccess!.toLocal())}'
-                        : 'Connected • No push yet')
-                    : 'Not connected • Paste Personal Sync Token',
-              ),
-              if (_cisaLastError != null)
-                Padding(
-                  padding: const EdgeInsets.only(top: 2),
-                  child: Text(
-                    'Error: $_cisaLastError',
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.error,
-                      fontSize: 12,
+            subtitle: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _cisaHasToken
+                      ? (_cisaLastSuccess != null
+                          ? 'Connected • Last push: ${DateFormat.yMMMd().add_jm().format(_cisaLastSuccess!.toLocal())}'
+                          : 'Connected • No push yet')
+                      : 'Not connected • Paste Personal Sync Token',
+                ),
+                if (_cisaLastError != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: Text(
+                      'Error: $_cisaLastError',
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.error,
+                        fontSize: 12,
+                      ),
                     ),
                   ),
-                ),
-            ],
-          ),
-          trailing: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (_cisaHasToken) ...[
-                if (_isCisaPushing)
-                  const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                else
+              ],
+            ),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (_cisaHasToken) ...[
+                  if (_isCisaPushing)
+                    const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  else
+                    IconButton(
+                      icon: const Icon(Icons.sync),
+                      tooltip: 'Push now',
+                      onPressed: _pushCisaTracker,
+                    ),
                   IconButton(
-                    icon: const Icon(Icons.sync),
-                    tooltip: 'Push now',
-                    onPressed: _pushCisaTracker,
+                    icon: const Icon(Icons.link_off_outlined),
+                    tooltip: 'Disconnect',
+                    onPressed: _confirmClearCisaToken,
                   ),
-                IconButton(
-                  icon: const Icon(Icons.link_off_outlined),
-                  tooltip: 'Disconnect',
-                  onPressed: _confirmClearCisaToken,
-                ),
-              ] else
-                IconButton(
-                  icon: const Icon(Icons.key_outlined),
-                  tooltip: 'Set Token',
-                  onPressed: _showSetCisaTokenDialog,
-                ),
-            ],
+                ] else
+                  IconButton(
+                    icon: const Icon(Icons.key_outlined),
+                    tooltip: 'Set Token',
+                    onPressed: _showSetCisaTokenDialog,
+                  ),
+              ],
+            ),
+            onTap: _showSetCisaTokenDialog,
           ),
-          onTap: _showSetCisaTokenDialog,
-        ),
       ],
     );
   }
