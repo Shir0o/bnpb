@@ -2,6 +2,13 @@
 
 All notable changes to the BNPB project are documented here.
 
+## [1.13.2](https://github.com/Shir0o/bnpb/compare/v1.13.1...v1.13.2) (2026-11-11)
+
+
+### Bug Fixes
+
+* **ui:** top-align alert card indicators and add button semantics ([#349](https://github.com/Shir0o/bnpb/issues/349)) ([2fe8f0f](https://github.com/Shir0o/bnpb/commit/2fe8f0f4c09c26540029cc2d44bd56b0e5347c1c))
+
 ## [1.13.1](https://github.com/Shir0o/bnpb/compare/v1.13.0...v1.13.1) (2026-11-10)
 
 
