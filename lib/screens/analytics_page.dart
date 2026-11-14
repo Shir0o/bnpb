@@ -129,13 +129,17 @@ class _AnalyticsPageState extends State<AnalyticsPage>
 
     return HideOnScrollScaffold(
       appBar: AppBar(
-        title: Text(
-          'Analytics',
-          style: TextStyle(
-            fontSize: titleSize,
-            fontWeight: FontWeight.w800,
-            color: colorScheme.onSurface,
-            letterSpacing: -0.6,
+        title: FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.centerLeft,
+          child: Text(
+            'Analytics',
+            style: TextStyle(
+              fontSize: titleSize,
+              fontWeight: FontWeight.w800,
+              color: colorScheme.onSurface,
+              letterSpacing: -0.6,
+            ),
           ),
         ),
         centerTitle: false,
@@ -146,40 +150,43 @@ class _AnalyticsPageState extends State<AnalyticsPage>
           Padding(
             padding: const EdgeInsets.only(right: 22.0),
             child: Container(
-              height: 36,
+              height: 48,
               decoration: BoxDecoration(
                 color: colorScheme.surfaceTint,
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(24),
               ),
               padding: const EdgeInsets.symmetric(horizontal: 12),
-              child: DropdownButtonHideUnderline(
-                child: DropdownButton<AnalyticsRange>(
-                  value: _selectedRange,
-                  icon: Icon(
-                    Icons.keyboard_arrow_down_rounded,
-                    color: colorScheme.onSurface,
-                    size: 18,
+              child: MediaQuery.withClampedTextScaling(
+                maxScaleFactor: 1.0,
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<AnalyticsRange>(
+                    value: _selectedRange,
+                    icon: Icon(
+                      Icons.keyboard_arrow_down_rounded,
+                      color: colorScheme.onSurface,
+                      size: 18,
+                    ),
+                    style: TextStyle(
+                      color: colorScheme.onSurface,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13.5,
+                    ),
+                    onChanged: (value) {
+                      if (value == null) return;
+                      setState(() {
+                        _selectedRange = value;
+                      });
+                      _loadSummary();
+                    },
+                    items: AnalyticsRange.values
+                        .map(
+                          (range) => DropdownMenuItem(
+                            value: range,
+                            child: Text(range.label),
+                          ),
+                        )
+                        .toList(),
                   ),
-                  style: TextStyle(
-                    color: colorScheme.onSurface,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13.5,
-                  ),
-                  onChanged: (value) {
-                    if (value == null) return;
-                    setState(() {
-                      _selectedRange = value;
-                    });
-                    _loadSummary();
-                  },
-                  items: AnalyticsRange.values
-                      .map(
-                        (range) => DropdownMenuItem(
-                          value: range,
-                          child: Text(range.label),
-                        ),
-                      )
-                      .toList(),
                 ),
               ),
             ),
