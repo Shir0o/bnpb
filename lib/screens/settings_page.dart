@@ -410,7 +410,7 @@ class _SettingsPageState extends State<SettingsPage>
           fontSize: 12,
           fontWeight: FontWeight.w700,
           letterSpacing: 1.2,
-          color: Theme.of(context).colorScheme.outline,
+          color: Theme.of(context).colorScheme.secondaryText,
         ),
       ),
     );
@@ -1060,55 +1060,59 @@ class _SettingsPageState extends State<SettingsPage>
         borderRadius: BorderRadius.circular(12),
       ),
       padding: const EdgeInsets.all(4),
-      child: SegmentedButton<SyncType>(
-        segments: const [
-          ButtonSegment(
-            value: SyncType.local,
-            label: Text('Local'),
-            icon: Icon(Icons.folder_outlined, size: 16),
+      child: MediaQuery.withClampedTextScaling(
+        maxScaleFactor: 1.0,
+        child: SegmentedButton<SyncType>(
+          segments: const [
+            ButtonSegment(
+              value: SyncType.local,
+              label: Text('Local'),
+              icon: Icon(Icons.folder_outlined, size: 16),
+            ),
+            ButtonSegment(
+              value: SyncType.googleDrive,
+              label: Text('Google Drive'),
+              icon: Icon(Icons.cloud_outlined, size: 16),
+            ),
+          ],
+          selected: {_syncType},
+          showSelectedIcon: false,
+          style: ButtonStyle(
+            minimumSize: WidgetStateProperty.all(const Size(0, 48)),
+            backgroundColor: WidgetStateProperty.resolveWith<Color>((states) {
+              if (states.contains(WidgetState.selected)) {
+                return colorScheme.surface;
+              }
+              return Colors.transparent;
+            }),
+            foregroundColor: WidgetStateProperty.resolveWith<Color>((states) {
+              if (states.contains(WidgetState.selected)) {
+                return colorScheme.onSurface;
+              }
+              return colorScheme.secondaryText;
+            }),
+            elevation: WidgetStateProperty.resolveWith<double>((states) {
+              if (states.contains(WidgetState.selected)) {
+                return 1.0;
+              }
+              return 0.0;
+            }),
+            shadowColor: WidgetStateProperty.all(
+              colorScheme.shadow.withValues(alpha: 0.1),
+            ),
+            side: WidgetStateProperty.all(BorderSide.none),
+            shape: WidgetStateProperty.all(
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(9)),
+            ),
+            visualDensity: VisualDensity.standard,
           ),
-          ButtonSegment(
-            value: SyncType.googleDrive,
-            label: Text('Google Drive'),
-            icon: Icon(Icons.cloud_outlined, size: 16),
-          ),
-        ],
-        selected: {_syncType},
-        showSelectedIcon: false,
-        style: ButtonStyle(
-          backgroundColor: WidgetStateProperty.resolveWith<Color>((states) {
-            if (states.contains(WidgetState.selected)) {
-              return colorScheme.surface;
-            }
-            return Colors.transparent;
-          }),
-          foregroundColor: WidgetStateProperty.resolveWith<Color>((states) {
-            if (states.contains(WidgetState.selected)) {
-              return colorScheme.onSurface;
-            }
-            return colorScheme.secondaryText;
-          }),
-          elevation: WidgetStateProperty.resolveWith<double>((states) {
-            if (states.contains(WidgetState.selected)) {
-              return 1.0;
-            }
-            return 0.0;
-          }),
-          shadowColor: WidgetStateProperty.all(
-            colorScheme.shadow.withValues(alpha: 0.1),
-          ),
-          side: WidgetStateProperty.all(BorderSide.none),
-          shape: WidgetStateProperty.all(
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(9)),
-          ),
-          visualDensity: VisualDensity.compact,
+          onSelectionChanged: (Set<SyncType> newSelection) async {
+            final newType = newSelection.first;
+            setState(() => _syncType = newType);
+            await SyncService().setSyncType(newType);
+            await _loadSyncState();
+          },
         ),
-        onSelectionChanged: (Set<SyncType> newSelection) async {
-          final newType = newSelection.first;
-          setState(() => _syncType = newType);
-          await SyncService().setSyncType(newType);
-          await _loadSyncState();
-        },
       ),
     );
   }

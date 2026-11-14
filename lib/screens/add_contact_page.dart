@@ -227,9 +227,10 @@ class _AddContactPageState extends State<AddContactPage>
                 GestureDetector(
                   onTap: _isSavingContact ? null : _saveContact,
                   child: Container(
+                    constraints: const BoxConstraints(minHeight: 48),
+                    alignment: Alignment.center,
                     padding: const EdgeInsets.symmetric(
                       horizontal: 18,
-                      vertical: 8,
                     ),
                     decoration: BoxDecoration(
                       color: colorScheme.primary,
@@ -299,7 +300,7 @@ class _AddContactPageState extends State<AddContactPage>
                           'Add photo (optional)',
                           style: TextStyle(
                             fontSize: 13,
-                            color: colorScheme.outline,
+                            color: colorScheme.onSurfaceVariant,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -313,7 +314,7 @@ class _AddContactPageState extends State<AddContactPage>
                 style: TextStyle(
                   fontSize: 12,
                   letterSpacing: 1.2,
-                  color: colorScheme.outline,
+                  color: colorScheme.onSurfaceVariant,
                   fontWeight: FontWeight.w700,
                 ),
               ),
@@ -362,7 +363,7 @@ class _AddContactPageState extends State<AddContactPage>
                 style: TextStyle(
                   fontSize: 12,
                   letterSpacing: 1.2,
-                  color: colorScheme.outline,
+                  color: colorScheme.onSurfaceVariant,
                   fontWeight: FontWeight.w700,
                 ),
               ),

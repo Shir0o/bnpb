@@ -602,34 +602,39 @@ class _MainPageState extends State<MainPage> with WidgetsBindingObserver {
         decoration: BoxDecoration(
           border: Border(top: BorderSide(color: colorScheme.hairline)),
         ),
-        child: NavigationBar(
-          selectedIndex: _currentIndex,
-          onDestinationSelected: (index) {
-            setState(() {
-              _currentIndex = index;
-            });
-            _pageController.jumpToPage(index);
-          },
-          // Icons stay line-style in both states per the design — only the
-          // color and the active pill communicate selection.
-          destinations: const [
-            NavigationDestination(
-              icon: Icon(Icons.home_outlined),
-              label: 'Home',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.insights_outlined),
-              label: 'Analytics',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.person_add_outlined),
-              label: 'Add',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.settings_outlined),
-              label: 'Settings',
-            ),
-          ],
+        // Keeps the fixed-height bar's labels on one line at narrow widths and
+        // large system text sizes, matching the clamped controls elsewhere.
+        child: MediaQuery.withClampedTextScaling(
+          maxScaleFactor: 1.15,
+          child: NavigationBar(
+            selectedIndex: _currentIndex,
+            onDestinationSelected: (index) {
+              setState(() {
+                _currentIndex = index;
+              });
+              _pageController.jumpToPage(index);
+            },
+            // Icons stay line-style in both states per the design — only the
+            // color and the active pill communicate selection.
+            destinations: const [
+              NavigationDestination(
+                icon: Icon(Icons.home_outlined),
+                label: 'Home',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.insights_outlined),
+                label: 'Analytics',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.person_add_outlined),
+                label: 'Add',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.settings_outlined),
+                label: 'Settings',
+              ),
+            ],
+          ),
         ),
       ),
     );
