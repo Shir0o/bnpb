@@ -2,6 +2,13 @@
 
 All notable changes to the BNPB project are documented here.
 
+## [1.13.3](https://github.com/Shir0o/bnpb/compare/v1.13.2...v1.13.3) (2026-11-14)
+
+
+### Bug Fixes
+
+* **ui:** improve navigation bar scaling and accessibility contrast ([#351](https://github.com/Shir0o/bnpb/issues/351)) ([2369c17](https://github.com/Shir0o/bnpb/commit/2369c178efb4712c3b124c859cc79304fec12d5f))
+
 ## [1.13.2](https://github.com/Shir0o/bnpb/compare/v1.13.1...v1.13.2) (2026-11-11)
 
 
