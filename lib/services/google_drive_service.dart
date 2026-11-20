@@ -522,10 +522,14 @@ class GoogleDriveService {
     });
   }
 
-  /// Finds the latest modified file matching [namePrefix] within [folderName].
+  /// Finds the latest modified file whose name contains any of [namePrefixes]
+  /// within any folder named [folderName].
+  ///
+  /// Several folders can share the name (an old app's export folder and a
+  /// newer one), so all of them are searched and the newest file wins.
   Future<drive.File?> findLatestFileInFolder({
     required String folderName,
-    String? namePrefix,
+    List<String> namePrefixes = const [],
   }) async {
     return await _executeWithRetry(() async {
       // Find matching folder case-insensitively by querying matching candidates
@@ -538,19 +542,23 @@ class GoogleDriveService {
           .timeout(const Duration(seconds: 10));
 
       final targetLower = folderName.toLowerCase().trim();
-      final matchedFolder = folderList.files?.cast<drive.File?>().firstWhere(
-            (f) => (f?.name?.toLowerCase().trim() ?? '') == targetLower,
-            orElse: () => null,
-          );
+      final folderIds = [
+        for (final f in folderList.files ?? const <drive.File>[])
+          if (f.id != null &&
+              (f.name?.toLowerCase().trim() ?? '') == targetLower)
+            f.id!,
+      ];
 
-      if (matchedFolder == null || matchedFolder.id == null) {
+      if (folderIds.isEmpty) {
         return null;
       }
 
-      final folderId = matchedFolder.id!;
-      var fileQuery = "'$folderId' in parents and trashed = false";
-      if (namePrefix != null && namePrefix.isNotEmpty) {
-        fileQuery += " and name contains '$namePrefix'";
+      final parents = folderIds.map((id) => "'$id' in parents").join(' or ');
+      var fileQuery = '($parents) and trashed = false';
+      final prefixes = namePrefixes.where((p) => p.isNotEmpty).toList();
+      if (prefixes.isNotEmpty) {
+        final names = prefixes.map((p) => "name contains '$p'").join(' or ');
+        fileQuery += ' and ($names)';
       }
 
       final fileList = await _driveApi!.files

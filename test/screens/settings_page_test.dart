@@ -320,13 +320,13 @@ void main() {
   );
 
   testWidgets(
-    'SettingsPage displays Simple Time Tracker tile with configured folder',
+    'SettingsPage displays Time tracker tile with configured folder',
     (WidgetTester tester) async {
       await tester.pumpWidget(const MaterialApp(home: SettingsPage()));
       await tester.pump(const Duration(milliseconds: 400));
       await tester.pumpAndSettle();
 
-      final sttTile = find.text('Simple Time Tracker', skipOffstage: false);
+      final sttTile = find.text('Time tracker', skipOffstage: false);
       expect(sttTile, findsOneWidget);
 
       final tileFinder = find.ancestor(

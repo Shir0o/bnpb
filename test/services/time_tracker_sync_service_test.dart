@@ -62,7 +62,7 @@ activity name,time started,time ended,comment,categories,record tags,duration,du
         when(
           () => mockDriveService.findLatestFileInFolder(
             folderName: 'Custom STT Folder',
-            namePrefix: 'stt_records_automatic',
+            namePrefixes: TimeTrackerSyncService.exportFilePrefixes,
           ),
         ).thenAnswer((_) async => driveFile);
 
@@ -75,7 +75,7 @@ activity name,time started,time ended,comment,categories,record tags,duration,du
         verify(
           () => mockDriveService.findLatestFileInFolder(
             folderName: 'Custom STT Folder',
-            namePrefix: 'stt_records_automatic',
+            namePrefixes: TimeTrackerSyncService.exportFilePrefixes,
           ),
         ).called(1);
       },
@@ -92,7 +92,7 @@ activity name,time started,time ended,comment,categories,record tags,duration,du
         when(
           () => mockDriveService.findLatestFileInFolder(
             folderName: 'Time track',
-            namePrefix: 'stt_records_automatic',
+            namePrefixes: TimeTrackerSyncService.exportFilePrefixes,
           ),
         ).thenAnswer((_) async => driveFile);
 
@@ -118,7 +118,7 @@ activity name,time started,time ended,comment,categories,record tags,duration,du
       when(
         () => mockDriveService.findLatestFileInFolder(
           folderName: 'Time track',
-          namePrefix: 'stt_records_automatic',
+          namePrefixes: TimeTrackerSyncService.exportFilePrefixes,
         ),
       ).thenAnswer((_) async => driveFile);
 
@@ -178,7 +178,7 @@ activity name,time started,time ended,comment,categories,record tags,duration,du
       when(
         () => mockDriveService.findLatestFileInFolder(
           folderName: 'Time track',
-          namePrefix: 'stt_records_automatic',
+          namePrefixes: TimeTrackerSyncService.exportFilePrefixes,
         ),
       ).thenAnswer((_) async => driveFile);
 
@@ -214,7 +214,7 @@ activity name,time started,time ended,comment,categories,record tags,duration,du
         when(
           () => mockDriveService.findLatestFileInFolder(
             folderName: 'Time track',
-            namePrefix: 'stt_records_automatic',
+            namePrefixes: TimeTrackerSyncService.exportFilePrefixes,
           ),
         ).thenAnswer((_) async => driveFile);
 
