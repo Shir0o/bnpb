@@ -105,7 +105,7 @@ class _TimeTrackerStagingSheetState extends State<TimeTrackerStagingSheet> {
           ),
           const SizedBox(height: 4),
           Text(
-            'Review detected events from Simple Time Tracker before adding to BNPB history.',
+            'Review detected events from your time tracker before adding to BNPB history.',
             style: theme.textTheme.bodySmall?.copyWith(
               color: colorScheme.secondaryText,
             ),

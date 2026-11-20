@@ -291,11 +291,61 @@ void main() {
         // Query with lowercase "Time track"
         final file = await service.findLatestFileInFolder(
           folderName: 'Time track',
-          namePrefix: 'stt_records_automatic',
+          namePrefixes: const ['stt_records_automatic'],
         );
 
         expect(file, isNotNull);
         expect(file!.id, 'stt_csv_1');
+      },
+    );
+    test(
+      'findLatestFileInFolder searches every same-named folder and prefix',
+      () async {
+        await signIn();
+
+        String? fileQuery;
+        final mockClient = MockClient((request) async {
+          final query = request.url.queryParameters['q'] ?? '';
+          if (query.contains('mimeType')) {
+            return jsonResponse({
+              'files': [
+                {'id': 'old_stt_folder', 'name': 'Time track'},
+                {'id': 'tempo_folder', 'name': 'Time track'},
+                {'id': 'other', 'name': 'Time tracking notes'},
+              ],
+            });
+          }
+          if (query.contains('in parents')) {
+            fileQuery = query;
+            return jsonResponse({
+              'files': [
+                {
+                  'id': 'tempo_csv',
+                  'name': 'tempo_records_automatic.csv',
+                  'modifiedTime': '2026-11-20T16:02:00Z',
+                },
+              ],
+            });
+          }
+          return jsonResponse({'files': []});
+        });
+
+        service.setDriveApiForTest(drive.DriveApi(mockClient));
+
+        final file = await service.findLatestFileInFolder(
+          folderName: 'Time track',
+          namePrefixes: const [
+            'tempo_records_automatic',
+            'stt_records_automatic',
+          ],
+        );
+
+        expect(file!.id, 'tempo_csv');
+        expect(fileQuery, contains("'old_stt_folder' in parents"));
+        expect(fileQuery, contains("'tempo_folder' in parents"));
+        expect(fileQuery, isNot(contains("'other' in parents")));
+        expect(fileQuery, contains("name contains 'tempo_records_automatic'"));
+        expect(fileQuery, contains("name contains 'stt_records_automatic'"));
       },
     );
   });

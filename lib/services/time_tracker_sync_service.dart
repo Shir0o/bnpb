@@ -21,6 +21,13 @@ class TimeTrackerSyncService extends ChangeNotifier {
   static const String _prefKeyNameMarkers = 'stt_name_markers';
   static const String _prefKeyTitleBackfillDone = 'stt_title_backfill_v1';
   static const String defaultDriveFolderName = 'Time track';
+
+  /// Names of the automatic CSV export: Tempo's, then Simple Time Tracker's.
+  /// The newest file under either name is read.
+  static const List<String> exportFilePrefixes = [
+    'tempo_records_automatic',
+    'stt_records_automatic',
+  ];
   static const List<String> defaultNameMarkers = ['w/', 'with '];
 
   final GoogleDriveService _driveService;
@@ -184,7 +191,8 @@ class TimeTrackerSyncService extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Queries Google Drive for the newest `stt_records_automatic*.csv` in the
+  /// Queries Google Drive for the newest `tempo_records_automatic*.csv` or
+  /// `stt_records_automatic*.csv` in the
   /// configured folder (or [folderName]), parses rows tagged with "Contact",
   /// filters already imported items, checks collisions against [existingInteractions],
   /// and populates the staging queue.
@@ -200,7 +208,7 @@ class TimeTrackerSyncService extends ChangeNotifier {
       final targetFolder = folderName ?? await getDriveFolderName();
       final latestFile = await _driveService.findLatestFileInFolder(
         folderName: targetFolder,
-        namePrefix: 'stt_records_automatic',
+        namePrefixes: exportFilePrefixes,
       );
 
       if (latestFile == null || latestFile.id == null) {

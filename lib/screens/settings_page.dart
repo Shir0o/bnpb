@@ -608,7 +608,7 @@ class _SettingsPageState extends State<SettingsPage>
         const Divider(height: 1, indent: 16, endIndent: 16),
         ListTile(
           leading: const Icon(Icons.timer_outlined),
-          title: const Text('Simple Time Tracker'),
+          title: const Text('Time tracker'),
           subtitle: Text(
             _timeTrackerService.hasStagedCandidates
                 ? 'Staging: ${_timeTrackerService.stagingQueue.length} pending • Folder: $_sttFolderName'
@@ -753,7 +753,7 @@ class _SettingsPageState extends State<SettingsPage>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      'Enter the Google Drive folder name where Simple Time Tracker automated CSV exports are saved:',
+                      'Enter the Google Drive folder name where your time tracker saves its automatic CSV export:',
                       style: TextStyle(fontSize: 13),
                     ),
                     const SizedBox(height: 12),

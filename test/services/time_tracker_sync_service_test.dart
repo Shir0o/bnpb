@@ -62,7 +62,7 @@ activity name,time started,time ended,comment,categories,record tags,duration,du
         when(
           () => mockDriveService.findLatestFileInFolder(
             folderName: 'Custom STT Folder',
-            namePrefix: 'stt_records_automatic',
+            namePrefixes: TimeTrackerSyncService.exportFilePrefixes,
           ),
         ).thenAnswer((_) async => driveFile);
 
@@ -75,7 +75,7 @@ activity name,time started,time ended,comment,categories,record tags,duration,du
         verify(
           () => mockDriveService.findLatestFileInFolder(
             folderName: 'Custom STT Folder',
-            namePrefix: 'stt_records_automatic',
+            namePrefixes: TimeTrackerSyncService.exportFilePrefixes,
           ),
         ).called(1);
       },
@@ -92,7 +92,7 @@ activity name,time started,time ended,comment,categories,record tags,duration,du
         when(
           () => mockDriveService.findLatestFileInFolder(
             folderName: 'Time track',
-            namePrefix: 'stt_records_automatic',
+            namePrefixes: TimeTrackerSyncService.exportFilePrefixes,
           ),
         ).thenAnswer((_) async => driveFile);
 
@@ -109,6 +109,69 @@ activity name,time started,time ended,comment,categories,record tags,duration,du
     );
 
     test(
+      'items queued from the old export name survive the rename unchanged',
+      () async {
+        final oldFile = drive.File()
+          ..id = 'export'
+          ..name = 'stt_records_automatic.csv';
+        when(
+          () => mockDriveService.findLatestFileInFolder(
+            folderName: 'Time track',
+            namePrefixes: TimeTrackerSyncService.exportFilePrefixes,
+          ),
+        ).thenAnswer((_) async => oldFile);
+        when(() => mockDriveService.downloadFileAsString('export'))
+            .thenAnswer((_) async => sampleCsv);
+
+        final before = await syncService.syncFromDrive(contacts: contacts);
+        await syncService.markImported([before.first.fingerprint]);
+        final queued = syncService.stagingQueue.map((c) => c.fingerprint);
+
+        // Tempo renames the same Drive file in place.
+        final renamed = drive.File()
+          ..id = 'export'
+          ..name = 'tempo_records_automatic.csv';
+        when(
+          () => mockDriveService.findLatestFileInFolder(
+            folderName: 'Time track',
+            namePrefixes: TimeTrackerSyncService.exportFilePrefixes,
+          ),
+        ).thenAnswer((_) async => renamed);
+
+        final after = await syncService.syncFromDrive(contacts: contacts);
+        expect(after.map((c) => c.fingerprint), queued);
+        expect(after.single.activityName, 'Dinner');
+      },
+    );
+
+    test(
+      'a scan that finds no export keeps the queue as it was',
+      () async {
+        final file = drive.File()
+          ..id = 'export'
+          ..name = 'stt_records_automatic.csv';
+        when(
+          () => mockDriveService.findLatestFileInFolder(
+            folderName: 'Time track',
+            namePrefixes: TimeTrackerSyncService.exportFilePrefixes,
+          ),
+        ).thenAnswer((_) async => file);
+        when(() => mockDriveService.downloadFileAsString('export'))
+            .thenAnswer((_) async => sampleCsv);
+        await syncService.syncFromDrive(contacts: contacts);
+
+        when(
+          () => mockDriveService.findLatestFileInFolder(
+            folderName: 'Time track',
+            namePrefixes: TimeTrackerSyncService.exportFilePrefixes,
+          ),
+        ).thenAnswer((_) async => null);
+        final after = await syncService.syncFromDrive(contacts: contacts);
+        expect(after, hasLength(2));
+      },
+    );
+
+    test(
         'deduplication ignores fingerprints that were already confirmed and imported',
         () async {
       final driveFile = drive.File()
@@ -118,7 +181,7 @@ activity name,time started,time ended,comment,categories,record tags,duration,du
       when(
         () => mockDriveService.findLatestFileInFolder(
           folderName: 'Time track',
-          namePrefix: 'stt_records_automatic',
+          namePrefixes: TimeTrackerSyncService.exportFilePrefixes,
         ),
       ).thenAnswer((_) async => driveFile);
 
@@ -178,7 +241,7 @@ activity name,time started,time ended,comment,categories,record tags,duration,du
       when(
         () => mockDriveService.findLatestFileInFolder(
           folderName: 'Time track',
-          namePrefix: 'stt_records_automatic',
+          namePrefixes: TimeTrackerSyncService.exportFilePrefixes,
         ),
       ).thenAnswer((_) async => driveFile);
 
@@ -214,7 +277,7 @@ activity name,time started,time ended,comment,categories,record tags,duration,du
         when(
           () => mockDriveService.findLatestFileInFolder(
             folderName: 'Time track',
-            namePrefix: 'stt_records_automatic',
+            namePrefixes: TimeTrackerSyncService.exportFilePrefixes,
           ),
         ).thenAnswer((_) async => driveFile);
 
