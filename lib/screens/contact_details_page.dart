@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -597,9 +599,13 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
-              'Relationships',
-              style: Theme.of(context).textTheme.titleMedium,
+            Expanded(
+              child: Text(
+                'Relationships',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
             ),
             TextButton.icon(
               onPressed: _showRelationshipDialog,
@@ -972,30 +978,60 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
                   ),
                 ),
                 const Spacer(),
-                Text(
-                  current.label,
-                  style: TextStyle(
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w700,
-                    color: colorScheme.primary,
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Text(
+                    current.label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.end,
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w700,
+                      color: colorScheme.primary,
+                    ),
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 10),
-            Row(
-              children: [
-                for (var i = 0; i < ContactStage.values.length; i++) ...[
-                  if (i > 0) const SizedBox(width: 4),
-                  Expanded(
-                    child: _buildStageChip(
-                      index: i,
-                      currentIndex: currentIndex,
-                      onTap: () => _setStage(ContactStage.values[i]),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                const spacing = 4.0;
+                final stageCount = ContactStage.values.length;
+                // Keep every chip at least 48dp wide; on very narrow screens
+                // the row scrolls horizontally instead of shrinking below the
+                // Android minimum tap target.
+                final chipWidth = math.max(
+                  48.0,
+                  (constraints.maxWidth - spacing * (stageCount - 1)) /
+                      stageCount,
+                );
+                return SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: IntrinsicHeight(
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        for (var i = 0; i < stageCount; i++) ...[
+                          if (i > 0) const SizedBox(width: spacing),
+                          ConstrainedBox(
+                            constraints: BoxConstraints(
+                              minWidth: chipWidth,
+                              minHeight: 48.0,
+                            ),
+                            child: _buildStageChip(
+                              index: i,
+                              currentIndex: currentIndex,
+                              onTap: () => _setStage(ContactStage.values[i]),
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
                   ),
-                ],
-              ],
+                );
+              },
             ),
           ],
         ),
@@ -1027,13 +1063,13 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
         ? colorScheme.onPrimary
         : isDone
             ? colorScheme.primary
-            : colorScheme.outline;
+            : colorScheme.onSurfaceVariant;
 
     return InkWell(
       borderRadius: BorderRadius.circular(9),
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 2),
+        padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 10),
         alignment: Alignment.center,
         decoration: BoxDecoration(
           color: bg,
@@ -1042,6 +1078,8 @@ class _ContactDetailsPageState extends State<ContactDetailsPage> {
         ),
         child: Text(
           stage.shortLabel,
+          maxLines: 1,
+          softWrap: false,
           style: TextStyle(
             fontSize: 10.5,
             fontWeight: FontWeight.w700,
