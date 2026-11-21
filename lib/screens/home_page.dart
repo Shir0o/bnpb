@@ -2158,14 +2158,18 @@ class _HomePageState extends State<HomePage>
                                   title: Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      Text(
-                                        location,
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.w800,
-                                          fontSize: 17,
-                                          color: Theme.of(context)
-                                              .colorScheme
-                                              .onSurface,
+                                      Flexible(
+                                        child: Text(
+                                          location,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.w800,
+                                            fontSize: 17,
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .onSurface,
+                                          ),
                                         ),
                                       ),
                                       const SizedBox(width: 8),
