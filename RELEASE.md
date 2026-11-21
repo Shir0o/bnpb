@@ -2,6 +2,18 @@
 
 All notable changes to the BNPB project are documented here.
 
+## [1.14.0](https://github.com/Shir0o/bnpb/compare/v1.13.3...v1.14.0) (2026-11-21)
+
+
+### Features
+
+* read Tempo's export name and every same-named Time track folder ([#355](https://github.com/Shir0o/bnpb/issues/355)) ([74c5dd9](https://github.com/Shir0o/bnpb/commit/74c5dd9548becd29e9283a823ff1a0b732cdc577))
+
+
+### Bug Fixes
+
+* **ui:** align stage chips and fix narrow-screen overflows ([#357](https://github.com/Shir0o/bnpb/issues/357)) ([217ce02](https://github.com/Shir0o/bnpb/commit/217ce02b7608899e7f68b9254b5767e5af7c56fb))
+
 ## [1.13.3](https://github.com/Shir0o/bnpb/compare/v1.13.2...v1.13.3) (2026-11-14)
 
 
